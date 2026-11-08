@@ -10,6 +10,7 @@ language's enforcer interoperates with any other.
 | `acima.config.json` | repository root or per solution | Declares units, target level, budgets, excludes |
 | `.acima/waivers.json` | repository root | Every permitted departure, with owner and expiry |
 | `.acima/api-surface.json` | repository root | The reviewed baseline of every contracts surface |
+| `.acima/manual-evidence.json` | repository root | Review evidence for normative rules the portable enforcers cannot execute |
 
 All three are version-controlled, reviewed in pull requests, and owned by the same people who own the
 code.
@@ -25,7 +26,8 @@ A tool emits findings as JSON. This is the only shape a conformance gate accepts
   "message": "Orders imports the implementation unit catalog (expected catalog.contracts).",
   "path": "src/orders/impl/place_order.py",
   "line": 4,
-  "evidence": "from acima.catalog.impl.repository import ProductRepository"
+  "evidence": "from acima.catalog.impl.repository import ProductRepository",
+  "fingerprint": "sha256:1f0c…"
 }
 ```
 
@@ -37,8 +39,11 @@ A tool emits findings as JSON. This is the only shape a conformance gate accepts
 | `path` | string | yes | relative to the analysis root, `/` separators |
 | `line` | integer | yes | 1-based; `0` for unit- or file-scoped findings |
 | `evidence` | string | no | smallest source excerpt that proves it |
+| `fingerprint` | string | yes | `sha256:` over the finding identity (rule, normalized path and stable evidence); the key a waiver matches |
 
-Tools may add fields; they may not omit these. Profile requirements use the same object with the
+Tools may add fields; they may not omit these. Every base and profile finding carries a
+fingerprint. For file-scoped profile findings the identity is the profile rule, path and
+evidence; a profile finding without one cannot be waived. Profile requirements use the same object with the
 `ACIMA-SNNN` namespace (chapter 11). S rules sit outside the base catalog and are produced by the
 profile runner, not by a language enforcer; they do not change the L1–L3 rule set.
 
@@ -132,6 +137,11 @@ Semantics, all mandatory:
 4. A waiver for an unknown rule id is itself a finding (`G001`) — a typo must never silently excuse
    nothing.
 5. Waiving is per finding, never global. There is no "skip" switch in `acima.config.json`.
+
+P9.5 is **advisory in Draft 1**. A C001–C006 waiver should not outlive one minor version and
+must be reviewed at every contract release, but the waiver schema has no standard-version or
+contract-version field, so no tool can compute the limit. `G004` still handles breaking API
+changes. Do not describe P9.5 as machine-enforced.
 
 The report must summarise: total waivers, waivers expiring within 30 days, and expired waivers. That
 summary is the only mechanism that reliably gets debt paid.

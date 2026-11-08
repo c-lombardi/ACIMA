@@ -151,3 +151,14 @@ and not an adoption measurement. It should not be used as the skill's release ga
 6. Require target build/tests, a diff budget, and an independent verification pass.
 7. Record the pilot in a new evidence directory; do not reuse the benchmark as adoption
    proof.
+
+## 2026-11-08 revalidation (skill 1.2.4)
+
+- The skill now names the executable claim gate and manual evidence file in Step 5.
+- The catalog pin is updated for the 23 automated / 6 manual partition.
+- K-01 is resolved at the instruction/gate level: a required `executed: false` rule makes
+  the result partial unless accepted manual evidence exists.
+- K-02 remains partially open (the broader adoption references are unchanged in this pass).
+- K-03, K-04, K-09, K-11, K-13 remain open: no service workflow, no target build/test
+  verification, no independent verifier, and no real application pilot.
+- Local verification: 81 tests and conformance exit 0. This is not an adoption result.

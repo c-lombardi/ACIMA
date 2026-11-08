@@ -403,3 +403,20 @@ remaining Medium items are explicitly deferred, awaiting hosted CI, or awaiting 
 review. The evidence supports a **technical-preview / advisory pilot** recommendation only; beta
 and GA remain blocked by the product contract’s gate criteria. This is not an independent
 certification and not a claim of organizational adoption.
+
+## 2026-11-08 — claim model, manual evidence and benchmark rerun
+
+- **Observed:** prose defined full vs partial, but no executable gate rejected a full
+  claim with six required rules unexecuted; the finding schema omitted the fingerprint
+  required by P9.1; P9.5 was an unenforceable MUST.
+- **Root cause:** the standard's claim vocabulary was not represented in the tool
+  contract, and the catalog did not distinguish automated from manual rules.
+- **Remediation:** added `conformance/acima_claim.py`, `acima claim`, the
+  `.acima/manual-evidence.json` contract, `automation`/`manualEvidence` on all 29 rules,
+  `fingerprint` in the normative finding schema, and an explicitly advisory P9.5.
+- **Tests/evidence:** `conformance/test_claim_model.py` (12), documentation contract (13),
+  full suite 81 tests, conformance exit 0. New benchmark evidence:
+  `benchmark-evidence/rw-2026-11-08-03` (mechanical; 12 assessed, 3 Java blocked, 43 raw
+  findings, 175 classified).
+- **Verified:** local behavior only. Independent review, hosted CI, a real application
+  pilot and Java enforcement were not obtained. The benchmark was not re-adjudicated.

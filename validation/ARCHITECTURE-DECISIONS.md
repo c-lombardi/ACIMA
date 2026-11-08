@@ -1,6 +1,6 @@
 # Architecture Decisions
 
-**Status:** PARTIALLY ACCEPTED — AD-02/AD-03 implemented on 2026-11-08; the rest remain proposed
+**Status:** ACCEPTED — AD-01/AD-02/AD-03/AD-05/AD-06/AD-11 implemented on 2026-11-08; the rest remain proposed
 **Purpose:** Record the significant architecture-level choices exposed by the audit, with
 evidence, alternatives, tradeoffs, compatibility impact and recommended approach. These
 decisions are deliberately separated from enforcement fixes. Implementing a decision
@@ -13,17 +13,17 @@ tests; the rest remain proposals and do not alter the architecture by implicatio
 
 | ID | Decision | Status | Blocking? |
 |---|---|---|---|
-| AD-01 | Define “full conformance” versus “partial assessment” | PROPOSED | Yes |
+| AD-01 | Define “full conformance” versus “partial assessment” | ACCEPTED — executable claim gate and tests | Yes |
 | AD-02 | Make base mode vs service mode explicit | ACCEPTED — `mode` selector, precedence, tests | Yes |
 | AD-03 | Define contract granularity and module/service ownership | ACCEPTED — selector + P2.1/P3.5 supersession | Yes |
 | AD-04 | Make the shared-kernel allowance explicitly legacy and mode-bound | PROPOSED | No |
-| AD-05 | Make finding fingerprints mandatory in the normative waiver/finding schema | PROPOSED | Yes |
-| AD-06 | Resolve the P9.5 version-bounded immutability waiver | PROPOSED | No |
+| AD-05 | Make finding fingerprints mandatory in the normative waiver/finding schema | ACCEPTED — fingerprint in §7.2 and rules.json | Yes |
+| AD-06 | Resolve the P9.5 version-bounded immutability waiver | ACCEPTED — advisory in Draft 1 | No |
 | AD-07 | State the scope limits for multi-tenant, full-stack and platform systems | PROPOSED | No |
 | AD-08 | Define evidence for independent release (P7.6) | PROPOSED | No |
 | AD-09 | Require runtime persistence evidence for L3 autonomy | PROPOSED | No |
 | AD-10 | Define the service profile independently of .NET project mechanics | PROPOSED | Yes |
-| AD-11 | Decide the disposition of the six non-executed catalog rules | PROPOSED | Yes |
+| AD-11 | Decide the disposition of the six non-executed catalog rules | ACCEPTED — manual evidence path | Yes |
 | AD-12 | Align the human catalog and skill guidance with the executable contract | PROPOSED | No |
 
 ---
@@ -57,6 +57,12 @@ all existing configs.
 **Acceptance criteria.** The standard, CLI report, and skill all use the same two terms;
 a run with any `executed: false` at the declared level cannot produce `claim: "full"`; tests
 pin the behavior.
+
+**Resolution (2026-11-08).** Implemented as option 2. `conformance/acima_claim.py` and
+`tools/acima.py claim` compute `FULL CONFORMANCE` only when every required rule executed or
+has accepted repository-scoped manual evidence, with zero unwaived errors. Missing evidence
+returns `PARTIAL ASSESSMENT`; malformed input exits `2`. `conformance/test_claim_model.py`
+pins L1/L2/L3 counts, evidence expiry/scope, error blocking and CLI exit codes.
 
 ---
 
@@ -193,6 +199,11 @@ already implemented; a minor if the schema changes.
 same fields; a scope-only waiver fails G001; the fingerprint is stable across line moves
 where the evidence identity is unchanged.
 
+**Resolution (2026-11-08).** `fingerprint` is now in the normative finding schema in §7.2, the
+`rules.json` `findingSchema` and G001's summary, and the waiver contract in §7.5. The existing
+enforcers and preflight already enforced it; the documentation/schema gap is closed and pinned
+by `test_documentation_contract.py` and `test_claim_model.py`.
+
 ---
 
 ## AD-06 — Resolve P9.5
@@ -220,6 +231,11 @@ behavior changes. Document it as a scope reduction.
 
 **Acceptance criteria.** P9.5 either has a field and a rule or is explicitly advisory; no
 document claims it is enforced.
+
+**Resolution (2026-11-08).** Implemented as option 1. P9.5 is explicitly advisory in Draft 1:
+it says a C001–C006 waiver should not outlive one minor version and must be reviewed at every
+contract release, but no standard-version or contract-version field exists. §7.5 states the
+same limitation; `test_documentation_contract.py` prevents a return to an unenforceable MUST.
 
 ---
 
@@ -341,6 +357,12 @@ core contract properties that need human review at minimum.
 **Acceptance criteria.** Every rule has an `automation` field (`automated`, `manual`,
 `unsupported`); levels list both; the claim artifact includes manual evidence; no run calls
 itself full conformance when a required manual item is missing.
+
+**Resolution (2026-11-08).** Implemented as option 2 with option 1 as the next enforcement
+milestone. All 29 rules now carry `automation`; the six are `manual` with a
+`manualEvidence` requirement. A full claim requires repository-scoped entries in
+`.acima/manual-evidence.json`; the reference enforcers continue to report all six as
+`executed: false`. The highest-value next implementations remain A002, G004 and L004.
 
 ---
 

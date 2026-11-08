@@ -1,6 +1,7 @@
 """Keep human documentation aligned with the executable and architectural contract."""
 from __future__ import annotations
 
+import hashlib
 import json
 import unittest
 from pathlib import Path
@@ -50,7 +51,7 @@ class DocumentationContractTests(unittest.TestCase):
         skill = read("skills/acima-adoption/SKILL.md")
         self.assertIn("PARTIAL ASSESSMENT", skill)
         self.assertIn("service-topology", skill)
-        self.assertIn("1.2.3", skill)
+        self.assertIn("1.2.4", skill)
 
     def test_l2_counts_in_the_template_match_the_catalog(self) -> None:
         catalog = json.loads(read("tools/acima-spec/rules.json"))["rules"]
@@ -69,6 +70,52 @@ class DocumentationContractTests(unittest.TestCase):
         self.assertIn("`rule`, `scope` and `fingerprint` all match", governance)
         self.assertNotIn("`rule` and `scope` both match", governance)
         self.assertIn('"fingerprint": "sha256:', governance)
+
+    def test_catalog_marks_automation_and_manual_evidence(self) -> None:
+        catalog = json.loads(read("tools/acima-spec/rules.json"))
+        manual = {rule["id"] for rule in catalog["rules"]
+                  if rule.get("automation") == "manual"}
+        self.assertEqual(manual, {"ACIMA-C003", "ACIMA-C007", "ACIMA-L004",
+                                  "ACIMA-A002", "ACIMA-A004", "ACIMA-G004"})
+        self.assertEqual(sum(1 for rule in catalog["rules"]
+                             if rule.get("automation") == "automated"), 23)
+        self.assertEqual(catalog["claimModel"]["manualEvidencePath"],
+                         ".acima/manual-evidence.json")
+        for rule in catalog["rules"]:
+            if rule["id"] in manual:
+                self.assertTrue(rule.get("manualEvidence"))
+
+    def test_finding_schema_and_governance_require_fingerprint(self) -> None:
+        catalog = json.loads(read("tools/acima-spec/rules.json"))
+        self.assertIn("fingerprint", catalog["findingSchema"])
+        governance = read("docs/standard/07-executable-governance.md")
+        self.assertIn("| `fingerprint` | string | yes |", governance)
+        g001 = next(rule for rule in catalog["rules"] if rule["id"] == "ACIMA-G001")
+        self.assertIn("fingerprint", g001["summary"])
+
+    def test_claim_classes_and_manual_evidence_are_documented(self) -> None:
+        conformance = read("docs/standard/08-conformance.md")
+        self.assertIn("FULL CONFORMANCE", conformance)
+        self.assertIn("PARTIAL ASSESSMENT", conformance)
+        self.assertIn(".acima/manual-evidence.json", conformance)
+        self.assertIn("acima.py claim", conformance)
+        self.assertIn("8.9 Manual evidence for full claims", conformance)
+        self.assertTrue((ROOT / "skills/acima-adoption/assets/manual-evidence.template.json").is_file())
+
+    def test_p9_5_is_explicitly_advisory(self) -> None:
+        principles = read("docs/standard/01-principles.md")
+        self.assertIn("P9.5 (advisory)", principles)
+        self.assertNotIn("**P9.5** A waiver MUST NOT", principles)
+        governance = read("docs/standard/07-executable-governance.md")
+        self.assertIn("P9.5 is **advisory in Draft 1**", governance)
+
+    def test_manifest_pins_the_current_catalog_and_skill_version(self) -> None:
+        catalog_bytes = (ROOT / "tools/acima-spec/rules.json").read_bytes()
+        digest = hashlib.sha256(catalog_bytes).hexdigest()
+        manifest = json.loads(read("skills/acima-adoption/manifest.json"))
+        self.assertEqual(manifest["catalog"]["sha256"], digest)
+        self.assertEqual(manifest["skillVersion"], "1.2.4")
+        self.assertIn(digest, read("skills/acima-adoption/SKILL.md"))
 
     def test_glossary_uses_current_greenfield_and_module_definitions(self) -> None:
         glossary = read("skills/acima-adoption/references/glossary.md")

@@ -171,3 +171,11 @@ release pages should state the evidence class.
 5. Add install/CI/support/maintainer information.
 6. Obtain one real application pilot before using “adoption” as a product claim.
 7. Preserve the experimental preview label until the release gate passes.
+
+## 2026-11-08 update
+
+The product now exposes an executable claim class instead of leaving FULL vs PARTIAL to
+prose. `acima claim` consumes a run and `.acima/manual-evidence.json`; the report carries
+the claim. Installation, support, hosted CI, independent review and a real pilot remain
+open. The repository still has no LICENSE/COPYING file and no packaged distribution, so
+this is not a broad-adoption recommendation.

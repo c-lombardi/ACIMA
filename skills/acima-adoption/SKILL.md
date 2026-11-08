@@ -6,8 +6,8 @@ compatibility: Python 3.9+ for the preflight script. The target language toolcha
 allowed-tools: Read Grep Glob Bash Edit Write
 metadata:
   standard: "1.0.0-draft.1"
-  skill-version: "1.2.3"
-  catalog-sha256: "ec2a77d7a2ed4d8c68fd71c32ad47ac486022b2eb541b959a23f1d2b7ea9221b"
+  skill-version: "1.2.4"
+  catalog-sha256: "a774bea1de2096bb16f7b029cbc7f09c27ebe4bbc27cab50a98fc680fc408a32"
 ---
 
 # ACIMA adoption
@@ -71,9 +71,11 @@ plan, and you must call it a plan.
     a named owner, a justification, and path-scoped declarations. Classified findings stay in the
     report; a new edge outside the declared paths must still fail. See
     [the library profile](../../docs/standard/12-library-profile.md).
-11. **A required `executed: false` rule makes the result partial.** Name every such rule and the
-    manual/native evidence it needs. Never report `FULL CONFORMANCE` from an incomplete execution
-    map, even when the error count is zero.
+11. **A required `executed: false` rule makes the result partial unless manual evidence is accepted.**
+    Name every such rule. Keep the evidence in `.acima/manual-evidence.json` with a repository
+    scope, owner, reviewer, method, artifact, review date and expiry. Compute the class with
+    `acima claim`; never report `FULL CONFORMANCE` from an incomplete execution map, even when the
+    error count is zero.
 
 ## Workflow
 
@@ -194,8 +196,19 @@ Validate before reporting anything:
    suppressed findings;
 7. the expected units were discovered (a run that classifies nothing is a false pass — `ACIMA-G005`
    should have fired);
-8. if any rule required by the declared level is `executed: false`, report **PARTIAL ASSESSMENT** and
-   name the manual/native evidence needed; a zero error count does not make it full conformance.
+8. if any rule required by the declared level is `executed: false`, record repository-scoped manual
+   evidence in `.acima/manual-evidence.json`; missing or expired evidence is **PARTIAL ASSESSMENT**,
+   not full conformance;
+9. compute and gate the claim class explicitly:
+
+```bash
+python3 tools/acima.py claim --report acima.json \
+  --evidence .acima/manual-evidence.json --level L2 --require full
+```
+
+`claim` exits `0` only when the requested class is satisfied, `1` when a full claim is requested but
+the run is partial, and `2` when the run or evidence document is invalid. A zero error count does
+not make a partial assessment full.
 
 A zero-finding result additionally requires controlled violations. The prover runs both by
 default:

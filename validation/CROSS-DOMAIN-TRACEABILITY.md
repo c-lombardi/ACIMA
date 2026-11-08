@@ -96,3 +96,17 @@ The complete 29-rule table is in `RULE-TRACEABILITY.md`. The important chain bre
 8. **Adoption:** run one real application pilot with independent verification.
 
 Every item is assigned in `MASTER-BACKLOG.md`; none is resolved by editing this matrix.
+
+## 2026-11-08 implementation update
+
+- **B-01 / P8:** resolved by the executable claim gate. `FULL CONFORMANCE` requires
+  every required rule to execute or have accepted repository-scoped manual evidence;
+  otherwise the result is `PARTIAL ASSESSMENT`. The six rules remain normative and are
+  marked `automation: manual`, not silently removed.
+- **B-02 / P9:** resolved in the normative schema. `fingerprint` is now required in
+  §7.2, `rules.json` and G001; §7.5 already required it.
+- **B-13 / P9.5:** resolved by making P9.5 explicitly advisory in Draft 1. No document
+  claims it is machine-enforced.
+- **B-03/B-04:** unchanged; service mode remains explicitly unsupported by the skill.
+- **Adoption evidence:** the benchmark rerun is mechanical, not a pilot; no application
+  adoption or independent review exists.

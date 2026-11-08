@@ -320,8 +320,10 @@ explicit exception to an enforced rule is a decision; a comment saying "we know,
   rule disabling is not a waiver and MUST NOT be used.
 - **P9.4** Waivers MUST be reviewed on the cadence their expiry implies — they are debt with a due
   date, not a permission.
-- **P9.5** A waiver MUST NOT permit a violation of contract immutability (`C001`–`C006`) for longer
-  than one minor version; those are breaking changes, handled by `G004`.
+- **P9.5 (advisory)** A waiver for contract immutability (`C001`–`C006`) SHOULD NOT outlive one
+  minor version and MUST be reviewed at every contract release. Draft 1 does not define a
+  standard-version or contract-version field, so this is a review obligation rather than a
+  machine-checked rule; `G004` still handles breaking API changes.
 
 ### The waiver record
 

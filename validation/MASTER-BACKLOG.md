@@ -12,14 +12,14 @@ quality/scale. **Status:** OPEN, IN PROGRESS, BLOCKED, DONE, DEFERRED.
 
 | ID | Domain | Item | Evidence | Correct layer | Dependencies | Validation | Status |
 |---|---|---|---|---|---|---|---|
-| P0-01 | Architecture + adoption | Define FULL CONFORMANCE vs PARTIAL ASSESSMENT; no full claim with required `executed:false` | Preface/P8 vs coverage; skill definition | Architecture claim + skill text | AD-01/AD-11 | Doc test; run report refuses full claim | IN PROGRESS — §8.6 and skill hard rule 11 define it; no executable claim gate yet |
+| P0-01 | Architecture + adoption | Define FULL CONFORMANCE vs PARTIAL ASSESSMENT; no full claim with required `executed:false` | Preface/P8 vs coverage; skill definition | Architecture claim + skill text | AD-01/AD-11 | Doc test; run report refuses full claim | DONE — `conformance/acima_claim.py`, `acima claim`, `test_claim_model.py`; L1/L2/L3 counts and exit codes pinned |
 | P0-02 | Architecture | Add explicit base/service mode and precedence for P2.1/P3.5 vs P11/P12 | C-03/C-04; no mode field | Standard/config | AD-02/AD-03 | Schema test; both modes | DONE — `mode` selector + precedence documented and tested in `test_mode_precedence.py`, `test_topology.py` |
-| P0-03 | Architecture + enforcement | Resolve waiver fingerprint contradiction in §7.5/schema/catalog; require one canonical field set | C-05; docs/code mismatch | Standard + enforcement + skill | AD-05 | Schema/test; scope-only waiver fails | IN PROGRESS — §7.5, preflight WAIVER_FIELDS and skill agree; §7.2 finding schema and rules.json summary still omit `fingerprint` |
+| P0-03 | Architecture + enforcement | Resolve waiver fingerprint contradiction in §7.5/schema/catalog; require one canonical field set | C-05; docs/code mismatch | Standard + enforcement + skill | AD-05 | Schema/test; scope-only waiver fails | DONE — §7.2, `rules.json` findingSchema/G001 and §7.5 now require `fingerprint`; doc test pins it |
 | P0-04 | Adoption | Fix stale brownfield/waiver guidance in `00`, `20`, `60`, glossary | 10-file threshold; `(rule,unit)` claims | Skill docs | None | Documentation regression test | DONE — corrected in skill 1.2.2; `test_documentation_contract` |
 | P0-05 | Adoption | Make zero proposed units a blocker on source-bearing repos | Controlled fixture exits 0 with 0 units | Preflight + skill | None | New preflight test | DONE — `TGT-004` fail/exit 1; `test_preflight_discovery` |
 | P0-06 | Adoption | Remove/report 16-unit truncation and 50k walk cap | Controlled 18-module fixture returns 16; no omitted paths | Preflight | None | New preflight test | IN PROGRESS — 16-unit cap removed and tested; 50k walk cap still unreported (R-30) |
 | P0-07 | Product | Correct four-vs-six rule docs and self-certification count | `docs/rules/index`, `08` “24 of 24” | Docs | P0-01 | Documentation test | DONE — docs corrected; `test_documentation_contract` |
-| P0-08 | Architecture | Decide six non-executed rules: implement, manual evidence, or remove from levels | C-01/C-02 | Architecture decision | AD-11 | Claim model + evidence test | OPEN |
+| P0-08 | Architecture | Decide six non-executed rules: implement, manual evidence, or remove from levels | C-01/C-02 | Architecture decision | AD-11 | Claim model + evidence test | DONE — kept normative, marked `automation: manual`, full claim requires `.acima/manual-evidence.json`; tests pin the six |
 | P0-09 | Product | Stop `docs/status`/README from saying “implemented and verified” without scope | Status page; six unexecuted | Product docs | P0-01/P0-08 | Claim audit | DONE — status page states 23 automated / 6 manual and names the gap |
 | P0-10 | Adoption | Add service-topology workflow or explicit `NOT SUPPORTED` stop | Skill has no topology/P10–P13 path | Skill + preflight | AD-10 | Adversarial fixture | DONE (stop only) — explicit `NOT SUPPORTED`; no workflow |
 | P0-11 | Adoption | Add library-profile workflow or explicit unsupported stop for Python/Go | Hard rule only; 30 valid choices | Skill + profile | None | Fixture per language | DONE (stop only) — explicit Python/Go library stop; TS/.NET workflow unchanged |
@@ -29,7 +29,7 @@ quality/scale. **Status:** OPEN, IN PROGRESS, BLOCKED, DONE, DEFERRED.
 
 | ID | Domain | Item | Evidence | Correct layer | Dependencies | Validation | Status |
 |---|---|---|---|---|---|---|---|
-| P1-01 | Architecture | Resolve P9.5 (version metadata + rule, or downgrade) | C-06 | Standard | AD-06 | Review/evidence | OPEN |
+| P1-01 | Architecture | Resolve P9.5 (version metadata + rule, or downgrade) | C-06 | Standard | AD-06 | Review/evidence | DONE — explicitly advisory in Draft 1; no false enforcement claim |
 | P1-02 | Architecture | Define runtime evidence for L3 autonomy (DB grants, config, release) | A001 static only; P7.6 no rule | Standard + enforcement | AD-08/AD-09 | Runtime fixture/evidence | OPEN |
 | P1-03 | Enforcement | Java enforcer, or formally remove Java from supported claims | 3 benchmark repos blocked | Enforcement | Language profile | Java gallery/CI | OPEN |
 | P1-04 | Enforcement | Non-.NET service-topology fixture + language adapter | `test_topology` .NET-only | Enforcement | AD-10 | TS/Go/Python fixture | OPEN |
@@ -59,15 +59,13 @@ quality/scale. **Status:** OPEN, IN PROGRESS, BLOCKED, DONE, DEFERRED.
 | P2-08 | Adoption | Measure time-to-assessment/baseline/gate in pilot | C7 unmeasured | OPEN |
 | P2-09 | Product | Replace “architecture health score” absence with clear evidence vocabulary | No score is correct; claim classes missing | OPEN |
 | P2-10 | Product | Add a migration guide for base→service mode | Mode ambiguity | OPEN |
-| P2-11 | Verification | Re-run benchmark after fixes; preserve old evidence | Historical integrity | OPEN |
+| P2-11 | Verification | Re-run benchmark after fixes; preserve old evidence | Historical integrity | DONE (mechanical) — `rw-2026-11-08-03`; 12 assessed, 3 Java blocked; not re-adjudicated |
 | P2-12 | Verification | Add independent classification sample | Author bias | BLOCKED |
 
 ## Sequencing
 
-1. **P0-01/P0-08:** settle the claim model and the six rules. Without this, every green
-   report is misleading.
-2. **P0-02 (done) / P0-03:** mode precedence is settled and tested; waiver identity is
-   settled in §7.5/preflight but still missing from the §7.2 finding schema.
+1. **P0-01/P0-08 (done):** the claim model and six manual rules are settled and executable.
+2. **P0-02/P0-03 (done):** mode precedence and waiver identity are settled and tested.
 3. **P0-04–P0-07:** fix the unambiguous documentation/claim errors and add tests.
 4. **P0-05/P0-06/P0-10/P0-11:** harden discovery and state unsupported profiles.
 5. **P1:** Java/service portability, runtime evidence, real pilot, independent review.

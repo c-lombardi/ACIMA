@@ -247,3 +247,13 @@ are not counted as principle contradictions:
   correctly listing six unexecuted rules; "verified" needs a defined scope.
 
 These are handled in the product/consistency follow-up, not by changing the principles.
+
+## 2026-11-08 update
+
+- **C-01/C-02:** resolved by the executable claim model. The standard no longer permits a
+  full claim with required `executed: false` rules; the six are manual evidence
+  requirements and the claim is partial without them.
+- **C-05/C-14:** resolved. `fingerprint` is in the normative finding schema and catalog.
+- **C-06:** resolved by making P9.5 advisory in Draft 1.
+- **C-07/C-08/C-10/C-11/C-13:** remain open; they are scope/runtime/manual-evidence issues,
+  not claim-model contradictions.

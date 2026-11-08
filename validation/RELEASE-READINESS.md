@@ -11,8 +11,8 @@ limitations stated.
 | Gate | Status | Evidence | Blocker |
 |---|---|---|---|
 | Architecture coherently defined | PARTIAL | `ARCHITECTURE-MODEL.md`, `ARCHITECTURE-VALIDATION-REPORT.md` | P8 six-rule claim; P9.5 |
-| Architecture internally consistent | **FAIL** | C-01, C-06; C-03–C-05 corrected | Six-rule execution claim, P9.5 |
-| Normative requirements precise | PARTIAL | P1–P13 | P4.2/P4.3/P13.1/P9.5 underspecified |
+| Architecture internally consistent | PARTIAL | C-01/C-02 resolved by claim gate; C-06 advisory; C-03–C-05 corrected | Remaining precision gaps P4.2/P4.3/P13.1 |
+| Normative requirements precise | PARTIAL | P1–P13; claim model and P9.5 settled | P4.2/P4.3/P13.1 underspecified |
 | Applicability understood | PARTIAL | Applicability matrix | Multi-tenant/full-stack/platform unsupported |
 | Enforcement traceable | PARTIAL | Enforcement matrix, rule traceability | Six rules, indirect mappings |
 | Enforcement semantically correct | PARTIAL | Galleries, tests, benchmark | Heuristics, Java, profile limits |
@@ -117,7 +117,8 @@ the local gate does not cover them.
 - The reference enforcers fail closed on zero sources and unsupported Java.
 - The benchmark shows material precision/reliability improvement over the previous run.
 - The architecture, enforcement and adoption claims are **not** independently validated.
-- Six normative rules do not execute; Java has no enforcer.
+- Six normative rules do not execute; a full claim now requires repository-scoped manual evidence for them.
+- Java has no enforcer.
 - No production application has adopted ACIMA under this review.
 - The skill cannot currently adopt the service profile; it now blocks a source-bearing repository with no discoverable unit and stops explicitly for service topology.
 
@@ -136,10 +137,10 @@ the local gate does not cover them.
 
 ### Must close before any “conformant” release
 
-1. Define full vs partial conformance; reject full with required unexecuted rules.
+1. Define full vs partial conformance; reject full with required unexecuted rules. **(closed — `acima claim`, manual evidence, tests)**
 2. Resolve base/service mode precedence and contract granularity. **(closed — `mode` selector, precedence and tests)**
-3. Align waiver fingerprint across P9.1, §7.5, schema, catalog, skill.
-4. Resolve P9.5.
+3. Align waiver fingerprint across P9.1, §7.5, schema, catalog, skill. **(closed — §7.2, findingSchema, G001, doc test)**
+4. Resolve P9.5. **(closed — explicitly advisory in Draft 1)**
 5. Correct four-vs-six and self-certification count. **(closed — doc regression test)**
 6. Make zero-unit/truncated discovery stop. **(closed for zero units and the 16-unit cap; the 50k walk cap is still unreported)**
 7. Add service/library workflows or explicit unsupported stops. **(partially closed — explicit `NOT SUPPORTED` stops; no workflow)**
@@ -168,7 +169,31 @@ architecture consistency report, enforcement report and adoption limitations lin
 the README. Do not call it production-ready. Do not push or publish without explicit
 authorization.
 
+**Update (2026-11-08):** the claim model, manual-evidence path, fingerprint schema and P9.5
+disposition are now implemented and locally tested. The independent-review, hosted-CI and
+real-application-pilot blockers remain open; no recommendation level has been broadened.
+
 ## Authorization
 
 No push, publish, release, or deployment has been performed. The working tree remains
 uncommitted in this review workspace.
+
+## 2026-11-08 implementation update
+
+The claim model, manual-evidence path, waiver fingerprint schema and P9.5 disposition are
+now implemented and locally verified.
+
+| Check | Result |
+|---|---|
+| `conformance/acima_claim.py` + `acima claim` | PASS — FULL only with all required rules executed or accepted repository-scoped evidence; PARTIAL otherwise |
+| Manual evidence template | PASS — `skills/acima-adoption/assets/manual-evidence.template.json` |
+| `rules.json` automation partition | PASS — 23 automated, 6 manual, 29 total |
+| `rules.json` finding schema | PASS — `fingerprint` present; G001 summary requires it |
+| P9.5 | PASS — explicitly advisory in Draft 1; no enforcement claim |
+| Full conformance suite | PASS — exit 0 |
+| Unit tests | PASS — 81 tests |
+| Benchmark rerun | DONE (mechanical) — `benchmark-evidence/rw-2026-11-08-03`; 12 assessed, 3 Java blocked, 43 raw findings, 175 classified, no re-adjudication |
+
+Remaining release blockers are unchanged: independent architecture/enforcement review,
+hosted CI evidence, a real application pilot, Java, non-.NET service topology, runtime
+evidence, and the 50k preflight walk cap. The benchmark rerun does not close them.

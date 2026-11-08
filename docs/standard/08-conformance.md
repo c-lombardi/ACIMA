@@ -73,15 +73,17 @@ Everything in L2, plus:
 
 ## 8.4 What counts as evidence
 
-A conformance claim is credible when all five exist:
+A conformance claim is credible when all six exist:
 
-1. **the configuration** — `acima.config.json` declaring units and level;
+1. **the configuration** — `acima.config.json` declaring units, level and mode;
 2. **the run** — an enforcer execution on the current commit, at the declared level, zero unwaived
-   errors; for a **full conformance claim**, every rule required by that level must also be executed,
-   with a recorded manual/native evidence artifact where no automated enforcer exists;
-3. **the artefact** — the JSON findings file from that run, retained with the build;
-4. **the waiver report** — count, owners, soonest expiry, expired count;
-5. **the pipeline** — the gate runs on every pull request and blocks merges on `error`.
+   errors;
+3. **the manual evidence** — for a **full conformance claim**, every rule required by that level
+   that the run reports as `executed: false` must have a repository-scoped entry in
+   `.acima/manual-evidence.json`;
+4. **the artefact** — the JSON findings file from that run, retained with the build;
+5. **the waiver report** — count, owners, soonest expiry, expired count;
+6. **the pipeline** — the gate runs on every pull request and blocks merges on `error`.
 
 Anything less is documentation, not conformance. In particular: *architecture tests that pass because
 they discovered nothing* are the most common false claim, which is why `G005` exists and why the
@@ -99,11 +101,13 @@ enforcers in this repository fail when a suite finds zero files.
 - Language profile: dotnet
 - Enforcer: tests/Acima.ArchTests
 - CI gate: <link to the required check>
+- Manual evidence: `.acima/manual-evidence.json` (<n> accepted entries)
 
 | Check | Result |
 |---|---|
-| Rules executed | <executed> of <required> automated; manual/native evidence: <rules> |
+| Rules executed | <executed> of <required> automated; manual evidence: <rules> |
 | Claim | <FULL CONFORMANCE | PARTIAL ASSESSMENT> |
+| Claim gate | `acima claim --require full` exits 0 |
 | Unwaived errors | 0 |
 | Warnings | 3 (`C007` ×1, `G003` ×2) |
 | Waivers | 1 active, 0 expired, 1 expiring within 90 days |
@@ -113,8 +117,20 @@ enforcers in this repository fail when a suite finds zero files.
 
 The count is derived from `rules.json`; never copy a fixed number. At L2 the catalog requires 25
 rules. The reference portable enforcers execute 21 of those and report `L004`, `C003`, `C007` and
-`G004` as not executed; without manual/native evidence for those four, the correct claim is
-`PARTIAL ASSESSMENT`, not `FULL CONFORMANCE`.
+`G004` as not executed; without manual evidence for those four, the correct claim is
+`PARTIAL ASSESSMENT`, not `FULL CONFORMANCE`. At L3 the catalog requires 29 rules; 23 execute and
+the six manual rules are `L004`, `C003`, `C007`, `A002`, `A004` and `G004`.
+
+The claim class is computed, not chosen by the author:
+
+```bash
+python3 tools/acima.py claim --report acima.json \
+  --evidence .acima/manual-evidence.json --level L2 --require full
+```
+
+`claim` exits `0` when the requested class is satisfied, `1` when a full claim is requested but
+the run is only a partial assessment, and `2` when the run or evidence document is invalid. The
+same model is available in `acima report --format json` under the `claim` key.
 
 ## 8.6 Partial conformance is not conformance
 
@@ -125,9 +141,18 @@ it is exactly the case where nothing else will catch the violation.
 
 If an enforcer genuinely cannot evaluate a rule, it MUST report the rule as `info` with
 `"executed": false` in the findings artefact rather than omitting it. A **partial assessment** lists
-the unenforced rules explicitly and records the missing manual/native evidence; it MUST NOT be
-called conformance. A full conformance claim requires execution or recorded manual/native evidence
-for every required rule. A standard that hides what it does not check is worse than no standard.
+the unenforced rules explicitly and records the missing manual evidence; it MUST NOT be called
+conformance. A full conformance claim requires execution or accepted repository-scoped manual
+evidence for every required rule. A standard that hides what it does not check is worse than no
+standard.
+
+The claim classes are exclusive:
+
+| Class | Conditions | May be called conformance? |
+|---|---|---|
+| `FULL CONFORMANCE` | every required rule executed or covered by accepted manual evidence; zero unwaived error findings | yes |
+| `PARTIAL ASSESSMENT` | a complete, valid run, but at least one required rule has no execution or accepted manual evidence | no |
+| `INVALID ASSESSMENT` | missing execution map, missing level, malformed output or unreadable evidence | no; exit `2` |
 
 ## 8.7 Conformance and reality
 
@@ -164,3 +189,42 @@ rather than hiding it.
 The evidence is the same as §8.4: the topology configuration, the run, the JSON artefact and the CI
 gate. The profile runner is invoked by `conformance/run.py`; a repository that adopts the profile adds
 that command to the same pull-request job as its language enforcer.
+
+## 8.9 Manual evidence for full claims
+
+`.acima/manual-evidence.json` is version-controlled with the config and waivers. It records the
+review that replaces an automated rule, not a promise to review later:
+
+```json
+{
+  "standard": "1.0.0-draft.1",
+  "evidence": [
+    {
+      "rule": "ACIMA-C003",
+      "scope": "repository",
+      "owner": "team-contracts",
+      "reviewer": "architecture-review",
+      "method": "review",
+      "artifact": "docs/reviews/C003-contract-behaviour.md",
+      "reviewedOn": "2026-11-08",
+      "expires": "2027-05-08",
+      "result": "pass"
+    }
+  ]
+}
+```
+
+A full claim requires one accepted entry for every required rule that did not execute. An entry is
+accepted only when:
+
+- `rule` is a catalog id required by the declared level;
+- `scope` is `repository` — unit- or path-scoped evidence cannot certify the whole repository;
+- `owner`, `reviewer`, `method` and `artifact` are non-empty;
+- `reviewedOn` is an ISO date not in the future and `expires` is an ISO date not in the past;
+- `artifact` exists at that path and contains the recorded review;
+- `result` is `pass`.
+
+Expired, missing or malformed evidence makes the claim `PARTIAL ASSESSMENT`; it does not make the run
+invalid. A missing execution map, an unknown level or malformed JSON is `INVALID ASSESSMENT` and exits
+`2`. The reference enforcers continue to report the six rules as `executed: false`; the evidence file
+is how a repository records the review the portable tool cannot perform.

@@ -20,6 +20,11 @@ from collections import defaultdict
 from pathlib import Path
 
 ACIMA_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ACIMA_ROOT / "conformance"))
+from acima_claim import (  # noqa: E402 - path is set above deliberately
+    EVIDENCE_FILE, FULL, INVALID, ClaimError, assess as assess_claim,
+    load_catalog, load_evidence, render_markdown as render_claim_markdown,
+)
 CONFIG_NAME = "acima.config.json"
 PRUNE = {".git", "node_modules", "bin", "obj", "dist", "build", "target", "out",
          ".venv", "venv", "__pycache__", ".next", ".nuxt", "coverage"}
@@ -217,7 +222,21 @@ def not_evaluated(language: str) -> list[str]:
     return sorted(NON_PORTABLE | LANGUAGE_GAPS.get(language, set()) & ids)
 
 
-def report_markdown(root: Path, payload: dict, language: str, config: dict | None) -> str:
+def claim_for(root: Path, payload: dict) -> dict:
+    """Compute the claim class without letting a bad evidence file crash the report."""
+    evidence_path = root / EVIDENCE_FILE
+    try:
+        evidence = load_evidence(evidence_path)
+        return assess_claim(
+            payload, load_catalog(ACIMA_ROOT), evidence=evidence,
+            evidence_path=EVIDENCE_FILE, root=root,
+        )
+    except ClaimError as error:
+        return {"claim": INVALID, "eligible": False, "error": str(error)}
+
+
+def report_markdown(root: Path, payload: dict, language: str, config: dict | None,
+                    claim: dict | None = None) -> str:
     summary = summarize(payload)
     level = payload.get("level") or (config or {}).get("level") or "unknown"
     lines = [
@@ -279,6 +298,8 @@ def report_markdown(root: Path, payload: dict, language: str, config: dict | Non
         "`docs/standard/08-conformance.md` for what counts as a conformance claim.",
         "",
     ]
+    if claim:
+        lines.append(render_claim_markdown(claim))
     return "\n".join(lines)
 
 
@@ -304,6 +325,15 @@ def main() -> int:
     report.add_argument("--language", default=None)
     report.add_argument("--level", default=None)
     report.add_argument("--format", choices=("markdown", "json"), default="markdown")
+
+    claim = sub.add_parser("claim", help="compute FULL CONFORMANCE or PARTIAL ASSESSMENT")
+    claim.add_argument("--report", required=True, help="JSON run artifact from an enforcer")
+    claim.add_argument("--root", default=".", help="repository that owns the manual evidence")
+    claim.add_argument("--evidence", default=None,
+                       help=f"manual evidence path (default: <root>/{EVIDENCE_FILE})")
+    claim.add_argument("--level", default=None, choices=("L1", "L2", "L3"))
+    claim.add_argument("--require", choices=("partial", "full"), default="partial")
+    claim.add_argument("--format", choices=("markdown", "json"), default="markdown")
 
     verify = sub.add_parser("verify", help="run the full reference conformance suite")
     verify.add_argument("profiles", nargs="*")
@@ -349,7 +379,9 @@ def main() -> int:
         if payload is None:
             print(f"acima: {error}", file=sys.stderr)
             return 2
-        config = read_config(Path(args.root), args.config or CONFIG_NAME)
+        root = Path(args.root).resolve()
+        config = read_config(root, args.config or CONFIG_NAME)
+        claim = claim_for(root, payload)
         if args.format == "json":
             print(json.dumps({
                 "summary": summarize(payload),
@@ -357,11 +389,42 @@ def main() -> int:
                 "language": language,
                 "level": payload.get("level"),
                 "notEvaluated": not_evaluated(language),
+                "claim": claim,
                 "limitation": "Evidence only; no productivity or health score is inferred.",
             }, indent=2))
         else:
-            print(report_markdown(Path(args.root), payload, language, config))
+            print(report_markdown(root, payload, language, config, claim))
         return code
+
+    if args.command == "claim":
+        root = Path(args.root).resolve()
+        report_path = Path(args.report)
+        try:
+            payload = json.loads(report_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            print(f"acima: cannot read run artifact {report_path}: {error}", file=sys.stderr)
+            return 2
+        explicit_evidence = args.evidence is not None
+        evidence_path = Path(args.evidence) if explicit_evidence else root / EVIDENCE_FILE
+        if explicit_evidence and not evidence_path.is_file():
+            print(f"acima: manual evidence not found: {evidence_path}", file=sys.stderr)
+            return 2
+        try:
+            evidence = load_evidence(evidence_path)
+            claim = assess_claim(
+                payload, load_catalog(ACIMA_ROOT), level=args.level,
+                evidence=evidence, evidence_path=str(evidence_path), root=root,
+            )
+        except ClaimError as error:
+            print(f"acima: {error}", file=sys.stderr)
+            return 2
+        if args.format == "json":
+            print(json.dumps(claim, indent=2, sort_keys=True))
+        else:
+            print(render_claim_markdown(claim))
+        if args.require == "full" and claim["claim"] != FULL:
+            return 1
+        return 0
 
     result = subprocess.run([sys.executable, str(ACIMA_ROOT / "conformance/run.py")] + args.profiles,
                             cwd=ACIMA_ROOT)

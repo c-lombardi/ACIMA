@@ -19,7 +19,9 @@ ACIMA makes declared architectural boundaries executable:
 - a **library/framework profile** classifies declared public API and intentional
   adapter edges without deleting them from the report;
 - the **agent skill** preflights, proposes units, measures a baseline and helps an
-  agent work within the boundaries.
+  agent work within the boundaries;
+- a **claim gate** computes `FULL CONFORMANCE` or `PARTIAL ASSESSMENT` from the run and
+  `.acima/manual-evidence.json`; authors do not choose the label.
 
 ## Supported today
 
@@ -30,7 +32,7 @@ ACIMA makes declared architectural boundaries executable:
 | Go | 23 portable rules; reference enforcer | Source and import analysis, not `go/parser` |
 | C#/.NET | 23 portable rules; reference enforcer; library profile | Source and MSBuild-evaluated project metadata, not assembly loading |
 | Java | Profile only | No reference enforcer; a selected Java assessment fails closed |
-| Six semantic rules | Normative, not executable | `C003`, `C007`, `L004`, `A002`, `A004`, `G004` are reported as not executed |
+| Six manual-evidence rules | Normative, not executable by the portable enforcers | `C003`, `C007`, `L004`, `A002`, `A004`, `G004` are `automation: "manual"` and require repository-scoped evidence for a full claim |
 | Brownfield adoption | Preflight, draft units, baseline waivers, ratchet guidance | Unit names and owners require human confirmation |
 | AI agent skill | Pinned catalog, preflight, assessment validation, playbooks | No independent adversarial evaluation yet |
 
@@ -50,11 +52,16 @@ A consumer may rely on the following for the four implemented enforcers:
    `evidence` and `fingerprint`. Classified entries are reported separately and keep
    their owner and reason.
 6. **Waiver control.** A waiver needs a rule, scope, owner, reason, fingerprint,
-   expiry and review date. Broad or fingerprint-less waivers are rejected.
-7. **Scope control.** Literal exclusions match a file or directory subtree, not an
+   expiry and review date. Broad or fingerprint-less waivers are rejected. `P9.5` is
+   advisory in Draft 1 and is not represented as machine-enforced.
+7. **Claim class.** `acima claim` emits `FULL CONFORMANCE` only when every rule required by
+   the level executed or has accepted repository-scoped manual evidence, with zero unwaived
+   errors. Otherwise it emits `PARTIAL ASSESSMENT` and names the missing rules. Malformed
+   input exits `2`.
+8. **Scope control.** Literal exclusions match a file or directory subtree, not an
    arbitrary sibling prefix. Globs remain globs; bare segments retain legacy
    any-directory matching.
-8. **Calibration.** The adoption skill’s manifest pins the catalog SHA-256 and the
+9. **Calibration.** The adoption skill’s manifest pins the catalog SHA-256 and the
    portable rule IDs. A mismatch blocks the skill rather than silently changing scope.
 
 ### Known contract gaps

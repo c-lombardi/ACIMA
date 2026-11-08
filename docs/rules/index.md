@@ -98,9 +98,12 @@ is deliberate: a catalogue of warnings is a catalogue of things nobody fixes.
 
 ## Rules that need judgement
 
-Six normative rules cannot be decided by the portable reference enforcers. They remain in the
-catalogue because a native analyzer, package metadata or a human review can decide them, but a
-clean portable run is not evidence that they pass:
+Six normative rules cannot be decided by the portable reference enforcers. The machine-readable
+catalog marks them `automation: "manual"`; the other 23 are `automation: "automated"`. They remain
+in the catalogue because a native analyzer, package metadata or a human review can decide them, but
+a clean portable run is not evidence that they pass. A full conformance claim records one
+repository-scoped entry per manual rule in `.acima/manual-evidence.json`; without that file the
+claim is `PARTIAL ASSESSMENT`. See [Conformance §8.9](../standard/08-conformance.md#89-manual-evidence-for-full-claims).
 
 | Rule | Severity | What the portable tool does | What a human or native analyzer does |
 |---|---|---|---|

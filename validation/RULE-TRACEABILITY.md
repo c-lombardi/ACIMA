@@ -139,3 +139,11 @@ is intentional, not a defect.
 | D003, L002 | Contracts→contracts vs contracts→framework type | Different causes; not duplicates |
 | G001, G002 | Malformed/unknown waiver vs expired waiver | Keep; different lifecycle states |
 | S004, S005 | Layer ownership vs zero references | Keep; a zero-reference contract can still be the wrong layer's contract |
+
+## 2026-11-08 update
+
+The six rules are no longer described as an unresolved execution gap. They remain
+normative and are now marked `automation: manual` in `rules.json`. A full claim requires
+one accepted repository-scoped entry per required manual rule in
+`.acima/manual-evidence.json`; otherwise the claim is `PARTIAL ASSESSMENT`. The portable
+enforcers still execute 23 of 29 rules. Java still has no enforcer.

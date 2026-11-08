@@ -46,9 +46,12 @@ build can check**.
 | Architecture is not enforced | Findings fail the gate at the declared level | `L1`–`L3`, `G005` |
 | AI agents drift | Catalog hash, unit map, CLI, structured findings and an agent skill | [AI agents](docs/guides/ai-agents.md) |
 
-The rule catalog has **29 rules**; **23 are portable** across the reference enforcers. The
+The rule catalog has **29 rules**; **23 are automated** across the reference enforcers. The
 six remaining rules need native analyzers, package metadata or human judgement, and are
-listed explicitly rather than silently counted as passes.
+listed explicitly rather than silently counted as passes. A **full conformance claim**
+requires one repository-scoped entry per manual rule in `.acima/manual-evidence.json`; the
+`acima claim` command computes `FULL CONFORMANCE` or `PARTIAL ASSESSMENT` from the run and
+the evidence. A clean run without that evidence is a partial assessment, not a pass.
 
 ## Before and after
 

@@ -238,3 +238,18 @@ partial-assessment template).
 This record does not change the verdict. It is local evidence only: hosted CI, independent
 review, Java, non-.NET service topology, runtime autonomy and a real application pilot are
 still absent. The six non-executed rules still prevent a full conformance claim.
+
+## 2026-11-08 implementation update
+
+- Added `conformance/acima_claim.py` and `tools/acima.py claim`.
+- `FULL CONFORMANCE` requires every required rule to execute or have accepted
+  repository-scoped evidence in `.acima/manual-evidence.json`, plus zero unwaived error
+  findings. Missing evidence is `PARTIAL ASSESSMENT`; malformed input exits `2`.
+- The catalog now marks 23 rules `automated` and six `manual`; all 29 have an explicit
+  automation disposition.
+- Added `conformance/test_claim_model.py` (12 tests) and expanded documentation checks to 13.
+- Full suite: 81 tests pass; conformance exit 0.
+- Fresh benchmark run: `benchmark-evidence/rw-2026-11-08-03` (12 assessed, 3 Java blocked,
+  43 raw findings, 175 classified). It is mechanical and not re-adjudicated.
+- E-01 remains open in the sense that the six rules still do not execute; the claim no
+  longer hides that fact. Java, runtime evidence, hosted CI and independent review remain open.
