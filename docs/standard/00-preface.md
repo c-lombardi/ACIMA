@@ -55,8 +55,9 @@ This is **Draft 1**. It is complete enough to adopt, and stable enough that the 
 implementations, analyzers and violation gallery in this repository are all built against it. It is
 not yet ratified by any standards body, and no such ratification is claimed.
 
-The nine principles and the name ACIMA were proposed by the framework's author; this specification
-is the attempt to turn them into something a build can enforce.
+The original nine principles and the name ACIMA were proposed by the framework's author; this
+specification is the attempt to turn them into something a build can enforce, and
+[chapter 11](11-service-topology.md) extends them with a service topology profile.
 
 ## 0.5 Why a standard and not a template
 

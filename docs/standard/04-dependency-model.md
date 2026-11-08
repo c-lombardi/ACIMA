@@ -9,7 +9,7 @@ how to live with it.
 
 | From ↓ / To → | contracts (own) | contracts (other) | implementation (own) | implementation (other) | shared kernel | host |
 |---|---|---|---|---|---|---|
-| **contracts (own)** | — | ❌ `D003` | ❌ `D002` | ❌ `D002` | ✅ | ❌ `D006` |
+| **contracts (own)** | — | ❌ `D003` | ❌ `D002` | ❌ `D002` | ❌ `ST-5` (default) | ❌ `D006` |
 | **implementation** | ✅ | ✅ | — | ❌ `D001` | ✅ | ❌ `D006` |
 | **shared kernel** | ❌ `D007` | ❌ `D007` | ❌ `D007` | ❌ `D007` | — | ❌ `D007` |
 | **host** | ✅ | ✅ | ✅ | ✅ | ✅ | — |
@@ -103,8 +103,9 @@ at which the design conversation happens.
 
 ## 4.5 The shared kernel exception
 
-The kernel is the only unit that may be referenced by every module's contracts. It is therefore the
-single largest risk in the model, and it is constrained accordingly.
+Under the default, contracts do not reference the kernel at all (`ST-5`). It survives as a legacy
+compatibility unit for existing systems, so its admission test remains relevant during migration — but
+a new type should be declared locally or duplicated instead.
 
 **Admission test for a kernel type** — all four must be true:
 
@@ -169,3 +170,25 @@ Every finding of category `D` answers four questions, in this order:
 
 If a rule cannot produce that, it is not ready to be enforced, because the reader will not know whether
 to fix the code or the configuration. That distinction is the subject of the next two chapters.
+
+## 4.9 Service topology edges
+
+Chapter 11 adds a layer dimension to the matrix. The base matrix still applies inside every layer;
+the profile adds the edges between layers and between services.
+
+| From | May reference | Must not reference |
+|---|---|---|
+| `Api` | its own contracts, `Application.Contracts`, inter-service contracts it sends | `Application`, `Domain`, `Infrastructure` |
+| `Application` | its own contracts, `Domain`, vendor contracts, inter-service contracts it sends | `Api`, `Infrastructure` implementations |
+| `Domain` | the language core only (and the kernel outside absolute mode) | any contracts project, any vendor SDK |
+| `Infrastructure` | `Domain` ports and types, infrastructure libraries | `Api`, vendor SDKs |
+| `Integrations.<Vendor>` | its own contracts, the vendor SDK | `Domain`, `Application`, `Api` |
+| `Host` | everything | — |
+
+Cross-service edges are narrower still: a service may reference another service only through an
+inter-service contract named `<Source>.<Target>`. It may not reference the other service's `Api`,
+`Application`, `Domain` or `Infrastructure` projects, and it may not add a third service name to the
+contract to avoid a copy.
+
+The layer matrix is not a second source of truth: it is the module matrix applied to the layer
+projects, with the transform at each boundary making the edge explicit.

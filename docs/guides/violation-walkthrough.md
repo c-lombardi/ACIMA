@@ -72,7 +72,8 @@ import type { ProductView } from '../src/catalog/contracts/index.ts';
 packages must always be released together. That is not independent evolution.
 
 **Instead.** Use identity (`ProductId`), or duplicate the two or three fields you actually
-need, or move the value type into the shared kernel if it is genuinely universal.
+need, or (in a legacy repository) move the value type into the shared kernel. The default declares it
+locally instead.
 
 ### `ACIMA-D004` — contracts depend on a third-party package
 
@@ -83,8 +84,8 @@ export const schema = z.object({ name: z.string() });
 ```
 
 **Why.** A contract that carries a validator, an ORM attribute or a JSON library forces that
-package and its version on every consumer. P3 says contracts depend on the language core and
-the shared kernel, nothing else.
+package and its version on every consumer. P3 says contracts depend on the language core; the shared
+kernel is a legacy compatibility allowance, not a default dependency.
 
 **Instead.** Validate in the implementation; expose plain data in the contract.
 

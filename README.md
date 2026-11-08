@@ -42,19 +42,26 @@ the promise enforceable: contracts are **zero-dependency and immutable by rule**
 extends to **runtime state and persistence ownership**, and every rule ships with **a finding format,
 a waiver format and a conformance level** so teams can adopt it incrementally and prove it.
 
-## The nine principles
+## The thirteen principles
 
 | # | Principle | What it forbids |
 |---|-----------|-----------------|
 | P1 | **Service Ownership** — every module owns its implementation, abstractions, dependencies and domain | shared "common" projects that quietly own everyone's code |
 | P2 | **Contract Isolation** — every module owns its public contracts | publishing implementation types; implicit public surface |
-| P3 | **Zero-Dependency Contracts** — contracts reference nothing but the language core and the shared kernel | framework, ORM, transport and utility packages inside contracts |
+| P3 | **Zero-Dependency Contracts** — contracts reference nothing but the language core; the shared kernel is legacy compatibility | framework, ORM, transport and utility packages inside contracts |
 | P4 | **Dependency Inversion** — consumers own their integration abstractions | provider contracts reshaped to fit one consumer; resolving peers at runtime |
 | P5 | **Strict Dependency Boundaries** — no cross-module implementation references, no cycles | "just this once" implementation references |
 | P6 | **Immutable by Default** — contracts, messages, commands, queries and value objects never mutate | setters, mutable collections, ambient clocks and identifiers in contracts |
 | P7 | **Independent Evolution** — modules change and ship without coordinating with consumers | version-locked modules; shared schemas; shared mutable statics |
 | P8 | **Executable Governance** — violations fail the build | architecture rules that live only in a wiki |
 | P9 | **Explicit Exceptions** — every departure is owned, justified, scoped and dated | silent suppressions and permanent waivers |
+| P10 | **Service-Aligned Topology** — one service, one directory, projects named for the owner | cross-service `Shared` projects; service names that do not match the directory |
+| P11 | **Layer Contract Independence** — every layer owns its contract surface and transforms at the boundary | DTOs passed through layers; one contracts project serving two layers |
+| P12 | **Absolute Contract Isolation (default)** — contracts reference nothing, not even the kernel | shared-kernel or serializer attributes inside contracts |
+| P13 | **Product-Oriented Services** — UI/API workflow parity, core logic in the API domain, deployment-agnostic services | UI-only rules; vendor SDKs in the domain; infrastructure-shaped services |
+
+P1–P9 are the base standard. P10–P13 are the service topology profile in
+[chapter 11](docs/standard/11-service-topology.md); they are checked manually in this revision.
 
 Full text: [Principles](docs/standard/01-principles.md).
 
@@ -65,6 +72,7 @@ Full text: [Principles](docs/standard/01-principles.md).
 | **Standard** | The normative specification: principles, vocabulary, module anatomy, dependency matrix, contract design, runtime boundaries, governance, conformance levels, adoption path, FAQ |
 | **Rule catalog** | 29 rules across five categories with detection strategy, remediation and per-language examples |
 | **Language profiles** | How each obligation is expressed, enforced and tested in C#, TypeScript, Python, Go and Java |
+| **Service topology (default)** | One directory per service, independent layer contracts, absolute contract isolation, vendor adapter seams and `<Source>.<Target>` messaging — chapter 11 plus a section in every language profile |
 | **Reference implementations** | A three-module ordering system in TypeScript, Python, Go and C#/.NET, compiled and tested |
 | **Violation gallery** | Deliberately broken fixtures for every portable rule, in each implemented language, with expected findings checked into the repository |
 | **Conformance harness** | A single runner that executes every language's architecture tests and asserts the gallery produces the documented findings |
@@ -163,7 +171,9 @@ and onboarding path as templates. See [skills/README.md](skills/README.md).
 "Verified" means the commands in the quickstart were executed against this revision and
 `conformance/run.py` reported `ok`. The Java profile document describes the intended layout and
 enforcer contract; it is not a tested artifact, and the conformance runner skips it explicitly
-rather than reporting a pass.
+rather than reporting a pass. Service topology and absolute contract isolation (chapter 11) are the
+default for new systems and are manually checkable in this revision; the reference examples implement
+the legacy compatibility baseline (shared kernel allowed), not the default.
 
 ## Prior art and what ACIMA adds
 

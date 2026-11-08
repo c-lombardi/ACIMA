@@ -12,8 +12,8 @@ Every unit has exactly one **role** and, except for the kernel and the host, exa
 
 | Role | Meaning | May depend on |
 |------|---------|---------------|
-| `contracts` | A module's public surface | the shared kernel only |
-| `implementation` | A module's private code | its own contracts, other modules' contracts, the kernel |
+| `contracts` | A module's public surface | nothing (default); the shared kernel is legacy |
+| `implementation` | A module's private code | its own contracts, other modules' contracts, the kernel (legacy) |
 | `host` | The composition root and delivery mechanism | anything |
 | `shared-kernel` | Dependency-free value types used by every module | nothing |
 | `test` | Verification of one module | anything that module may depend on, plus the module itself |
@@ -52,7 +52,7 @@ A **contracts unit** is the complete, deliberate public surface of a module. It 
 | **Query** | A request for a read model. Returns a **view**, never an entity. | `GetOrderById` |
 | **Event** | A statement that something happened, in the past tense, published by the owner. | `OrderPlaced` |
 | **View** | A read-only projection returned to a caller. Immutable. | `OrderSummary` |
-| **Value** | A small value type used by the above. Prefer the shared kernel for cross-cutting ones. | `ShippingAddress` |
+| **Value** | A small value type used by the above. Declare it locally or use primitives; the kernel is legacy. | `ShippingAddress` |
 | **Provided port** | An interface the module promises to satisfy. | `ICatalogReader` |
 | **Result / error** | A typed outcome, including failure cases the caller must handle. | `PlaceOrderResult` |
 
@@ -96,9 +96,10 @@ whole system is allowed to concentrate, which is exactly what keeps it out of th
 
 ## 2.6 Shared kernel
 
-The **shared kernel** is the only unit every module may reference beyond its language's core library.
-It holds dependency-free value types that genuinely cross all boundaries: money, currency, quantity,
-strongly typed identifiers, and occasionally a `Result` type.
+The **shared kernel** is a legacy compatibility unit. It holds dependency-free value types that
+genuinely cross all boundaries: money, currency, quantity, strongly typed identifiers, and occasionally
+a `Result` type. Under the default, contracts do not reference it; value types are declared inside the
+contract project that needs them, or represented by primitives.
 
 Constraints (`D007`):
 
@@ -170,11 +171,65 @@ one CI gate, one report and one conformance runner work across five languages.
 L1 **Structural**, L2 **Immutable**, L3 **Autonomous**. Each is a superset of the previous one and
 each names the rule categories that must pass. See [Conformance](08-conformance.md).
 
-## 2.12 Words ACIMA avoids
+## 2.12 Service
+
+A **service** is the top-level product ownership envelope defined by the service topology profile
+(chapter 11): one responsibility in the product domain, one directory, one name, and the layers and
+contracts that deliver it.
+
+A service contains one primary module and its layers. It is not necessarily a network service and not
+necessarily deployed alone; it is the thing a team owns, versions and scales. If a service needs two
+bounded contexts, it is two services.
+
+> **Not to be confused with:** an HTTP endpoint, a DI registration, a domain service class or a
+> microservice. Those are implementation details or deployment choices; the service is the ownership
+> boundary.
+
+## 2.13 Layer
+
+A **layer** is a slice inside a service that faces one direction:
+
+| Layer | Faces |
+|---|---|
+| `Api` | the transport boundary |
+| `Application` | the use-case boundary |
+| `Domain` | the business rules |
+| `Infrastructure` | persistence and runtime adapters |
+| `Integrations.<Vendor>` | one third-party integration |
+
+Layers are not modules and are never shared across services. A layer project is named
+`<Service>.<Layer>` and lives under that service's directory.
+
+## 2.14 Layer contract
+
+A **layer contract** is the DTO and port surface one layer exposes to its caller, in
+`<Service>.<Layer>.Contracts`. It has zero references (P12) and contains only boundary types. It is
+not shared with another layer; the caller maps into it.
+
+## 2.15 Inter-service contract
+
+An **inter-service contract** is the message vocabulary one service sends to another, in a project
+named `<Source>.<Target>`. It contains data only, exactly two service names, and a direction. It is
+owned by the source and reviewed by the target.
+
+## 2.16 Vendor contracts and adapter
+
+A **vendor contracts project** is the seam between a service and a third-party library:
+`<Service>.<Vendor>.Contracts`. It declares the port and the request/result types in the service's
+vocabulary, with zero references. The **adapter**, `<Service>.<Vendor>`, implements the port using
+the vendor SDK and translates vendor types and failures.
+
+## 2.17 Transform
+
+A **transform** is the explicit mapping at a boundary from the caller's DTO to the callee's contract.
+It is pure, testable, owned by the calling layer, and carries no business rules. A transform is what
+makes layer contract independence real rather than aspirational.
+
+## 2.18 Words ACIMA avoids
 
 | Avoided | Why |
 |---------|-----|
-| "Layer" as a synonym for module | Layers are slices inside a module; modules are ownership boundaries. Confusing them produces "the Domain project" that every module references. |
+| "Layer" as a synonym for module | Layers are slices inside a **service** (chapter 11); modules are ownership boundaries. A layer project is never shared across services. |
 | "Shared" | It names a hope, not an owner. Use *shared kernel* with its constraints, or name the owning module. |
-| "Service" | Means HTTP service, DI registration, domain service and business unit. ACIMA says *module* for the boundary and *provided port* for the capability. |
+| "Service" used loosely | It can mean HTTP service, DI registration, domain service and business unit. Chapter 11 defines it precisely: the top-level product ownership envelope. Use *module* for the contract boundary and *provided port* for the capability. |
 | "Contract" meaning "interface" | An interface is one kind of contract type. Using the words interchangeably is how implementations end up in contracts. |

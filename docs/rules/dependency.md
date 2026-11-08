@@ -96,8 +96,9 @@ The mapping lives in the Catalog implementation — a place that already knows b
 
 **Severity** `error` · **Level** L1 · **Principle** P3, P7
 
-> A contracts unit MUST NOT reference another contracts unit. Shared value types live in the shared
-> kernel.
+> A contracts unit MUST NOT reference another contracts unit. Under the default it references nothing;
+> duplicate the shape or carry identity. In a legacy repository, a genuinely universal value type may
+> live in the shared kernel.
 
 ### Violation
 
@@ -110,7 +111,7 @@ export interface OrderLine { readonly product: ProductView; }
 ### Finding
 
 ```
-ACIMA-D003  error  orders.contracts references catalog.contracts; share value types via the kernel or duplicate at the boundary.
+ACIMA-D003  error  orders.contracts references catalog.contracts; duplicate the shape or carry identity at the boundary.
   src/orders/contracts/index.ts:1
   import { ProductView } from '../../catalog/contracts/index.js';
 ```
@@ -126,7 +127,8 @@ not show.
 
 Three legitimate options:
 
-1. **Kernel** — if it is a value with invariants needed everywhere (`Money`, `ProductId`).
+1. **Local value (default)** — declare it in `orders.contracts`; in a legacy repository, put it in the
+   shared kernel if it is a value with invariants needed everywhere (`Money`, `ProductId`).
 2. **Carry identity, not the model** — `OrderLine { ProductId, Money UnitPrice, int Quantity }` is
    usually better than embedding Catalog's view: it freezes the price at order time, which is what the
    business means.
@@ -141,8 +143,9 @@ Option 2 is almost always right and is worth the argument it causes.
 
 **Severity** `error` · **Level** L1 · **Principle** P3
 
-> A contracts unit MUST NOT reference a third-party package. The only permitted references are the
-> language's core library and the shared kernel.
+> A contracts unit MUST NOT reference a third-party package. The only permitted reference is the
+> language's core library. The shared kernel is a legacy compatibility allowance, not a default
+> dependency (`ST-5`).
 
 ### Violation
 
@@ -180,9 +183,10 @@ which belong to the boundary's adapter, not to the type.
 ### Detection
 
 .NET: inspect `Assembly.GetReferencedAssemblies()` of the contracts assembly, excluding the framework
-and the kernel. TypeScript: the contracts `package.json` must have no `dependencies`, and imports must
-resolve to relative paths or the kernel. Python/Go/Java: classify each import; anything not in the
-standard library, the kernel or the same contracts package is third-party.
+(and the legacy kernel only in compatibility mode). TypeScript: the contracts `package.json` must have
+no `dependencies`, and imports must resolve to relative paths. Python/Go/Java: classify each import;
+anything not in the standard library or the same contracts package is third-party. In the default,
+any reference to the kernel or another unit is also a violation (`ST-5`).
 
 ---
 
@@ -291,13 +295,15 @@ ACIMA-D007  error  shared-kernel references catalog.contracts; the kernel must b
 
 ### Why
 
-The kernel is referenced by every contracts unit, so it is the most expensive place in the system to
-put anything. A kernel that references a module couples every module to that module. A kernel with
-behaviour becomes a domain model nobody owns.
+Under the legacy shape the kernel was referenced by every contracts unit, so it was the most expensive
+place in the system to put anything. A kernel that references a module couples every module to that
+module. A kernel with behaviour becomes a domain model nobody owns. The default avoids the problem by
+not referencing the kernel from contracts at all (`ST-5`).
 
 ### Fix
 
-Move the *type* to the owning module. Keep in the kernel only values that survive the
+Move the *type* to the owning module. In the default, declare it in the contract project that needs
+it. In a legacy repository, keep in the kernel only values that survive the
 [admission test](../standard/04-dependency-model.md#45-the-shared-kernel-exception).
 
 ### Detection

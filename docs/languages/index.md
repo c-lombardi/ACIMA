@@ -48,6 +48,13 @@ Every profile follows the same five sections, so you can jump to the one you nee
 4. **Analyzers and linters** — what to add to catch violations at author time.
 5. **Idioms and pitfalls** — the language-specific traps, and the ACIMA rules they violate.
 
+## Service topology profile
+
+Every language profile ends with a **Service topology** section that translates chapter 11 into
+concrete project names, dependency rules, adapter seams and domain test gates. The profile is manual
+in this revision: the language sections describe the mechanics that a person or a future runner can
+check, not a runner that already exists.
+
 ## Adding another language
 
 The standard is deliberately written so a new language is a profile, not a fork. See

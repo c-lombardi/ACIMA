@@ -11,7 +11,7 @@ make a build fail when that stops being true.
 | # | Chapter | You will learn |
 |---|---------|----------------|
 | 0 | [Preface](standard/00-preface.md) | Scope, normative language, status, relationship to prior art |
-| 1 | [Principles](standard/01-principles.md) | The nine principles, each with its rationale and the rules that enforce it |
+| 1 | [Principles](standard/01-principles.md) | The thirteen principles, each with its rationale and the rules or profile requirements that enforce it |
 | 2 | [Vocabulary](standard/02-vocabulary.md) | The exact meaning of *module*, *contracts*, *unit*, *port*, *waiver* |
 | 3 | [Module anatomy](standard/03-module-anatomy.md) | The four artifacts every module has, in every language |
 | 4 | [Dependency model](standard/04-dependency-model.md) | The normative allowed-edge matrix and how tools classify units |
@@ -21,6 +21,7 @@ make a build fail when that stops being true.
 | 8 | [Conformance](standard/08-conformance.md) | Levels L1–L3 and the checklist a repository must satisfy |
 | 9 | [Adoption](standard/09-adoption.md) | Greenfield, brownfield, ratchets and migration |
 | 10 | [FAQ](standard/10-faq.md) | The arguments you will actually have |
+| 11 | [Service topology and layer contracts](standard/11-service-topology.md) | Service directories, independent layer contracts, absolute isolation, vendor adapters and product orientation |
 
 ## Then
 
@@ -30,11 +31,12 @@ make a build fail when that stops being true.
 - [Architecture tests](guides/architecture-tests.md) and [analyzers](guides/analyzers-and-linters.md)
 - [Agent skill](../skills/acima-adoption/SKILL.md) — applying and auditing ACIMA with a coding agent
 - [Review and decisions](guides/review-and-decisions.md) — faster reviews, auditable AI assistance, narrow scopes and fewer side effects
+- [Service topology (default)](standard/11-service-topology.md) — the product-oriented service and layer model, with a language section in every profile
 
 ## The shortest possible summary
 
 1. Each module has `X.Contracts` (zero dependencies, immutable messages, promised capabilities) and `X` (private implementation).
 2. Modules reference other modules' **contracts only** — never implementations, never each other's schemas, configuration or statics.
-3. Contracts never reference contracts. Shared value types live in a dependency-free shared kernel, or are duplicated deliberately.
+3. Contracts never reference contracts, and by default reference nothing at all: value types are local or primitive. The shared kernel is a legacy compatibility allowance.
 4. Only the composition root knows every module.
 5. Every rule above is a test, and every exception is a dated, owned waiver.

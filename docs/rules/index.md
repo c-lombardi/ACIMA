@@ -109,3 +109,11 @@ can do most of the work and force the conversation:
 
 A rule that mixes machine and human judgement must say which part is which — otherwise the tool gets
 blamed for the human's decision, and the rule gets disabled.
+
+## Profile requirements outside the catalog
+
+Chapter 11 defines the service topology default as `ST-1`–`ST-12`. They are conformance requirements,
+not catalog rules: they have no `ACIMA-S*` ids and no enforcer support in this revision. A claim that
+includes the profile must say **manual** and cite the checklist — see
+[Conformance](../standard/08-conformance.md#88-service-topology-profile). Rule ids are assigned when
+a runner can produce findings, not before.

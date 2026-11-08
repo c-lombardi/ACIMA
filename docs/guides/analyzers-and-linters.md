@@ -110,7 +110,7 @@ npm i -D eslint eslint-plugin-boundaries eslint-plugin-functional eslint-plugin-
   },
   rules: {
     'boundaries/element-types': [2, { default: 'disallow', rules: [
-      { from: 'contracts', allow: ['shared-kernel'] },
+      { from: 'contracts', allow: [] },   // default: contracts reference nothing (ST-5)
       { from: 'implementation', allow: ['contracts', 'shared-kernel'] },
       { from: 'host', allow: ['contracts', 'implementation', 'shared-kernel'] },
     ]}],

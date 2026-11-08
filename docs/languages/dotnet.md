@@ -2,17 +2,20 @@
 
 `net8.0` · C# 12 · one solution, one project per unit.
 
+> **Compatibility example.** The tree below is the legacy shape with a shared kernel. Under the
+default, contracts reference nothing; see [section 6](#6-service-topology-profile).
+
 ## 1. Layout
 
 ```
 examples/dotnet/
   Directory.Build.props            net8.0, nullable, implicit usings
   src/SharedKernel/                shared-kernel   no references, no packages
-  src/Catalog/Catalog.Contracts/   contracts       → SharedKernel only
+  src/Catalog/Catalog.Contracts/   contracts       → nothing (default); example uses SharedKernel
   src/Catalog/Catalog/             implementation  → Catalog.Contracts, SharedKernel
-  src/Orders/Orders.Contracts/     contracts       → SharedKernel only
+  src/Orders/Orders.Contracts/     contracts       → nothing (default); example uses SharedKernel
   src/Orders/Orders/               implementation  → Orders.Contracts, Catalog.Contracts, Payments.Contracts
-  src/Payments/Payments.Contracts/ contracts       → SharedKernel only
+  src/Payments/Payments.Contracts/ contracts       → nothing (default); example uses SharedKernel
   src/Payments/Payments/           implementation  → Payments.Contracts, SharedKernel
   host/Host/                       host            → every implementation
   tools/Acima.ArchTests/           tooling         the rule runner (no packages)
@@ -124,3 +127,92 @@ T:System.Linq.IQueryable`1; Contracts must not expose queryables (ACIMA-C005)
 `Acima.Catalog.Contracts` *and* whatever Catalog itself references. With it, the implementation's
 internal dependency edges stop at the project boundary. It is the .NET expression of `D008`'s redaction,
 and it is the single most useful line in an ACIMA csproj.
+
+## 6. Service topology profile
+
+Chapter 11 defines the profile. In .NET it is one solution folder per service and one project per
+layer:
+
+```
+services/Orders/
+  Orders.Api/                       Orders.Api.csproj
+  Orders.Api.Contracts/             Orders.Api.Contracts.csproj
+  Orders.Application/               Orders.Application.csproj
+  Orders.Application.Contracts/     Orders.Application.Contracts.csproj
+  Orders.Domain/                    Orders.Domain.csproj
+  Orders.Infrastructure/            Orders.Infrastructure.csproj
+  Orders.Integrations.Stripe/       Orders.Integrations.Stripe.csproj
+  Orders.Integrations.Stripe.Contracts/
+  Orders.Catalog/                   contracts for messages Orders -> Catalog
+  Orders.Host/                      composition root
+
+tests/
+  Orders.Domain.Tests/
+```
+
+### A contract project with no references
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+  <!-- Deliberately no ProjectReference and no PackageReference. -->
+</Project>
+```
+
+```csharp
+// Orders.Application.Contracts/PlaceOrder.cs
+public sealed record OrderLine(string ProductId, decimal Amount, string Currency, int Quantity);
+public sealed record PlaceOrder(string CustomerId, IReadOnlyList<OrderLine> Lines);
+public sealed record PlaceOrderResult(bool Accepted, string? OrderId, string? Rejection);
+
+public interface IPlaceOrderHandler
+{
+    PlaceOrderResult Handle(PlaceOrder command);
+}
+```
+
+No `Acima.SharedKernel` reference, no `System.Text.Json` attributes, no `Microsoft.Extensions.*`, no
+EF annotations. `Money` is either a primitive pair (`decimal` + currency code) or a record declared
+inside this project and duplicated where another contract needs it (ST-5).
+
+### Layer references
+
+| Project | References | Never references |
+|---|---|---|
+| `Orders.Api` | `Orders.Api.Contracts`, `Orders.Application.Contracts` | `Orders.Application`, `Orders.Domain`, `Orders.Infrastructure` |
+| `Orders.Application` | `Orders.Application.Contracts`, `Orders.Domain`, `Orders.Stripe.Contracts` | `Orders.Api`, `Orders.Infrastructure` |
+| `Orders.Domain` | the language core only | any contracts project, any package with IO |
+| `Orders.Infrastructure` | `Orders.Domain` ports, persistence packages | `Orders.Api`, vendor SDKs |
+| `Orders.Integrations.Stripe` | `Orders.Integrations.Stripe.Contracts`, Stripe SDK | `Orders.Domain`, `Orders.Application` |
+| `Orders.Host` | everything | — |
+
+The API talks to `IPlaceOrderHandler` from `Orders.Application.Contracts`; the host registers the
+implementation. `Orders.Api` never has a `ProjectReference` to `Orders.Application`.
+
+### Third-party isolation
+
+`Orders.Integrations.Stripe.Contracts` holds `IStripeGateway` and its request/result records. It has
+zero references. `Orders.Integrations.Stripe` references that project and `Stripe.net`, implements
+the gateway and translates Stripe exceptions into the contract's typed failures. Application and
+domain see only the contracts project; a Stripe type in a domain signature is an ST-8 failure.
+
+### Domain tests
+
+```bash
+dotnet test tests/Orders.Domain.Tests --collect:"XPlat Code Coverage"
+```
+
+Gate `Orders.Domain` at 100% line and branch coverage in CI. Test names state the rule
+(`PlaceOrder_rejects_more_than_available_stock`), not the method. The domain test project references
+`Orders.Domain` and nothing with IO.
+
+### What .NET checks without help
+
+`ProjectReference` is the graph: a contract project with no references cannot compile against
+domain types, and `PrivateAssets="all"` stops an implementation's dependencies leaking transitively
+(D008). `dotnet list package --include-transitive` is the evidence for ST-5. `InternalsVisibleTo`
+from a contracts project is a review blocker.

@@ -7,7 +7,8 @@ This chapter is the practical path.
 
 Adopt the full shape from the first commit. It costs almost nothing when there is no legacy:
 
-1. create the shared kernel (usually one file: `Money`, plus ids);
+1. declare value types inside each contract project (or use primitives); do not add a shared kernel
+   to new contracts — the kernel is a legacy compatibility allowance;
 2. create the first two modules … *and the contract between them before either implementation*;
 3. write `acima.config.json` and the first waiver file (empty) at the same time as the solution file;
 4. add the enforcer to CI **before** the second module exists, so the rules are never optional;
@@ -111,3 +112,52 @@ ACIMA is a means, not a goal. Stop adding discipline when:
 - the enforcer has become a product with its own roadmap. Rules are cheap to write and expensive to
   maintain; a rule that costs more than the defect it prevents should be withdrawn in the next major
   version.
+
+## 9.8 Adopting the service topology profile
+
+The service topology profile in chapter 11 is the default for new systems. It matters most when the
+product has, or is about to have, more than one service and more than one layer. A single-module
+repository can use the base module shape, but it still MUST keep contracts absolutely isolated.
+
+### Greenfield
+
+1. create `services/<Service>/` with the service name, and write its one-sentence responsibility;
+2. create the domain first, with its tests, before any contract exists;
+3. add `Api.Contracts` and `Application.Contracts` as zero-reference projects;
+4. add the transform at the Api → Application boundary before the first endpoint;
+5. isolate the first vendor behind `<Service>.<Vendor>.Contracts` + `<Service>.<Vendor>` before the
+   first call is written;
+6. add the host last, and let it be the only project that references everything.
+
+Do not start with the host or the database. Starting there produces a service shaped by its
+infrastructure, which is the thing the profile exists to prevent.
+
+### Brownfield
+
+Map before you rename. List every existing project, assign it a layer and a service, and only then
+apply the naming. The first slice is usually one boundary transform: replace a shared DTO with two
+layer contracts and a mapper. That change is visible, testable and reversible, and it proves the
+pattern before the rest of the tree moves.
+
+Do not bulk-rename projects in one PR. A rename campaign touches every build file, obscures the
+semantic changes, and makes review impossible. Rename the project you are already changing.
+
+### What it costs
+
+| Activity | One-off | Recurring |
+|---|---|---|
+| Splitting layer contracts | days per boundary | low; new types go to the owning layer |
+| Writing transforms | hours per boundary | low; mappers are simple and tested |
+| Absolute isolation | days, mostly removing kernel references | near zero; contracts start empty |
+| Vendor seams | days per vendor | low until the vendor changes, then a swap instead of a rewrite |
+| Domain coverage to 100% | weeks on a legacy domain | low if tests are written with the rule |
+| Manual ST checklist | an afternoon per service | an hour per quarter |
+
+### When not to adopt it
+
+- the product has one service and one layer, and no plan to change that;
+- the team cannot name a single product outcome the service owns;
+- the existing deployment is the product (a script, a batch job) and has no UI/API workflow to keep
+  in parity.
+
+A profile adopted without the product shape it assumes becomes ceremony. Base ACIMA still applies.

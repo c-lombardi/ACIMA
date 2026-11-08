@@ -10,15 +10,14 @@ Rule: the gate exists before the second module does.
 
 ```
 1. repository skeleton + build
-2. shared kernel                     (one file: Money, ids)
-3. module A contracts                (types only, no behaviour)
-4. module B contracts                (types only, no behaviour)
-5. module A implementation           (depends on A.contracts, kernel)
-6. module B implementation           (depends on B.contracts, A.contracts, kernel)
-7. host / composition root           (depends on everything)
-8. acima.config.json + empty waivers (same commit as the skeleton)
-9. enforcer in CI                    (before module C exists)
-10. declare L3
+2. module A contracts                (types only, no behaviour, no imports)
+3. module B contracts                (types only, no behaviour, no imports)
+4. module A implementation           (depends on A.contracts)
+5. module B implementation           (depends on B.contracts, A.contracts)
+6. host / composition root           (depends on everything; the DI layer)
+7. acima.config.json + empty waivers (same commit as the skeleton)
+8. enforcer in CI                    (before module C exists)
+9. declare L3
 ```
 
 Steps 3 and 4 before 5 and 6 is the whole discipline. Writing both contracts first forces the
@@ -29,10 +28,10 @@ import statement.
 
 | Unit | Contains | May depend on |
 |---|---|---|
-| `<module>.contracts` | immutable messages, commands, queries, views, events, the capability interface | language core + shared kernel |
-| `<module>` | aggregates, services, adapters, persistence | its own contracts, **other modules' contracts**, shared kernel |
-| `shared-kernel` | value types with invariants and no IO (`Money`, ids) | language core only |
-| `host` | composition root, configuration, transport | everything |
+| `<module>.contracts` | immutable messages, commands, queries, views, events, the capability interface, local value types | language core only |
+| `<module>` | aggregates, services, adapters, persistence | its own contracts, **other modules' contracts** |
+| `shared-kernel` | legacy compatibility value types (`Money`, ids); not referenced by default contracts | language core only |
+| `host` | composition root, configuration, transport, DI wiring | everything |
 
 Nothing else. A "common" or "shared" project beyond the kernel is the first violation, even
 before it has a name that sounds like one.
@@ -59,9 +58,11 @@ public sealed record PlaceOrder(string CustomerId, IReadOnlyList<OrderLine> Line
 public interface IOrders { PlaceOrderResult Place(PlaceOrder command); }
 ```
 
-`.csproj` shape: contracts reference the kernel and nothing else; implementations reference
-contracts; the host references implementations. If a `PackageReference` appears in a contracts
-project, `ACIMA-D004` is already true even if nothing imports it yet.
+`.csproj` shape: contracts reference nothing; value types are declared locally. Implementations
+reference contracts; the host references implementations and is the only project that wires them. If a
+`PackageReference` appears in a contracts project, `ACIMA-D004` is already true even if nothing imports
+it yet. The skeletons below use the legacy kernel to match the reference examples; under the default,
+declare those types in the contracts project.
 
 ### TypeScript
 
@@ -74,7 +75,7 @@ export interface PlaceOrder { readonly customerId: string; readonly lines: reado
 export interface Orders { place(command: PlaceOrder): OrderSummary | OrderRejected; }
 ```
 
-`readonly` on every member, `readonly T[]` for collections, and no imports outside the kernel.
+`readonly` on every member, `readonly T[]` for collections, and no imports at all; the snippet's kernel import is the legacy shape, so under the default declare those types locally.
 `import type` keeps the runtime graph honest.
 
 ### Python
@@ -157,7 +158,7 @@ expected number of units. A run that finds nothing exits 0 and proves nothing.
 
 | Day | Outcome |
 |---|---|
-| 1 | skeleton, kernel, two contracts, config, empty waivers — one commit |
+| 1 | skeleton, two contracts, config, empty waivers — one commit |
 | 2 | first implementations, host wiring, end-to-end test |
 | 3 | enforcer in CI, deliberately broken branch to prove the gate fails, then reverted |
 | 4–5 | second module's contract reviewed by the first module's owner |
@@ -181,7 +182,7 @@ the team will assume is decorative.
 
 - [ ] every module has a contracts unit and an implementation unit
 - [ ] the module graph is acyclic, and the enforcer proves it
-- [ ] contracts import only the kernel
+- [ ] contracts import nothing (`ST-5`); the kernel is legacy
 - [ ] `acima.config.json` is committed and declares L3
 - [ ] the waiver file exists and is empty
 - [ ] CI fails on a deliberately introduced violation (verified, then reverted)

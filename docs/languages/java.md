@@ -7,6 +7,9 @@
 
 Java 21 · one module · packages per unit · `javac` + a JDK-only runner.
 
+> **Compatibility example.** The tree below is the legacy shape with a shared kernel. Under the
+default, contracts reference nothing; see [section 6](#6-service-topology-profile).
+
 ## 1. Layout
 
 ```
@@ -114,3 +117,101 @@ jdeps --multi-release 21 -summary build/acima/catalog/contracts/*.class | grep -
 Java 21 records give you `C001`, part of `C002` and value equality for free — by far the cheapest route
 to L2 in any of the five languages. The remaining work is the collection copy in the compact constructor
 and keeping behaviour out of the record body.
+
+## 6. Service topology profile
+
+Chapter 11's naming maps to Gradle subprojects and JPMS module names:
+
+```
+services/orders/
+  orders-api/                          acme.orders.api
+  orders-api-contracts/                acme.orders.api.contracts
+  orders-application/                  acme.orders.application
+  orders-application-contracts/        acme.orders.application.contracts
+  orders-domain/                       acme.orders.domain
+  orders-infrastructure/               acme.orders.infrastructure
+  orders-integrations-stripe/          acme.orders.integrations.stripe
+  orders-integrations-stripe-contracts/
+  orders-catalog/                      messages orders -> catalog
+  orders-host/                         composition root
+```
+
+### A contracts module with no requires
+
+```java
+// orders-application-contracts/src/main/java/module-info.java
+module acme.orders.application.contracts {
+    exports acme.orders.application.contracts;
+}
+```
+
+```java
+// OrderLine.java
+package acme.orders.application.contracts;
+
+public record OrderLine(String productId, String amount, String currency, int quantity) {}
+
+// PlaceOrder.java
+package acme.orders.application.contracts;
+
+import java.util.List;
+
+public record PlaceOrder(String customerId, List<OrderLine> lines) {
+    public PlaceOrder {
+        lines = List.copyOf(lines);
+    }
+}
+
+// PlaceOrderResult.java
+package acme.orders.application.contracts;
+
+public record PlaceOrderResult(boolean accepted, String orderId, String rejection) {}
+
+// PlaceOrderHandler.java
+package acme.orders.application.contracts;
+
+public interface PlaceOrderHandler {
+    PlaceOrderResult handle(PlaceOrder command);
+}
+```
+
+No `requires` clause beyond the implicit `java.base`; no Jackson, no Jakarta Validation, no Lombok,
+no shared kernel module. `Money` is a record declared in this module or a primitive pair. Compact
+constructors may validate; they must not call `Instant.now()` or a UUID generator (C004).
+
+### Layer references
+
+| Module | Requires | Never requires |
+|---|---|---|
+| `acme.orders.api` | `acme.orders.api.contracts`, `acme.orders.application.contracts` | `acme.orders.application`, `acme.orders.domain` |
+| `acme.orders.application` | `acme.orders.application.contracts`, `acme.orders.domain`, `acme.orders.integrations.stripe.contracts` | `acme.orders.api`, `acme.orders.infrastructure` |
+| `acme.orders.domain` | `java.base` only | any contracts module, any third-party module |
+| `acme.orders.infrastructure` | `acme.orders.domain`, JDBC/driver modules | `acme.orders.api` |
+| `acme.orders.integrations.stripe` | `acme.orders.integrations.stripe.contracts`, Stripe SDK module | `acme.orders.domain` |
+| `acme.orders.host` | everything | — |
+
+JPMS makes the layer table a compile-time requirement, not a review convention. If the build still
+uses the classpath, ArchUnit enforces the same table.
+
+### Third-party isolation
+
+`acme.orders.integrations.stripe.contracts` exports the gateway interface and its records and requires
+nothing. `acme.orders.integrations.stripe` requires that module plus the Stripe SDK, implements the
+gateway and translates vendor exceptions. A Stripe type in the domain module is an ST-8 failure.
+
+### Domain tests
+
+```bash
+./gradlew :services:orders:orders-domain:test \
+  :services:orders:orders-domain:jacocoTestCoverageVerification
+```
+
+Configure JaCoCo on the domain subproject with a 100% line and branch minimum. JUnit 5 test names
+state the rule (`placeOrder_rejectsMoreThanAvailableStock`); the domain test module requires no
+container, database or vendor SDK.
+
+### What the toolchain checks without help
+
+`module-info.java` refuses an undeclared `requires`; `jdeps --module-path` prints the real graph;
+ArchUnit `layeredArchitecture()` encodes the layer table for the classpath build; JaCoCo provides the
+ST-10 evidence.

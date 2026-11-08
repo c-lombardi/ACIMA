@@ -1,7 +1,10 @@
 # 1. Principles
 
-Nine principles. Each states an obligation, the reasoning behind it, and the rules that make it fail
-a build. The principles are ordered so that each one is only achievable because of the ones before it.
+Thirteen principles. Each states an obligation, the reasoning behind it, and the rules — or profile
+requirements — that make it fail a build. The principles are ordered so that each one is only achievable because of the ones before it.
+
+P1–P9 are the base standard. P10–P13 belong to the service topology profile in
+[chapter 11](11-service-topology.md); they are checked manually in this revision.
 
 | # | Principle | Enforced by |
 |---|-----------|-------------|
@@ -14,6 +17,10 @@ a build. The principles are ordered so that each one is only achievable because 
 | P7 | [Independent Evolution](#p7-independent-evolution) | `A001`–`A004` `G004` |
 | P8 | [Executable Governance](#p8-executable-governance) | `G001`–`G005` and the harness contract |
 | P9 | [Explicit Exceptions](#p9-explicit-exceptions) | `G001` `G002` |
+| P10 | [Service-Aligned Topology](#p10-service-aligned-topology) | `ST-1`–`ST-3` `ST-7` (profile, manual) |
+| P11 | [Layer Contract Independence](#p11-layer-contract-independence) | `ST-4` `ST-6` (profile, manual) |
+| P12 | [Absolute Contract Isolation](#p12-absolute-contract-isolation) | `ST-5` (profile, manual) |
+| P13 | [Product-Oriented Services](#p13-product-oriented-services) | `ST-11` `ST-12` (profile, manual) |
 
 ---
 
@@ -80,8 +87,8 @@ difference between a boundary that is *documented* and a boundary that is *struc
 
 ## P3. Zero-Dependency Contracts
 
-> **Contracts reference nothing: not other modules, not other contracts, not third-party packages —
-> only the language's core library and the shared kernel.**
+> **Contracts reference nothing: not other modules, not other contracts, not third-party packages,
+> not the shared kernel — only the language's core library. This is the default.**
 
 ### Obligations
 
@@ -90,8 +97,8 @@ difference between a boundary that is *documented* and a boundary that is *struc
 - **P3.3** A contracts unit MUST NOT reference an implementation, its own included (`D002`).
 - **P3.4** A contracts unit MUST NOT expose framework types — hosting, transport, ORM, or
   serialization attributes that bind the type to a library (`L002`, `C005`).
-- **P3.5** The only permitted dependency of a contracts unit is the **shared kernel**, which is
-  itself subject to `D007`.
+- **P3.5** The **shared kernel** is a legacy compatibility allowance, not a default dependency. New
+  contracts MUST NOT reference it; existing repositories may retain it until migration (`ST-5`).
 
 ### The reasoning, precisely
 
@@ -108,9 +115,11 @@ independent evolution (P7) requires.
 
 ### What about shared enums, ids and money?
 
-They go in the **shared kernel**: a tiny, dependency-free, behaviour-poor unit for value types that
-genuinely cross every boundary (`Money`, `Currency`, `Quantity`, strongly-typed ids). The kernel is a
-controlled exception with hard limits (`D007`):
+By default they are declared **inside the contract project that needs them** (or represented by
+primitives) and duplicated where another contract needs the same value. The **shared kernel** — a
+tiny, dependency-free, behaviour-poor unit — is a legacy compatibility allowance for value types that
+genuinely cross every boundary (`Money`, `Currency`, `Quantity`, strongly-typed ids). Where it is still
+used during migration, it has hard limits (`D007`):
 
 - it MUST NOT reference any module;
 - it MUST NOT contain business rules or orchestration;
@@ -330,3 +339,99 @@ explicit exception to an enforced rule is a decision; a comment saying "we know,
 The value is not the file. The value is that the exception appears in a report with an owner and a
 date, so it is *impossible to forget* and *impossible to hide*. The most common outcome of writing
 one of these is that the author solves the problem instead.
+
+---
+
+## P10. Service-Aligned Topology
+
+> **A service is one product responsibility, one directory and one naming root. Every project is
+> named for the service that owns it.**
+
+### Obligations
+
+- **P10.1** Every service MUST live under `services/<Service>/`, and every project under that
+  directory MUST start with `<Service>.` (`ST-1`, `ST-3`).
+- **P10.2** A project name MUST contain exactly one service name; a vendor project adds exactly one
+  vendor qualifier (`<Service>.<Vendor>`), and an inter-service contract contains exactly two service
+  names (`<Source>.<Target>`) (`ST-7`).
+- **P10.3** A service MUST have one responsibility. If its description needs "and", it is two
+  services (`ST-2`).
+- **P10.4** A service MUST be deployable independently of the platform it runs on; deployment
+  choices belong to the host and adapters (`ST-12`).
+
+### Why names are architecture
+
+A project name is the first thing a reviewer reads and the last thing a new joiner learns. When names
+do not identify the owner, ownership is discovered by asking people. When they do, the graph is
+readable from the directory tree, and a misplaced project is visible before it compiles.
+
+## P11. Layer Contract Independence
+
+> **Every outward-facing layer owns its contract surface. No contract project serves two layers.
+> Every boundary has an explicit transform.**
+
+### Obligations
+
+- **P11.1** Every outward-facing layer MUST have its own contracts project named
+  `<Service>.<Layer>.Contracts`, with zero references (`ST-4`, `ST-5`).
+- **P11.2** A contracts project MUST NOT be the boundary type of two layers, and MUST NOT be
+  re-exported, inherited from or aliased by another layer (`ST-4`).
+- **P11.3** The caller MUST map its own DTO to the callee's contract at every boundary; the callee
+  MUST NOT reference the caller's contracts (`ST-6`).
+- **P11.4** The domain layer MUST NOT have a contracts project. The domain model is internal; a
+  concept that crosses a boundary is copied into that boundary's contract (`ST-4`, `ST-9`).
+- **P11.5** A transform MUST be pure, testable and owned by the calling layer; it carries no business
+  rules.
+
+### Why independence beats a shared DTO
+
+A DTO shared by two layers is a schema two release cycles now have to agree on. The first shared
+field is convenience; the second is a coordinated deploy. Two small DTOs and a mapper cost less,
+and they make the boundary visible in code rather than implicit in a type both sides happen to
+import.
+
+## P12. Absolute Contract Isolation
+
+> **Contracts reference nothing at all — no project, no package, no shared kernel, no framework. This
+> is the default for new systems.**
+
+### Obligations
+
+- **P12.1** A contracts project MUST have zero project, package and module references (`ST-5`).
+- **P12.2** The shared kernel MUST NOT be referenced from a contracts project. Value types are
+  primitives or types declared inside the contract project and duplicated where needed.
+- **P12.3** Contracts MUST NOT carry serializer, ORM, DI or validation-framework attributes. Serialization
+  and validation frameworks are configured outside the contract.
+- **P12.4** Constructor or factory validation is permitted; business behaviour, IO and ambient state
+  are not.
+- **P12.5** Every contracts project MUST compile alone, with no other project on the build path.
+
+### Relationship to P3
+
+Base ACIMA permits the shared kernel in contracts (P3.5) as a legacy compatibility allowance. The
+default removes that exception because absolute isolation is checkable in one line and because a
+kernel reference makes every contract release depend on the kernel's release. Repositories that have
+not migrated remain governed by P3.5; new repositories MUST use absolute isolation.
+
+## P13. Product-Oriented Services
+
+> **Services serve product outcomes: UI and API enforce the same workflow, core rules live in the API
+> domain, and service shape follows the user experience and scaling needs rather than the
+> infrastructure.**
+
+### Obligations
+
+- **P13.1** UI and API MUST enforce the same workflow: the same states, transitions, validations,
+  permissions and error semantics (`ST-11`).
+- **P13.2** The API domain MUST enforce the core product rules. A UI MAY pre-validate for speed, but
+  MUST NOT be the only place a rule exists.
+- **P13.3** Deployment and vendor SDKs MUST appear only in adapters and the host; no cloud, queue,
+  database or vendor type may appear in api, application, domain or contracts (`ST-12`).
+- **P13.4** A service boundary MUST follow a product outcome and its scaling needs, not a database
+  schema, a framework module or an org chart.
+
+### Why the product comes first
+
+A rule enforced only in the UI is a suggestion; a service shaped by its database is a schema with
+endpoints. The product outcome is the unit of design, and the architecture exists to keep that
+outcome enforceable as the system grows.

@@ -95,7 +95,7 @@ that **required state is obvious**:
 
 | Kind | Home | Example |
 |---|---|---|
-| Cross-boundary primitive with invariants | shared kernel | `Money`, `Quantity`, `OrderId` |
+| Cross-boundary primitive with invariants | the contract project that needs it, duplicated (default); legacy shared kernel | `Money`, `Quantity`, `OrderId` |
 | Module-specific value | that module's contracts | `ShippingAddress`, `PaymentReference` |
 | Value used by exactly one message | inline in that contract's package | a small record used by one command |
 
@@ -169,9 +169,35 @@ A command that can fail must say how, in the contract (`C006` forbids `object`-s
 - [ ] Does every type fit one of the seven kinds in 5.1?
 - [ ] Is every type immutable, with collections copied or truly immutable (`C001`, `C002`)?
 - [ ] Is the type constructible atomically, with validation in the constructor (`C007`)?
-- [ ] Does it import anything other than the language core and the shared kernel (`D004`, `L002`)?
+- [ ] Does it import anything other than the language core (`D004`, `L002`)? The kernel is legacy.
 - [ ] Does it name another module's types (`D003`)?
 - [ ] Does it expose persistence, transport or hosting types (`C005`, `L002`)?
 - [ ] Is every failure a typed outcome rather than a string or an untyped bag (`C006`)?
 - [ ] Are events past-tense facts with stable names and versions (5.6, `G004`)?
 - [ ] Is the contract documented, including its invariants (`G003`)?
+
+## 5.11 Layer contracts and absolute isolation
+
+Chapter 11's profile makes two changes to contract design.
+
+**Each layer owns its contract surface.** `Orders.Api.Contracts` holds HTTP DTOs;
+`Orders.Application.Contracts` holds commands, queries, results and ports. Neither references the
+other. The API maps its request into an application command; the application maps its result into an
+API response. A contract project is never the boundary type of two layers.
+
+**Contracts reference nothing.** By default, the shared-kernel exception in P3.5 does not apply. A
+contract project has zero project and package references, including the kernel. Value types
+are primitives (`decimal` + currency code) or records declared inside the contract project and
+duplicated where another contract needs them. Serializer, ORM, DI and validation-framework
+attributes are forbidden; configure those outside the contract.
+
+Consequences for a contract review:
+
+- [ ] Does the contracts project compile alone, with no other project on the build path (`ST-5`)?
+- [ ] Is every DTO owned by exactly one layer (`ST-4`)?
+- [ ] Does the caller map into the callee's contract, rather than passing its own DTO (`ST-6`)?
+- [ ] Is there any kernel, vendor or framework type in the contract (P12)?
+- [ ] Is serialization configured by the consumer, not by attributes on the contract?
+
+Immutability, typed failures and documented invariants do not change. The profile narrows what a
+contract may reference; it does not loosen what it may contain.

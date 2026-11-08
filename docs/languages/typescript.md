@@ -2,6 +2,9 @@
 
 Node 22+ · TypeScript 5 · ESM · one directory per unit, one package entry point per contracts unit.
 
+> **Compatibility example.** The tree below is the legacy shape with a shared kernel. Under the
+default, contracts reference nothing; see [section 6](#6-service-topology-profile).
+
 ## 1. Layout
 
 ```
@@ -129,3 +132,96 @@ when someone adds a bad import.
 `import type` is erased at runtime but it is not erased from your architecture: it still ties the
 consumer's compilation to the provider's internal shape, and it breaks as soon as the provider renames a
 type. The runner flags type-only imports exactly like value imports.
+
+## 6. Service topology profile
+
+Chapter 11's naming maps to npm workspaces:
+
+```
+services/orders/
+  orders.api/                       @acme/orders.api
+  orders.api.contracts/             @acme/orders.api.contracts
+  orders.application/               @acme/orders.application
+  orders.application.contracts/     @acme/orders.application.contracts
+  orders.domain/                    @acme/orders.domain
+  orders.infrastructure/            @acme/orders.infrastructure
+  orders.integrations.stripe/       @acme/orders.integrations.stripe
+  orders.integrations.stripe.contracts/
+  orders.catalog/                   messages orders -> catalog
+  orders.host/                      composition root
+```
+
+### A contracts package with no dependencies
+
+```json
+{
+  "name": "@acme/orders.application.contracts",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": {}
+}
+```
+
+```ts
+// src/index.ts
+export interface OrderLine {
+  readonly productId: string;
+  readonly amount: number;
+  readonly currency: string;
+  readonly quantity: number;
+}
+
+export interface PlaceOrder {
+  readonly customerId: string;
+  readonly lines: readonly OrderLine[];
+}
+
+export type PlaceOrderResult =
+  | { readonly accepted: true; readonly orderId: string }
+  | { readonly accepted: false; readonly rejection: string };
+
+export interface PlaceOrderHandler {
+  handle(command: PlaceOrder): PlaceOrderResult;
+}
+```
+
+No `zod`, no `class-validator`, no `date-fns`, no shared kernel package. Validation functions may
+live in the contracts package if they use only the language runtime; they must not read clocks or
+random sources (C004). Serialization is configured by the caller.
+
+### Layer references
+
+| Package | May import | Never imports |
+|---|---|---|
+| `orders.api` | `orders.api.contracts`, `orders.application.contracts` | `orders.application`, `orders.domain` |
+| `orders.application` | `orders.application.contracts`, `orders.domain`, `orders.integrations.stripe.contracts` | `orders.api`, `orders.infrastructure` |
+| `orders.domain` | language core only | any contracts package, any runtime dependency |
+| `orders.infrastructure` | `orders.domain` ports, driver packages | `orders.api` |
+| `orders.integrations.stripe` | `orders.integrations.stripe.contracts`, `stripe` | `orders.domain` |
+| `orders.host` | everything | — |
+
+The API maps its DTOs to `PlaceOrder` explicitly; it does not pass a request object through.
+`tsconfig` project references make the same graph visible to `tsc --build`.
+
+### Third-party isolation
+
+`orders.integrations.stripe.contracts` exports `StripeGateway` and its request/result types with an
+empty dependency list. `orders.integrations.stripe` imports that package and `stripe`, implements the
+gateway, and maps vendor errors. A `Stripe` type in `orders.domain` is an ST-8 failure.
+
+### Domain tests
+
+```bash
+npm test --workspace @acme/orders.domain -- --coverage --coverage.thresholds.lines=100
+```
+
+Coverage thresholds live in the domain workspace's config, not at the root, so another package cannot
+lower them. Test names state the rule. The domain package's `dependencies` stay empty.
+
+### What the toolchain checks without help
+
+`npm ls --workspace @acme/orders.application.contracts --all` must show only the package itself.
+`tsc --build` refuses an undeclared project reference. `dependency-cruiser` or
+`eslint-plugin-boundaries` can encode the layer table; `@microsoft/api-extractor` records the
+published surface for G004.

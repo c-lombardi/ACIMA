@@ -12,7 +12,7 @@ Every module, in every language, has the same four artifacts. Only the packaging
 Plus, shared by the whole system:
 
 ```
-<SharedKernel>         dependency-free value types (optional but usually justified)
+<SharedKernel>         legacy compatibility value types (not referenced by default contracts)
 <ArchTests>            the rule engine, executed by the build
 ```
 
@@ -29,7 +29,7 @@ Plus, shared by the whole system:
 | Provided ports (what the module promises) | contracts | implementation |
 | Consumer-owned ports (what this module needs) | implementation | contracts |
 | Repositories over infrastructure, clocks, buses | implementation | any shared unit |
-| Cross-boundary value types (Money, ids) | shared kernel | contracts of a module |
+| Cross-boundary value types (Money, ids) | the contract project that needs them, duplicated, or primitives (default); legacy shared kernel | another module's contracts |
 
 The right-hand column is the important one. **Every rule in ACIMA is ultimately a test of this
 table.**
@@ -47,7 +47,7 @@ module (`L001`):
   Composition.cs|ts|py|go|java   the module's own registration function (no peer wiring)
 ```
 
-- `domain/` depends on nothing except the shared kernel.
+- `domain/` depends on nothing except the language core (or the legacy shared kernel during migration).
 - `application/` depends on `domain/` and on its own ports.
 - `infrastructure/` implements those ports and may depend on anything.
 - The wiring that connects `infrastructure/` to `application/` happens either inside a module
@@ -141,3 +141,30 @@ Adding a module is the moment to get all of this right, because afterwards it is
 | A database table | Storage is an implementation detail of a module, not a boundary. |
 | A single class or feature | Too small to own data, contracts or configuration; it will borrow all three. |
 | A team's whole product | Too big; it cannot be tested, versioned or extracted as a unit. |
+
+## 3.8 Service anatomy (profile)
+
+Chapter 11 wraps the module anatomy in a **service** envelope. The module shape does not change; it
+is repeated per layer:
+
+```
+services/Orders/
+  Orders.Api/                       Orders.Api.Contracts/
+  Orders.Application/               Orders.Application.Contracts/
+  Orders.Domain/
+  Orders.Infrastructure/
+  Orders.Integrations.Stripe/       Orders.Integrations.Stripe.Contracts/
+  Orders.Catalog/                   inter-service: Orders -> Catalog
+  Orders.Host/
+```
+
+- The **domain** has no contracts project; it is the internal decision core.
+- Every outward-facing layer has its own zero-reference contracts project.
+- The **host** sits at the service root and is the only project allowed to reference everything.
+- A vendor adapter always comes in a pair: `<Service>.<Vendor>.Contracts` (the seam) and
+  `<Service>.<Vendor>` (the implementation).
+- One service is one module's ownership envelope. Two bounded contexts are two services, even when
+  they deploy together.
+
+The base anatomy in §3.1–3.7 still applies inside each layer: contracts have no behaviour, the
+domain does not depend outward, and nothing publishes implementation types.

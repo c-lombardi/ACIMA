@@ -91,6 +91,7 @@ enforcers in this repository fail when a suite finds zero files.
 - Repository: <name>
 - Standard: 1.0.0
 - Declared level: L2
+- Profile: <none | service-topology, manual, n/12>
 - Language profile: dotnet
 - Enforcer: tests/Acima.ArchTests
 - CI gate: <link to the required check>
@@ -124,3 +125,23 @@ problem to fix next. The levels exist so that:
 - the *first* day of adoption can be L1 with an honest waiver file;
 - every subsequent change is measured against the declared level;
 - the ratchet only turns one way — see [Adoption](09-adoption.md).
+
+## 8.8 Service topology profile
+
+The service topology profile in chapter 11 is the default for new systems and a set of twelve
+requirements, `ST-1`–`ST-12`. In this revision they are tested **manually**: there is no `ACIMA-S*` rule
+id and no reference enforcer for them. That is not a reason to omit them from a claim. A new
+repository reports it as:
+
+```markdown
+- Base: L3 (machine-checked)
+- Profile: service-topology, manual, 12/12 on <date>
+- Evidence: services/ tree, contract dependency listings, domain coverage report
+```
+
+A claim that says `service-topology` without `manual` and a checklist result is overstating what the
+build enforces. The same rule as §8.6 applies: list what is not checked rather than hiding it.
+
+When S-series rules and a runner exist, this section will require the same five pieces of evidence as
+§8.4: configuration, run, artefact, waiver report and pipeline. Until then, the evidence is the
+checklist plus the dependency listings it asks for.
