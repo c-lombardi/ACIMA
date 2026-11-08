@@ -10,7 +10,7 @@
  * Exit codes: 0 clean, 1 unwaived errors, 2 tool failure.
  */
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
-import { join, dirname, normalize, relative, sep } from 'node:path';
+import { join, dirname, normalize, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const CATALOG = {
@@ -37,7 +37,7 @@ const arg = (name, fallback) => {
   const i = args.indexOf(`--${name}`);
   return i >= 0 && args[i + 1] ? args[i + 1] : fallback;
 };
-const ROOT = normalize(join(process.cwd(), arg('root', '.')));
+const ROOT = resolve(process.cwd(), arg('root', '.'));
 const CONFIG = arg('config', 'acima.config.json');
 const FORMAT = arg('format', 'text');
 const LEVEL = (arg('level', '') || 'L1').toUpperCase();

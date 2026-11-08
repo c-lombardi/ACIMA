@@ -1,0 +1,13 @@
+{
+  "standard": "1.0.0-draft.1",
+  "waivers": [
+    {
+      "rule": "ACIMA-D001",
+      "scope": "unit:orders",
+      "owner": "name.surname@example.com",
+      "reason": "Compatibility shim while orders moves off catalog internals; removal tracked in ORD-412.",
+      "expires": "2027-02-06",
+      "reviewedOn": "2026-11-08"
+    }
+  ]
+}

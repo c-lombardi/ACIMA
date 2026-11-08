@@ -28,6 +28,8 @@ make a build fail when that stops being true.
 - [Violation walkthrough](guides/violation-walkthrough.md) — a guided tour of everything ACIMA prohibits
 - [Language profiles](languages/index.md) — C#, TypeScript, Python, Go, Java
 - [Architecture tests](guides/architecture-tests.md) and [analyzers](guides/analyzers-and-linters.md)
+- [Agent skill](../skills/acima-adoption/SKILL.md) — applying and auditing ACIMA with a coding agent
+- [Review and decisions](guides/review-and-decisions.md) — faster reviews, auditable AI assistance, narrow scopes and fewer side effects
 
 ## The shortest possible summary
 

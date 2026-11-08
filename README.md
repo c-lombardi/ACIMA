@@ -68,6 +68,7 @@ Full text: [Principles](docs/standard/01-principles.md).
 | **Reference implementations** | A three-module ordering system in TypeScript, Python, Go and C#/.NET, compiled and tested |
 | **Violation gallery** | Deliberately broken fixtures for every portable rule, in each implemented language, with expected findings checked into the repository |
 | **Conformance harness** | A single runner that executes every language's architecture tests and asserts the gallery produces the documented findings |
+| **Agent skill** | `skills/acima-adoption` — a portable skill that classifies a target as greenfield, brownfield or adopting, pins the catalog hash, drafts a unit map and baseline waivers, and carries the adoption, communication, onboarding and outcomes playbooks |
 
 ```
 docs/            the standard, the rules, the language profiles, the guides
@@ -75,7 +76,38 @@ examples/        dotnet | typescript | python | go   (compiling reference implem
                  java                                (profile written; implementation not included yet)
 tools/           the machine-readable rule catalog + per-language analyzers
 conformance/     runs every language suite and compares against the expected findings
+skills/          agent skill for applying and auditing the standard (preflight, playbooks, templates)
 ```
+
+## What this buys you in review
+
+ACIMA's day-to-day value is not the diagram; it is the **decision speed of a pull request**. The
+gate answers the structural questions before a human spends time on the diff, so review attention
+goes to product outcomes instead of boundary archaeology.
+
+| Review question | Answered mechanically by | A human still decides |
+|---|---|---|
+| May this unit depend on that one? | the unit map and `D001`–`D009` | whether the dependency is the right product boundary |
+| Is the change's blast radius contained? | contracts-only edges, acyclic graph (`D005`), `G004` API baseline | whether the scope matches the intent |
+| Can a caller mutate this contract? | `C001`, `C002` | whether the contract models the domain |
+| Does this touch another module's data or state? | `A001`, `A003` | whether the capability split is right |
+| Is this exception acceptable? | `G001`, `G002` — owner, reason, scope, expiry | whether to grant it at all |
+
+Three consequences follow:
+
+- **Narrow scopes are visible.** A contracts change is a published-surface change; an
+  implementation change is private. They can be reviewed — and required — as separate pull
+  requests, so a surface change cannot hide inside a refactor.
+- **Side effects are computable.** No implementation references, no cycles, no shared mutable
+  statics and no shared schema mean the affected units are derivable from the declared graph,
+  not discovered in staging.
+- **AI assistance becomes auditable.** Findings are JSON with a rule id, path, line, evidence and
+  remedy, so an agent can run the enforcer and cite the same rubric a human uses. The
+  [agent skill](skills/acima-adoption/SKILL.md) pins the catalog hash, so its advice is written
+  against the rules actually in this revision. The agent proposes; the owner decides.
+
+Full outline, reviewer checklist and AI-assisted review protocol:
+[Review and decisions](docs/guides/review-and-decisions.md).
 
 ## Conformance levels
 
@@ -102,6 +134,21 @@ cd examples/dotnet     && dotnet run --project tools/Acima.ArchTests -- --verify
 # run every implemented profile and verify each gallery matches its documented findings
 python3 conformance/run.py
 ```
+
+### With a coding agent
+
+[`skills/acima-adoption`](skills/acima-adoption/SKILL.md) is a portable agent skill. Install it
+where your agent reads skills (`.claude/skills/` for Claude Code) and ask it to adopt ACIMA in a
+repository. It starts with a read-only preflight that verifies the skill still matches this
+catalog, classifies the target, and prints the exact next step:
+
+```bash
+python3 skills/acima-adoption/scripts/preflight.py --project <target> --format text
+```
+
+The preflight pins the `rules.json` hash and enforcer paths, so it fails loudly when the standard
+changes instead of giving stale advice. The skill also ships the adoption plan, communication plan
+and onboarding path as templates. See [skills/README.md](skills/README.md).
 
 ## Repository status
 

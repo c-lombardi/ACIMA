@@ -1,0 +1,90 @@
+{
+  "skill": "acima-adoption",
+  "skillVersion": "1.0.0",
+  "standard": "1.0.0-draft.1",
+  "verifiedAt": "2026-11-08",
+  "catalog": {
+    "path": "tools/acima-spec/rules.json",
+    "sha256": "e7d0c273ab9b710d83b6fd8bb859f195da0bb4c77412fdc8960e7c34d59af305",
+    "rules": 29,
+    "portable": 23,
+    "portableIds": [
+      "ACIMA-D001",
+      "ACIMA-D002",
+      "ACIMA-D003",
+      "ACIMA-D004",
+      "ACIMA-D005",
+      "ACIMA-D006",
+      "ACIMA-D007",
+      "ACIMA-D008",
+      "ACIMA-D009",
+      "ACIMA-L001",
+      "ACIMA-L002",
+      "ACIMA-L003",
+      "ACIMA-C001",
+      "ACIMA-C002",
+      "ACIMA-C004",
+      "ACIMA-C005",
+      "ACIMA-C006",
+      "ACIMA-A001",
+      "ACIMA-A003",
+      "ACIMA-G001",
+      "ACIMA-G002",
+      "ACIMA-G003",
+      "ACIMA-G005"
+    ],
+    "notPortableIds": [
+      "ACIMA-C003",
+      "ACIMA-C007",
+      "ACIMA-L004",
+      "ACIMA-A002",
+      "ACIMA-A004",
+      "ACIMA-G004"
+    ]
+  },
+  "enforcers": {
+    "python": {
+      "path": "examples/python/tools/acima_arch.py",
+      "run": ["python3", "examples/python/tools/acima_arch.py"],
+      "example": "examples/python"
+    },
+    "typescript": {
+      "path": "examples/typescript/tools/acima-arch.mjs",
+      "run": ["node", "examples/typescript/tools/acima-arch.mjs"],
+      "example": "examples/typescript"
+    },
+    "go": {
+      "path": "examples/go/tools/archtest/main.go",
+      "run": ["go", "run", "./tools/archtest"],
+      "cwd": "examples/go",
+      "example": "examples/go"
+    },
+    "dotnet": {
+      "path": "examples/dotnet/tools/Acima.ArchTests/Program.cs",
+      "buildProject": "examples/dotnet/tools/Acima.ArchTests",
+      "run": ["dotnet", "run", "--project", "examples/dotnet/tools/Acima.ArchTests", "--no-build", "--"],
+      "example": "examples/dotnet"
+    },
+    "java": {
+      "path": null,
+      "run": null,
+      "note": "profile only: docs/languages/java.md has no reference implementation in this revision"
+    }
+  },
+  "references": [
+    "references/00-preflight.md",
+    "references/10-greenfield.md",
+    "references/20-brownfield.md",
+    "references/30-adoption-for-newcomers.md",
+    "references/40-communication.md",
+    "references/50-outcomes.md",
+    "references/60-troubleshooting.md",
+    "references/glossary.md"
+  ],
+  "assets": [
+    "assets/acima.config.template.json",
+    "assets/waiver.template.json",
+    "assets/adoption-plan.md",
+    "assets/communication-plan.md"
+  ]
+}
