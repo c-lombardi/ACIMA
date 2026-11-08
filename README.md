@@ -84,7 +84,7 @@ The skill is designed to work with Claude Code, Codex, Cursor, and other coding 
 
 **The agent helps apply the architecture. The enforcement tools verify supported requirements. Human owners remain responsible for architectural decisions and exceptions.**
 
-See the [ACIMA adoption skill](skills/acima-adoption/README.md).
+See the [ACIMA adoption skill](skills/acima-adoption/SKILL.md).
 
 ## Related architectures, methodologies, and tools
 
