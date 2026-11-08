@@ -1,0 +1,44 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Serilog -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/src/Serilog/bin/Debug/net10.0/Serilog.dll
+  Serilog -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/src/Serilog/bin/Debug/net6.0/Serilog.dll
+  Serilog -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/src/Serilog/bin/Debug/netstandard2.0/Serilog.dll
+  Serilog -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/src/Serilog/bin/Debug/net9.0/Serilog.dll
+  Serilog -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/src/Serilog/bin/Debug/net8.0/Serilog.dll
+  Serilog.PerformanceTests -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.PerformanceTests/bin/Debug/net9.0/Serilog.PerformanceTests.dll
+  Serilog.ApprovalTests -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.ApprovalTests/bin/Debug/net10.0/Serilog.ApprovalTests.dll
+Test run for /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.ApprovalTests/bin/Debug/net10.0/Serilog.ApprovalTests.dll (.NETCoreApp,Version=v10.0)
+  Serilog.PerformanceTests -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.PerformanceTests/bin/Debug/net10.0/Serilog.PerformanceTests.dll
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:     1, Skipped:     0, Total:     1, Duration: 323 ms - Serilog.ApprovalTests.dll (net10.0)
+  Serilog.PerformanceTests -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.PerformanceTests/bin/Debug/net8.0/Serilog.PerformanceTests.dll
+Test run for /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.PerformanceTests/bin/Debug/net8.0/Serilog.PerformanceTests.dll (.NETCoreApp,Version=v8.0)
+Test run for /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.PerformanceTests/bin/Debug/net10.0/Serilog.PerformanceTests.dll (.NETCoreApp,Version=v10.0)
+Test run for /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.PerformanceTests/bin/Debug/net9.0/Serilog.PerformanceTests.dll (.NETCoreApp,Version=v9.0)
+  TestDummies -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/TestDummies/bin/Debug/netstandard2.0/TestDummies.dll
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+  TestDummies -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/TestDummies/bin/Debug/net462/TestDummies.dll
+  Serilog.Tests -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.Tests/bin/Debug/net8.0/Serilog.Tests.dll
+  Serilog.Tests -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.Tests/bin/Debug/net9.0/Serilog.Tests.dll
+  Serilog.Tests -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.Tests/bin/Debug/net10.0/Serilog.Tests.dll
+Test run for /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.Tests/bin/Debug/net9.0/Serilog.Tests.dll (.NETCoreApp,Version=v9.0)
+Test run for /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.Tests/bin/Debug/net10.0/Serilog.Tests.dll (.NETCoreApp,Version=v10.0)
+Test run for /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.Tests/bin/Debug/net8.0/Serilog.Tests.dll (.NETCoreApp,Version=v8.0)
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:    12, Skipped:     0, Total:    12, Duration: 2 s - Serilog.PerformanceTests.dll (net8.0)
+
+Passed!  - Failed:     0, Passed:    12, Skipped:     0, Total:    12, Duration: 2 s - Serilog.PerformanceTests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:    12, Skipped:     0, Total:    12, Duration: 2 s - Serilog.PerformanceTests.dll (net9.0)
+
+Passed!  - Failed:     0, Passed:   818, Skipped:     0, Total:   818, Duration: 7 s - Serilog.Tests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:   818, Skipped:     0, Total:   818, Duration: 7 s - Serilog.Tests.dll (net8.0)
+
+Passed!  - Failed:     0, Passed:   818, Skipped:     0, Total:   818, Duration: 7 s - Serilog.Tests.dll (net9.0)

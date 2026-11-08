@@ -1,0 +1,30 @@
+{
+  "standard": "1.0.0",
+  "language": "java",
+  "level": "L1",
+  "root": ".",
+  "units": [
+    {
+      "id": "gson",
+      "role": "implementation",
+      "paths": [
+        "gson/src/main/java"
+      ],
+      "module": "gson"
+    },
+    {
+      "id": "extras",
+      "role": "implementation",
+      "paths": [
+        "extras/src/main/java"
+      ],
+      "module": "extras"
+    }
+  ],
+  "exclude": [
+    "src/test",
+    "**/src/test/**",
+    "target"
+  ],
+  "waivers": ".acima/waivers.json"
+}

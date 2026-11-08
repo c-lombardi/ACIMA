@@ -1,0 +1,61 @@
+{
+  "_generatedBy": "acima-adoption preflight --write-draft",
+  "_note": "Heuristic draft. Review module names, merge or split units, then commit.",
+  "standard": "1.0.0-draft.1",
+  "language": "python",
+  "level": "L1",
+  "root": ".",
+  "units": [
+    {
+      "id": "docs",
+      "module": "docs",
+      "role": "implementation",
+      "paths": [
+        "docs"
+      ]
+    },
+    {
+      "id": "docs_src",
+      "module": "docs_src",
+      "role": "implementation",
+      "paths": [
+        "docs_src"
+      ]
+    },
+    {
+      "id": "fastapi",
+      "module": "fastapi",
+      "role": "implementation",
+      "paths": [
+        "fastapi"
+      ]
+    },
+    {
+      "id": "scripts",
+      "module": "scripts",
+      "role": "implementation",
+      "paths": [
+        "scripts"
+      ]
+    },
+    {
+      "id": "tests",
+      "module": "tests",
+      "role": "implementation",
+      "paths": [
+        "tests"
+      ]
+    }
+  ],
+  "exclude": [
+    "bin",
+    "obj",
+    "node_modules",
+    "dist",
+    "build",
+    "target",
+    "tests",
+    "**/__pycache__"
+  ],
+  "waivers": ".acima/waivers.json"
+}

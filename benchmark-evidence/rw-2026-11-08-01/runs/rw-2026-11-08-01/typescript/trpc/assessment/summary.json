@@ -1,0 +1,7 @@
+{
+  "language": "typescript",
+  "id": "trpc",
+  "findings": null,
+  "exit": 1,
+  "error": ": \"\",\n      \"fingerprint\": \"sha256:e07990b72e2850d0\"\n    },\n    {\n      \"rule\": \"ACIMA-G005\",\n      \"severity\": \"error\",\n      \"message\": \"Source file is not part of any declared unit: tooling/ui/src/components/avatar.tsx\",\n      \"path\": \"tooling/ui/src/components/avatar.tsx\",\n      \"line\": 1,\n      \"evidence\": \"\",\n      \"fingerprint\": \"sha256:058b883c5074705c\"\n    },\n    {\n      \"rule\": \"ACIMA-G005\",\n      \"severity\": \"error\",\n      \"message\": \"Source file is not part of any declared unit: tooling/ui/src/components/badge.tsx\",\n      \"path\": \"tooling/ui/src/components/badge.tsx\",\n      \"line\": 1,\n      \"evidence\": \"\",\n      \"fingerprint\": \"sha256:f2a0a153a816673e\"\n    },\n    {\n      \"rule\": \"ACIMA-G005\",\n      \"severity\": \"error\",\n      \"message\": \"Source file is not part of any declared unit: tooling/ui/src/components/breadcrumb.tsx\",\n      \"path\": \"tooling/ui/src/components/breadcrumb.tsx\",\n      \"line\": 1,\n      \"evidence\": \"\",\n      \"fingerprint\": \"sha256:1e1cbc464207a5b3\"\n    },\n "
+}

@@ -1,0 +1,22 @@
+{
+  "standard": "1.0.0",
+  "language": "java",
+  "level": "L1",
+  "root": ".",
+  "units": [
+    {
+      "id": "jsoup",
+      "role": "implementation",
+      "paths": [
+        "src/main/java"
+      ],
+      "module": "jsoup"
+    }
+  ],
+  "exclude": [
+    "src/test",
+    "**/src/test/**",
+    "target"
+  ],
+  "waivers": ".acima/waivers.json"
+}

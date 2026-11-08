@@ -1,0 +1,172 @@
+{
+  "skill": {
+    "name": "acima-adoption",
+    "version": "1.0.2",
+    "standard": "1.0.0-draft.1",
+    "catalogSha256": "125a1a3fc2096a25cf8a849aa701d571e73c6aead977c6f012cf4f60c4b1fe77"
+  },
+  "project": {
+    "path": "/tmp/acima-real-world-benchmark/repositories/typescript/trpc/source",
+    "mode": "brownfield",
+    "language": "typescript",
+    "detectedLanguages": [
+      "typescript"
+    ]
+  },
+  "checks": [
+    {
+      "id": "SKL-001",
+      "status": "pass",
+      "detail": "manifest acima-adoption 1.0.2 loaded",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-002",
+      "status": "pass",
+      "detail": "catalog hash matches the pin (125a1a3fc209\u2026)",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-003",
+      "status": "pass",
+      "detail": "29 rules, all 23 portable ids present",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-004",
+      "status": "pass",
+      "detail": "standard version 1.0.0-draft.1",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-005",
+      "status": "pass",
+      "detail": "8 references and 4 assets present",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-006",
+      "status": "pass",
+      "detail": "every documented enforcer path exists",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-007",
+      "status": "pass",
+      "detail": "4 violation baselines present",
+      "remedy": ""
+    },
+    {
+      "id": "ENV-001",
+      "status": "pass",
+      "detail": "toolchains available: python3, node",
+      "remedy": ""
+    },
+    {
+      "id": "TGT-001",
+      "status": "pass",
+      "detail": "target /tmp/acima-real-world-benchmark/repositories/typescript/trpc/source",
+      "remedy": ""
+    },
+    {
+      "id": "TGT-002",
+      "status": "pass",
+      "detail": "language typescript (1169 source files; detected: typescript)",
+      "remedy": ""
+    },
+    {
+      "id": "TGT-003",
+      "status": "pass",
+      "detail": "no config and 1169 existing source file(s) (mode: brownfield)",
+      "remedy": ""
+    },
+    {
+      "id": "TGT-004",
+      "status": "pass",
+      "detail": "8 candidate unit(s) proposed from the layout",
+      "remedy": ""
+    },
+    {
+      "id": "TGT-005",
+      "status": "warn",
+      "detail": "494 source file(s) fall outside the proposed units",
+      "remedy": "they will be G005 findings until the map covers them"
+    }
+  ],
+  "blockers": [],
+  "warnings": [
+    "TGT-005"
+  ],
+  "findings": {},
+  "proposedUnits": [
+    {
+      "id": "client",
+      "module": "client",
+      "role": "implementation",
+      "paths": [
+        "packages/client"
+      ]
+    },
+    {
+      "id": "next",
+      "module": "next",
+      "role": "implementation",
+      "paths": [
+        "packages/next"
+      ]
+    },
+    {
+      "id": "openapi",
+      "module": "openapi",
+      "role": "implementation",
+      "paths": [
+        "packages/openapi"
+      ]
+    },
+    {
+      "id": "react-query",
+      "module": "react-query",
+      "role": "implementation",
+      "paths": [
+        "packages/react-query"
+      ]
+    },
+    {
+      "id": "server",
+      "module": "server",
+      "role": "implementation",
+      "paths": [
+        "packages/server"
+      ]
+    },
+    {
+      "id": "tanstack-react-query",
+      "module": "tanstack-react-query",
+      "role": "implementation",
+      "paths": [
+        "packages/tanstack-react-query"
+      ]
+    },
+    {
+      "id": "tests",
+      "module": "tests",
+      "role": "implementation",
+      "paths": [
+        "packages/tests"
+      ]
+    },
+    {
+      "id": "upgrade",
+      "module": "upgrade",
+      "role": "implementation",
+      "paths": [
+        "packages/upgrade"
+      ]
+    }
+  ],
+  "next": [
+    "Generate a draft unit map: --write-draft acima.config.json, then review it.",
+    "Gate CI on 'no new findings' at L1; do not fix the architecture first.",
+    "Pick the first slice from references/20-brownfield.md (contracts, not persistence)."
+  ]
+}

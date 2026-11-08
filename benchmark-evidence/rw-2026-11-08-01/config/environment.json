@@ -1,0 +1,13 @@
+{
+  "os": "Linux",
+  "python": "3.12.3",
+  "node": "26.13.0",
+  "go": "1.23.4 at /tmp/toolchains/go/bin (not on default PATH)",
+  "dotnet": "8.0.427 at /tmp/toolchains/dotnet (DOTNET_ROOT required)",
+  "java": "unavailable",
+  "agent": "Freebuff coding agent (Buffy)",
+  "model_identifier": "not exposed",
+  "token_usage": "not available",
+  "network": "public HTTPS only",
+  "upstream_write_credentials": false
+}

@@ -1,0 +1,13 @@
+[
+ {"id":"ACIMA-L001-FP","category":"Enforcer deficiency","severity":"high","repositories":["fastapi","drizzle-orm"],"evidence":"fastapi/encoders.py:206 matches parameter name sqlalchemy_safe; Drizzle adapters intentionally import pg/mysql2/knex.","status":"open"},
+ {"id":"ACIMA-D005-ANALYZER","category":"Enforcer deficiency","severity":"high","repositories":["spectre-console"],"evidence":"cycles include Spectre.Console.SourceGenerator, an analyzer-only ProjectReference with ReferenceOutputAssembly=false.","status":"open"},
+ {"id":"ACIMA-TRPC-TRUNC","category":"Enforcer deficiency","severity":"critical","repositories":["trpc"],"evidence":"stdout exactly 65,536 bytes; JSON invalid; no assessment.","status":"open"},
+ {"id":"ACIMA-JAVA-GAP","category":"Enforcer deficiency","severity":"critical","repositories":["jsoup","gson","mall"],"evidence":"No Java reference enforcer; all Java assessments executed:false.","status":"open"},
+ {"id":"ACIMA-HONO-ZERO","category":"Enforcer deficiency","severity":"high","repositories":["hono"],"evidence":"Adapters and core separated into distinct modules; still 0 findings; relative adapter imports unresolved or absent.","status":"open"},
+ {"id":"ACIMA-LIB-MODEL","category":"ACIMA specification deficiency","severity":"high","repositories":["fluentvalidation","spectre-console","drizzle-orm"],"evidence":"84 of 120 findings are public library API or intentional product adapters. No library/contracts profile.","status":"open"},
+ {"id":"SKILL-MODULE-MAP","category":"Adoption skill deficiency","severity":"critical","repositories":["fluentvalidation","hono"],"evidence":"Same-module mapping hid a DI/core edge; corrected map changed 0 to 8 findings.","status":"open"},
+ {"id":"SKILL-NO-OWNER","category":"Adoption skill deficiency","severity":"high","repositories":["all"],"evidence":"No named upstream owner; production changes correctly stopped. A gate cannot be called adopted without approval.","status":"open"},
+ {"id":"BENCH-EPHEMERAL","category":"Benchmark deficiency","severity":"high","repositories":["all"],"evidence":"Evidence is under /tmp, outside the ACIMA repo and not durable across sessions.","status":"open"},
+ {"id":"BENCH-NO-REVIEW","category":"Benchmark deficiency","severity":"high","repositories":["all"],"evidence":"No separate reviewer/agent; controlled violation was not blind; all ground truth is author-adjudicated.","status":"open"},
+ {"id":"REPO-BASELINES","category":"Repository-specific limitation","severity":"medium","repositories":["drizzle-orm","trpc","hono","httpx","gson","mall"],"evidence":"Native build failure, upstream test failures, JPMS boot failure, Maven timeout.","status":"documented"}
+]

@@ -1,0 +1,105 @@
+{
+  "standard": "1.0.0",
+  "language": "typescript",
+  "level": "L1",
+  "root": ".",
+  "units": [
+    {
+      "id": "orm",
+      "role": "implementation",
+      "paths": [
+        "drizzle-orm"
+      ],
+      "module": "orm"
+    },
+    {
+      "id": "kit",
+      "role": "implementation",
+      "paths": [
+        "drizzle-kit"
+      ],
+      "module": "kit"
+    },
+    {
+      "id": "zod",
+      "role": "implementation",
+      "paths": [
+        "drizzle-zod"
+      ],
+      "module": "zod"
+    },
+    {
+      "id": "valibot",
+      "role": "implementation",
+      "paths": [
+        "drizzle-valibot"
+      ],
+      "module": "valibot"
+    },
+    {
+      "id": "typebox",
+      "role": "implementation",
+      "paths": [
+        "drizzle-typebox"
+      ],
+      "module": "typebox"
+    },
+    {
+      "id": "arktype",
+      "role": "implementation",
+      "paths": [
+        "drizzle-arktype"
+      ],
+      "module": "arktype"
+    },
+    {
+      "id": "seed",
+      "role": "implementation",
+      "paths": [
+        "drizzle-seed"
+      ],
+      "module": "seed"
+    },
+    {
+      "id": "eslint-plugin-drizzle",
+      "role": "implementation",
+      "paths": [
+        "eslint-plugin-drizzle"
+      ],
+      "module": "eslint-plugin-drizzle"
+    },
+    {
+      "id": "eslint-internal",
+      "role": "tooling",
+      "paths": [
+        "eslint"
+      ],
+      "module": "eslint"
+    }
+  ],
+  "exclude": [
+    ".git",
+    "node_modules",
+    "bin",
+    "obj",
+    "dist",
+    "build",
+    "target",
+    "out",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "coverage",
+    "vendor",
+    "integration-tests",
+    "type-tests",
+    "drizzle-orm/type-tests",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "examples",
+    "docs",
+    "eslint-plugin-drizzle/tests"
+  ],
+  "waivers": ".acima/waivers.json"
+}

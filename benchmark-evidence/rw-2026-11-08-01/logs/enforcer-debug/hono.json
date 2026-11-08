@@ -1,0 +1,3432 @@
+{
+  "standard": "1.0.0-draft.1",
+  "level": "L1",
+  "sourceFiles": 299,
+  "execution": {
+    "ACIMA-A001": {
+      "executed": true
+    },
+    "ACIMA-A002": {
+      "executed": false,
+      "reason": "configuration APIs differ per ecosystem"
+    },
+    "ACIMA-A003": {
+      "executed": true
+    },
+    "ACIMA-A004": {
+      "executed": false,
+      "reason": "version-lock coupling is visible only across published packages"
+    },
+    "ACIMA-C001": {
+      "executed": true
+    },
+    "ACIMA-C002": {
+      "executed": true
+    },
+    "ACIMA-C003": {
+      "executed": false,
+      "reason": "behaviour versus validation is a semantic judgement"
+    },
+    "ACIMA-C004": {
+      "executed": true
+    },
+    "ACIMA-C005": {
+      "executed": true
+    },
+    "ACIMA-C006": {
+      "executed": true
+    },
+    "ACIMA-C007": {
+      "executed": false,
+      "reason": "constructor completeness needs symbol and API analysis"
+    },
+    "ACIMA-D001": {
+      "executed": true
+    },
+    "ACIMA-D002": {
+      "executed": true
+    },
+    "ACIMA-D003": {
+      "executed": true
+    },
+    "ACIMA-D004": {
+      "executed": true
+    },
+    "ACIMA-D005": {
+      "executed": true
+    },
+    "ACIMA-D006": {
+      "executed": true
+    },
+    "ACIMA-D007": {
+      "executed": true
+    },
+    "ACIMA-D008": {
+      "executed": true
+    },
+    "ACIMA-D009": {
+      "executed": true
+    },
+    "ACIMA-G001": {
+      "executed": true
+    },
+    "ACIMA-G002": {
+      "executed": true
+    },
+    "ACIMA-G003": {
+      "executed": true
+    },
+    "ACIMA-G004": {
+      "executed": false,
+      "reason": "an API baseline needs a per-language surface format"
+    },
+    "ACIMA-G005": {
+      "executed": true
+    },
+    "ACIMA-L001": {
+      "executed": true
+    },
+    "ACIMA-L002": {
+      "executed": true
+    },
+    "ACIMA-L003": {
+      "executed": true
+    },
+    "ACIMA-L004": {
+      "executed": false,
+      "reason": "service-locator APIs are framework-specific"
+    }
+  },
+  "findings": [
+    {
+      "rule": "ACIMA-G001",
+      "severity": "error",
+      "message": "waivers file is missing or invalid: .acima/waivers.json",
+      "path": ".acima/waivers.json",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:7e667d30673642ab"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/aws-lambda/src/conninfo.test.ts",
+      "path": "adapters/aws-lambda/src/conninfo.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:acf702c60e348293"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/aws-lambda/src/conninfo.ts",
+      "path": "adapters/aws-lambda/src/conninfo.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:9c4a17d3cf97a4be"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/aws-lambda/src/handler.test.ts",
+      "path": "adapters/aws-lambda/src/handler.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:11559fa3c3c1e7c2"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/aws-lambda/src/handler.ts",
+      "path": "adapters/aws-lambda/src/handler.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:8fe3b1e5cbbe9ced"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/aws-lambda/src/index.ts",
+      "path": "adapters/aws-lambda/src/index.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:51ff6dbf89427059"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/aws-lambda/src/types.ts",
+      "path": "adapters/aws-lambda/src/types.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:11e1dc284518b302"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/aws-lambda/test/index.test.ts",
+      "path": "adapters/aws-lambda/test/index.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:daea2bc0b67e35a0"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/aws-lambda/test/mock.ts",
+      "path": "adapters/aws-lambda/test/mock.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:05f750d62ab0a542"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/aws-lambda/test/stream-backpressure.test.ts",
+      "path": "adapters/aws-lambda/test/stream-backpressure.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:9e96f13d1b6c68a4"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/aws-lambda/test/stream-mock.ts",
+      "path": "adapters/aws-lambda/test/stream-mock.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:2f1813325968eee6"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/aws-lambda/test/stream.test.ts",
+      "path": "adapters/aws-lambda/test/stream.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:1f21da8ee6f4ca3b"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/aws-lambda/vite.config.ts",
+      "path": "adapters/aws-lambda/vite.config.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:9ac54989ad6da2ff"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/bun/src/conninfo.test.ts",
+      "path": "adapters/bun/src/conninfo.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:4cd75cb958e32f72"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/bun/src/conninfo.ts",
+      "path": "adapters/bun/src/conninfo.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:299a6832fb181d0e"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/bun/src/index.ts",
+      "path": "adapters/bun/src/index.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:b096f51a9d25950a"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/bun/src/serve-static.ts",
+      "path": "adapters/bun/src/serve-static.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:d5e1c303b00c90bc"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/bun/src/server.test.ts",
+      "path": "adapters/bun/src/server.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:f21acf8f50848063"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/bun/src/server.ts",
+      "path": "adapters/bun/src/server.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:b77f1c12f1496c7e"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/bun/src/ssg.ts",
+      "path": "adapters/bun/src/ssg.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:3e9a4053fe658c88"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/bun/src/websocket.test.ts",
+      "path": "adapters/bun/src/websocket.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:b7b566e91db69371"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/bun/src/websocket.ts",
+      "path": "adapters/bun/src/websocket.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:1d87c4dcf2323ee0"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/bun/test/index.test.ts",
+      "path": "adapters/bun/test/index.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:571b3db1c0b5788f"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/bun/vite.config.ts",
+      "path": "adapters/bun/vite.config.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:a47e1ff97cd6c6f6"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/cloudflare-workers/src/conninfo.test.ts",
+      "path": "adapters/cloudflare-workers/src/conninfo.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:8ab0f699f3390c77"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/cloudflare-workers/src/conninfo.ts",
+      "path": "adapters/cloudflare-workers/src/conninfo.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:fce0eed4eb58790d"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/cloudflare-workers/src/index.ts",
+      "path": "adapters/cloudflare-workers/src/index.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:bffc9dce0303fa63"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/cloudflare-workers/src/serve-static-module.ts",
+      "path": "adapters/cloudflare-workers/src/serve-static-module.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:ecff9f31f5f0ed56"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/cloudflare-workers/src/serve-static.test.ts",
+      "path": "adapters/cloudflare-workers/src/serve-static.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:51a0d1d9cc16c4d9"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/cloudflare-workers/src/serve-static.ts",
+      "path": "adapters/cloudflare-workers/src/serve-static.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:43190e27a1e0204f"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/cloudflare-workers/src/utils.test.ts",
+      "path": "adapters/cloudflare-workers/src/utils.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:ed5ea2a2f7b89e1d"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/cloudflare-workers/src/utils.ts",
+      "path": "adapters/cloudflare-workers/src/utils.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:097bb336c1749bfc"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/cloudflare-workers/src/websocket.test.ts",
+      "path": "adapters/cloudflare-workers/src/websocket.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:7e9926af0b2741cd"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/cloudflare-workers/src/websocket.ts",
+      "path": "adapters/cloudflare-workers/src/websocket.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:529d6ff1957b721a"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/cloudflare-workers/test/websocket.test.ts",
+      "path": "adapters/cloudflare-workers/test/websocket.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:804daafcfe340822"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/cloudflare-workers/test/worker.ts",
+      "path": "adapters/cloudflare-workers/test/worker.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:3f73c371734d952b"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/cloudflare-workers/vite.config.ts",
+      "path": "adapters/cloudflare-workers/vite.config.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:2fdb137c5b76d2a0"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/deno/src/conninfo.test.ts",
+      "path": "adapters/deno/src/conninfo.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:ab2d766fc995baca"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/deno/src/conninfo.ts",
+      "path": "adapters/deno/src/conninfo.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:05095966553dd5be"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/deno/src/deno.d.ts",
+      "path": "adapters/deno/src/deno.d.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:f42caf33dfa0784a"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/deno/src/index.ts",
+      "path": "adapters/deno/src/index.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:a4f6dbf1c3eeb347"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/deno/src/serve-static.ts",
+      "path": "adapters/deno/src/serve-static.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:189b64f093d0b2ee"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/deno/src/ssg.ts",
+      "path": "adapters/deno/src/ssg.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:9b8142bb417a1b7f"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/deno/src/websocket.test.ts",
+      "path": "adapters/deno/src/websocket.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:6cce9daf7d12db00"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/deno/src/websocket.ts",
+      "path": "adapters/deno/src/websocket.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:e1826f0d38a188fd"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/deno/test/assert.ts",
+      "path": "adapters/deno/test/assert.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:76ac641eb1ebfbac"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/deno/test/serve-static.test.ts",
+      "path": "adapters/deno/test/serve-static.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:0285a2f979ed4b04"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/deno/test/ssg.test.ts",
+      "path": "adapters/deno/test/ssg.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:c4415503ea1577a6"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/deno/vite.config.ts",
+      "path": "adapters/deno/vite.config.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:ea50d23009b6fd33"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/lambda-edge/src/conninfo.test.ts",
+      "path": "adapters/lambda-edge/src/conninfo.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:831a4fe8ea3d94d3"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/lambda-edge/src/conninfo.ts",
+      "path": "adapters/lambda-edge/src/conninfo.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:a6ec5aa12c775d7d"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/lambda-edge/src/handler.test.ts",
+      "path": "adapters/lambda-edge/src/handler.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:1c867901489524b3"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/lambda-edge/src/handler.ts",
+      "path": "adapters/lambda-edge/src/handler.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:aae4ec53c5864ab2"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/lambda-edge/src/index.ts",
+      "path": "adapters/lambda-edge/src/index.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:776f56a2bf477cb3"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/lambda-edge/test/index.test.ts",
+      "path": "adapters/lambda-edge/test/index.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:0ea7188f5e16aa24"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/lambda-edge/vite.config.ts",
+      "path": "adapters/lambda-edge/vite.config.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:b9be3d076e5ee07c"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/netlify/src/conninfo.test.ts",
+      "path": "adapters/netlify/src/conninfo.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:b96ba991482d86dd"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/netlify/src/conninfo.ts",
+      "path": "adapters/netlify/src/conninfo.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:36e9ace8d978c8fb"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/netlify/src/handler.ts",
+      "path": "adapters/netlify/src/handler.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:228755d637e5ff6f"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/netlify/src/index.ts",
+      "path": "adapters/netlify/src/index.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:8236d9fc421725e0"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/netlify/src/mod.ts",
+      "path": "adapters/netlify/src/mod.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:61d1ed6b3123a462"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/netlify/vite.config.ts",
+      "path": "adapters/netlify/vite.config.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:cf5a18fdae9e5712"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/service-worker/src/handler.test.ts",
+      "path": "adapters/service-worker/src/handler.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:346319f00aad1a6e"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/service-worker/src/handler.ts",
+      "path": "adapters/service-worker/src/handler.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:3e0c53f92c7a6059"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/service-worker/src/index.ts",
+      "path": "adapters/service-worker/src/index.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:f9cfd5e2856c10be"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/service-worker/src/types.ts",
+      "path": "adapters/service-worker/src/types.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:b9fdafd55b6bc863"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/service-worker/vite.config.ts",
+      "path": "adapters/service-worker/vite.config.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:7f28f1711289dcc8"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/vercel/src/conninfo.test.ts",
+      "path": "adapters/vercel/src/conninfo.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:a242752e5858ab6a"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/vercel/src/conninfo.ts",
+      "path": "adapters/vercel/src/conninfo.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:9f2c86891f1f5155"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/vercel/src/handler.test.ts",
+      "path": "adapters/vercel/src/handler.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:146c952882f5f90e"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/vercel/src/handler.ts",
+      "path": "adapters/vercel/src/handler.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:aef9bf4aa79bfb06"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/vercel/src/index.ts",
+      "path": "adapters/vercel/src/index.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:4049d7d7edb9f87e"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: adapters/vercel/vite.config.ts",
+      "path": "adapters/vercel/vite.config.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:0190e049cc3db868"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: benchmarks/fetch/ts-resolve.mjs",
+      "path": "benchmarks/fetch/ts-resolve.mjs",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:a051faf6116df693"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: benchmarks/http-server/benchmark.ts",
+      "path": "benchmarks/http-server/benchmark.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:228e11b945b0dad8"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: benchmarks/jsx-dom/benchmark.ts",
+      "path": "benchmarks/jsx-dom/benchmark.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:345ecacdc787bb43"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: benchmarks/jsx/src/benchmark.ts",
+      "path": "benchmarks/jsx/src/benchmark.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:de27264720543ee5"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: benchmarks/jsx/src/hono.ts",
+      "path": "benchmarks/jsx/src/hono.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:676fb0962d8cea72"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: benchmarks/jsx/src/nano.ts",
+      "path": "benchmarks/jsx/src/nano.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:1b3401ca03551515"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: benchmarks/jsx/src/page-react.tsx",
+      "path": "benchmarks/jsx/src/page-react.tsx",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:ce044230d76f32b8"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: benchmarks/jsx/src/page.tsx",
+      "path": "benchmarks/jsx/src/page.tsx",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:7aab9c7fcf7833a6"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: benchmarks/jsx/src/preact.ts",
+      "path": "benchmarks/jsx/src/preact.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:40efa4dd308f6801"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: benchmarks/jsx/src/react-jsx/benchmark.ts",
+      "path": "benchmarks/jsx/src/react-jsx/benchmark.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:637a1fd903065fd6"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: benchmarks/jsx/src/react-jsx/hono.ts",
+      "path": "benchmarks/jsx/src/react-jsx/hono.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:57334cfcbb1404a3"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: benchmarks/jsx/src/react-jsx/nano.ts",
+      "path": "benchmarks/jsx/src/react-jsx/nano.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:4895a222fc8cdd12"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: benchmarks/jsx/src/react-jsx/page-hono.tsx",
+      "path": "benchmarks/jsx/src/react-jsx/page-hono.tsx",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:80b179bcbb140859"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: benchmarks/jsx/src/react-jsx/page-nano.tsx",
+      "path": "benchmarks/jsx/src/react-jsx/page-nano.tsx",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:4adb97db3d5bdb0c"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: benchmarks/jsx/src/react-jsx/page-preact.tsx",
+      "path": "benchmarks/jsx/src/react-jsx/page-preact.tsx",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:3d9e9539ae5290a5"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: benchmarks/jsx/src/react-jsx/page-react.tsx",
+      "path": "benchmarks/jsx/src/react-jsx/page-react.tsx",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:9dc73d2115eb41a1"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: benchmarks/jsx/src/react-jsx/preact.ts",
+      "path": "benchmarks/jsx/src/react-jsx/preact.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:6c6f1997a1edc754"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: benchmarks/jsx/src/react-jsx/react.ts",
+      "path": "benchmarks/jsx/src/react-jsx/react.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:2905743e8c10db51"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: benchmarks/jsx/src/react.ts",
+      "path": "benchmarks/jsx/src/react.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:dd11ed40c313a24c"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: benchmarks/utils/src/get-path.ts",
+      "path": "benchmarks/utils/src/get-path.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:1c8d1c80fbcee2d9"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: benchmarks/utils/src/loop.js",
+      "path": "benchmarks/utils/src/loop.js",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:219a0e0be23f522a"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: perf-measures/bundle-check/scripts/check-bundle-size.ts",
+      "path": "perf-measures/bundle-check/scripts/check-bundle-size.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:d7c66bf4efaaf1eb"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: perf-measures/type-check/client.ts",
+      "path": "perf-measures/type-check/client.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:09c1016366e70c9e"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: perf-measures/type-check/scripts/generate-app.ts",
+      "path": "perf-measures/type-check/scripts/generate-app.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:fef9b05f18d30c7b"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: perf-measures/type-check/scripts/process-results.ts",
+      "path": "perf-measures/type-check/scripts/process-results.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:a6d755683151d621"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: runtime-tests/bun/color.test.ts",
+      "path": "runtime-tests/bun/color.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:c02eaf1a3ecc89da"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: runtime-tests/bun/index.test.tsx",
+      "path": "runtime-tests/bun/index.test.tsx",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:b9ab6ca40f22c2b1"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: runtime-tests/deno-jsx/jsx.test.tsx",
+      "path": "runtime-tests/deno-jsx/jsx.test.tsx",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:0aebe38a1d22c5bc"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: runtime-tests/deno/hono.test.ts",
+      "path": "runtime-tests/deno/hono.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:e2f62574503e09ce"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: runtime-tests/deno/middleware.test.tsx",
+      "path": "runtime-tests/deno/middleware.test.tsx",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:21dec91581ab679f"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: runtime-tests/deno/stream.test.ts",
+      "path": "runtime-tests/deno/stream.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:49612631a39b975c"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: runtime-tests/fastly/index.test.ts",
+      "path": "runtime-tests/fastly/index.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:1a37119786b32e64"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: runtime-tests/fastly/vitest.config.ts",
+      "path": "runtime-tests/fastly/vitest.config.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:32ae4ce403a5defd"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: runtime-tests/node/index.test.ts",
+      "path": "runtime-tests/node/index.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:14f2d8147aaba6d1"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: runtime-tests/node/vitest.config.ts",
+      "path": "runtime-tests/node/vitest.config.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:f385202ed7bc0662"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: runtime-tests/workerd/index.test.ts",
+      "path": "runtime-tests/workerd/index.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:c8667532fa345f5c"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: runtime-tests/workerd/index.ts",
+      "path": "runtime-tests/workerd/index.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:add7e421b7502863"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: runtime-tests/workerd/vitest.config.ts",
+      "path": "runtime-tests/workerd/vitest.config.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:86aa8b3961d472b1"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/adapter/aws-lambda/conninfo.ts",
+      "line": 2,
+      "evidence": "import type { GetConnInfo } from '../../helper/conninfo'",
+      "fingerprint": "sha256:2e968972ae9f3892"
+    },
+    {
+      "rule": "ACIMA-D008",
+      "severity": "error",
+      "message": "adapter reaches the implementation unit validator transitively through helper.",
+      "path": "src/adapter/aws-lambda/conninfo.ts",
+      "line": 2,
+      "evidence": "import type { GetConnInfo } from '../../helper/conninfo'",
+      "fingerprint": "sha256:8a9a3ffdac4f91ca"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/adapter/aws-lambda/handler.test.ts",
+      "line": 1,
+      "evidence": "import { setCookie } from '../../helper/cookie'",
+      "fingerprint": "sha256:a59a243e5728f49e"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit middleware (expected middleware.contracts).",
+      "path": "src/adapter/aws-lambda/handler.test.ts",
+      "line": 3,
+      "evidence": "import { bodyLimit } from '../../middleware/body-limit'",
+      "fingerprint": "sha256:d7aa4f37256ad77c"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/adapter/aws-lambda/handler.ts",
+      "line": 4,
+      "evidence": "import { decodeBase64, encodeBase64 } from '../../utils/encode'",
+      "fingerprint": "sha256:829fad17edf66444"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/adapter/bun/conninfo.test.ts",
+      "line": 2,
+      "evidence": "import type { AddressType } from '../../helper/conninfo'",
+      "fingerprint": "sha256:9a98d70ec9e9bf1f"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/adapter/bun/conninfo.ts",
+      "line": 2,
+      "evidence": "import type { GetConnInfo } from '../../helper/conninfo'",
+      "fingerprint": "sha256:15a03a66e5704fdb"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit middleware (expected middleware.contracts).",
+      "path": "src/adapter/bun/serve-static.ts",
+      "line": 4,
+      "evidence": "import { serveStatic as baseServeStatic } from '../../middleware/serve-static'",
+      "fingerprint": "sha256:9be9107e6fdfbb05"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit middleware (expected middleware.contracts).",
+      "path": "src/adapter/bun/serve-static.ts",
+      "line": 5,
+      "evidence": "import type { ServeStaticOptions } from '../../middleware/serve-static'",
+      "fingerprint": "sha256:c8db16aacd35f4a6"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/adapter/bun/ssg.ts",
+      "line": 2,
+      "evidence": "import { toSSG as baseToSSG } from '../../helper/ssg'",
+      "fingerprint": "sha256:7686db6301c80501"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/adapter/bun/ssg.ts",
+      "line": 3,
+      "evidence": "import type { FileSystemModule, ToSSGAdaptorInterface } from '../../helper/ssg'",
+      "fingerprint": "sha256:4d1ca4a773f2dcbf"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/adapter/bun/websocket.ts",
+      "line": 1,
+      "evidence": "import type { UpgradeWebSocket, WSEvents, WSMessageReceive } from '../../helper/websocket'",
+      "fingerprint": "sha256:3df270645eab8a31"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/adapter/bun/websocket.ts",
+      "line": 2,
+      "evidence": "import { createWSMessageEvent, defineWebSocketHelper, WSContext } from '../../helper/websocket'",
+      "fingerprint": "sha256:86359309e3f7b36f"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/adapter/cloudflare-pages/conninfo.ts",
+      "line": 1,
+      "evidence": "import type { GetConnInfo } from '../../helper/conninfo'",
+      "fingerprint": "sha256:cb60dc4270f517c8"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/adapter/cloudflare-pages/handler.test.ts",
+      "line": 1,
+      "evidence": "import { getCookie } from '../../helper/cookie'",
+      "fingerprint": "sha256:7fc204b857d26371"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/adapter/cloudflare-workers/conninfo.ts",
+      "line": 1,
+      "evidence": "import type { GetConnInfo } from '../../helper/conninfo'",
+      "fingerprint": "sha256:7320b4a7b7b2f128"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit middleware (expected middleware.contracts).",
+      "path": "src/adapter/cloudflare-workers/serve-static.ts",
+      "line": 1,
+      "evidence": "import { serveStatic as baseServeStatic } from '../../middleware/serve-static'",
+      "fingerprint": "sha256:912ce5a737d2036a"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit middleware (expected middleware.contracts).",
+      "path": "src/adapter/cloudflare-workers/serve-static.ts",
+      "line": 2,
+      "evidence": "import type { ServeStaticOptions as BaseServeStaticOptions } from '../../middleware/serve-static'",
+      "fingerprint": "sha256:4577f6bebf4a085e"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/adapter/cloudflare-workers/websocket.ts",
+      "line": 1,
+      "evidence": "import { WSContext, defineWebSocketHelper } from '../../helper/websocket'",
+      "fingerprint": "sha256:115f228377826159"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/adapter/cloudflare-workers/websocket.ts",
+      "line": 2,
+      "evidence": "import type { UpgradeWebSocket, WSEvents, WSReadyState } from '../../helper/websocket'",
+      "fingerprint": "sha256:138f598b4b2add2a"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/adapter/deno/conninfo.ts",
+      "line": 1,
+      "evidence": "import type { GetConnInfo } from '../../helper/conninfo'",
+      "fingerprint": "sha256:4dfb910c37be8edb"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit middleware (expected middleware.contracts).",
+      "path": "src/adapter/deno/serve-static.ts",
+      "line": 2,
+      "evidence": "import type { ServeStaticOptions } from '../../middleware/serve-static'",
+      "fingerprint": "sha256:e7f045197d4ae950"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit middleware (expected middleware.contracts).",
+      "path": "src/adapter/deno/serve-static.ts",
+      "line": 3,
+      "evidence": "import { serveStatic as baseServeStatic } from '../../middleware/serve-static'",
+      "fingerprint": "sha256:cd752b0cf579aabb"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/adapter/deno/ssg.ts",
+      "line": 1,
+      "evidence": "import { toSSG as baseToSSG } from '../../helper/ssg/index'",
+      "fingerprint": "sha256:0d7e3f36482dc05d"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/adapter/deno/ssg.ts",
+      "line": 2,
+      "evidence": "import type { FileSystemModule, ToSSGAdaptorInterface } from '../../helper/ssg/index'",
+      "fingerprint": "sha256:2fda83f1fa613a86"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/adapter/deno/websocket.ts",
+      "line": 1,
+      "evidence": "import type { UpgradeWebSocket, WSReadyState } from '../../helper/websocket'",
+      "fingerprint": "sha256:788f981a9bbbfba3"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/adapter/deno/websocket.ts",
+      "line": 2,
+      "evidence": "import { WSContext, defineWebSocketHelper } from '../../helper/websocket'",
+      "fingerprint": "sha256:b68ee5a81f244d20"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/adapter/lambda-edge/conninfo.ts",
+      "line": 2,
+      "evidence": "import type { GetConnInfo } from '../../helper/conninfo'",
+      "fingerprint": "sha256:04d5899a6fde32ea"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/adapter/lambda-edge/handler.test.ts",
+      "line": 2,
+      "evidence": "import { setCookie } from '../../helper/cookie'",
+      "fingerprint": "sha256:096d924ea934b928"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit middleware (expected middleware.contracts).",
+      "path": "src/adapter/lambda-edge/handler.test.ts",
+      "line": 4,
+      "evidence": "import { bodyLimit } from '../../middleware/body-limit'",
+      "fingerprint": "sha256:7bf0df26b8fa55f1"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/adapter/lambda-edge/handler.test.ts",
+      "line": 5,
+      "evidence": "import { decodeBase64, encodeBase64 } from '../../utils/encode'",
+      "fingerprint": "sha256:9ce2c141e72cd6f1"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/adapter/lambda-edge/handler.ts",
+      "line": 3,
+      "evidence": "import { decodeBase64, encodeBase64 } from '../../utils/encode'",
+      "fingerprint": "sha256:d30c0cdffbba8fac"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/adapter/netlify/conninfo.ts",
+      "line": 2,
+      "evidence": "import type { GetConnInfo } from '../../helper/conninfo'",
+      "fingerprint": "sha256:784b9affb4f94c53"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module adapter imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/adapter/vercel/conninfo.ts",
+      "line": 1,
+      "evidence": "import type { GetConnInfo } from '../../helper/conninfo'",
+      "fingerprint": "sha256:489579e1d31911ea"
+    },
+    {
+      "rule": "ACIMA-D005",
+      "severity": "error",
+      "message": "Circular module dependency: adapter -> helper -> client -> adapter",
+      "path": "src/client/client.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:2c3e3f59d41d369c"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module client imports the implementation unit adapter (expected adapter.contracts).",
+      "path": "src/client/client.test.ts",
+      "line": 7,
+      "evidence": "import { upgradeWebSocket } from '../adapter/deno/websocket'",
+      "fingerprint": "sha256:db903ea85b0d26e2"
+    },
+    {
+      "rule": "ACIMA-D008",
+      "severity": "error",
+      "message": "client reaches the implementation unit validator transitively through adapter.",
+      "path": "src/client/client.test.ts",
+      "line": 7,
+      "evidence": "import { upgradeWebSocket } from '../adapter/deno/websocket'",
+      "fingerprint": "sha256:b23dc643aeefc14c"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module client imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/client/client.test.ts",
+      "line": 9,
+      "evidence": "import { parse } from '../utils/cookie'",
+      "fingerprint": "sha256:f0399f403a3eaa36"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module client imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/client/client.test.ts",
+      "line": 10,
+      "evidence": "import type { Equal, Expect, JSONValue, SimplifyDeepArray } from '../utils/types'",
+      "fingerprint": "sha256:b398e6a63da7f28e"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module client imports the implementation unit validator (expected validator.contracts).",
+      "path": "src/client/client.test.ts",
+      "line": 11,
+      "evidence": "import { validator } from '../validator'",
+      "fingerprint": "sha256:16e015e120a73aa8"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module client imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/client/client.ts",
+      "line": 3,
+      "evidence": "import { serialize } from '../utils/cookie'",
+      "fingerprint": "sha256:aaf30feb2f8f2946"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module client imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/client/client.ts",
+      "line": 4,
+      "evidence": "import type { UnionToIntersection } from '../utils/types'",
+      "fingerprint": "sha256:89587fba68250793"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module client imports the implementation unit adapter (expected adapter.contracts).",
+      "path": "src/client/types.test.ts",
+      "line": 5,
+      "evidence": "import { upgradeWebSocket } from '../adapter/deno/websocket'",
+      "fingerprint": "sha256:17e612c666f16bcd"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit client publishes the public type ApplyGlobalResponse, BuildSearchParamsFn, Callback, Client, ClientRequest, ClientRequestOptions, ClientResponse, Fetch, FilterClientResponseByStatusCode, InferRequestOptionsType, InferRequestType, InferResponseType, ObjectType, PickResponseByStatusCode, Response, TypedURL outside the module",
+      "path": "src/client/types.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:378de6db28d286e7"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module client imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/client/types.ts",
+      "line": 5,
+      "evidence": "import type { StatusCode, SuccessStatusCode } from '../utils/http-status'",
+      "fingerprint": "sha256:a1af3e0466b20730"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module client imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/client/types.ts",
+      "line": 6,
+      "evidence": "import type { HasRequiredKeys } from '../utils/types'",
+      "fingerprint": "sha256:04509aef083bac0f"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module client imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/client/utils.test.ts",
+      "line": 4,
+      "evidence": "import type { Expect, Equal } from '../utils/types'",
+      "fingerprint": "sha256:615a5ce5bcabc1dd"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module client imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/client/utils.ts",
+      "line": 1,
+      "evidence": "import type { ClientErrorStatusCode, ContentfulStatusCode, ServerErrorStatusCode, } from '../utils/http-status'",
+      "fingerprint": "sha256:c6623c93d02bf638"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit client publishes the public type deepMerge outside the module",
+      "path": "src/client/utils.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:d5adbed5831c5eb9"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: src/compose.test.ts",
+      "path": "src/compose.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:f7c3b567b3bab5a8"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: src/compose.ts",
+      "path": "src/compose.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:aedc4b7ff5c1ac1c"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: src/context.test.ts",
+      "path": "src/context.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:14e27a3e20758967"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: src/context.ts",
+      "path": "src/context.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:61af6caf7e38b90d"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/accepts/accepts.test.ts",
+      "line": 2,
+      "evidence": "import { parseAccept } from '../../utils/accept'",
+      "fingerprint": "sha256:df02e916da82fd4c"
+    },
+    {
+      "rule": "ACIMA-D008",
+      "severity": "error",
+      "message": "helper reaches the implementation unit validator transitively through utils.",
+      "path": "src/helper/accepts/accepts.test.ts",
+      "line": 2,
+      "evidence": "import { parseAccept } from '../../utils/accept'",
+      "fingerprint": "sha256:c503e0a1abe2708e"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/accepts/accepts.test.ts",
+      "line": 3,
+      "evidence": "import type { AcceptHeader } from '../../utils/headers'",
+      "fingerprint": "sha256:a14b7a33eb830530"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/accepts/accepts.ts",
+      "line": 2,
+      "evidence": "import { parseAccept } from '../../utils/accept'",
+      "fingerprint": "sha256:195378806bb2db0a"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/accepts/accepts.ts",
+      "line": 3,
+      "evidence": "import type { AcceptHeader } from '../../utils/headers'",
+      "fingerprint": "sha256:d191ec8072c2e351"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit helper publishes the public type Runtime outside the module",
+      "path": "src/helper/adapter/index.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:57e749568a24c03b"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/cookie/index.ts",
+      "line": 7,
+      "evidence": "import { parse, parseSigned, serialize, serializeSigned } from '../../utils/cookie'",
+      "fingerprint": "sha256:88228590771501e5"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/cookie/index.ts",
+      "line": 8,
+      "evidence": "import type { Cookie, CookieOptions, CookiePrefixOptions, SignedCookie } from '../../utils/cookie'",
+      "fingerprint": "sha256:ff5fa5cae1a6b0ee"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit helper publishes the public type ClassNameSlug, CssClassName, CssVariableType, OnInvalidSlug outside the module",
+      "path": "src/helper/css/common.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:835aa0f75fa0ca37"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit jsx (expected jsx.contracts).",
+      "path": "src/helper/css/index.test.tsx",
+      "line": 4,
+      "evidence": "import type { JSXNode } from '../../jsx'",
+      "fingerprint": "sha256:c2cdf6376cd25f44"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit jsx (expected jsx.contracts).",
+      "path": "src/helper/css/index.test.tsx",
+      "line": 5,
+      "evidence": "import { isValidElement } from '../../jsx'",
+      "fingerprint": "sha256:6259abe872f1c4ac"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit jsx (expected jsx.contracts).",
+      "path": "src/helper/css/index.test.tsx",
+      "line": 6,
+      "evidence": "import { Suspense, renderToReadableStream } from '../../jsx/streaming'",
+      "fingerprint": "sha256:1163d66f0bc26049"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/css/index.test.tsx",
+      "line": 7,
+      "evidence": "import type { HtmlEscapedString } from '../../utils/html'",
+      "fingerprint": "sha256:dd57901a3f5132f1"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/css/index.test.tsx",
+      "line": 8,
+      "evidence": "import { HtmlEscapedCallbackPhase, resolveCallback } from '../../utils/html'",
+      "fingerprint": "sha256:ec08f586ca684e32"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit jsx (expected jsx.contracts).",
+      "path": "src/helper/css/index.ts",
+      "line": 7,
+      "evidence": "import { DOM_RENDERER } from '../../jsx/constants'",
+      "fingerprint": "sha256:021f731c06d49183"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit jsx (expected jsx.contracts).",
+      "path": "src/helper/css/index.ts",
+      "line": 8,
+      "evidence": "import { createCssJsxDomObjects } from '../../jsx/dom/css'",
+      "fingerprint": "sha256:8db366a0aa599a18"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/css/index.ts",
+      "line": 9,
+      "evidence": "import { escapeToBuffer } from '../../utils/html'",
+      "fingerprint": "sha256:1f43a1125ac9b63f"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/css/index.ts",
+      "line": 10,
+      "evidence": "import type { HtmlEscapedCallback, HtmlEscapedString } from '../../utils/html'",
+      "fingerprint": "sha256:cd33a73dca4050c5"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit router (expected router.contracts).",
+      "path": "src/helper/dev/index.test.ts",
+      "line": 3,
+      "evidence": "import { RegExpRouter } from '../../router/reg-exp-router'",
+      "fingerprint": "sha256:1a1d8f7ac5d56308"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/dev/index.ts",
+      "line": 8,
+      "evidence": "import { getColorEnabled } from '../../utils/color'",
+      "fingerprint": "sha256:44e96ba0ac85777b"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/dev/index.ts",
+      "line": 9,
+      "evidence": "import { findTargetHandler, isMiddleware } from '../../utils/handler'",
+      "fingerprint": "sha256:00ed64031a5484f5"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit client (expected client.contracts).",
+      "path": "src/helper/factory/index.test.ts",
+      "line": 3,
+      "evidence": "import { hc } from '../../client'",
+      "fingerprint": "sha256:8098b281c052c43b"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit client (expected client.contracts).",
+      "path": "src/helper/factory/index.test.ts",
+      "line": 4,
+      "evidence": "import type { ClientRequest } from '../../client/types'",
+      "fingerprint": "sha256:2df697def6537525"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/factory/index.test.ts",
+      "line": 7,
+      "evidence": "import type { ContentfulStatusCode } from '../../utils/http-status'",
+      "fingerprint": "sha256:5ca37071f75cb5d4"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/factory/index.test.ts",
+      "line": 8,
+      "evidence": "import type { Equal, Expect } from '../../utils/types'",
+      "fingerprint": "sha256:22b4461ec4d95b19"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit validator (expected validator.contracts).",
+      "path": "src/helper/factory/index.test.ts",
+      "line": 9,
+      "evidence": "import { validator } from '../../validator'",
+      "fingerprint": "sha256:0bd8e8d1881173d4"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/html/index.test.ts",
+      "line": 2,
+      "evidence": "import { HtmlEscapedCallbackPhase, resolveCallback } from '../../utils/html'",
+      "fingerprint": "sha256:9f21ac9cad431326"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/html/index.ts",
+      "line": 6,
+      "evidence": "import { escapeToBuffer, raw, resolveCallbackSync, stringBufferToString } from '../../utils/html'",
+      "fingerprint": "sha256:8ab6a1b3344143fe"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/html/index.ts",
+      "line": 7,
+      "evidence": "import type { HtmlEscaped, HtmlEscapedString, StringBufferWithCallbacks } from '../../utils/html'",
+      "fingerprint": "sha256:832b9a9ec95bd2f6"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/proxy/index.ts",
+      "line": 7,
+      "evidence": "import type { RequestHeader } from '../../utils/headers'",
+      "fingerprint": "sha256:963b1f59ffe60bfb"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit request (expected request.contracts).",
+      "path": "src/helper/route/index.ts",
+      "line": 2,
+      "evidence": "import { GET_MATCH_RESULT } from '../../request/constants'",
+      "fingerprint": "sha256:015756dc14d6838b"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/route/index.ts",
+      "line": 4,
+      "evidence": "import { getPattern, splitRoutingPath } from '../../utils/url'",
+      "fingerprint": "sha256:491a2388e76c5d91"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/ssg/plugins.test.tsx",
+      "line": 2,
+      "evidence": "import type { RedirectStatusCode, StatusCode } from '../../utils/http-status'",
+      "fingerprint": "sha256:7382212c597174e4"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit middleware (expected middleware.contracts).",
+      "path": "src/helper/ssg/ssg.test.tsx",
+      "line": 4,
+      "evidence": "import { poweredBy } from '../../middleware/powered-by'",
+      "fingerprint": "sha256:670321a6a63c30e4"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit client (expected client.contracts).",
+      "path": "src/helper/ssg/ssg.ts",
+      "line": 1,
+      "evidence": "import { replaceUrlParam } from '../../client/utils'",
+      "fingerprint": "sha256:5738c35ee48ea2f1"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/ssg/ssg.ts",
+      "line": 4,
+      "evidence": "import { createPool } from '../../utils/concurrent'",
+      "fingerprint": "sha256:3b39287aca224f86"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/ssg/ssg.ts",
+      "line": 5,
+      "evidence": "import { getExtension } from '../../utils/mime'",
+      "fingerprint": "sha256:287f9f1f1a46566f"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/ssg/utils.ts",
+      "line": 4,
+      "evidence": "import { findTargetHandler, isMiddleware } from '../../utils/handler'",
+      "fingerprint": "sha256:06e2da568419074d"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit jsx (expected jsx.contracts).",
+      "path": "src/helper/streaming/sse.test.tsx",
+      "line": 4,
+      "evidence": "import { ErrorBoundary, Suspense } from '../../jsx'",
+      "fingerprint": "sha256:646cf80ad8195cc0"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/streaming/sse.ts",
+      "line": 2,
+      "evidence": "import { HtmlEscapedCallbackPhase, resolveCallback } from '../../utils/html'",
+      "fingerprint": "sha256:2f7083654fb33291"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/streaming/sse.ts",
+      "line": 3,
+      "evidence": "import { StreamingApi } from '../../utils/stream'",
+      "fingerprint": "sha256:7b53f0082f75ed9b"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/streaming/stream.ts",
+      "line": 2,
+      "evidence": "import { StreamingApi } from '../../utils/stream'",
+      "fingerprint": "sha256:769a32f729b5585a"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/streaming/text.ts",
+      "line": 3,
+      "evidence": "import type { StreamingApi } from '../../utils/stream'",
+      "fingerprint": "sha256:c834e00a9d0fd615"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit client (expected client.contracts).",
+      "path": "src/helper/testing/index.ts",
+      "line": 6,
+      "evidence": "import { hc } from '../../client'",
+      "fingerprint": "sha256:3c9f28eba8ce1695"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit client (expected client.contracts).",
+      "path": "src/helper/testing/index.ts",
+      "line": 7,
+      "evidence": "import type { ClientRequestOptions } from '../../client'",
+      "fingerprint": "sha256:440b36e8292dd10b"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit client (expected client.contracts).",
+      "path": "src/helper/testing/index.ts",
+      "line": 8,
+      "evidence": "import type { Client } from '../../client/types'",
+      "fingerprint": "sha256:f3c8e2c0be3b93b3"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/testing/index.ts",
+      "line": 12,
+      "evidence": "import type { UnionToIntersection } from '../../utils/types'",
+      "fingerprint": "sha256:64b2cc11b3104c42"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit helper publishes the public type SendOptions, UpgradeWebSocket, WSContext, WSContextInit, WSEvents, WSMessageReceive, WSReadyState, WebSocketHelperDefineContext, WebSocketHelperDefineHandler outside the module",
+      "path": "src/helper/websocket/index.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:d3d692a351d30694"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module helper imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/helper/websocket/index.ts",
+      "line": 9,
+      "evidence": "import type { StatusCode } from '../../utils/http-status'",
+      "fingerprint": "sha256:054aa4f04905d42d"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: src/hono-base.ts",
+      "path": "src/hono-base.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:4da8faf17f755917"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: src/hono.test.ts",
+      "path": "src/hono.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:e1deb063437bc2a7"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: src/hono.ts",
+      "path": "src/hono.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:5143ca15f6d0a890"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: src/http-exception.test.ts",
+      "path": "src/http-exception.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:c9d70c5783d79494"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: src/http-exception.ts",
+      "path": "src/http-exception.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:54bc286fa5b114bc"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: src/index.ts",
+      "path": "src/index.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:4c2224a2ca7d3138"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/jsx/base.test.tsx",
+      "line": 3,
+      "evidence": "import type { HtmlEscapedString } from '../utils/html'",
+      "fingerprint": "sha256:40792244e62f92fd"
+    },
+    {
+      "rule": "ACIMA-D008",
+      "severity": "error",
+      "message": "jsx reaches the implementation unit validator transitively through utils.",
+      "path": "src/jsx/base.test.tsx",
+      "line": 3,
+      "evidence": "import type { HtmlEscapedString } from '../utils/html'",
+      "fingerprint": "sha256:623dfbe5ca38840e"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/jsx/base.ts",
+      "line": 1,
+      "evidence": "import { raw } from '../helper/html'",
+      "fingerprint": "sha256:d6b594a117997403"
+    },
+    {
+      "rule": "ACIMA-D005",
+      "severity": "error",
+      "message": "Circular module dependency: helper -> jsx -> helper",
+      "path": "src/jsx/base.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:4fdc3dedc37f59de"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/jsx/base.ts",
+      "line": 2,
+      "evidence": "import { escapeToBuffer, resolveCallbackSync, stringBufferToString } from '../utils/html'",
+      "fingerprint": "sha256:4e1d80b4620c64c2"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/jsx/base.ts",
+      "line": 3,
+      "evidence": "import type { HtmlEscaped, HtmlEscapedString, StringBuffer, StringBufferWithCallbacks, } from '../utils/html'",
+      "fingerprint": "sha256:2ff362385d659996"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/jsx/components.test.tsx",
+      "line": 4,
+      "evidence": "import { raw } from '../helper/html'",
+      "fingerprint": "sha256:788f7ec029d14e78"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/jsx/components.test.tsx",
+      "line": 5,
+      "evidence": "import type { HtmlEscapedString } from '../utils/html'",
+      "fingerprint": "sha256:6d80d57eaf7d2117"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/jsx/components.test.tsx",
+      "line": 6,
+      "evidence": "import { HtmlEscapedCallbackPhase, resolveCallback as rawResolveCallback } from '../utils/html'",
+      "fingerprint": "sha256:c1a9f2f39a397efb"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/jsx/components.ts",
+      "line": 1,
+      "evidence": "import { raw } from '../helper/html'",
+      "fingerprint": "sha256:1636f475e728f221"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/jsx/components.ts",
+      "line": 2,
+      "evidence": "import type { HtmlEscapedCallback, HtmlEscapedString } from '../utils/html'",
+      "fingerprint": "sha256:61f43726b34835ed"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/jsx/components.ts",
+      "line": 3,
+      "evidence": "import { HtmlEscapedCallbackPhase, resolveCallback } from '../utils/html'",
+      "fingerprint": "sha256:a088b27ce1c46c15"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/jsx/context.ts",
+      "line": 1,
+      "evidence": "import { raw } from '../helper/html'",
+      "fingerprint": "sha256:a455b697efc521e6"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/jsx/context.ts",
+      "line": 2,
+      "evidence": "import type { HtmlEscapedString } from '../utils/html'",
+      "fingerprint": "sha256:3c5d23db6712758e"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/jsx/dom/css.test.tsx",
+      "line": 7,
+      "evidence": "import { Style, createCssContext, css, rawCssString } from '../../helper/css'",
+      "fingerprint": "sha256:c77dc8968a57ff7a"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/jsx/dom/css.test.tsx",
+      "line": 8,
+      "evidence": "import { minify } from '../../helper/css/common'",
+      "fingerprint": "sha256:e99de122f07cbbdc"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/jsx/dom/css.test.tsx",
+      "line": 9,
+      "evidence": "import { renderTest } from '../../helper/css/common.case.test'",
+      "fingerprint": "sha256:acbb06ec402165c7"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/jsx/dom/css.ts",
+      "line": 7,
+      "evidence": "import type { ClassNameSlug, CssClassName, CssVariableType, OnInvalidSlug, } from '../../helper/css/common'",
+      "fingerprint": "sha256:426521b68782e07f"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/jsx/dom/css.ts",
+      "line": 13,
+      "evidence": "import { CLASS_NAME, DEFAULT_STYLE_ID, PSEUDO_GLOBAL_SELECTOR, SELECTOR, SELECTORS, STYLE_STRING, cssCommon, cxCommon, keyframesCommon, viewTransitionCommon, } from '../../helper/css/common'",
+      "fingerprint": "sha256:f6edf6cb82d019e0"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/jsx/dom/css.ts",
+      "line": 25,
+      "evidence": "export { rawCssString } from '../../helper/css/common'",
+      "fingerprint": "sha256:e9c784a8e756ef39"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/jsx/dom/server.test.tsx",
+      "line": 2,
+      "evidence": "import { raw } from '../../helper/html'",
+      "fingerprint": "sha256:731a55111df6c581"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/jsx/dom/server.ts",
+      "line": 6,
+      "evidence": "import type { HtmlEscapedString } from '../../utils/html'",
+      "fingerprint": "sha256:472f084a9e7ce971"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/jsx/index.test.tsx",
+      "line": 15,
+      "evidence": "import { html, raw } from '../helper/html'",
+      "fingerprint": "sha256:dee6b2b342af7ae5"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/jsx/intrinsic-element/components.test.tsx",
+      "line": 3,
+      "evidence": "import { HtmlEscapedCallbackPhase, resolveCallback } from '../../utils/html'",
+      "fingerprint": "sha256:5913b90c38d5c03e"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/jsx/intrinsic-element/components.ts",
+      "line": 1,
+      "evidence": "import { raw } from '../../helper/html'",
+      "fingerprint": "sha256:4a833a4e4a2ac51f"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/jsx/intrinsic-element/components.ts",
+      "line": 2,
+      "evidence": "import type { HtmlEscapedCallback, HtmlEscapedString } from '../../utils/html'",
+      "fingerprint": "sha256:918e6430b6ee3695"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/jsx/intrinsic-elements.ts",
+      "line": 3,
+      "evidence": "import type { BaseMime } from '../utils/mime'",
+      "fingerprint": "sha256:645766920c809796"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/jsx/intrinsic-elements.ts",
+      "line": 4,
+      "evidence": "import type { StringLiteralUnion } from '../utils/types'",
+      "fingerprint": "sha256:96d5744f4502940e"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/jsx/jsx-dev-runtime.ts",
+      "line": 6,
+      "evidence": "import type { HtmlEscapedString } from '../utils/html'",
+      "fingerprint": "sha256:540d7c42eb70628c"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/jsx/jsx-runtime.test.tsx",
+      "line": 4,
+      "evidence": "import { html, raw } from '../helper/html'",
+      "fingerprint": "sha256:d61e4896632edb1a"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/jsx/jsx-runtime.test.tsx",
+      "line": 6,
+      "evidence": "import { HtmlEscapedCallbackPhase } from '../utils/html'",
+      "fingerprint": "sha256:34c6d7826d0a644b"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/jsx/jsx-runtime.test.tsx",
+      "line": 7,
+      "evidence": "import type { HtmlEscapedCallback } from '../utils/html'",
+      "fingerprint": "sha256:0e543865a1d793d2"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/jsx/jsx-runtime.ts",
+      "line": 9,
+      "evidence": "import { html, raw } from '../helper/html'",
+      "fingerprint": "sha256:a7701a92001f2fa6"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/jsx/jsx-runtime.ts",
+      "line": 10,
+      "evidence": "import type { HtmlEscapedString, StringBuffer } from '../utils/html'",
+      "fingerprint": "sha256:e4291743bb0bb59b"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/jsx/jsx-runtime.ts",
+      "line": 11,
+      "evidence": "import { escapeToBuffer, stringBufferToString } from '../utils/html'",
+      "fingerprint": "sha256:c8891c349f5f7e5e"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/jsx/streaming.test.tsx",
+      "line": 4,
+      "evidence": "import { raw } from '../helper/html'",
+      "fingerprint": "sha256:b84a0817c9a56c5a"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/jsx/streaming.test.tsx",
+      "line": 5,
+      "evidence": "import { HtmlEscapedCallbackPhase, resolveCallback } from '../utils/html'",
+      "fingerprint": "sha256:99712b741924eb0c"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/jsx/streaming.test.tsx",
+      "line": 6,
+      "evidence": "import type { HtmlEscapedString } from '../utils/html'",
+      "fingerprint": "sha256:20ec6bbf3e651021"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/jsx/streaming.ts",
+      "line": 6,
+      "evidence": "import { raw } from '../helper/html'",
+      "fingerprint": "sha256:c99c1d0fbc59c029"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/jsx/streaming.ts",
+      "line": 7,
+      "evidence": "import { HtmlEscapedCallbackPhase, resolveCallback } from '../utils/html'",
+      "fingerprint": "sha256:956f54f1eb98375c"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module jsx imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/jsx/streaming.ts",
+      "line": 8,
+      "evidence": "import type { HtmlEscapedString } from '../utils/html'",
+      "fingerprint": "sha256:80170af34d0ece73"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/basic-auth/index.ts",
+      "line": 9,
+      "evidence": "import { auth } from '../../utils/basic-auth'",
+      "fingerprint": "sha256:e97c5897017827d8"
+    },
+    {
+      "rule": "ACIMA-D008",
+      "severity": "error",
+      "message": "middleware reaches the implementation unit validator transitively through utils.",
+      "path": "src/middleware/basic-auth/index.ts",
+      "line": 9,
+      "evidence": "import { auth } from '../../utils/basic-auth'",
+      "fingerprint": "sha256:f647e7de1c2924c3"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/basic-auth/index.ts",
+      "line": 10,
+      "evidence": "import { timingSafeEqual } from '../../utils/buffer'",
+      "fingerprint": "sha256:6af8c6c6908b52da"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/bearer-auth/index.ts",
+      "line": 9,
+      "evidence": "import { timingSafeEqual } from '../../utils/buffer'",
+      "fingerprint": "sha256:83c8ddedb2c19384"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/bearer-auth/index.ts",
+      "line": 10,
+      "evidence": "import type { ContentfulStatusCode } from '../../utils/http-status'",
+      "fingerprint": "sha256:a20458b0ab6c4da0"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/cache/index.ts",
+      "line": 9,
+      "evidence": "import { sha256 } from '../../utils/crypto'",
+      "fingerprint": "sha256:78233712c07e1a77"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/cache/index.ts",
+      "line": 10,
+      "evidence": "import type { StatusCode } from '../../utils/http-status'",
+      "fingerprint": "sha256:e88d029e2eee68c7"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit router (expected router.contracts).",
+      "path": "src/middleware/combine/index.ts",
+      "line": 9,
+      "evidence": "import { TrieRouter } from '../../router/trie-router'",
+      "fingerprint": "sha256:167e4de724eaf5cc"
+    },
+    {
+      "rule": "ACIMA-D005",
+      "severity": "error",
+      "message": "Circular module dependency: helper -> middleware -> helper",
+      "path": "src/middleware/compress/index.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:7eae21871ce95f93"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/middleware/compress/index.test.ts",
+      "line": 2,
+      "evidence": "import { stream, streamSSE } from '../../helper/streaming'",
+      "fingerprint": "sha256:41dc868be5461f55"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/compress/index.ts",
+      "line": 7,
+      "evidence": "import { parseAccept } from '../../utils/accept'",
+      "fingerprint": "sha256:9ff062d98fed79d6"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/compress/index.ts",
+      "line": 8,
+      "evidence": "import { COMPRESSIBLE_CONTENT_TYPE_REGEX } from '../../utils/compress'",
+      "fingerprint": "sha256:ee86f731cf87d7ed"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/middleware/ip-restriction/index.test.ts",
+      "line": 4,
+      "evidence": "import type { AddressType, GetConnInfo } from '../../helper/conninfo'",
+      "fingerprint": "sha256:e04286c9f388d4cc"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/middleware/ip-restriction/index.ts",
+      "line": 7,
+      "evidence": "import type { AddressType, GetConnInfo } from '../../helper/conninfo'",
+      "fingerprint": "sha256:ea6dd316748b2433"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/ip-restriction/index.ts",
+      "line": 9,
+      "evidence": "import type { InvalidIPAddressError } from '../../utils/ipaddr'",
+      "fingerprint": "sha256:c7276ba88fb4f5c2"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/ip-restriction/index.ts",
+      "line": 10,
+      "evidence": "import { convertIPv4MappedIPv6ToIPv4, convertIPv4ToBinary, convertIPv6BinaryToString, convertIPv6ToBinary, distinctRemoteAddr, isIPv4MappedIPv6, INVALID_IP_ADDRESS_ERROR_CODE, } from '../../utils/ipad",
+      "fingerprint": "sha256:c20a6b0ad77eade8"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/middleware/jsx-renderer/index.test.tsx",
+      "line": 4,
+      "evidence": "import { html } from '../../helper/html'",
+      "fingerprint": "sha256:a0aaec761c359b95"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit jsx (expected jsx.contracts).",
+      "path": "src/middleware/jsx-renderer/index.test.tsx",
+      "line": 6,
+      "evidence": "import type { FC } from '../../jsx'",
+      "fingerprint": "sha256:d308d1588e847b22"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit jsx (expected jsx.contracts).",
+      "path": "src/middleware/jsx-renderer/index.test.tsx",
+      "line": 7,
+      "evidence": "import { Suspense } from '../../jsx/streaming'",
+      "fingerprint": "sha256:a840efc266b99ffe"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/middleware/jsx-renderer/index.ts",
+      "line": 8,
+      "evidence": "import { html, raw } from '../../helper/html'",
+      "fingerprint": "sha256:fa870d75e714e0b6"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit jsx (expected jsx.contracts).",
+      "path": "src/middleware/jsx-renderer/index.ts",
+      "line": 9,
+      "evidence": "import { Fragment, createContext, jsx, useContext } from '../../jsx'",
+      "fingerprint": "sha256:c2fabaf23e44f1e6"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit jsx (expected jsx.contracts).",
+      "path": "src/middleware/jsx-renderer/index.ts",
+      "line": 10,
+      "evidence": "import type { FC, Context as JSXContext, JSXNode, PropsWithChildren } from '../../jsx'",
+      "fingerprint": "sha256:6e5e62b37682833b"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit jsx (expected jsx.contracts).",
+      "path": "src/middleware/jsx-renderer/index.ts",
+      "line": 11,
+      "evidence": "import { renderToReadableStream } from '../../jsx/streaming'",
+      "fingerprint": "sha256:2ef0b5ee0fe6d943"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/middleware/jwk/index.test.ts",
+      "line": 4,
+      "evidence": "import { setSignedCookie } from '../../helper/cookie'",
+      "fingerprint": "sha256:8409895edf76499a"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/jwk/index.test.ts",
+      "line": 7,
+      "evidence": "import { encodeBase64Url } from '../../utils/encode'",
+      "fingerprint": "sha256:73c6af145af4072b"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/jwk/index.test.ts",
+      "line": 8,
+      "evidence": "import { Jwt } from '../../utils/jwt'",
+      "fingerprint": "sha256:691d258290085f96"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/jwk/index.test.ts",
+      "line": 9,
+      "evidence": "import type { HonoJsonWebKey } from '../../utils/jwt/jws'",
+      "fingerprint": "sha256:0fcaf39bc5f93b90"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/jwk/index.test.ts",
+      "line": 10,
+      "evidence": "import { signing } from '../../utils/jwt/jws'",
+      "fingerprint": "sha256:c4bf5744c075327f"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/jwk/index.test.ts",
+      "line": 11,
+      "evidence": "import { verifyWithJwks } from '../../utils/jwt/jwt'",
+      "fingerprint": "sha256:5d80be7fa759b2df"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/jwk/index.test.ts",
+      "line": 12,
+      "evidence": "import type { JWTPayload } from '../../utils/jwt/types'",
+      "fingerprint": "sha256:4a696c3b7294256c"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/jwk/index.test.ts",
+      "line": 13,
+      "evidence": "import { utf8Encoder } from '../../utils/jwt/utf8'",
+      "fingerprint": "sha256:79c6c1812eb1b696"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/middleware/jwk/jwk.ts",
+      "line": 7,
+      "evidence": "import { getCookie, getSignedCookie } from '../../helper/cookie'",
+      "fingerprint": "sha256:43cdbbbe790b6e0f"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/jwk/jwk.ts",
+      "line": 10,
+      "evidence": "import type { CookiePrefixOptions } from '../../utils/cookie'",
+      "fingerprint": "sha256:9b86f4b0a12904af"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/jwk/jwk.ts",
+      "line": 11,
+      "evidence": "import { Jwt } from '../../utils/jwt'",
+      "fingerprint": "sha256:841cd4e85a3841e7"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/jwk/jwk.ts",
+      "line": 12,
+      "evidence": "import '../../context' import type { AsymmetricAlgorithm } from '../../utils/jwt/jwa'",
+      "fingerprint": "sha256:24df3a78e6bbe15c"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/jwk/jwk.ts",
+      "line": 14,
+      "evidence": "import type { HonoJsonWebKey } from '../../utils/jwt/jws'",
+      "fingerprint": "sha256:ca46dc6c1cf438ae"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/jwk/jwk.ts",
+      "line": 15,
+      "evidence": "import type { VerifyOptions } from '../../utils/jwt/jwt'",
+      "fingerprint": "sha256:4f8147a23bf63e69"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/jwt/index.ts",
+      "line": 4,
+      "evidence": "export { AlgorithmTypes } from '../../utils/jwt/jwa'",
+      "fingerprint": "sha256:ac0bf2fa5334bca5"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/middleware/jwt/jwt.ts",
+      "line": 7,
+      "evidence": "import { getCookie, getSignedCookie } from '../../helper/cookie'",
+      "fingerprint": "sha256:5d6de21e40ba9443"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/jwt/jwt.ts",
+      "line": 10,
+      "evidence": "import type { CookiePrefixOptions } from '../../utils/cookie'",
+      "fingerprint": "sha256:3d21d4ba1730b5d5"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/jwt/jwt.ts",
+      "line": 11,
+      "evidence": "import { Jwt } from '../../utils/jwt'",
+      "fingerprint": "sha256:955a92f869897b8f"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/jwt/jwt.ts",
+      "line": 12,
+      "evidence": "import '../../context' import type { SignatureAlgorithm } from '../../utils/jwt/jwa'",
+      "fingerprint": "sha256:c4603cb2c02cd375"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/jwt/jwt.ts",
+      "line": 14,
+      "evidence": "import type { SignatureKey } from '../../utils/jwt/jws'",
+      "fingerprint": "sha256:03c3184a3114a5cb"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/jwt/jwt.ts",
+      "line": 15,
+      "evidence": "import type { VerifyOptions } from '../../utils/jwt/jwt'",
+      "fingerprint": "sha256:45058c580ec82959"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/middleware/language/language.ts",
+      "line": 6,
+      "evidence": "import { setCookie, getCookie } from '../../helper/cookie'",
+      "fingerprint": "sha256:792f681f425ddcc1"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/language/language.ts",
+      "line": 8,
+      "evidence": "import { parseAccept } from '../../utils/accept'",
+      "fingerprint": "sha256:3a54a2efd371b647"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/logger/index.ts",
+      "line": 7,
+      "evidence": "import { getColorEnabledAsync } from '../../utils/color'",
+      "fingerprint": "sha256:250a6ef855cdb47f"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/middleware/method-not-allowed/index.ts",
+      "line": 7,
+      "evidence": "import { basePath, matchedRoutes } from '../../helper/route'",
+      "fingerprint": "sha256:f5b2eee70b135d35"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit router (expected router.contracts).",
+      "path": "src/middleware/method-not-allowed/index.ts",
+      "line": 10,
+      "evidence": "import { TrieRouter } from '../../router/trie-router'",
+      "fingerprint": "sha256:b67949fdaccaf229"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/method-override/index.ts",
+      "line": 9,
+      "evidence": "import { parseBody } from '../../utils/body'",
+      "fingerprint": "sha256:3714e3a1e0f5d70d"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/mount/index.test.ts",
+      "line": 5,
+      "evidence": "import { getPath } from '../../utils/url'",
+      "fingerprint": "sha256:b6732bf7696b2b15"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/middleware/mount/index.ts",
+      "line": 7,
+      "evidence": "import { routePath } from '../../helper/route'",
+      "fingerprint": "sha256:6597bab2360ff614"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/mount/index.ts",
+      "line": 9,
+      "evidence": "import { createMountedRequest } from '../../utils/mount'",
+      "fingerprint": "sha256:a0df17561b0ad30e"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/secure-headers/secure-headers.ts",
+      "line": 8,
+      "evidence": "import { encodeBase64 } from '../../utils/encode'",
+      "fingerprint": "sha256:61762cc79b003143"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit middleware publishes the public type ServeStaticOptions outside the module",
+      "path": "src/middleware/serve-static/index.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:3918bcc399592126"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/serve-static/index.ts",
+      "line": 8,
+      "evidence": "import { parseAccept } from '../../utils/accept'",
+      "fingerprint": "sha256:34b753e165094117"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/serve-static/index.ts",
+      "line": 9,
+      "evidence": "import { COMPRESSIBLE_CONTENT_TYPE_REGEX } from '../../utils/compress'",
+      "fingerprint": "sha256:63bf113028d38310"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/serve-static/index.ts",
+      "line": 10,
+      "evidence": "import { getMimeType } from '../../utils/mime'",
+      "fingerprint": "sha256:17879ad6629c6fb7"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module middleware imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/middleware/serve-static/index.ts",
+      "line": 11,
+      "evidence": "import { tryDecodeURI } from '../../utils/url'",
+      "fingerprint": "sha256:bca905881f1d76be"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module preset imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/preset/quick.test.ts",
+      "line": 1,
+      "evidence": "import { getRouterName } from '../helper/dev'",
+      "fingerprint": "sha256:5865d0435a13c6ad"
+    },
+    {
+      "rule": "ACIMA-D008",
+      "severity": "error",
+      "message": "preset reaches the implementation unit validator transitively through helper.",
+      "path": "src/preset/quick.test.ts",
+      "line": 1,
+      "evidence": "import { getRouterName } from '../helper/dev'",
+      "fingerprint": "sha256:09819cfc4dcfbd75"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module preset imports the implementation unit router (expected router.contracts).",
+      "path": "src/preset/quick.ts",
+      "line": 8,
+      "evidence": "import { LinearRouter } from '../router/linear-router'",
+      "fingerprint": "sha256:5b0bb4674afccf87"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module preset imports the implementation unit router (expected router.contracts).",
+      "path": "src/preset/quick.ts",
+      "line": 9,
+      "evidence": "import { SmartRouter } from '../router/smart-router'",
+      "fingerprint": "sha256:cfaa2133122f6945"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module preset imports the implementation unit router (expected router.contracts).",
+      "path": "src/preset/quick.ts",
+      "line": 10,
+      "evidence": "import { TrieRouter } from '../router/trie-router'",
+      "fingerprint": "sha256:9188f2677e234e77"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module preset imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/preset/tiny.test.ts",
+      "line": 1,
+      "evidence": "import { getRouterName } from '../helper/dev'",
+      "fingerprint": "sha256:078ddd2b6d92f33f"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module preset imports the implementation unit router (expected router.contracts).",
+      "path": "src/preset/tiny.ts",
+      "line": 8,
+      "evidence": "import { PatternRouter } from '../router/pattern-router'",
+      "fingerprint": "sha256:3b37a4de24c6d189"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: src/request.test.ts",
+      "path": "src/request.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:f43c75596c8f5da2"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: src/request.ts",
+      "path": "src/request.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:61035e500674ad42"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: src/router.ts",
+      "path": "src/router.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:6cc44f9ef3481357"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module router imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/router/linear-router/router.ts",
+      "line": 3,
+      "evidence": "import { checkOptionalParameter } from '../../utils/url'",
+      "fingerprint": "sha256:a832a80776f9cbb6"
+    },
+    {
+      "rule": "ACIMA-D008",
+      "severity": "error",
+      "message": "router reaches the implementation unit validator transitively through utils.",
+      "path": "src/router/linear-router/router.ts",
+      "line": 3,
+      "evidence": "import { checkOptionalParameter } from '../../utils/url'",
+      "fingerprint": "sha256:0bf6ff5e562d334d"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module router imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/router/reg-exp-router/router.ts",
+      "line": 7,
+      "evidence": "import { checkOptionalParameter } from '../../utils/url'",
+      "fingerprint": "sha256:340cc6772a2f9c57"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module router imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/router/trie-router/node.ts",
+      "line": 3,
+      "evidence": "import type { Pattern } from '../../utils/url'",
+      "fingerprint": "sha256:c3e90287831ad531"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module router imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/router/trie-router/node.ts",
+      "line": 4,
+      "evidence": "import { getPattern, splitPath, splitRoutingPath } from '../../utils/url'",
+      "fingerprint": "sha256:3d32abf5d3637705"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module router imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/router/trie-router/router.ts",
+      "line": 2,
+      "evidence": "import { checkOptionalParameter } from '../../utils/url'",
+      "fingerprint": "sha256:cb82eaa03366d129"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: src/types.test.ts",
+      "path": "src/types.test.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:0e2a5bf00d4a5a18"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: src/types.ts",
+      "path": "src/types.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:fbd6b4bb56b5c70b"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit utils publishes the public type Accept outside the module",
+      "path": "src/utils/accept.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:92d50e037435ce25"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit utils publishes the public type Auth outside the module",
+      "path": "src/utils/basic-auth.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:aa2c7a56e1f585aa"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit utils publishes the public type BodyData, ParseBodyOptions outside the module",
+      "path": "src/utils/body.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:27474a1a4a30df9b"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit utils publishes the public type getColorEnabled outside the module",
+      "path": "src/utils/color.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:309e4fa720e899e7"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit utils publishes the public type Pool outside the module",
+      "path": "src/utils/concurrent.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:1ee780d94f6ef9f1"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit utils publishes the public type Cookie, CookieConstraint, CookieOptions, CookiePrefixOptions, SignedCookie outside the module",
+      "path": "src/utils/cookie.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:273eed2863d09e2c"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit utils publishes the public type AcceptHeader, CustomHeader, RequestHeader, ResponseHeader outside the module",
+      "path": "src/utils/headers.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:a32ffcd4dccebc44"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit utils publishes the public type HtmlEscaped, HtmlEscapedCallback, HtmlEscapedString, StringBuffer, StringBufferWithCallbacks outside the module",
+      "path": "src/utils/html.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:f2872e58d7c6fdf4"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit utils publishes the public type ClientErrorStatusCode, ContentfulStatusCode, ContentlessStatusCode, DeprecatedStatusCode, InfoStatusCode, RedirectStatusCode, ServerErrorStatusCode, StatusCode, SuccessStatusCode, UnOfficalStatusCode, UnofficialStatusCode outside the module",
+      "path": "src/utils/http-status.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:2fcd1d37e41261b7"
+    },
+    {
+      "rule": "ACIMA-D005",
+      "severity": "error",
+      "message": "Circular module dependency: helper -> client -> utils -> helper",
+      "path": "src/utils/ipaddr.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:0647323cf08cb0d9"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit utils publishes the public type InvalidIPAddressError outside the module",
+      "path": "src/utils/ipaddr.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:d4af2a4c21c36410"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module utils imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/utils/ipaddr.ts",
+      "line": 6,
+      "evidence": "import type { AddressType } from '../helper/conninfo'",
+      "fingerprint": "sha256:305506eb3b2ba7b9"
+    },
+    {
+      "rule": "ACIMA-D008",
+      "severity": "error",
+      "message": "utils reaches the implementation unit validator transitively through helper.",
+      "path": "src/utils/ipaddr.ts",
+      "line": 6,
+      "evidence": "import type { AddressType } from '../helper/conninfo'",
+      "fingerprint": "sha256:3da0a67cf3f681f8"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit utils publishes the public type AlgorithmTypes, AsymmetricAlgorithm, SignatureAlgorithm, SymmetricAlgorithm outside the module",
+      "path": "src/utils/jwt/jwa.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:a8e2ce441ed00a76"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit utils publishes the public type HonoJsonWebKey, SignatureKey outside the module",
+      "path": "src/utils/jwt/jws.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:cccd80f700108b6c"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module utils imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/utils/jwt/jws.ts",
+      "line": 7,
+      "evidence": "import { getRuntimeKey } from '../../helper/adapter'",
+      "fingerprint": "sha256:956efd41153fa8a5"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit utils publishes the public type TokenHeader, VerifyOptions, VerifyOptionsWithAlg, isTokenHeader outside the module",
+      "path": "src/utils/jwt/jwt.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:6d4511268141523d"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit utils publishes the public type CryptoKeyUsage, JWTPayload, JwtAlgorithmMismatch, JwtAlgorithmNotAllowed, JwtAlgorithmNotImplemented, JwtAlgorithmRequired, JwtHeaderInvalid, JwtHeaderRequiresKid, JwtPayloadRequiresAud, JwtSymmetricAlgorithmNotAllowed, JwtTokenAudience, JwtTokenExpired, JwtTokenInvalid, JwtTokenIssuedAt, JwtTokenIssuer, JwtTokenNotBefore, JwtTokenSignatureMismatched outside the module",
+      "path": "src/utils/jwt/types.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:f048f49dc3adcdfe"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit utils publishes the public type BaseMime outside the module",
+      "path": "src/utils/mime.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:bd9cec3f8e8587ee"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module utils imports the implementation unit request (expected request.contracts).",
+      "path": "src/utils/mount.ts",
+      "line": 2,
+      "evidence": "import { GET_MATCH_RESULT } from '../request/constants'",
+      "fingerprint": "sha256:95f2cae9da714c01"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit utils publishes the public type StreamingApi outside the module",
+      "path": "src/utils/stream.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:d6ccab466904281c"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit utils publishes the public type Equal, Expect, HasRequiredKeys, IfAnyThenEmptyObject, InterfaceToType, InvalidJSONValue, IsAny, JSONArray, JSONObject, JSONParsed, JSONPrimitive, JSONValue, NotEqual, RemoveBlankRecord, RequiredKeysOf, Simplify, SimplifyDeepArray, StringLiteralUnion, UnionToIntersection outside the module",
+      "path": "src/utils/types.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:2f21a03bcd816a84"
+    },
+    {
+      "rule": "ACIMA-L003",
+      "severity": "error",
+      "message": "implementation unit utils publishes the public type Pattern outside the module",
+      "path": "src/utils/url.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:fc7fdb6f0ffa092d"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module validator imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/validator/utils.ts",
+      "line": 2,
+      "evidence": "import type { UnionToIntersection } from '../utils/types'",
+      "fingerprint": "sha256:d849611f61fa1c02"
+    },
+    {
+      "rule": "ACIMA-D008",
+      "severity": "error",
+      "message": "validator reaches the implementation unit utils transitively through utils.",
+      "path": "src/validator/utils.ts",
+      "line": 2,
+      "evidence": "import type { UnionToIntersection } from '../utils/types'",
+      "fingerprint": "sha256:20ea0a8641a34bbc"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module validator imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/validator/validator.test.ts",
+      "line": 16,
+      "evidence": "import type { ContentfulStatusCode, StatusCode } from '../utils/http-status'",
+      "fingerprint": "sha256:ff8193e07bfbf0f9"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module validator imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/validator/validator.test.ts",
+      "line": 17,
+      "evidence": "import type { Equal, Expect } from '../utils/types'",
+      "fingerprint": "sha256:df78f2213d680bd5"
+    },
+    {
+      "rule": "ACIMA-D005",
+      "severity": "error",
+      "message": "Circular module dependency: helper -> client -> validator -> helper",
+      "path": "src/validator/validator.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:99d1694a3e3fed76"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module validator imports the implementation unit helper (expected helper.contracts).",
+      "path": "src/validator/validator.ts",
+      "line": 2,
+      "evidence": "import { getCookie } from '../helper/cookie'",
+      "fingerprint": "sha256:c7c3f57a7760244c"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module validator imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/validator/validator.ts",
+      "line": 5,
+      "evidence": "import type { BodyData } from '../utils/body'",
+      "fingerprint": "sha256:8516c6f3bbd85af0"
+    },
+    {
+      "rule": "ACIMA-D001",
+      "severity": "error",
+      "message": "Module validator imports the implementation unit utils (expected utils.contracts).",
+      "path": "src/validator/validator.ts",
+      "line": 6,
+      "evidence": "import { bufferToFormData } from '../utils/buffer'",
+      "fingerprint": "sha256:6d1a0f2bfb0f46c1"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: vite.config.ts",
+      "path": "vite.config.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:09471636ce4b8473"
+    },
+    {
+      "rule": "ACIMA-G005",
+      "severity": "error",
+      "message": "Source file is not part of any declared unit: vitest.config.ts",
+      "path": "vitest.config.ts",
+      "line": 1,
+      "evidence": "",
+      "fingerprint": "sha256:88204f534b1e04cd"
+    }
+  ]
+}

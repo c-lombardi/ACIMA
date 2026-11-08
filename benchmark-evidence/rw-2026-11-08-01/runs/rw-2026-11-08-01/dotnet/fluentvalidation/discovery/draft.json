@@ -1,0 +1,149 @@
+{
+  "skill": {
+    "name": "acima-adoption",
+    "version": "1.0.2",
+    "standard": "1.0.0-draft.1",
+    "catalogSha256": "125a1a3fc2096a25cf8a849aa701d571e73c6aead977c6f012cf4f60c4b1fe77"
+  },
+  "project": {
+    "path": "/tmp/acima-real-world-benchmark/repositories/dotnet/fluentvalidation/adoption",
+    "mode": "brownfield",
+    "language": "dotnet",
+    "detectedLanguages": [
+      "dotnet",
+      "python"
+    ]
+  },
+  "checks": [
+    {
+      "id": "SKL-001",
+      "status": "pass",
+      "detail": "manifest acima-adoption 1.0.2 loaded",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-002",
+      "status": "pass",
+      "detail": "catalog hash matches the pin (125a1a3fc209\u2026)",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-003",
+      "status": "pass",
+      "detail": "29 rules, all 23 portable ids present",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-004",
+      "status": "pass",
+      "detail": "standard version 1.0.0-draft.1",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-005",
+      "status": "pass",
+      "detail": "8 references and 4 assets present",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-006",
+      "status": "pass",
+      "detail": "every documented enforcer path exists",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-007",
+      "status": "pass",
+      "detail": "4 violation baselines present",
+      "remedy": ""
+    },
+    {
+      "id": "ENV-001",
+      "status": "pass",
+      "detail": "toolchains available: python3, node",
+      "remedy": ""
+    },
+    {
+      "id": "TGT-001",
+      "status": "pass",
+      "detail": "target /tmp/acima-real-world-benchmark/repositories/dotnet/fluentvalidation/adoption",
+      "remedy": ""
+    },
+    {
+      "id": "TGT-002",
+      "status": "pass",
+      "detail": "language dotnet (220 source files; detected: dotnet, python)",
+      "remedy": ""
+    },
+    {
+      "id": "TGT-003",
+      "status": "pass",
+      "detail": "no config and 220 existing source file(s) (mode: brownfield)",
+      "remedy": ""
+    },
+    {
+      "id": "TGT-004",
+      "status": "pass",
+      "detail": "4 candidate unit(s) proposed from the layout",
+      "remedy": ""
+    },
+    {
+      "id": "TGT-005",
+      "status": "warn",
+      "detail": "2 source file(s) fall outside the proposed units",
+      "remedy": "they will be G005 findings until the map covers them"
+    },
+    {
+      "id": "OUT-001",
+      "status": "pass",
+      "detail": "draft written to acima.config.json",
+      "remedy": ""
+    }
+  ],
+  "blockers": [],
+  "warnings": [
+    "TGT-005"
+  ],
+  "findings": {},
+  "proposedUnits": [
+    {
+      "id": "fluentvalidation",
+      "module": "fluentvalidation",
+      "role": "implementation",
+      "paths": [
+        "src/FluentValidation"
+      ]
+    },
+    {
+      "id": "fluentvalidation.dependencyinjectionextensions",
+      "module": "fluentvalidation.dependencyinjectionextensions",
+      "role": "implementation",
+      "paths": [
+        "src/FluentValidation.DependencyInjectionExtensions"
+      ]
+    },
+    {
+      "id": "fluentvalidation.tests",
+      "module": "fluentvalidation.tests",
+      "role": "implementation",
+      "paths": [
+        "src/FluentValidation.Tests"
+      ]
+    },
+    {
+      "id": "fluentvalidation.tests.benchmarks",
+      "module": "fluentvalidation.tests.benchmarks",
+      "role": "implementation",
+      "paths": [
+        "src/FluentValidation.Tests.Benchmarks"
+      ]
+    }
+  ],
+  "next": [
+    "Review the draft at acima.config.json: rename units to domain concepts, then commit it.",
+    "Run the preflight again with the config in place to measure the baseline.",
+    "Write scoped waivers for the baseline, replacing 'unassigned' with owners.",
+    "Gate CI on 'no new findings' at L1; do not fix the architecture first.",
+    "Pick the first slice from references/20-brownfield.md (contracts, not persistence)."
+  ]
+}

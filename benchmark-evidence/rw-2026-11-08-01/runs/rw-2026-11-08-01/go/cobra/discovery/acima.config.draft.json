@@ -1,0 +1,29 @@
+{
+  "_generatedBy": "acima-adoption preflight --write-draft",
+  "_note": "Heuristic draft. Review module names, merge or split units, then commit.",
+  "standard": "1.0.0-draft.1",
+  "language": "go",
+  "level": "L1",
+  "root": ".",
+  "units": [
+    {
+      "id": "doc",
+      "module": "doc",
+      "role": "implementation",
+      "paths": [
+        "doc"
+      ]
+    }
+  ],
+  "exclude": [
+    "bin",
+    "obj",
+    "node_modules",
+    "dist",
+    "build",
+    "target",
+    "tests",
+    "**/__pycache__"
+  ],
+  "waivers": ".acima/waivers.json"
+}
