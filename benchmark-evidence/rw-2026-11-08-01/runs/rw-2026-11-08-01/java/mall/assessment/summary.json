@@ -1,7 +1,0 @@
-{
-  "language": "java",
-  "id": "mall",
-  "findings": null,
-  "executed": false,
-  "reason": "no Java enforcer"
-}

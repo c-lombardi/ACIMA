@@ -88,4 +88,4 @@ yet. Before production adoption:
 - [`portfolio.json`](portfolio.json) — machine-readable rows and totals.
 - [`../ground-truth/classifications.json`](../ground-truth/classifications.json) — adjudications.
 - [`run-manifest.json`](run-manifest.json) — commands, hashes, toolchains.
-- [`../runs/`](../runs/) — raw enforcer output and exit status.
+- `runs/` — raw enforcer output and exit status; archived in git history (see the [directory README](../../README.md)).

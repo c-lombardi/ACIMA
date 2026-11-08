@@ -99,12 +99,12 @@ A gate is not marked PASS because code exists. Its required evidence must be pre
 
 ## Versioning and change control
 
-- The standard version is `1.0.0-draft.1`; the skill version is `1.2.3`.
+- The standard version is `1.0.0-draft.1`; the skill version is `1.2.5`.
 - Rule IDs are never renumbered. A meaning change requires a catalog version change,
   a skill re-pin, conformance updates and a migration note.
 - Exclusion and glob semantics are consumer contracts. Changes require positive,
   negative, boundary and adversarial fixtures.
-- Benchmark evidence is immutable. A rerun is published in a new dated directory.
+- Benchmark evidence is immutable: headline results are versioned in the repository, raw per-repository artifacts are archived in git history, and a rerun is published in a new dated directory.
 - This contract is reviewed whenever a release gate moves or a supported-language
   claim changes.
 

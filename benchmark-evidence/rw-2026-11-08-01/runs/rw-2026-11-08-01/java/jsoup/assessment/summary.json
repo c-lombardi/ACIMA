@@ -1,7 +1,0 @@
-{
-  "language": "java",
-  "id": "jsoup",
-  "findings": null,
-  "executed": false,
-  "reason": "no Java enforcer"
-}

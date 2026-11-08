@@ -1,7 +1,0 @@
-{
-  "language": "java",
-  "id": "gson",
-  "findings": null,
-  "executed": false,
-  "reason": "no Java enforcer"
-}

@@ -1,5 +1,7 @@
 # ACIMA real-world benchmark — `rw-2026-11-08-02`
 
+> Raw per-repository artifacts for this run are archived in git history (commit 5c74eb4); this tree keeps the headline results, ground truth and configs. See the [directory README](../README.md).
+
 Rerun of the 15-repository real-world benchmark against the current reference
 enforcers at L1. Twelve repositories were assessed; the three Java repositories
 remain blocked because there is still no Java enforcer.

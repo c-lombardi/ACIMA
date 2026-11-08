@@ -6,8 +6,8 @@ compatibility: Python 3.9+ for the preflight script. The target language toolcha
 allowed-tools: Read Grep Glob Bash Edit Write
 metadata:
   standard: "1.0.0-draft.1"
-  skill-version: "1.2.4"
-  catalog-sha256: "a774bea1de2096bb16f7b029cbc7f09c27ebe4bbc27cab50a98fc680fc408a32"
+  skill-version: "1.2.5"
+  catalog-sha256: "59586eb75f3f1c2f277e07ffbe847aaae8764eaf9572df7f515392306e7cb216"
 ---
 
 # ACIMA adoption

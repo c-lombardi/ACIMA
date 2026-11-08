@@ -1,5 +1,7 @@
 # ACIMA real-world benchmark — `rw-2026-11-08-03`
 
+> Raw per-repository artifacts for this run are archived in git history (commit 5c74eb4); this tree keeps the headline results, ground truth and configs. See the [directory README](../README.md).
+
 Mechanical rerun of the pinned 15-repository benchmark against the current reference
 enforcers. This run preserves `rw-2026-11-08-01` and `rw-2026-11-08-02` unchanged.
 

@@ -1,0 +1,60 @@
+"""Keep documentation honest: internal links resolve and the human rule catalog matches the machine catalog.
+
+Both checks guard the same failure: a second copy of the truth that drifts. The machine catalog
+(`tools/acima-spec/rules.json`) is authoritative; `docs/rules/index.md` is its human form, and a
+broken relative link is how a reader ends up in a document that no longer describes the build.
+"""
+from __future__ import annotations
+
+import json
+import re
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv"}
+FENCED = re.compile(r"```.*?```", re.DOTALL)
+INLINE_CODE = re.compile(r"`[^`\n]*`")
+LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+?)(?:\s+\"[^\"]*\")?\)")
+REMOTE = ("http://", "https://", "mailto:", "#")
+TABLE_ROW = re.compile(
+    r"^\|\s*`([DLCAG]\d{3})`\s*\|\s*([^|]+?)\s*\|\s*(error|warning|info)\s*\|\s*(L[123])\s*\|",
+    re.MULTILINE,
+)
+
+
+def markdown_files() -> list[Path]:
+    return [path for path in sorted(ROOT.rglob("*.md"))
+            if not any(part in SKIP_DIRS for part in path.relative_to(ROOT).parts)]
+
+
+class DocumentationIntegrityTests(unittest.TestCase):
+    def test_internal_markdown_links_resolve(self) -> None:
+        broken: list[str] = []
+        for path in markdown_files():
+            text = path.read_text(encoding="utf-8")
+            text = INLINE_CODE.sub("", FENCED.sub("", text))
+            for target in LINK.findall(text):
+                if target.startswith(REMOTE):
+                    continue
+                target = target.split("#", 1)[0].split("?", 1)[0]
+                if not target:
+                    continue
+                if not (path.parent / target).resolve().exists():
+                    broken.append(f"{path.relative_to(ROOT).as_posix()} -> {target}")
+        self.assertEqual(sorted(broken), [], "broken internal links:\n" + "\n".join(sorted(broken)))
+
+    def test_rule_index_matches_the_catalog(self) -> None:
+        catalog = json.loads((ROOT / "tools/acima-spec/rules.json").read_text(encoding="utf-8"))
+        expected = {(rule["id"].split("-", 1)[1], rule["severity"], rule["level"])
+                    for rule in catalog["rules"]}
+        text = (ROOT / "docs/rules/index.md").read_text(encoding="utf-8")
+        documented = {(match[0], match[2], match[3]) for match in TABLE_ROW.findall(text)}
+        self.assertEqual(sorted(expected - documented), [],
+                         "rules missing from docs/rules/index.md")
+        self.assertEqual(sorted(documented - expected), [],
+                         "docs/rules/index.md lists rules that are not in the catalog")
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,16 +1,12 @@
 # Agent skills
 
-Skills in this repository are portable instructions for coding agents (Claude Code, Codex,
-Cursor, and anything that reads a `SKILL.md`). Each skill is a directory with a `SKILL.md` entry
-point, optional `references/` loaded on demand, deterministic `scripts/`, and `assets/` templates.
+Portable instructions for coding agents (Claude Code, Codex, Cursor, and anything that reads a `SKILL.md`). ACIMA ships one skill because adoption is the part of the standard that needs judgement: reading an existing architecture, proposing boundaries, and knowing when to stop.
 
 | Skill | Use it for |
 |---|---|
-| [`acima-adoption`](acima-adoption/SKILL.md) | applying, auditing and governing ACIMA in a greenfield or brownfield repository |
+| [`acima-adoption`](acima-adoption/README.md) | assessing, adopting, and maintaining ACIMA in a greenfield or brownfield repository |
 
-## Installing a skill
-
-Copy or symlink the skill directory into the location your agent reads:
+## Install
 
 ```bash
 # Claude Code, project scope
@@ -20,12 +16,17 @@ mkdir -p .claude/skills && cp -R skills/acima-adoption .claude/skills/
 cp -R skills/acima-adoption ~/.claude/skills/
 ```
 
-Other agents: point them at `skills/acima-adoption/SKILL.md` and allow them to read the
-directory. The skill itself needs only Python 3.9+ for its preflight.
+Other agents: point them at `acima-adoption/SKILL.md` and allow them to read that directory. The skill needs only Python 3.9+ for its preflight.
+
+## How the skill relates to the other layers
+
+- It **reads** the standard ([`../docs/`](../docs/README.md)) and never redefines it.
+- It **runs** the enforcers ([`../examples/`](../examples/README.md)) and reports their findings verbatim.
+- It is **not** the authority on conformance: [`../conformance/`](../conformance/README.md) computes the claim class, and `SKILL.md` says so explicitly.
+
+`manifest.json` pins the rule catalog hash and the skill version. When the catalog changes, the preflight blocks until the skill is re-calibrated — a skill that silently follows a moving standard gives confident, outdated advice.
 
 ## Conventions
 
-- `SKILL.md` is the only required file and stays under ~500 lines; depth lives in `references/`.
-- `manifest.json` pins the rule catalog hash, standard version and enforcer paths the skill was
-  written against. The preflight fails when the standard moves, so advice cannot go stale silently.
-- Scripts are read-only by default, stdlib-only, and exit `0` ready / `1` blocked / `2` tool failure.
+- `SKILL.md` is the only required file; depth lives in `references/`, loaded on demand.
+- Scripts are read-only by default, standard-library only, and exit `0` ready / `1` blocked / `2` tool failure.

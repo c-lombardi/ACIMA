@@ -1,5 +1,7 @@
 # ACIMA real-world benchmark evidence — rw-2026-11-08-01
 
+> Raw per-repository artifacts for this run are archived in git history (commit 5c74eb4); this tree keeps the headline results, ground truth and configs. See the [directory README](../README.md).
+
 This directory preserves the external benchmark run requested on 2026-11-08.
 
 ## Scope

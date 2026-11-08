@@ -84,7 +84,7 @@ The skill is designed to work with Claude Code, Codex, Cursor, and other coding 
 
 **The agent helps apply the architecture. The enforcement tools verify supported requirements. Human owners remain responsible for architectural decisions and exceptions.**
 
-See the [ACIMA adoption skill](skills/acima-adoption/SKILL.md).
+See the [ACIMA adoption skill](skills/acima-adoption/README.md) and its agent instructions, [`SKILL.md`](skills/acima-adoption/SKILL.md).
 
 ## Related architectures, methodologies, and tools
 
@@ -184,7 +184,7 @@ python3 conformance/run.py
 
 This runs the available conformance suites and checks their results against the documented violation fixtures.
 
-See the [language profiles](docs/) and [conformance implementation](conformance/) for language-specific instructions.
+See the [language profiles](docs/languages/index.md) and [conformance implementation](conformance/README.md) for language-specific instructions.
 
 ## Language support and project status
 
@@ -224,12 +224,12 @@ Give coding agents a documented architectural standard and an adoption workflow 
 
 ## Documentation and resources
 
-- [Architectural standard](docs/)
-- [Principles and rules](docs/)
+- [Architectural standard](docs/README.md)
+- [Principles and rules](docs/rules/README.md)
 - [ACIMA adoption skill](skills/acima-adoption/)
 - [Skill installation and usage](skills/README.md)
-- [Reference implementations](examples/)
-- [Conformance tests](conformance/)
+- [Reference implementations](examples/README.md)
+- [Conformance tests](conformance/README.md)
 
 ## Contributing
 

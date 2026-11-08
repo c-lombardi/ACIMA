@@ -51,7 +51,7 @@ class DocumentationContractTests(unittest.TestCase):
         skill = read("skills/acima-adoption/SKILL.md")
         self.assertIn("PARTIAL ASSESSMENT", skill)
         self.assertIn("service-topology", skill)
-        self.assertIn("1.2.4", skill)
+        self.assertIn(json.loads(read("skills/acima-adoption/manifest.json"))["skillVersion"], skill)
 
     def test_l2_counts_in_the_template_match_the_catalog(self) -> None:
         catalog = json.loads(read("tools/acima-spec/rules.json"))["rules"]
@@ -114,7 +114,7 @@ class DocumentationContractTests(unittest.TestCase):
         digest = hashlib.sha256(catalog_bytes).hexdigest()
         manifest = json.loads(read("skills/acima-adoption/manifest.json"))
         self.assertEqual(manifest["catalog"]["sha256"], digest)
-        self.assertEqual(manifest["skillVersion"], "1.2.4")
+        self.assertIn(manifest["skillVersion"], read("skills/acima-adoption/SKILL.md"))
         self.assertIn(digest, read("skills/acima-adoption/SKILL.md"))
 
     def test_glossary_uses_current_greenfield_and_module_definitions(self) -> None:
