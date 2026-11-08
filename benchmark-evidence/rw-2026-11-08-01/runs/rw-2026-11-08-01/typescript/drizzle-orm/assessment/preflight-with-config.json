@@ -1,0 +1,171 @@
+{
+  "skill": {
+    "name": "acima-adoption",
+    "version": "1.0.2",
+    "standard": "1.0.0-draft.1",
+    "catalogSha256": "125a1a3fc2096a25cf8a849aa701d571e73c6aead977c6f012cf4f60c4b1fe77"
+  },
+  "project": {
+    "path": "/tmp/acima-real-world-benchmark/repositories/typescript/drizzle-orm/adoption",
+    "mode": "adopting",
+    "language": "typescript",
+    "detectedLanguages": [
+      "typescript"
+    ]
+  },
+  "checks": [
+    {
+      "id": "SKL-001",
+      "status": "pass",
+      "detail": "manifest acima-adoption 1.0.2 loaded",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-002",
+      "status": "pass",
+      "detail": "catalog hash matches the pin (125a1a3fc209\u2026)",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-003",
+      "status": "pass",
+      "detail": "29 rules, all 23 portable ids present",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-004",
+      "status": "pass",
+      "detail": "standard version 1.0.0-draft.1",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-005",
+      "status": "pass",
+      "detail": "8 references and 4 assets present",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-006",
+      "status": "pass",
+      "detail": "every documented enforcer path exists",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-007",
+      "status": "pass",
+      "detail": "4 violation baselines present",
+      "remedy": ""
+    },
+    {
+      "id": "ENV-001",
+      "status": "pass",
+      "detail": "toolchains available: python3, node",
+      "remedy": ""
+    },
+    {
+      "id": "TGT-001",
+      "status": "pass",
+      "detail": "target /tmp/acima-real-world-benchmark/repositories/typescript/drizzle-orm/adoption",
+      "remedy": ""
+    },
+    {
+      "id": "TGT-002",
+      "status": "pass",
+      "detail": "language typescript (972 source files; detected: typescript)",
+      "remedy": ""
+    },
+    {
+      "id": "TGT-003",
+      "status": "pass",
+      "detail": "acima.config.json present (mode: adopting)",
+      "remedy": ""
+    },
+    {
+      "id": "GOV-001",
+      "status": "pass",
+      "detail": "10 units declared at L1",
+      "remedy": ""
+    },
+    {
+      "id": "GOV-002",
+      "status": "warn",
+      "detail": "baseline is not clean: 53 finding(s), 53 error(s)",
+      "remedy": "this is expected on day one: waive deliberately, then ratchet"
+    },
+    {
+      "id": "GOV-003",
+      "status": "fail",
+      "detail": "waivers file missing: .acima/waivers.json",
+      "remedy": "create it with an empty waivers array, or fix the path"
+    }
+  ],
+  "blockers": [
+    "GOV-003"
+  ],
+  "warnings": [
+    "GOV-002"
+  ],
+  "findings": {
+    "total": 53,
+    "errors": 53,
+    "byRule": {
+      "ACIMA-L001": 52,
+      "ACIMA-G001": 1
+    },
+    "byPath": {
+      "drizzle-kit/build.dev.ts": 2,
+      "drizzle-kit/build.ts": 2,
+      "drizzle-kit/src/cli/connections.ts": 2,
+      "drizzle-kit/src/serializer/studio.ts": 2,
+      ".acima/waivers.json": 1,
+      "drizzle-kit/src/cli/validations/outputs.ts": 1,
+      "drizzle-kit/src/index.ts": 1,
+      "drizzle-kit/src/serializer/pgSchema.ts": 1,
+      "drizzle-orm/src/column-builder.ts": 1,
+      "drizzle-orm/src/knex/index.ts": 1,
+      "drizzle-orm/src/mysql2/driver.ts": 1,
+      "drizzle-orm/src/mysql2/session.ts": 1,
+      "drizzle-orm/src/neon-http/driver.ts": 1,
+      "drizzle-orm/src/neon-http/session.ts": 1,
+      "drizzle-orm/src/netlify-db/driver.ts": 1,
+      "drizzle-orm/src/netlify-db/session.ts": 1,
+      "drizzle-orm/src/node-postgres/driver.ts": 1,
+      "drizzle-orm/src/node-postgres/session.ts": 1,
+      "drizzle-orm/src/pg-core/columns/common.ts": 1,
+      "drizzle-orm/src/pg-core/query-builders/delete.ts": 1,
+      "drizzle-orm/src/pg-core/query-builders/insert.ts": 1,
+      "drizzle-orm/src/pg-core/query-builders/query.ts": 1,
+      "drizzle-orm/src/pg-core/query-builders/raw.ts": 1,
+      "drizzle-orm/src/pg-core/query-builders/refresh-materialized-view.ts": 1,
+      "drizzle-orm/src/pg-core/query-builders/select.ts": 1,
+      "drizzle-orm/src/pg-core/query-builders/select.types.ts": 1,
+      "drizzle-orm/src/pg-core/query-builders/update.ts": 1,
+      "drizzle-orm/src/pg-core/subquery.ts": 1,
+      "drizzle-orm/src/pg-core/table.ts": 1,
+      "drizzle-orm/src/pg-core/view.ts": 1,
+      "drizzle-orm/src/prisma/mysql/driver.ts": 1,
+      "drizzle-orm/src/prisma/pg/driver.ts": 1,
+      "drizzle-orm/src/prisma/sqlite/driver.ts": 1,
+      "drizzle-orm/src/singlestore/driver.ts": 1,
+      "drizzle-orm/src/singlestore/session.ts": 1,
+      "drizzle-orm/type-tests/knex/index.ts": 1,
+      "drizzle-orm/type-tests/kysely/index.ts": 1,
+      "drizzle-orm/type-tests/mysql/db-rel.ts": 1,
+      "drizzle-orm/type-tests/pg/db-rel.ts": 1,
+      "drizzle-orm/type-tests/pg/db.ts": 1,
+      "drizzle-orm/type-tests/pg/delete.ts": 1,
+      "drizzle-orm/type-tests/pg/insert.ts": 1,
+      "drizzle-orm/type-tests/pg/other.ts": 1,
+      "drizzle-orm/type-tests/pg/tables.ts": 1,
+      "drizzle-orm/type-tests/pg/update.ts": 1,
+      "integration-tests/js-tests/driver-init/commonjs/mysql2.test.cjs": 1,
+      "integration-tests/js-tests/driver-init/commonjs/node-pg.test.cjs": 1,
+      "integration-tests/js-tests/driver-init/module/mysql2.test.mjs": 1,
+      "integration-tests/js-tests/driver-init/module/node-pg.test.mjs": 1
+    }
+  },
+  "proposedUnits": [],
+  "next": [
+    "Resolve GOV-003: create it with an empty waivers array, or fix the path"
+  ]
+}

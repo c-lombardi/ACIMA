@@ -71,9 +71,9 @@ import type { ProductView } from '../src/catalog/contracts/index.ts';
 `catalog.contracts`, Catalog cannot version without recompiling Orders, and the two contract
 packages must always be released together. That is not independent evolution.
 
-**Instead.** Use identity (`ProductId`), or duplicate the two or three fields you actually
-need, or (in a legacy repository) move the value type into the shared kernel. The default declares it
-locally instead.
+**Instead.** Use identity (`ProductId`) or duplicate the two or three fields you actually need in
+`orders.contracts`. The default declares value types locally; a shared kernel is a legacy migration
+allowance, not a new-contract option.
 
 ### `ACIMA-D004` — contracts depend on a third-party package
 

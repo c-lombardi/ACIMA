@@ -1,8 +1,11 @@
 /**
  * Payments' public surface: a port, a request and a result. No framework types, no money
- * arithmetic, no persistence.
+ * arithmetic beyond the contract value type, no persistence.
  */
-import type { Money, OrderId, PaymentId } from '../../shared-kernel/money.ts';
+import type { Money, OrderId, PaymentId } from './values.ts';
+
+export { Money, paymentId } from './values.ts';
+export type { Currency, OrderId, PaymentId, ProductId } from './values.ts';
 
 /** Command: authorize this amount for this order. */
 export interface PaymentRequest {

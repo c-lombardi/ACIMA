@@ -1,18 +1,16 @@
 // Package catalogcontracts is Catalog's complete public surface.
-// It imports only the shared kernel.
+// It imports nothing outside the standard library.
 package catalogcontracts
-
-import "acima.example/internal/sharedkernel"
 
 // ProductView is a purchasable product as other modules see it.
 type ProductView struct {
-	ID    sharedkernel.ProductID
+	ID    ProductID
 	Name  string
-	Price sharedkernel.Money
+	Price Money
 }
 
 // Reader is the capability Catalog promises.
 type Reader interface {
-	Get(id sharedkernel.ProductID) (ProductView, bool)
+	Get(id ProductID) (ProductView, bool)
 	All() []ProductView
 }

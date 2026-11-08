@@ -2,18 +2,17 @@ package orders
 
 import (
 	orderscontracts "acima.example/internal/orders/contracts"
-	"acima.example/internal/sharedkernel"
 )
 
 // order is the aggregate. Mutable on purpose: immutability is a boundary rule.
 type order struct {
-	id       sharedkernel.OrderID
+	id       orderscontracts.OrderID
 	customer string
 	lines    []orderscontracts.OrderLine
-	total    sharedkernel.Money
+	total    orderscontracts.Money
 }
 
-func newOrder(id sharedkernel.OrderID, customer string, zero sharedkernel.Money) *order {
+func newOrder(id orderscontracts.OrderID, customer string, zero orderscontracts.Money) *order {
 	return &order{id: id, customer: customer, total: zero}
 }
 
@@ -34,5 +33,5 @@ func (o *order) add(line orderscontracts.OrderLine) error {
 func (o *order) summary() orderscontracts.Summary {
 	lines := make([]orderscontracts.OrderLine, len(o.lines))
 	copy(lines, o.lines)
-	return orderscontracts.Summary{ID: o.id, CustomerID: o.customer, Lines: lines, Total: o.total}
+	return orderscontracts.NewSummary(o.id, o.customer, lines, o.total)
 }

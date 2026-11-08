@@ -1,8 +1,11 @@
 /**
- * Orders' public surface. Zero dependencies beyond the shared kernel: no catalog types,
+ * Orders' public surface. Zero external dependencies: no catalog types,
  * no payments types, no framework. Identity only, so the price is frozen at placement time.
  */
-import type { Money, OrderId, ProductId } from '../../shared-kernel/money.ts';
+import type { Money, OrderId, ProductId } from './values.ts';
+
+export { Money, orderId, productId } from './values.ts';
+export type { Currency, PaymentId } from './values.ts';
 
 /** One product in one order. `unitPrice` is captured when the order is placed. */
 export interface OrderLine {

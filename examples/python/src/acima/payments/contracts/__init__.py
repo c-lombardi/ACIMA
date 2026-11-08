@@ -1,17 +1,25 @@
-"""Payments' public surface: a gateway port, a request, a result, an event."""
+"""Payments' public surface: a gateway port, a request, a result, an event.
+
+The identifiers and money are Payments' own contract vocabulary; the caller maps its
+order and amount into them when it crosses the boundary.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Protocol
 
-from acima.shared_kernel import Money, OrderId, PaymentId
+from .values import Currency, Money, OrderId, PaymentId, ProductId
 
 __all__ = [
+    "Currency",
+    "Money",
+    "OrderId",
     "PaymentAuthorized",
     "PaymentDeclined",
     "PaymentGateway",
     "PaymentId",
     "PaymentRequest",
+    "ProductId",
 ]
 
 

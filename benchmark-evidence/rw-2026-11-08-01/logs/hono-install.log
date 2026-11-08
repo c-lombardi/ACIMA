@@ -1,0 +1,55 @@
+Scope: all 9 workspace projects
+? Verifying lockfile against supply-chain policies (1070 entries)...
+Update available! 12.6.0 → 12.18.0.
+Changelog: https://pnpm.io/v/12.18.0
+To update, run: curl -fsSL https://get.pnpm.io/install.sh | sh -
+Downloading @voidzero-dev/vite-plus-linux-x64-gnu@1.0.0: 0.00 B/13.40 MB
+Packages are hard linked from the content-addressable store to the virtual store.
+  Content-addressable store is at: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.local/share/pnpm/store/v11
+  Virtual store is at:             node_modules/.pnpm
+Downloading @oxlint/binding-linux-x64-gnu@1.85.0: 0.00 B/6.53 MB
+Downloading @bytecodealliance/componentize-js@0.19.3: 0.00 B/8.11 MB
+Downloading @img/sharp-libvips-linux-x64@1.2.4: 0.00 B/7.53 MB
+Downloading @bytecodealliance/wizer-linux-x64@7.0.5: 0.00 B/6.49 MB
+Downloading @cloudflare/workerd-linux-64@1.20260701.1: 0.00 B/37.27 MB
+Downloading @fastly/js-compute@3.46.0: 0.00 B/16.09 MB
+Downloading @oxlint-tsgolint/linux-x64@7.0.2003: 0.00 B/7.77 MB
+Downloading @rolldown/binding-linux-x64-gnu@1.2.10: 0.00 B/7.93 MB
+Downloading @andreiltd/componentize-qjs-binding-linux-x64-gnu@0.4.5: 0.00 B/12.88 MB
+Downloading @typescript/native-preview-linux-x64@7.0.0-dev.20260210.1: 0.00 B/9.34 MB
+Downloading @typescript/typescript-linux-x64@7.0.2: 0.00 B/9.66 MB
+Downloading @bytecodealliance/wizer-linux-x64@10.0.0: 0.00 B/8.18 MB
+Downloading binaryen@130.0.0: 0.00 B/22.17 MB
+Downloading @bytecodealliance/componentize-js@0.22.0: 0.00 B/12.27 MB
+Progress: resolved 722, reused 0, downloaded 717, added 704
+✓ Lockfile passes supply-chain policies (1070 entries in 2.7s)
+Lockfile is up to date, resolution step is skipped
+Packages: +722
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 722, reused 0, downloaded 719, added 722, done
+
+devDependencies:
++ @hono/node-server 2.1.1
++ @types/jsdom 21.1.7
++ @types/node 24.13.6
++ @types/ws 8.18.1
++ @typescript/native-preview 7.0.0-dev.20260210.1
++ @vitest/coverage-v8 5.0.1
++ bun-types 1.4.2
++ editorconfig-checker 6.2.0
++ esbuild 0.27.7
++ jsdom 22.1.0
++ msw 2.15.0
++ np 11.2.1
++ pkg-pr-new 0.0.53
++ publint 0.3.15
++ rolldown 1.2.10
++ typescript 6.0.3
++ vite-plugin-fastly-js-compute 0.4.2
++ vite-plus 1.0.0
++ vitest 5.0.1
++ wrangler 4.107.0
++ ws 8.21.3
++ zod 3.25.76
+
+Done in 3.4s using pnpm v12.6.0

@@ -17,9 +17,10 @@ units.
 
 **Cause:** correct behaviour. That is the baseline, not a failure.
 
-**Action:** do not fix them. Write waivers per `(rule, unit)`, name owners, set 90-day expiries,
-gate on new findings only. If the count is in the thousands, the unit map is too coarse — split
-by bounded context first (`20-brownfield.md`, "Large / monorepo").
+**Action:** do not fix them. Write one waiver per exact finding fingerprint, scoped to the owning
+unit/path, name owners, set 90-day expiries, and gate on new findings only. If the count is in the
+thousands, the unit map is too coarse — split by bounded context first (`20-brownfield.md`,
+"Large / monorepo").
 
 ## A rule fires on a design the team considers correct
 

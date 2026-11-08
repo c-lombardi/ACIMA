@@ -1,0 +1,5 @@
+{
+  "repository": "jsoup",
+  "status": "blocked",
+  "reason": "no Java reference enforcer"
+}

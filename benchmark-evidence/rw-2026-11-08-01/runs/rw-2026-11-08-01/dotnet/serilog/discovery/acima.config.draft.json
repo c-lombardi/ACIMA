@@ -1,0 +1,69 @@
+{
+  "_generatedBy": "acima-adoption preflight --write-draft",
+  "_note": "Heuristic draft. Review module names, merge or split units, then commit.",
+  "standard": "1.0.0-draft.1",
+  "language": "dotnet",
+  "level": "L1",
+  "root": ".",
+  "units": [
+    {
+      "id": "serilog",
+      "module": "serilog",
+      "role": "implementation",
+      "paths": [
+        "src/Serilog"
+      ]
+    },
+    {
+      "id": "aottestapp",
+      "module": "aottestapp",
+      "role": "implementation",
+      "paths": [
+        "test/AotTestApp"
+      ]
+    },
+    {
+      "id": "serilog.approvaltests",
+      "module": "serilog.approvaltests",
+      "role": "implementation",
+      "paths": [
+        "test/Serilog.ApprovalTests"
+      ]
+    },
+    {
+      "id": "serilog.performancetests",
+      "module": "serilog.performancetests",
+      "role": "implementation",
+      "paths": [
+        "test/Serilog.PerformanceTests"
+      ]
+    },
+    {
+      "id": "serilog.tests",
+      "module": "serilog.tests",
+      "role": "implementation",
+      "paths": [
+        "test/Serilog.Tests"
+      ]
+    },
+    {
+      "id": "testdummies",
+      "module": "testdummies",
+      "role": "implementation",
+      "paths": [
+        "test/TestDummies"
+      ]
+    }
+  ],
+  "exclude": [
+    "bin",
+    "obj",
+    "node_modules",
+    "dist",
+    "build",
+    "target",
+    "tests",
+    "**/__pycache__"
+  ],
+  "waivers": ".acima/waivers.json"
+}

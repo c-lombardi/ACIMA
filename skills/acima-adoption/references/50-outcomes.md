@@ -64,10 +64,13 @@ are dependency-free, and every exception has an owner and an expiry. *Evidence:*
 waiver report.
 
 **L2 — Immutable.** Contracts are frozen data with no behaviour, no framework types, no mutable
-collections, and the reviewed API baseline matches. *Evidence:* L2 run + API baseline diff.
+collections, and the reviewed API baseline matches. *Evidence:* L2 automated run plus manual
+artifacts for `C003`, `C007` and `G004`; the API baseline diff is an artifact, not a green run.
 
 **L3 — Autonomous.** Each module owns its persistence and configuration, modules do not share
-mutable statics, and consumers pin contracts versions. *Evidence:* L3 run + schema ownership map.
+mutable statics, and consumers pin contracts versions. *Evidence:* L3 automated run plus manual
+artifacts for `A002` and `A004`, a schema ownership map, a configuration namespace map, and runtime
+grant evidence where the claim is operational autonomy.
 
 A level is claimed per repository, per commit. It expires when the commit changes; the CI artefact
 is what keeps it current.
@@ -109,7 +112,9 @@ becomes a tax with a standup.
 
 ## Self-certification
 
-Use the template in `docs/standard/08-conformance.md` §8.5 verbatim. It asks for the run, the
-artefact, the waiver report, the pipeline and the last verified commit. If any line is empty, the
-repository is not conformant — it is in progress, which is a perfectly good thing to be, as long
-as it is labelled accurately.
+Use the template in `docs/standard/08-conformance.md` §8.5. It asks for the run, the artefact, the
+waiver report, the pipeline and the last verified commit. The executed count must be derived from
+the catalog; the reference portable enforcers do not execute `L004`, `C003`, `C007`, `G004`,
+`A002` or `A004`. If any required line is empty, or a required rule is `executed:false`, the
+repository is a **partial assessment**, not fully conformant. That is a perfectly good thing to be,
+as long as it is labelled accurately.

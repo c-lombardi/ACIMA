@@ -1,5 +1,3 @@
-using Acima.SharedKernel;
-
 namespace Acima.Payments.Contracts;
 
 /// <summary>Asks the gateway to authorize an amount for an order.</summary>

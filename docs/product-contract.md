@@ -1,0 +1,109 @@
+# ACIMA product contract
+
+Status: **technical preview, version `1.0.0-draft.1`** (2026-11-08).
+
+This document states what ACIMA promises consumers today, what it does not promise,
+and what evidence supports the release disposition. It is subordinate to the
+normative standard in `docs/standard/` and the rule catalog in
+`tools/acima-spec/rules.json`; where they conflict, the standard and catalog win.
+
+## What ACIMA does
+
+ACIMA makes declared architectural boundaries executable:
+
+- a **unit map** names modules, units, roles and paths;
+- **contracts** are the only cross-module surface; implementations, persistence,
+  configuration and statics are private;
+- enforcers evaluate the portable rules and emit deterministic findings;
+- **waivers** record owned, expiring, fingerprinted exceptions;
+- a **library/framework profile** classifies declared public API and intentional
+  adapter edges without deleting them from the report;
+- the **agent skill** preflights, proposes units, measures a baseline and helps an
+  agent work within the boundaries.
+
+## Supported today
+
+| Area | Supported | Evidence / limit |
+|---|---|---|
+| Python | 23 portable rules; reference enforcer | Source and AST analysis, not type-checking |
+| TypeScript | 23 portable rules; reference enforcer | Source-text analysis, not type-checking |
+| Go | 23 portable rules; reference enforcer | Source and import analysis, not `go/parser` |
+| C#/.NET | 23 portable rules; reference enforcer; library profile | Source and MSBuild-evaluated project metadata, not assembly loading |
+| Java | Profile only | No reference enforcer; a selected Java assessment fails closed |
+| Six semantic rules | Normative, not executable | `C003`, `C007`, `L004`, `A002`, `A004`, `G004` are reported as not executed |
+| Brownfield adoption | Preflight, draft units, baseline waivers, ratchet guidance | Unit names and owners require human confirmation |
+| AI agent skill | Pinned catalog, preflight, assessment validation, playbooks | No independent adversarial evaluation yet |
+
+### Consumer contract
+
+A consumer may rely on the following for the four implemented enforcers:
+
+1. **Deterministic output.** Findings are ordered by path, line and rule; fingerprints
+   are stable for the same rule, path and evidence.
+2. **Explicit assessment identity.** JSON reports include the standard, level, source
+   file count, profile summary, execution map, classified entries and findings.
+3. **Visible completeness.** Every catalog rule appears in `execution`; every
+   `executed: false` entry has a reason. A rule that did not execute is not a pass.
+4. **Exit codes.** `0` means no unwaived error findings at the selected level, `1`
+   means findings, and `2` means the tool or configuration could not run.
+5. **Finding shape.** A finding has `rule`, `severity`, `message`, `path`, `line`,
+   `evidence` and `fingerprint`. Classified entries are reported separately and keep
+   their owner and reason.
+6. **Waiver control.** A waiver needs a rule, scope, owner, reason, fingerprint,
+   expiry and review date. Broad or fingerprint-less waivers are rejected.
+7. **Scope control.** Literal exclusions match a file or directory subtree, not an
+   arbitrary sibling prefix. Globs remain globs; bare segments retain legacy
+   any-directory matching.
+8. **Calibration.** The adoption skill’s manifest pins the catalog SHA-256 and the
+   portable rule IDs. A mismatch blocks the skill rather than silently changing scope.
+
+### Known contract gaps
+
+- Path-glob semantics are **not yet uniform** across the reference enforcers. The
+  .NET enforcer treats `**/` as zero or more directories; Python, TypeScript and Go
+  retain their library-specific glob behavior. Portable profiles should use explicit
+  paths or verify the pattern in the target enforcer.
+- The four enforcers are source-text/heuristic analysis. They do not prove runtime
+  isolation, type correctness, framework behavior or every indirect dependency.
+- The published benchmark (`rw-2026-11-08-02`) predates the current exclusion,
+  catalog and .NET fixes. It must be rerun before portfolio-level claims are updated.
+- No hosted CI run or independent reviewer has validated this revision.
+
+## What ACIMA does not promise
+
+- Support for Java, or for any language without a reference enforcer.
+- Detection of the six semantic/non-portable rules listed above.
+- Automatic discovery of the correct architecture, module ownership or exceptions.
+- Replacement for architecture review, engineering judgement or design authority.
+- Proof that a zero-finding assessment is correct; zero findings require a complete
+  run, non-zero source count, execution coverage and controlled violation injection.
+- A health score, trend dashboard, hosted service or organizational metrics.
+- Compatibility guarantees beyond the documented versioning policy; this is a draft.
+
+## Release gates
+
+| Gate | Status | What is missing |
+|---|---|---|
+| Public technical preview | **PARTIAL** | Independent review/CI, full benchmark rerun, Java decision, application-oriented validation, portable glob contract |
+| Public beta | **BLOCKED** | Complete rule coverage, application validation, independent pilots, skill adversarial coverage, trustworthy completeness across wrappers |
+| General availability | **BLOCKED** | Independent finding-quality evaluation, reproducible application/library benchmarks, organizational adoption, reviewed security/supply-chain posture |
+
+A gate is not marked PASS because code exists. Its required evidence must be present.
+
+## Versioning and change control
+
+- The standard version is `1.0.0-draft.1`; the skill version is `1.2.3`.
+- Rule IDs are never renumbered. A meaning change requires a catalog version change,
+  a skill re-pin, conformance updates and a migration note.
+- Exclusion and glob semantics are consumer contracts. Changes require positive,
+  negative, boundary and adversarial fixtures.
+- Benchmark evidence is immutable. A rerun is published in a new dated directory.
+- This contract is reviewed whenever a release gate moves or a supported-language
+  claim changes.
+
+## Reporting a problem
+
+Include the enforcer and version, target language/profile, config, raw JSON (not a
+terminal capture), exit code, source count, execution map and a minimal reproduction.
+An invalid, truncated or unsupported assessment must be reported as such, not as a
+clean architecture.

@@ -1,0 +1,6 @@
+go: downloading github.com/cpuguy83/go-md2man/v2 v2.0.6
+go: downloading github.com/spf13/pflag v1.0.9
+go: downloading go.yaml.in/yaml/v3 v3.0.4
+go: downloading github.com/russross/blackfriday/v2 v2.1.0
+ok  	github.com/spf13/cobra	2.297s
+ok  	github.com/spf13/cobra/doc	0.032s

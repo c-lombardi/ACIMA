@@ -1,0 +1,18 @@
+{
+  "language": "dotnet",
+  "id": "fluentvalidation",
+  "exit": 1,
+  "sourceFiles": 144,
+  "findings": 7,
+  "classified": 1,
+  "bytes": 5315,
+  "byRule": {
+    "ACIMA-D001": 1,
+    "ACIMA-G001": 1,
+    "ACIMA-L003": 5
+  },
+  "classifiedByRule": {
+    "ACIMA-L003": 1
+  },
+  "units": 29
+}

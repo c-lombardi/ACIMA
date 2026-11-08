@@ -1,0 +1,106 @@
+{
+  "language": "dotnet",
+  "id": "serilog",
+  "exit": 0,
+  "sourceFiles": 113,
+  "level": "L1",
+  "findings": 0,
+  "errors": 0,
+  "byRule": {},
+  "executed": {
+    "ACIMA-A001": {
+      "executed": true
+    },
+    "ACIMA-A002": {
+      "executed": false,
+      "reason": "configuration APIs differ per ecosystem"
+    },
+    "ACIMA-A003": {
+      "executed": true
+    },
+    "ACIMA-A004": {
+      "executed": false,
+      "reason": "version-lock coupling is visible only across published packages"
+    },
+    "ACIMA-C001": {
+      "executed": true
+    },
+    "ACIMA-C002": {
+      "executed": true
+    },
+    "ACIMA-C003": {
+      "executed": false,
+      "reason": "behaviour versus validation is a semantic judgement"
+    },
+    "ACIMA-C004": {
+      "executed": true
+    },
+    "ACIMA-C005": {
+      "executed": true
+    },
+    "ACIMA-C006": {
+      "executed": true
+    },
+    "ACIMA-C007": {
+      "executed": false,
+      "reason": "constructor completeness needs symbol and API analysis"
+    },
+    "ACIMA-D001": {
+      "executed": true
+    },
+    "ACIMA-D002": {
+      "executed": true
+    },
+    "ACIMA-D003": {
+      "executed": true
+    },
+    "ACIMA-D004": {
+      "executed": true
+    },
+    "ACIMA-D005": {
+      "executed": true
+    },
+    "ACIMA-D006": {
+      "executed": true
+    },
+    "ACIMA-D007": {
+      "executed": true
+    },
+    "ACIMA-D008": {
+      "executed": true
+    },
+    "ACIMA-D009": {
+      "executed": true
+    },
+    "ACIMA-G001": {
+      "executed": true
+    },
+    "ACIMA-G002": {
+      "executed": true
+    },
+    "ACIMA-G003": {
+      "executed": true
+    },
+    "ACIMA-G004": {
+      "executed": false,
+      "reason": "an API baseline needs a per-language surface format"
+    },
+    "ACIMA-G005": {
+      "executed": true
+    },
+    "ACIMA-L001": {
+      "executed": true
+    },
+    "ACIMA-L002": {
+      "executed": true
+    },
+    "ACIMA-L003": {
+      "executed": true
+    },
+    "ACIMA-L004": {
+      "executed": false,
+      "reason": "service-locator APIs are framework-specific"
+    }
+  },
+  "config": "repositories/dotnet/serilog/adoption/acima.config.json"
+}

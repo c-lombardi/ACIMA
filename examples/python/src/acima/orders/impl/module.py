@@ -5,8 +5,16 @@ import uuid
 from datetime import datetime, timezone
 from typing import Callable, Dict, Sequence
 
-from acima.catalog.contracts import CatalogReader, ProductNotFound
+from acima.catalog.contracts import CatalogReader, ProductId as CatalogProductId, ProductNotFound
+from acima.customers.contracts import (
+    CustomerId as CustomersCustomerId,
+    CustomerNotFound,
+    CustomerReader,
+)
 from acima.orders.contracts import (
+    Currency,
+    Money,
+    OrderId,
     OrderLine,
     OrderPlaced,
     OrderRejected,
@@ -14,8 +22,13 @@ from acima.orders.contracts import (
     OrderSummary,
     PlaceOrder,
 )
-from acima.payments.contracts import PaymentDeclined, PaymentGateway, PaymentRequest
-from acima.shared_kernel import Money, OrderId, ProductId
+from acima.payments.contracts import (
+    Money as PaymentMoney,
+    OrderId as PaymentOrderId,
+    PaymentDeclined,
+    PaymentGateway,
+    PaymentRequest,
+)
 
 from .order import Order
 
@@ -30,10 +43,12 @@ class OrdersModule:
     def __init__(
         self,
         catalog: CatalogReader,
+        customers: CustomerReader,
         payments: PaymentGateway,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self._catalog = catalog
+        self._customers = customers
         self._payments = payments
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._orders: Dict[str, Order] = {}
@@ -42,13 +57,22 @@ class OrdersModule:
     # --- command -------------------------------------------------------------
     def place(self, command: PlaceOrder) -> OrderSummary | OrderRejected:
         order_id = OrderId(str(uuid.uuid4()))
+        try:
+            self._customers.get(CustomersCustomerId(command.customer_id))
+        except CustomerNotFound:
+            return OrderRejected(order_id, OrderRejectedReason.CUSTOMER_NOT_FOUND)
+
         lines: list[OrderLine] = []
         for line in command.lines:
             try:
-                product = self._catalog.get(line.product_id)
+                product = self._catalog.get(CatalogProductId(line.product_id.value))
             except ProductNotFound:
                 return OrderRejected(order_id, OrderRejectedReason.OUT_OF_STOCK)
-            lines.append(OrderLine(line.product_id, product.price, line.quantity))
+            lines.append(OrderLine(
+                line.product_id,
+                Money(product.price.amount, Currency(product.price.currency.value)),
+                line.quantity,
+            ))
 
         order = Order(order_id, command.customer_id)
         for line in lines:
@@ -56,7 +80,11 @@ class OrdersModule:
 
         try:
             self._payments.authorize(
-                PaymentRequest(order.id, order.total, command.customer_id)
+                PaymentRequest(
+                    PaymentOrderId(order.id.value),
+                    PaymentMoney(order.total.amount, Currency(order.total.currency.value)),
+                    command.customer_id,
+                )
             )
         except PaymentDeclined:
             return OrderRejected(order.id, OrderRejectedReason.PAYMENT_DECLINED)

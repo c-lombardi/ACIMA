@@ -1,9 +1,8 @@
-using Acima.Catalog;
-using Acima.Catalog.Contracts;
-using Acima.Orders;
-using Acima.Orders.Contracts;
-using Acima.Payments;
-using Acima.SharedKernel;
+using CatalogContracts = Acima.Catalog.Contracts;
+using CatalogModule = Acima.Catalog.CatalogModule;
+using OrdersContracts = Acima.Orders.Contracts;
+using OrdersModule = Acima.Orders.OrdersModule;
+using PaymentsModule = Acima.Payments.PaymentsModule;
 
 namespace Acima.Host;
 
@@ -15,13 +14,25 @@ internal static class Program
         var payments = new PaymentsModule(1000m);
         var orders = new OrdersModule(catalog.Reader, payments.Port);
 
-        catalog.Add(new ProductView(new ProductId("p-1"), "Espresso beans", Money.Of(12.50m, Currency.Eur)));
-        catalog.Add(new ProductView(new ProductId("p-2"), "Filter papers", Money.Of(3.20m, Currency.Eur)));
+        catalog.Add(new CatalogContracts.ProductView(
+            new CatalogContracts.ProductId("p-1"),
+            "Espresso beans",
+            CatalogContracts.Money.Of(12.50m, CatalogContracts.Currency.Eur)));
+        catalog.Add(new CatalogContracts.ProductView(
+            new CatalogContracts.ProductId("p-2"),
+            "Filter papers",
+            CatalogContracts.Money.Of(3.20m, CatalogContracts.Currency.Eur)));
 
-        var result = orders.Place(new PlaceOrder("c-1", new[]
+        var result = orders.Place(new OrdersContracts.PlaceOrder("c-1", new[]
         {
-            new OrderLine(new ProductId("p-1"), Money.Of(12.50m, Currency.Eur), 2),
-            new OrderLine(new ProductId("p-2"), Money.Of(3.20m, Currency.Eur), 1),
+            new OrdersContracts.OrderLine(
+                new OrdersContracts.ProductId("p-1"),
+                OrdersContracts.Money.Of(12.50m, OrdersContracts.Currency.Eur),
+                2),
+            new OrdersContracts.OrderLine(
+                new OrdersContracts.ProductId("p-2"),
+                OrdersContracts.Money.Of(3.20m, OrdersContracts.Currency.Eur),
+                1),
         }));
 
         if (result.Rejected is not null)
@@ -35,8 +46,8 @@ internal static class Program
         {
             Console.WriteLine(published switch
             {
-                OrderPlaced => "event: OrderPlaced",
-                OrderRejected => "event: OrderRejected",
+                OrdersContracts.OrderPlaced => "event: OrderPlaced",
+                OrdersContracts.OrderRejected => "event: OrderRejected",
                 _ => "event: unknown",
             });
         }

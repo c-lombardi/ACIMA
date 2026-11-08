@@ -1,0 +1,101 @@
+{
+  "_generatedBy": "acima-adoption preflight --write-draft",
+  "_note": "Heuristic draft. Review module names, merge or split units, then commit.",
+  "standard": "1.0.0-draft.1",
+  "language": "typescript",
+  "level": "L1",
+  "root": ".",
+  "units": [
+    {
+      "id": "adapter",
+      "module": "adapter",
+      "role": "implementation",
+      "paths": [
+        "src/adapter"
+      ]
+    },
+    {
+      "id": "client",
+      "module": "client",
+      "role": "implementation",
+      "paths": [
+        "src/client"
+      ]
+    },
+    {
+      "id": "helper",
+      "module": "helper",
+      "role": "implementation",
+      "paths": [
+        "src/helper"
+      ]
+    },
+    {
+      "id": "jsx",
+      "module": "jsx",
+      "role": "implementation",
+      "paths": [
+        "src/jsx"
+      ]
+    },
+    {
+      "id": "middleware",
+      "module": "middleware",
+      "role": "implementation",
+      "paths": [
+        "src/middleware"
+      ]
+    },
+    {
+      "id": "preset",
+      "module": "preset",
+      "role": "implementation",
+      "paths": [
+        "src/preset"
+      ]
+    },
+    {
+      "id": "request",
+      "module": "request",
+      "role": "implementation",
+      "paths": [
+        "src/request"
+      ]
+    },
+    {
+      "id": "router",
+      "module": "router",
+      "role": "implementation",
+      "paths": [
+        "src/router"
+      ]
+    },
+    {
+      "id": "utils",
+      "module": "utils",
+      "role": "implementation",
+      "paths": [
+        "src/utils"
+      ]
+    },
+    {
+      "id": "validator",
+      "module": "validator",
+      "role": "implementation",
+      "paths": [
+        "src/validator"
+      ]
+    }
+  ],
+  "exclude": [
+    "bin",
+    "obj",
+    "node_modules",
+    "dist",
+    "build",
+    "target",
+    "tests",
+    "**/__pycache__"
+  ],
+  "waivers": ".acima/waivers.json"
+}

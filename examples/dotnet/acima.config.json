@@ -1,20 +1,101 @@
 {
   "standard": "1.0.0",
+  "mode": "base",
   "language": "dotnet",
   "level": "L3",
   "root": ".",
   "units": [
-    { "id": "shared-kernel", "role": "shared-kernel", "paths": ["src/SharedKernel"], "namespaces": ["Acima.SharedKernel"] },
-    { "id": "catalog.contracts", "module": "catalog", "role": "contracts", "paths": ["src/Catalog/Catalog.Contracts"], "namespaces": ["Acima.Catalog.Contracts"] },
-    { "id": "catalog", "module": "catalog", "role": "implementation", "paths": ["src/Catalog/Catalog"], "namespaces": ["Acima.Catalog"] },
-    { "id": "orders.contracts", "module": "orders", "role": "contracts", "paths": ["src/Orders/Orders.Contracts"], "namespaces": ["Acima.Orders.Contracts"] },
-    { "id": "orders", "module": "orders", "role": "implementation", "paths": ["src/Orders/Orders"], "namespaces": ["Acima.Orders"] },
-    { "id": "payments.contracts", "module": "payments", "role": "contracts", "paths": ["src/Payments/Payments.Contracts"], "namespaces": ["Acima.Payments.Contracts"] },
-    { "id": "payments", "module": "payments", "role": "implementation", "paths": ["src/Payments/Payments"], "namespaces": ["Acima.Payments"] },
-    { "id": "host", "role": "host", "paths": ["host/Host"], "namespaces": ["Acima.Host"] },
-    { "id": "tools", "role": "tooling", "paths": ["tools"], "namespaces": ["Acima.ArchTests"] }
+    {
+      "id": "catalog.contracts",
+      "module": "catalog",
+      "role": "contracts",
+      "paths": [
+        "src/Catalog/Catalog.Contracts"
+      ],
+      "namespaces": [
+        "Acima.Catalog.Contracts"
+      ]
+    },
+    {
+      "id": "catalog",
+      "module": "catalog",
+      "role": "implementation",
+      "paths": [
+        "src/Catalog/Catalog"
+      ],
+      "namespaces": [
+        "Acima.Catalog"
+      ]
+    },
+    {
+      "id": "orders.contracts",
+      "module": "orders",
+      "role": "contracts",
+      "paths": [
+        "src/Orders/Orders.Contracts"
+      ],
+      "namespaces": [
+        "Acima.Orders.Contracts"
+      ]
+    },
+    {
+      "id": "orders",
+      "module": "orders",
+      "role": "implementation",
+      "paths": [
+        "src/Orders/Orders"
+      ],
+      "namespaces": [
+        "Acima.Orders"
+      ]
+    },
+    {
+      "id": "payments.contracts",
+      "module": "payments",
+      "role": "contracts",
+      "paths": [
+        "src/Payments/Payments.Contracts"
+      ],
+      "namespaces": [
+        "Acima.Payments.Contracts"
+      ]
+    },
+    {
+      "id": "payments",
+      "module": "payments",
+      "role": "implementation",
+      "paths": [
+        "src/Payments/Payments"
+      ],
+      "namespaces": [
+        "Acima.Payments"
+      ]
+    },
+    {
+      "id": "host",
+      "role": "host",
+      "paths": [
+        "host/Host"
+      ],
+      "namespaces": [
+        "Acima.Host"
+      ]
+    },
+    {
+      "id": "tools",
+      "role": "tooling",
+      "paths": [
+        "tools"
+      ],
+      "namespaces": [
+        "Acima.ArchTests"
+      ]
+    }
   ],
-  "sharedKernel": "shared-kernel",
-  "exclude": ["bin", "obj", "violations"],
+  "exclude": [
+    "bin",
+    "obj",
+    "violations"
+  ],
   "waivers": ".acima/waivers.json"
 }

@@ -1,0 +1,7 @@
+# Generated from candidates/selected.json. Do not edit without a new run.
+portfolio:
+  python: [encode/httpx, pallets/flask, fastapi/fastapi]
+  typescript: [honojs/hono, drizzle-team/drizzle-orm, trpc/trpc]
+  go: [spf13/cobra, charmbracelet/bubbletea, gin-gonic/gin]
+  dotnet: [FluentValidation/FluentValidation, serilog/serilog, spectreconsole/spectre.console]
+  java: [jhy/jsoup, google/gson, macrozheng/mall]

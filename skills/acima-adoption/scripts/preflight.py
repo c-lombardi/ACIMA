@@ -37,7 +37,9 @@ SOURCE_EXTENSIONS = {
     ".kt", ".rs", ".rb", ".php", ".scala", ".swift",
 }
 LEVELS = {"L1", "L2", "L3"}
-WAIVER_FIELDS = ("rule", "scope", "owner", "reason", "expires", "reviewedOn")
+ARCHITECTURE_MODES = ("base", "service-topology")
+PROFILE_MANIFEST = "acima.topology.json"
+WAIVER_FIELDS = ("rule", "scope", "fingerprint", "owner", "reason", "expires", "reviewedOn")
 
 
 @dataclass
@@ -54,6 +56,8 @@ class Report:
     proposed_units: list[dict] = field(default_factory=list)
     findings: dict = field(default_factory=dict)
     mode: str = "unknown"
+    architecture_mode: str = "base"
+    profile: str = "none"
     language: str = "unknown"
     detected_languages: list[str] = field(default_factory=list)
     next_steps: list[str] = field(default_factory=list)
@@ -168,17 +172,33 @@ def propose_dotnet_units(project: Path) -> list[dict]:
             module = name.lower()
             units.append({"id": module, "module": module,
                           "role": "implementation", "paths": [relative]})
-    return units[:16]
+    return units
+
+
+def has_direct_sources(directory: Path) -> bool:
+    return any(path.is_file() and path.suffix.lower() in SOURCE_EXTENSIONS
+               for path in directory.iterdir())
 
 
 def propose_directory_units(project: Path) -> list[dict]:
-    bases = [base for base in (project / "src", project / "internal", project / "packages")
+    bases = [base for base in (project / "src", project / "internal", project / "packages",
+                              project / "app", project / "apps", project / "services",
+                              project / "lib", project / "modules")
              if base.is_dir()]
     if not bases:
         bases = [project]
     units: list[dict] = []
     seen_paths: set[str] = set()
     for base in bases:
+        # A source root often contains one namespace directory (for example
+        # src/acima/catalog, src/acima/orders). Descend through that wrapper so the
+        # modules, not the namespace, become the proposed units.
+        while base.is_dir() and not has_direct_sources(base):
+            children = [child for child in sorted(base.iterdir())
+                        if child.is_dir() and child.name not in PRUNE and not child.name.startswith(".")]
+            if len(children) != 1:
+                break
+            base = children[0]
         if not base.is_dir():
             continue
         for child in sorted(base.iterdir()):
@@ -200,7 +220,7 @@ def propose_directory_units(project: Path) -> list[dict]:
             if not contracts.is_dir() and not implementation.is_dir():
                 units.append({"id": module, "module": module,
                               "role": "implementation", "paths": [relative]})
-    return units[:16]
+    return units
 
 
 def draft_config(manifest: dict, language: str, units: list[dict]) -> dict:
@@ -208,6 +228,7 @@ def draft_config(manifest: dict, language: str, units: list[dict]) -> dict:
         "_generatedBy": "acima-adoption preflight --write-draft",
         "_note": "Heuristic draft. Review module names, merge or split units, then commit.",
         "standard": manifest["standard"],
+        "mode": "base",
         "language": language,
         "level": "L1",
         "root": ".",
@@ -232,25 +253,30 @@ def unit_for_path(path: str, units: list[dict]) -> dict | None:
 
 def waiver_stub(findings: list[dict], units: list[dict], days: int = 90) -> dict:
     today = date.today()
-    grouped: dict[tuple[str, str], int] = {}
+    seen: set[tuple[str, str]] = set()
+    waivers = []
     for finding in findings:
         rule = finding.get("rule")
-        unit = unit_for_path(finding.get("path", ""), units)
-        if not rule or unit is None:
+        path = finding.get("path", "")
+        fingerprint = finding.get("fingerprint")
+        if not rule or not path or not fingerprint:
             continue
-        key = (rule, unit["id"])
-        grouped[key] = grouped.get(key, 0) + 1
-
-    waivers = []
-    for (rule, unit_id), count in sorted(grouped.items()):
+        unit = unit_for_path(path, units)
+        scope = f"unit:{unit['id']}" if unit else f"path:{path}"
+        key = (scope, fingerprint)
+        if key in seen:
+            continue
+        seen.add(key)
         waivers.append({
             "rule": rule,
-            "scope": f"unit:{unit_id}",
+            "scope": scope,
+            "fingerprint": fingerprint,
             "owner": "unassigned",
-            "reason": f"baseline: {count} pre-existing finding(s) in {unit_id}",
+            "reason": f"baseline: {path}:{finding.get('line', 1)} — {finding.get('message', rule)}",
             "expires": (today + timedelta(days=days)).isoformat(),
             "reviewedOn": today.isoformat(),
         })
+    waivers.sort(key=lambda waiver: (waiver["rule"], waiver["scope"], waiver["fingerprint"]))
     return {"standard": "1.0.0-draft.1", "waivers": waivers}
 
 
@@ -265,6 +291,74 @@ def run(command: list[str], cwd: Path, timeout: int = 240) -> tuple[int, str, st
         return 127, "", f"{command[0]} is not installed"
     except Exception as error:  # noqa: BLE001 - preflight must never crash
         return 126, "", str(error)
+
+
+def _catalog_rule_ids() -> set[str]:
+    try:
+        catalog = load_json(STANDARD_ROOT / "tools/acima-spec/rules.json")
+        return {str(rule["id"]) for rule in catalog.get("rules", [])}
+    except (OSError, KeyError, TypeError, json.JSONDecodeError):
+        return set()
+
+
+def validate_assessment(payload, code: int, manifest: dict) -> list[str]:
+    """Reject incomplete enforcer output before it can become an architecture claim."""
+    errors: list[str] = []
+    if code not in (0, 1):
+        errors.append(f"unexpected enforcer exit code {code}")
+    if not isinstance(payload, dict):
+        return errors + ["assessment is not a JSON object"]
+    if not str(payload.get("standard", "")).strip():
+        errors.append("assessment has no standard identity")
+    if payload.get("level") not in LEVELS:
+        errors.append(f"assessment level is {payload.get('level')!r}")
+    source_files = payload.get("sourceFiles")
+    if type(source_files) is not int or source_files <= 0:
+        errors.append(f"assessment discovered {source_files!r} source files")
+    findings = payload.get("findings")
+    if not isinstance(findings, list):
+        errors.append("assessment findings is not a list")
+    else:
+        for index, finding in enumerate(findings):
+            if not isinstance(finding, dict):
+                errors.append(f"finding {index} is not an object")
+                continue
+            missing = [key for key in ("rule", "severity", "message", "path", "line")
+                       if key not in finding]
+            if missing:
+                errors.append(f"finding {index} is missing {', '.join(missing)}")
+    classified = payload.get("classified", [])
+    if not isinstance(classified, list):
+        errors.append("assessment classified is not a list")
+    else:
+        for index, item in enumerate(classified):
+            if not isinstance(item, dict):
+                errors.append(f"classified {index} is not an object")
+                continue
+            missing = [key for key in ("rule", "path", "classification", "owner", "reason")
+                       if not str(item.get(key, "")).strip()]
+            if missing:
+                errors.append(f"classified {index} is missing {', '.join(missing)}")
+            elif item["classification"] not in ("intentional-adapter", "declared-public-api"):
+                errors.append(f"classified {index} has unknown classification "
+                              f"{item['classification']!r}")
+    execution = payload.get("execution")
+    expected = _catalog_rule_ids()
+    if not isinstance(execution, dict):
+        errors.append("assessment has no execution map")
+    else:
+        if expected and set(execution) != expected:
+            missing = sorted(expected - set(execution))
+            extra = sorted(set(execution) - expected)
+            errors.append("execution map does not cover the catalog"
+                          + (f" (missing {', '.join(missing)})" if missing else "")
+                          + (f" (extra {', '.join(extra)})" if extra else ""))
+        for rule, value in execution.items():
+            if not isinstance(value, dict) or type(value.get("executed")) is not bool:
+                errors.append(f"execution entry for {rule} has no boolean executed flag")
+            elif value.get("executed") is False and not str(value.get("reason", "")).strip():
+                errors.append(f"execution entry for {rule} is unexecuted without a reason")
+    return errors
 
 
 def enforcer_invocation(manifest: dict, language: str, project: Path,
@@ -429,6 +523,31 @@ def check_target(project: Path, report: Report, manifest: dict) -> tuple[list[di
                        "repair the config; every enforcer will refuse to run")
             return [], None
 
+        topology_present = (project / PROFILE_MANIFEST).is_file()
+        declared_mode = config.get("mode", "base")
+        report.architecture_mode = declared_mode if declared_mode in ARCHITECTURE_MODES else "unknown"
+        if declared_mode not in ARCHITECTURE_MODES:
+            report.add("TGT-006", "fail",
+                       f"unknown architecture mode {declared_mode!r}; expected base or service-topology",
+                       "use one of the two documented modes; a typo must not silently mean base")
+        elif declared_mode == "service-topology":
+            report.profile = "service-topology" if topology_present else "none"
+            if not topology_present:
+                report.add("TGT-006", "fail",
+                           f"mode is service-topology but {PROFILE_MANIFEST} is missing",
+                           "add the profile manifest, or declare mode base")
+            else:
+                report.add("TGT-006", "fail",
+                           "service-topology declared; this skill revision has no supported service "
+                           "workflow, so the assessment is NOT SUPPORTED, not clean",
+                           "stop; use conformance/topology.py for the profile and do not apply base P2.1")
+        elif topology_present:
+            report.add("TGT-006", "fail",
+                       f"{PROFILE_MANIFEST} is present but mode is base/absent",
+                       "declare \"mode\": \"service-topology\" or remove the manifest")
+        else:
+            report.add("TGT-006", "pass", "architecture mode: base")
+
         units = config.get("units", [])
         level = config.get("level")
         if not units:
@@ -443,39 +562,57 @@ def check_target(project: Path, report: Report, manifest: dict) -> tuple[list[di
         language = config.get("language") or report.language
         enforcer = manifest.get("enforcers", {}).get(language, {})
         if not enforcer.get("run"):
-            report.add("GOV-002", "skip",
-                       f"no reference enforcer for {language}",
-                       "apply the profile's native analyzer; say plainly that this profile has no runner")
+            # An unsupported language is not a clean baseline. Reporting READY here
+            # would turn "we could not check" into "we checked and it is clean".
+            report.add("GOV-002", "fail",
+                       f"no reference enforcer for {language}: this assessment is unsupported, not clean",
+                       "use the profile's native analyzer (for Java, ArchUnit) and report the result as "
+                       "unsupported/partial; do not claim ACIMA conformance")
         else:
             command, cwd = enforcer_invocation(manifest, language, project, "acima.config.json")
             if language == "dotnet":
                 prepare_dotnet(manifest)
             code, out, err = run(command, cwd)
+            payload = None
+            try:
+                payload = json.loads(out)
+            except json.JSONDecodeError:
+                pass
             if code == 2:
                 report.add("GOV-002", "fail",
                            f"enforcer failed to run: {(err or out).strip()[:300]}",
                            "fix the enforcer invocation before trusting any architecture claim")
+            elif payload is None:
+                report.add("GOV-002", "fail", "enforcer returned invalid or truncated JSON",
+                           "this is a tool failure, not an architecture result; keep the raw output")
             else:
-                try:
-                    payload = json.loads(out)
-                    findings = payload.get("findings", [])
-                except json.JSONDecodeError:
-                    report.add("GOV-002", "fail", "enforcer returned no JSON",
-                               "this is a tool failure, not an architecture result")
-                    findings = []
-                report.findings = {
-                    "total": len(findings),
-                    "errors": sum(1 for f in findings if f.get("severity") == "error"),
-                    "byRule": _group(findings, "rule"),
-                    "byPath": _group(findings, "path"),
-                }
-                if code == 1:
-                    report.add("GOV-002", "warn",
-                               f"baseline is not clean: {len(findings)} finding(s), "
-                               f"{report.findings['errors']} error(s)",
-                               "this is expected on day one: waive deliberately, then ratchet")
+                errors = validate_assessment(payload, code, manifest)
+                if errors:
+                    report.add("GOV-002", "fail",
+                               "assessment is invalid: " + "; ".join(errors[:4]),
+                               "fix or rerun the enforcer; do not count this run as a baseline")
                 else:
-                    report.add("GOV-002", "pass", "baseline is clean at the declared level")
+                    findings = payload["findings"]
+                    report.findings = {
+                        "total": len(findings),
+                        "errors": sum(1 for f in findings if f.get("severity") == "error"),
+                        "byRule": _group(findings, "rule"),
+                        "byPath": _group(findings, "path"),
+                        "sourceFiles": payload["sourceFiles"],
+                        "standard": payload["standard"],
+                    }
+                    if code == 1:
+                        report.add("GOV-002", "warn",
+                                   f"baseline is not clean: {len(findings)} finding(s), "
+                                   f"{report.findings['errors']} error(s)",
+                                   "this is expected on day one: waive deliberately, then ratchet")
+                    else:
+                        report.add("GOV-002", "pass", "baseline is clean at the declared level")
+                        if not findings:
+                            report.add("GOV-005", "warn",
+                                       f"zero findings from {payload['sourceFiles']} source file(s); "
+                                       "zero is not proof of conformance",
+                                       "run scripts/inject_violation.py (L001 and D001) against this target before claiming clean")
 
         waiver_name = config.get("waivers")
         if waiver_name:
@@ -501,6 +638,11 @@ def check_target(project: Path, report: Report, manifest: dict) -> tuple[list[di
                         waiver for waiver in waivers
                         if str(waiver.get("expires", ""))[:10] < date.today().isoformat()
                     ]
+                    unhashed = [
+                        waiver for waiver in waivers
+                        if str(waiver.get("expires", ""))[:10] >= date.today().isoformat()
+                        and not str(waiver.get("fingerprint", "")).strip()
+                    ]
                     unassigned = [
                         waiver for waiver in waivers
                         if str(waiver.get("owner", "")).strip().lower() == "unassigned"
@@ -508,11 +650,15 @@ def check_target(project: Path, report: Report, manifest: dict) -> tuple[list[di
                     if incomplete:
                         report.add("GOV-003", "fail",
                                    f"{len(incomplete)} waiver(s) missing required fields",
-                                   "G001 requires rule, scope, owner, reason, expires and reviewedOn")
+                                   "G001 requires rule, scope, fingerprint, owner, reason, expires and reviewedOn")
                     elif expired:
                         report.add("GOV-003", "fail",
                                    f"{len(expired)} expired waiver(s)",
                                    "renew deliberately with the owner, or fix the violation")
+                    elif unhashed:
+                        report.add("GOV-003", "fail",
+                                   f"{len(unhashed)} active waiver(s) have no finding fingerprint",
+                                   "regenerate the baseline with --write-waivers; broad waivers hide new findings")
                     else:
                         report.add("GOV-003", "pass",
                                    f"{len(waivers)} active waiver(s), none expired")
@@ -521,19 +667,30 @@ def check_target(project: Path, report: Report, manifest: dict) -> tuple[list[di
                                    f"{len(unassigned)} waiver(s) still owned by 'unassigned'",
                                    "replace with real names before the first gate is merged")
     else:
-        if total < 10:
+        if (project / PROFILE_MANIFEST).is_file():
+            report.add("TGT-006", "fail",
+                       f"{PROFILE_MANIFEST} is present but acima.config.json is missing; "
+                       "the mode cannot be selected",
+                       "add acima.config.json with \"mode\": \"service-topology\" or remove the manifest")
+        else:
+            report.add("TGT-006", "pass", "architecture mode: base (no config or manifest)")
+        if total == 0:
             report.mode = "greenfield"
             report.add("TGT-003", "pass",
-                       f"no config and {total} source file(s) (mode: greenfield)")
+                       "no config and no source files (mode: greenfield)")
         else:
             report.mode = "brownfield"
             report.add("TGT-003", "pass",
-                       f"no config and {total} source file(s) (mode: brownfield)")
+                       f"no config and {total} existing source file(s) (mode: brownfield)")
 
         report.proposed_units = propose_units(project, report.language)
         if report.proposed_units:
             report.add("TGT-004", "pass",
                        f"{len(report.proposed_units)} candidate unit(s) proposed from the layout")
+        elif report.mode == "brownfield":
+            report.add("TGT-004", "fail",
+                       "no candidate units found for a source-bearing repository",
+                       "declare units manually; ADR-0001 in the adoption plan explains the split")
         else:
             report.add("TGT-004", "warn", "no candidate units found",
                        "declare units manually; ADR-0001 in the adoption plan explains the split")
@@ -586,11 +743,18 @@ def check_deep(manifest: dict, report: Report) -> None:
                        "fix the example before using this skill as a reference")
             continue
         try:
-            findings = json.loads(out).get("findings", [])
+            payload = json.loads(out)
         except json.JSONDecodeError:
-            report.add(f"ENF-{language}", "fail", f"{language} enforcer returned no JSON",
+            report.add(f"ENF-{language}", "fail", f"{language} enforcer returned invalid JSON",
                        "tool failure: do not use it as a reference")
             continue
+        errors = validate_assessment(payload, code, manifest)
+        if errors:
+            report.add(f"ENF-{language}", "fail",
+                       f"{language} example assessment is invalid: {'; '.join(errors[:3])}",
+                       "fix the enforcer and its output contract before using it as a reference")
+            continue
+        findings = payload["findings"]
         if findings:
             report.add(f"ENF-{language}", "fail",
                        f"{language} example has {len(findings)} finding(s)",
@@ -609,7 +773,7 @@ def build_next_steps(report: Report, project: Path, manifest: dict,
 
     if report.mode == "greenfield":
         steps = [
-            "Create the shared kernel, then the first two contracts, then their implementations.",
+            "Create the first two contracts with their own value types, then their implementations.",
             "Write acima.config.json and an empty waiver file in the same commit.",
             "Wire the enforcer into CI before the second module exists.",
             "Declare L3 and keep it: nothing is fighting you yet.",
@@ -718,6 +882,8 @@ def main() -> int:
                       "standard": manifest.get("standard"),
                       "catalogSha256": manifest.get("catalog", {}).get("sha256")},
             "project": {"path": str(project), "mode": report.mode,
+                        "architectureMode": report.architecture_mode,
+                        "profile": report.profile,
                         "language": report.language,
                         "detectedLanguages": report.detected_languages},
             "checks": [check.__dict__ for check in report.checks],
@@ -756,7 +922,8 @@ def print_text(report: Report, manifest: dict, project: Path, units: list[dict],
     print(f"  standard {manifest.get('standard')} · skill {manifest.get('skillVersion')} · "
           f"catalog {str(manifest.get('catalog', {}).get('sha256'))[:8]}…")
     print(f"  target   {project}")
-    print(f"  mode     {report.mode} · language {report.language}")
+    print(f"  mode     {report.mode} · architecture {report.architecture_mode} · "
+          f"language {report.language}")
     print()
     for check in report.checks:
         print(f"  {symbols.get(check.status, '?   ')}{check.id:<8} {check.detail}")

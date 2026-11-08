@@ -1,7 +1,8 @@
 # Rule catalog
 
-29 rules. Five categories. Every rule has a permanent id, a severity, a conformance level, a detection
-strategy and — in each language profile — a reference implementation.
+29 rules. Five categories. Every rule has a permanent id, a severity, a conformance level and a
+detection strategy. Each of the four implemented language profiles has a reference enforcer; Java
+is a documented profile only and has no reference enforcer in this revision.
 
 The machine-readable source of truth is [`tools/acima-spec/rules.json`](../../tools/acima-spec/rules.json).
 This catalog is its human-readable form; if they disagree, the JSON is authoritative.
@@ -97,15 +98,21 @@ is deliberate: a catalogue of warnings is a catalogue of things nobody fixes.
 
 ## Rules that need judgement
 
-Four rules cannot be fully decided by a parser. They are still in the catalogue because the enforcer
-can do most of the work and force the conversation:
+Six normative rules cannot be decided by the portable reference enforcers. They remain in the
+catalogue because a native analyzer, package metadata or a human review can decide them, but a
+clean portable run is not evidence that they pass:
 
-| Rule | What the tool does | What a human does |
-|---|---|---|
-| `C003` | flags methods with branching, IO calls or non-trivial bodies in contract types | decides whether a helper is validation or a business rule |
-| `C007` | flags contract types with parameterless constructors and settable state | decides whether a builder is justified |
-| `A002` | flags reads of configuration keys outside the unit's namespace | decides whether the key is genuinely shared infrastructure |
-| `G003` | flags public contract types without documentation | writes the documentation |
+| Rule | Severity | What the portable tool does | What a human or native analyzer does |
+|---|---|---|---|
+| `C003` | error | reports `executed: false` | decides whether a contract helper is validation or business logic, IO or orchestration |
+| `C007` | warning | reports `executed: false` | decides whether a builder or multi-step construction is justified and whether required state is obvious |
+| `L004` | warning | reports `executed: false` | inspects framework-specific service-locator/container resolution |
+| `A002` | warning | reports `executed: false` | decides whether a configuration key is genuinely shared infrastructure or another module's key/secret |
+| `A004` | warning | reports `executed: false` | inspects published package/artifact versions across the product graph |
+| `G004` | error | reports `executed: false` | compares a reviewed per-language API baseline and classifies the change as additive or breaking |
+
+`G003` is executed, but a human still writes and reviews the documentation it looks for. The other
+23 rules are executed by all four reference enforcers and have gallery fixtures.
 
 A rule that mixes machine and human judgement must say which part is which — otherwise the tool gets
 blamed for the human's decision, and the rule gets disabled.
@@ -113,7 +120,8 @@ blamed for the human's decision, and the rule gets disabled.
 ## Profile requirements outside the catalog
 
 Chapter 11 defines the service topology default as `ST-1`–`ST-12`. They are conformance requirements,
-not catalog rules: they have no `ACIMA-S*` ids and no enforcer support in this revision. A claim that
-includes the profile must say **manual** and cite the checklist — see
-[Conformance](../standard/08-conformance.md#88-service-topology-profile). Rule ids are assigned when
-a runner can produce findings, not before.
+not base-catalog rules, and use the profile namespace `ACIMA-S001`–`S012`. The runner is
+[`conformance/topology.py`](../../conformance/topology.py), which reads `acima.topology.json`,
+scans the tree and emits findings in the same shape as the language enforcers. A claim that includes
+the profile cites the JSON run, not a hand-completed checklist — see
+[Conformance](../standard/08-conformance.md#88-service-topology-profile).

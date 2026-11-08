@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import ast
 import fnmatch
+import hashlib
 import json
 import re
 import sys
@@ -25,22 +26,38 @@ CATALOG: dict[str, tuple[str, str]] = {
     "ACIMA-D004": ("error", "L1"), "ACIMA-D005": ("error", "L1"), "ACIMA-D006": ("error", "L1"),
     "ACIMA-D007": ("error", "L1"), "ACIMA-D008": ("error", "L1"), "ACIMA-D009": ("error", "L1"),
     "ACIMA-L001": ("error", "L1"), "ACIMA-L002": ("error", "L1"), "ACIMA-L003": ("error", "L1"),
-    "ACIMA-C001": ("error", "L2"), "ACIMA-C002": ("error", "L2"), "ACIMA-C004": ("error", "L2"),
-    "ACIMA-C005": ("error", "L2"), "ACIMA-C006": ("error", "L2"),
-    "ACIMA-A001": ("error", "L3"), "ACIMA-A003": ("error", "L3"),
+    "ACIMA-L004": ("warning", "L1"),
+    "ACIMA-C001": ("error", "L2"), "ACIMA-C002": ("error", "L2"), "ACIMA-C003": ("error", "L2"),
+    "ACIMA-C004": ("error", "L2"), "ACIMA-C005": ("error", "L2"), "ACIMA-C006": ("error", "L2"),
+    "ACIMA-C007": ("warning", "L2"),
+    "ACIMA-A001": ("error", "L3"), "ACIMA-A002": ("warning", "L3"),
+    "ACIMA-A003": ("error", "L3"), "ACIMA-A004": ("warning", "L3"),
     "ACIMA-G001": ("error", "L1"), "ACIMA-G002": ("error", "L1"),
-    "ACIMA-G003": ("warning", "L2"), "ACIMA-G005": ("error", "L1"),
+    "ACIMA-G003": ("warning", "L2"), "ACIMA-G004": ("error", "L2"),
+    "ACIMA-G005": ("error", "L1"),
+}
+NOT_EXECUTED = {
+    "ACIMA-C003": "behaviour versus validation is a semantic judgement",
+    "ACIMA-C007": "constructor completeness needs symbol and API analysis",
+    "ACIMA-L004": "service-locator APIs are framework-specific",
+    "ACIMA-A002": "configuration APIs differ per ecosystem",
+    "ACIMA-A004": "version-lock coupling is visible only across published packages",
+    "ACIMA-G004": "an API baseline needs a per-language surface format",
 }
 RANK = {"L1": 1, "L2": 2, "L3": 3}
 
 PERSISTENCE = ("sqlalchemy", "QuerySet", "psycopg", "sqlite3", "db.execute", "IQueryable",
                "DbContext", "EntityManager", "django.db", "asyncpg", "pymongo")
+# L001 is about dependency edges. Only importable persistence roots qualify here;
+# bare names such as QuerySet or db.execute are handled by the contract rules.
+PERSISTENCE_MODULES = ("sqlalchemy", "psycopg", "psycopg2", "sqlite3", "django.db",
+                       "asyncpg", "pymongo")
 FRAMEWORK = ("flask", "fastapi", "starlette", "django", "http.server", "werkzeug", "celery",
              "requests", "httpx", "aiohttp")
 AMBIENT = (r"datetime\.now\b", r"datetime\.utcnow\b", r"date\.today\b", r"time\.time\b",
            r"uuid4\b", r"uuid\.uuid1\b", r"\brandom\.")
-SQL = re.compile(r"(?is)\b(?:from|into|update|join)\s+([a-z][a-z0-9_]*)")
-WRITE_SQL = re.compile(r"(?is)\b(?:insert\s+into|update|delete\s+from|join)\s+([a-z][a-z0-9_]*)")
+SQL = re.compile(r"(?is)\b(?:from|into|update|join)\s+[\"'`]?([a-z][a-z0-9_]*)")
+WRITE_SQL = re.compile(r"(?is)\b(?:insert\s+into|update|delete\s+from|join)\s+[\"'`]?([a-z][a-z0-9_]*)")
 
 EXCLUDE_DEFAULT = ["tests", "violations"]
 
@@ -61,10 +78,17 @@ class Finding:
     path: str
     line: int
     evidence: str = ""
+    fingerprint: str = ""
 
     def as_dict(self) -> dict:
         return {"rule": self.rule, "severity": self.severity, "message": self.message,
-                "path": self.path, "line": self.line, "evidence": self.evidence}
+                "path": self.path, "line": self.line, "evidence": self.evidence,
+                "fingerprint": self.fingerprint}
+
+
+def finding_fingerprint(rule: str, path: str, evidence: str) -> str:
+    payload = f"{rule}\0{path}\0{evidence}".encode("utf-8")
+    return "sha256:" + hashlib.sha256(payload).hexdigest()[:16]
 
 
 class Enforcer:
@@ -78,6 +102,7 @@ class Enforcer:
         self.findings: list[Finding] = []
         self.files: dict[str, ast.Module] = {}
         self.units_of: dict[str, Unit] = {}
+        self.source_files = 0
         self.edges: list[tuple[str, str, int, str]] = []
         self.module_names = {u.module for u in self.units if u.module}
 
@@ -86,25 +111,26 @@ class Enforcer:
         return path.relative_to(self.root).as_posix()
 
     def excluded(self, rel: str) -> bool:
-        parts = rel.split("/")
-        return any(fnmatch.fnmatch(rel, p) or any(fnmatch.fnmatch(x, p) for x in parts)
-                   for p in self.excludes)
+        value = rel.rstrip("/")
+        parts = value.split("/")
+        for raw in self.excludes:
+            pattern = str(raw).strip().replace("\\", "/")
+            if pattern.startswith("./"):
+                pattern = pattern[2:]
+            pattern = pattern.rstrip("/")
+            if not pattern:
+                continue
+            if any(char in pattern for char in "*?["):
+                if fnmatch.fnmatchcase(value, pattern):
+                    return True
+                continue
+            if value == pattern or value.startswith(pattern + "/"):
+                return True
+            if pattern in parts:
+                return True
+        return False
 
-    def unit_for(self, rel: str, source: str) -> Unit | None:
-        head = "\n".join(source.splitlines()[:3])
-        override = re.search(r"acima-unit:\s*([\w.\-]+)", head)
-        if override:
-            token = override.group(1)
-            for u in self.units:
-                if u.id == token:
-                    return u
-            for u in self.units:
-                if u.module == token and u.role == "implementation":
-                    return u
-            if token.endswith(".contracts"):
-                for u in self.units:
-                    if u.module == token.split(".")[0] and u.role == "contracts":
-                        return u
+    def unit_by_path(self, rel: str) -> Unit | None:
         best: Unit | None = None
         best_len = -1
         for u in self.units:
@@ -113,20 +139,53 @@ class Enforcer:
                     best, best_len = u, len(p)
         return best
 
+    def override_unit(self, source: str) -> Unit | None:
+        head = "\n".join(source.splitlines()[:3])
+        override = re.search(r"acima-unit:\s*([\w.\-]+)", head)
+        if not override:
+            return None
+        token = override.group(1)
+        for u in self.units:
+            if u.id == token:
+                return u
+        for u in self.units:
+            if u.module == token and u.role == "implementation":
+                return u
+        if token.endswith(".contracts"):
+            for u in self.units:
+                if u.module == token.split(".")[0] and u.role == "contracts":
+                    return u
+        return None
+
+    def unit_for(self, rel: str, source: str) -> Unit | None:
+        return self.override_unit(source) or self.unit_by_path(rel)
+
     def add(self, rule: str, message: str, rel: str, line: int, evidence: str = "") -> None:
         severity, required = CATALOG[rule]
         if RANK[required] > RANK[self.level]:
             return
-        self.findings.append(Finding(rule, severity, message, rel, max(line, 1), evidence.strip()[:200]))
+        evidence = evidence.strip()[:200]
+        self.findings.append(Finding(rule, severity, message, rel, max(line, 1), evidence,
+                                     finding_fingerprint(rule, rel, evidence)))
 
     # -- parsing -----------------------------------------------------------
     def collect(self) -> None:
         for path in sorted(self.root.rglob("*.py")):
             rel = self.rel(path)
             if self.excluded(rel):
+                declared = self.unit_by_path(rel)
+                if declared is not None:
+                    self.add("ACIMA-G005",
+                             f"Declared unit {declared.id} excludes its own source: {rel}.",
+                             rel, 1, "exclude overrides unit mapping")
                 continue
             source = path.read_text(encoding="utf-8", errors="replace")
+            declared = self.unit_by_path(rel)
             unit = self.unit_for(rel, source)
+            if declared is not None and unit is not None and unit.id != declared.id:
+                self.add("ACIMA-G005",
+                         f"Role override changes {rel} from {declared.id} to {unit.id}.",
+                         rel, 1, "acima-unit override")
             if unit is None:
                 self.add("ACIMA-G005", f"Source file is not part of any declared unit: {rel}", rel, 1)
                 continue
@@ -135,6 +194,7 @@ class Enforcer:
                 self.files[rel] = ast.parse(source)
             except SyntaxError:
                 self.add("ACIMA-G005", f"File could not be parsed: {rel}", rel, 1)
+        self.source_files = len(self.files)
 
     def resolve(self, module: str, level: int, current: str) -> str | None:
         if level:
@@ -163,6 +223,19 @@ class Enforcer:
                 names = [a.name for a in node.names]
                 evidence = f"from {'.' * node.level}{module} import {', '.join(names)}"
                 out.append((module, node.lineno, evidence, names, node.level))
+            elif isinstance(node, ast.Call):
+                func = node.func
+                name = (func.attr if isinstance(func, ast.Attribute)
+                        else func.id if isinstance(func, ast.Name) else "")
+                if name not in {"import_module", "__import__"}:
+                    continue
+                if not node.args or not isinstance(node.args[0], ast.Constant):
+                    continue
+                module = node.args[0].value
+                if not isinstance(module, str) or not module:
+                    continue
+                out.append((module, node.lineno, f'{name}("{module}")',
+                            [module.split(".")[0]], 0))
         return out
 
     # -- rules -------------------------------------------------------------
@@ -333,7 +406,34 @@ class Enforcer:
                 return i
         return 1
 
+    @staticmethod
+    def annotation_text(annotation: ast.expr) -> str:
+        return ast.unparse(annotation).strip("'\"")
+
+    def check_annotation(self, rel: str, unit: Unit, name: str,
+                         annotation: ast.expr, line: int) -> None:
+        text = self.annotation_text(annotation)
+        if re.search(r"\b(list|dict|set|List|Dict|Set|OrderedDict|defaultdict)\b", text):
+            self.add("ACIMA-C002",
+                     f"Contract type {name} exposes a mutable collection ({text}).",
+                     rel, line, text)
+        if re.search(r"\b(Any|object)\b", text) or text in ("dict", "list"):
+            self.add("ACIMA-C006",
+                     f"Contract type {name} has an untyped member ({text}).", rel, line, text)
+        for module in sorted(self.module_names):
+            if module == unit.module:
+                continue
+            if re.search(rf"\b{re.escape(module)}\.contracts\b", text):
+                self.add("ACIMA-D003",
+                         f"contracts unit {unit.id} references {module}.contracts in an annotation; "
+                         "contracts must be independent.", rel, line, text)
+            elif re.search(rf"\b{re.escape(module)}\.impl\b", text):
+                self.add("ACIMA-D002",
+                         f"contracts unit {unit.id} references the implementation {module}.impl in an "
+                         "annotation.", rel, line, text)
+
     def check_contract_class(self, rel: str, node: ast.ClassDef) -> None:
+        unit = self.units_of[rel]
         bases = {getattr(b, "id", getattr(b, "attr", "")) for b in node.bases}
         documented = bool(ast.get_docstring(node))
         if bases & {"Protocol", "Enum", "Exception"} or node.name.endswith("Error"):
@@ -348,7 +448,27 @@ class Enforcer:
             assigns = any(isinstance(n, ast.Assign)
                           and not isinstance(n.value, (ast.Constant, ast.Name, ast.Attribute))
                           for n in node.body)
-            if annotated or assigns:
+            init = next((n for n in node.body
+                         if isinstance(n, ast.FunctionDef) and n.name == "__init__"), None)
+            init_mutation = False
+            if init is not None:
+                for child in ast.walk(init):
+                    if isinstance(child, ast.Assign):
+                        if any(isinstance(t, ast.Attribute) and isinstance(t.value, ast.Name)
+                               and t.value.id == "self" for t in child.targets):
+                            init_mutation = True
+                            if isinstance(child.value, (ast.List, ast.Dict, ast.Set)) or (
+                                    isinstance(child.value, ast.Call)
+                                    and isinstance(child.value.func, ast.Name)
+                                    and child.value.func.id in {"list", "dict", "set"}):
+                                self.add("ACIMA-C001",
+                                         f"Contract type {node.name} mutates state in __init__.",
+                                         rel, child.lineno, ast.unparse(child))
+                    elif isinstance(child, ast.AnnAssign) and isinstance(child.target, ast.Attribute):
+                        if isinstance(child.target.value, ast.Name) and child.target.value.id == "self":
+                            init_mutation = True
+                            self.check_annotation(rel, unit, node.name, child.annotation, child.lineno)
+            if annotated or assigns or init_mutation:
                 self.add("ACIMA-C001",
                          f"Contract type {node.name} exposes mutable state "
                          f"(not an immutable dataclass).", rel, node.lineno)
@@ -358,15 +478,11 @@ class Enforcer:
                      rel, node.lineno)
         for item in node.body:
             if isinstance(item, ast.AnnAssign):
-                annotation = ast.unparse(item.annotation)
-                if re.search(r"\b(list|dict|set|List|Dict|Set|OrderedDict|defaultdict)\b", annotation):
-                    self.add("ACIMA-C002",
-                             f"Contract type {node.name} exposes a mutable collection "
-                             f"({annotation}).", rel, item.lineno, annotation)
-                if re.search(r"\b(Any|object)\b", annotation) or annotation in ("dict", "list"):
-                    self.add("ACIMA-C006",
-                             f"Contract type {node.name} has an untyped member ({annotation}).",
-                             rel, item.lineno, annotation)
+                self.check_annotation(rel, unit, node.name, item.annotation, item.lineno)
+            elif isinstance(item, ast.Assign) and isinstance(item.value, (ast.List, ast.Dict, ast.Set)):
+                self.add("ACIMA-C001",
+                         f"Contract type {node.name} has mutable class-level state.",
+                         rel, item.lineno, ast.unparse(item))
         if not documented:
             self.add("ACIMA-G003", f"Contract type {node.name} has no documentation.", rel, node.lineno)
 
@@ -375,12 +491,17 @@ class Enforcer:
             unit = self.units_of[rel]
             if unit.role != "implementation" or "/infrastructure/" in rel:
                 continue
-            source = (self.root / rel).read_text(encoding="utf-8", errors="replace")
-            for token in PERSISTENCE:
-                if token in source:
-                    self.add("ACIMA-L001",
-                             f"{unit.id} references infrastructure ({token}) outside infrastructure/.",
-                             rel, self.line_of(source, token), token)
+            if "/tests/" in rel or "/test/" in rel:
+                continue
+            for module, line, evidence, _names, level in self.imports(rel):
+                if level:
+                    continue
+                if not any(module == root or module.startswith(root + ".")
+                           for root in PERSISTENCE_MODULES):
+                    continue
+                self.add("ACIMA-L001",
+                         f"{unit.id} imports infrastructure ({module}) outside infrastructure/.",
+                         rel, line, evidence)
 
     def check_sql(self) -> None:
         for rel, tree in self.files.items():
@@ -457,6 +578,10 @@ class Enforcer:
                 self.add("ACIMA-G002",
                          f"Waiver for {waiver['rule']} expired on {waiver['expires']} "
                          f"(owner: {waiver['owner']}).", path, i)
+            elif not str(waiver.get("fingerprint", "")).strip():
+                self.add("ACIMA-G001",
+                         f"Waiver for {waiver['rule']} has no finding fingerprint; "
+                         "a broad waiver can hide future findings.", path, i)
             else:
                 waivers.append(waiver)
         return waivers
@@ -466,7 +591,9 @@ class Enforcer:
         for finding in self.findings:
             unit = self.units_of.get(finding.path)
             waived = any(
-                w["rule"] == finding.rule and (
+                w["rule"] == finding.rule
+                and w.get("fingerprint") == finding.fingerprint
+                and (
                     (unit is not None and w["scope"] == f"unit:{unit.id}")
                     or (w["scope"].startswith("path:") and fnmatch.fnmatch(finding.path, w["scope"][5:]))
                     or (unit is not None and w["scope"] == f"module:{unit.module}")
@@ -508,13 +635,24 @@ def main() -> int:
         print(f"acima: cannot read config {args.config}: {exc}", file=sys.stderr)
         return 2
 
-    level = args.level or config.get("level", "L1")
-    findings = Enforcer(root, config, level).run()
+    level = str(args.level or config.get("level", "L1")).upper()
+    if level not in RANK:
+        print(f"acima: unknown level {level!r}; expected L1, L2 or L3", file=sys.stderr)
+        return 2
+    enforcer = Enforcer(root, config, level)
+    findings = enforcer.run()
     errors = [f for f in findings if f.severity == "error"]
+    execution = {
+        rule: ({"executed": True} if rule not in NOT_EXECUTED else
+               {"executed": False, "reason": NOT_EXECUTED[rule]})
+        for rule in sorted(CATALOG)
+    }
 
     if args.format == "json":
         print(json.dumps({"standard": config.get("standard", "1.0.0"),
-                          "level": level.upper(),
+                          "level": level,
+                          "sourceFiles": enforcer.source_files,
+                          "execution": execution,
                           "findings": [f.as_dict() for f in findings]}, indent=2))
     else:
         for f in findings:

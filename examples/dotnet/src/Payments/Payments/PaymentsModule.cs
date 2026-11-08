@@ -1,5 +1,4 @@
 using Acima.Payments.Contracts;
-using Acima.SharedKernel;
 
 namespace Acima.Payments;
 

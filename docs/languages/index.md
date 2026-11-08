@@ -13,9 +13,9 @@ enforced depends on what the language and its ecosystem give you.
 
 ## Coverage matrix
 
-The reference enforcers implement the same **23** portable rules with the same ids and the same
-finding format, so one conformance run can compare profiles. Six rules are **not** implemented by
-the portable enforcer:
+The implemented reference enforcers cover the same **23** portable rules with the same ids and
+the same finding format, so one conformance run can compare profiles. Six rules are **not**
+implemented by the portable enforcer:
 
 | Rule | Why not portable | Where it is covered |
 |---|---|---|
@@ -31,8 +31,8 @@ the reference enforcers, not the coverage of the standard:
 
 | Coverage | Python | TypeScript | Go | .NET | Java |
 |---|---|---|---|---|---|
-| Portable rules fired by the gallery | 23 / 23 | 19 / 23 | 20 / 23 | 23 / 23 | — |
-| Documented gaps | none | `A001`, `A003`, `C005`, `L001` | `D009`, `G001`, `G002` | none | — |
+| Portable rules fired by the gallery | 23 / 23 | 23 / 23 | 23 / 23 | 23 / 23 | — |
+| Documented gaps | none | none | none | none | — |
 
 A rule counts only when a violation fixture makes it fire **and** the resulting finding is checked by
 `conformance/run.py`. Rules in the documented-gap column are still normative for that language; the
@@ -51,9 +51,9 @@ Every profile follows the same five sections, so you can jump to the one you nee
 ## Service topology profile
 
 Every language profile ends with a **Service topology** section that translates chapter 11 into
-concrete project names, dependency rules, adapter seams and domain test gates. The profile is manual
-in this revision: the language sections describe the mechanics that a person or a future runner can
-check, not a runner that already exists.
+concrete project names, dependency rules, adapter seams and domain test gates. The profile is
+checked by [`conformance/topology.py`](../../conformance/topology.py); the language sections show the
+shape the runner expects and the evidence it reads.
 
 ## Adding another language
 

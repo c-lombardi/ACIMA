@@ -94,3 +94,29 @@ checkable:
 
 A repository records the version it targets in `acima.config.json` (see
 [Executable governance](07-executable-governance.md)).
+
+## 0.8 Two architecture modes
+
+ACIMA has one base standard and one profile. `acima.config.json.mode` selects which obligations
+govern a repository; it is the **only** selector. `acima.topology.json` is profile evidence, not a
+mode selector.
+
+| Mode | Obligations in force | Superseded base obligations |
+|---|---|---|
+| `base` (default when `mode` is absent) | P1–P9 | — |
+| `service-topology` | P1–P9 **plus** P10–P13 | P2.1 (one contracts unit per module) → P11.1/P11.2 per-layer contracts; P3.5 (shared-kernel allowance) → P12.2 zero-reference contracts |
+
+The profile does **not** replace P1–P9 wholesale. Exactly the two named obligations are superseded;
+immutability, acyclic dependencies, no implementation references, owned persistence, owned
+configuration and owned data still apply.
+
+Mode consistency is a configuration check, not a finding:
+
+- a repository that declares `service-topology` MUST have `acima.topology.json` declaring
+  `"profile": "service-topology"`;
+- a repository with that manifest MUST declare `"mode": "service-topology"` in
+  `acima.config.json`;
+- an unknown mode, a base declaration with a topology manifest, or a service declaration without
+  one is a tool failure (exit `2`), never a clean run;
+- omitting `mode` is `base` for backward compatibility, but a manifest makes the declaration
+  ambiguous, so it is rejected.

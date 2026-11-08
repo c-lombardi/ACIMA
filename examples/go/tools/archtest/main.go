@@ -7,6 +7,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -37,21 +39,23 @@ type config struct {
 }
 
 type finding struct {
-	Rule     string `json:"rule"`
-	Severity string `json:"severity"`
-	Message  string `json:"message"`
-	Path     string `json:"path"`
-	Line     int    `json:"line"`
-	Evidence string `json:"evidence"`
+	Rule        string `json:"rule"`
+	Severity    string `json:"severity"`
+	Message     string `json:"message"`
+	Path        string `json:"path"`
+	Line        int    `json:"line"`
+	Evidence    string `json:"evidence"`
+	Fingerprint string `json:"fingerprint,omitempty"`
 }
 
 type wafer struct {
-	Rule       string `json:"rule"`
-	Scope      string `json:"scope"`
-	Owner      string `json:"owner"`
-	Reason     string `json:"reason"`
-	Expires    string `json:"expires"`
-	ReviewedOn string `json:"reviewedOn"`
+	Rule        string `json:"rule"`
+	Scope       string `json:"scope"`
+	Owner       string `json:"owner"`
+	Reason      string `json:"reason"`
+	Expires     string `json:"expires"`
+	ReviewedOn  string `json:"reviewedOn"`
+	Fingerprint string `json:"fingerprint"`
 }
 
 var catalog = map[string][2]string{
@@ -59,23 +63,36 @@ var catalog = map[string][2]string{
 	"ACIMA-D004": {"error", "L1"}, "ACIMA-D005": {"error", "L1"}, "ACIMA-D006": {"error", "L1"},
 	"ACIMA-D007": {"error", "L1"}, "ACIMA-D008": {"error", "L1"}, "ACIMA-D009": {"error", "L1"},
 	"ACIMA-L001": {"error", "L1"}, "ACIMA-L002": {"error", "L1"}, "ACIMA-L003": {"error", "L1"},
-	"ACIMA-C001": {"error", "L2"}, "ACIMA-C002": {"error", "L2"}, "ACIMA-C004": {"error", "L2"},
-	"ACIMA-C005": {"error", "L2"}, "ACIMA-C006": {"error", "L2"},
-	"ACIMA-A001": {"error", "L3"}, "ACIMA-A003": {"error", "L3"},
+	"ACIMA-L004": {"warning", "L1"},
+	"ACIMA-C001": {"error", "L2"}, "ACIMA-C002": {"error", "L2"}, "ACIMA-C003": {"error", "L2"},
+	"ACIMA-C004": {"error", "L2"}, "ACIMA-C005": {"error", "L2"}, "ACIMA-C006": {"error", "L2"},
+	"ACIMA-C007": {"warning", "L2"},
+	"ACIMA-A001": {"error", "L3"}, "ACIMA-A002": {"warning", "L3"},
+	"ACIMA-A003": {"error", "L3"}, "ACIMA-A004": {"warning", "L3"},
 	"ACIMA-G001": {"error", "L1"}, "ACIMA-G002": {"error", "L1"},
-	"ACIMA-G003": {"warning", "L2"}, "ACIMA-G005": {"error", "L1"},
+	"ACIMA-G003": {"warning", "L2"}, "ACIMA-G004": {"error", "L2"},
+	"ACIMA-G005": {"error", "L1"},
+}
+
+var notExecuted = map[string]string{
+	"ACIMA-C003": "behaviour versus validation is a semantic judgement",
+	"ACIMA-C007": "constructor completeness needs symbol and API analysis",
+	"ACIMA-L004": "service-locator APIs are framework-specific",
+	"ACIMA-A002": "configuration APIs differ per ecosystem",
+	"ACIMA-A004": "version-lock coupling is visible only across published packages",
+	"ACIMA-G004": "an API baseline needs a per-language surface format",
 }
 
 var rank = map[string]int{"L1": 1, "L2": 2, "L3": 3}
 
 var (
-	persistence = []string{"database/sql", "gorm.io/", "github.com/jmoiron/sqlx", "github.com/jackc/pgx"}
-	framework   = []string{"net/http", "github.com/gin-gonic/gin", "github.com/labstack/echo", "github.com/go-chi/chi"}
-	ambient     = []*regexp.Regexp{regexp.MustCompile(`time\.Now\(`), regexp.MustCompile(`rand\.Read\(`), regexp.MustCompile(`uuid\.New`), regexp.MustCompile(`time\.Since\(`)}
-	sqlTable    = regexp.MustCompile(`(?i)\b(?:from|into|update|join)\s+([a-z][a-z0-9_]*)`)
+	persistence  = []string{"database/sql", "gorm.io/", "github.com/jmoiron/sqlx", "github.com/jackc/pgx"}
+	framework    = []string{"net/http", "github.com/gin-gonic/gin", "github.com/labstack/echo", "github.com/go-chi/chi"}
+	ambient      = []*regexp.Regexp{regexp.MustCompile(`time\.Now\(`), regexp.MustCompile(`rand\.Read\(`), regexp.MustCompile(`uuid\.New`), regexp.MustCompile(`time\.Since\(`)}
+	sqlTable     = regexp.MustCompile(`(?i)\b(?:from|into|update|join)\s+([a-z][a-z0-9_]*)`)
 	doubleQuoted = regexp.MustCompile("\"([^\"]*)\"")
 	rawQuoted    = regexp.MustCompile("`([^`]*)`")
-	importLine  = regexp.MustCompile(`^(?:([\w.]+)\s+)?"([^"]+)"$`)
+	importLine   = regexp.MustCompile(`^(?:([\w.]+)\s+)?"([^"]+)"$`)
 	singleImport = regexp.MustCompile(`^import\s+(?:([\w.]+)\s+)?"([^"]+)"$`)
 	exportedType = regexp.MustCompile(`(?m)^type\s+([A-Z]\w*)\s+(?:struct|interface|string|int|int64|bool)\b`)
 	fieldLine    = regexp.MustCompile(`^\s*([A-Z]\w*)\s+([\[\]\*\w.]+)`)
@@ -120,11 +137,12 @@ func main() {
 		level = strings.ToUpper(*levelFlag)
 	}
 	if rank[level] == 0 {
-		level = "L1"
+		fatal(fmt.Errorf("unknown level %q; expected L1, L2 or L3", level))
 	}
 
 	files := map[string]*source{}
 	walk(absRoot, absRoot, cfg.Exclude, files)
+	sourceFiles := len(files)
 
 	findings := []finding{}
 	add := func(rule, message, path string, line int, evidence string) {
@@ -137,13 +155,24 @@ func main() {
 		if len(evidence) > 200 {
 			evidence = evidence[:200]
 		}
-		findings = append(findings, finding{rule, catalog[rule][0], message, path, line, evidence})
+		findings = append(findings, finding{Rule: rule, Severity: catalog[rule][0], Message: message, Path: path, Line: line, Evidence: evidence, Fingerprint: fingerprint(rule, path, evidence)})
 	}
 
 	for _, file := range files {
+		declared := unitByPath(file.path, cfg.Units)
 		file.unit = unitFor(file.path, file.text, cfg.Units)
+		if declared != nil && file.unit != nil && declared.ID != file.unit.ID {
+			add("ACIMA-G005", fmt.Sprintf("Role override changes %s from %s to %s.", file.path, declared.ID, file.unit.ID), file.path, 1, "acima-unit override")
+		}
 		if file.unit == nil {
 			add("ACIMA-G005", fmt.Sprintf("Source file is not part of any declared unit: %s", file.path), file.path, 1, "")
+		}
+	}
+	for _, u := range cfg.Units {
+		for _, p := range u.Paths {
+			if excluded(p, cfg.Exclude) {
+				add("ACIMA-G005", fmt.Sprintf("Declared unit %s excludes its own source: %s.", u.ID, p), p, 1, "exclude overrides unit mapping")
+			}
 		}
 	}
 
@@ -184,11 +213,33 @@ func main() {
 	checkLayering(add, files, cfg)
 	checkSQL(add, files, cfg)
 	checkStatics(add, files, edges, byDir)
-	findings = applyWaivers(add, findings, files, cfg, absRoot)
+	waiverFindings := []finding{}
+	addWaiver := func(rule, message, path string, line int, evidence string) {
+		if rank[catalog[rule][1]] > rank[level] {
+			return
+		}
+		if line < 1 {
+			line = 1
+		}
+		if len(evidence) > 200 {
+			evidence = evidence[:200]
+		}
+		waiverFindings = append(waiverFindings, finding{Rule: rule, Severity: catalog[rule][0], Message: message, Path: path, Line: line, Evidence: evidence, Fingerprint: fingerprint(rule, path, evidence)})
+	}
+	findings = applyWaivers(addWaiver, findings, files, cfg, absRoot)
+	findings = append(findings, waiverFindings...)
 
 	findings = dedupe(findings)
+	execution := map[string]map[string]any{}
+	for rule := range catalog {
+		if reason, ok := notExecuted[rule]; ok {
+			execution[rule] = map[string]any{"executed": false, "reason": reason}
+		} else {
+			execution[rule] = map[string]any{"executed": true}
+		}
+	}
 	if *format == "json" {
-		payload := map[string]any{"standard": cfg.Standard, "level": level, "findings": findings}
+		payload := map[string]any{"standard": cfg.Standard, "level": level, "sourceFiles": sourceFiles, "execution": execution, "findings": findings}
 		encoded, _ := json.MarshalIndent(payload, "", "  ")
 		fmt.Println(string(encoded))
 	} else {
@@ -260,6 +311,21 @@ func excluded(path string, patterns []string) bool {
 	return false
 }
 
+func unitByPath(path string, units []unit) *unit {
+	var best *unit
+	bestLen := -1
+	for i := range units {
+		for _, prefix := range units[i].Paths {
+			clean := strings.TrimSuffix(prefix, "/")
+			if (path == clean || strings.HasPrefix(path, clean+"/")) && len(clean) > bestLen {
+				best = &units[i]
+				bestLen = len(clean)
+			}
+		}
+	}
+	return best
+}
+
 func unitFor(path, text string, units []unit) *unit {
 	head := strings.SplitN(text, "\n", 4)
 	head = head[:min(3, len(head))]
@@ -287,18 +353,7 @@ func unitFor(path, text string, units []unit) *unit {
 			}
 		}
 	}
-	var best *unit
-	bestLen := -1
-	for i := range units {
-		for _, prefix := range units[i].Paths {
-			clean := strings.TrimSuffix(prefix, "/")
-			if (path == clean || strings.HasPrefix(path, clean+"/")) && len(clean) > bestLen {
-				best = &units[i]
-				bestLen = len(clean)
-			}
-		}
-	}
-	return best
+	return unitByPath(path, units)
 }
 
 type importSpec struct {
@@ -372,7 +427,7 @@ func checkEdge(add func(string, string, string, int, string), file, target *sour
 		}
 		if to.Role == "implementation" && to.Module != from.Module {
 			add("ACIMA-D001", fmt.Sprintf("Module %s imports the implementation unit %s (expected %s.contracts).", from.Module, to.ID, to.Module), path, im.line, im.evidence)
-			if strings.HasPrefix(strings.TrimSpace(im.evidence), ".") {
+			if strings.HasPrefix(strings.TrimSpace(im.evidence), "import .") || strings.Contains(im.spec, "/internal/") || strings.Contains(im.spec, "/impl") {
 				add("ACIMA-D009", fmt.Sprintf("%s imports a private identifier from module %s.", from.Module, to.Module), path, im.line, im.evidence)
 			}
 			if names := exportedTypes(target.text); len(names) > 0 {
@@ -543,11 +598,14 @@ func checkContracts(add func(string, string, string, int, string), files map[str
 				if field == nil {
 					continue
 				}
+				if field[1] == "" || field[1][0] < 'A' || field[1][0] > 'Z' {
+					continue
+				}
 				typ := field[2]
 				if strings.HasPrefix(typ, "*") {
 					add("ACIMA-C001", fmt.Sprintf("Contract type %s exposes a pointer field (%s); value semantics required.", name, field[1]), path, blockLine, strings.TrimSpace(raw))
 				}
-				if strings.HasPrefix(typ, "map[") || strings.Contains(typ, "[]*") {
+				if strings.HasPrefix(typ, "map[") || strings.Contains(typ, "[]") {
 					add("ACIMA-C002", fmt.Sprintf("Contract type %s exposes a mutable collection (%s).", name, field[1]), path, blockLine, strings.TrimSpace(raw))
 				}
 				if interfaceAny.MatchString(typ) {
@@ -564,17 +622,36 @@ func checkContracts(add func(string, string, string, int, string), files map[str
 	}
 }
 
+func fingerprint(rule, path, evidence string) string {
+	sum := sha256.Sum256([]byte(rule + "\x00" + path + "\x00" + evidence))
+	return "sha256:" + hex.EncodeToString(sum[:])[:16]
+}
+
+func globMatch(pattern, value string) bool {
+	matched, err := filepath.Match(pattern, value)
+	return err == nil && matched
+}
+
 func commentBefore(text string, index int, name string) bool {
-	start := strings.LastIndex(text[:index], "\n")
-	if start < 0 {
-		return false
+	lines := strings.Split(text[:index], "\n")
+	seen := false
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			if seen {
+				return false
+			}
+			continue
+		}
+		if !strings.HasPrefix(line, "//") {
+			return false
+		}
+		seen = true
+		if strings.Contains(line, name) || strings.Contains(line, "Package") {
+			return true
+		}
 	}
-	prevStart := strings.LastIndex(text[:start], "\n")
-	if prevStart < 0 {
-		prevStart = 0
-	}
-	prev := strings.TrimSpace(text[prevStart:start])
-	return strings.HasPrefix(prev, "//") && (strings.Contains(prev, name) || strings.Contains(prev, "Package"))
+	return false
 }
 
 func checkLayering(add func(string, string, string, int, string), files map[string]*source, cfg config) {
@@ -583,9 +660,12 @@ func checkLayering(add func(string, string, string, int, string), files map[stri
 		if file.unit == nil || file.unit.Role != "implementation" || strings.Contains(path, "/infrastructure/") {
 			continue
 		}
-		for _, token := range persistence {
-			if idx := strings.Index(file.text, `"`+token); idx >= 0 {
-				add("ACIMA-L001", fmt.Sprintf("%s references infrastructure (%s) outside infrastructure/.", file.unit.ID, token), path, lineOf(file.text, idx), token)
+		for _, im := range importsOf(file.text) {
+			for _, token := range persistence {
+				if im.spec != token && !strings.HasPrefix(im.spec, strings.TrimSuffix(token, "/")+"/") {
+					continue
+				}
+				add("ACIMA-L001", fmt.Sprintf("%s imports infrastructure (%s) outside infrastructure/.", file.unit.ID, im.spec), path, im.line, im.evidence)
 			}
 		}
 	}
@@ -675,8 +755,16 @@ func applyWaivers(add func(string, string, string, int, string), findings []find
 			continue
 		}
 		expiry, err := parseDate(w.Expires)
-		if err != nil || expiry.Before(now()) {
+		if err != nil {
+			add("ACIMA-G001", fmt.Sprintf("Waiver expiry is not an ISO date: %s.", w.Expires), cfg.Waivers, i+1, "")
+			continue
+		}
+		if expiry.Before(now()) {
 			add("ACIMA-G002", fmt.Sprintf("Waiver for %s expired on %s (owner: %s).", w.Rule, w.Expires, w.Owner), cfg.Waivers, i+1, "")
+			continue
+		}
+		if strings.TrimSpace(w.Fingerprint) == "" {
+			add("ACIMA-G001", fmt.Sprintf("Waiver for %s has no finding fingerprint; a broad waiver can hide future findings.", w.Rule), cfg.Waivers, i+1, "")
 			continue
 		}
 		active = append(active, w)
@@ -687,7 +775,14 @@ func applyWaivers(add func(string, string, string, int, string), findings []find
 		waived := false
 		if unit != nil && unit.unit != nil {
 			for _, w := range active {
-				if w.Rule == f.Rule && w.Scope == "unit:"+unit.unit.ID {
+				if w.Rule != f.Rule {
+					continue
+				}
+				if w.Fingerprint == "" || w.Fingerprint != f.Fingerprint {
+					continue
+				}
+				if w.Scope == "unit:"+unit.unit.ID || w.Scope == "module:"+unit.unit.Module ||
+					(strings.HasPrefix(w.Scope, "path:") && globMatch(w.Scope[5:], f.Path)) {
 					waived = true
 				}
 			}

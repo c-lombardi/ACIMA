@@ -1,10 +1,10 @@
 import type { CatalogReader } from '../../catalog/contracts/index.ts';
 import type { PaymentGateway } from '../../payments/contracts/index.ts';
+import { Money, orderId } from '../contracts/index.ts';
 import type {
-  OrderLine, OrderPlaced, OrderRejected, OrderSummary, PlaceOrder, RejectionReason,
+  OrderId, OrderLine, OrderPlaced, OrderRejected, OrderSummary, PlaceOrder, RejectionReason,
 } from '../contracts/index.ts';
-import type { Money, OrderId } from '../../shared-kernel/money.ts';
-import { orderId } from '../../shared-kernel/money.ts';
+import { Money as PaymentMoney } from '../../payments/contracts/index.ts';
 import { Order } from './order.ts';
 
 /** Orders' application service. Depends only on contracts and its own domain. */
@@ -29,7 +29,11 @@ export class OrdersModule {
     for (const line of command.lines) {
       const product = this.catalog.get(line.productId);
       if (product === undefined) return this.reject(id, 'out_of_stock');
-      lines.push({ productId: line.productId, unitPrice: product.price, quantity: line.quantity });
+      lines.push({
+        productId: line.productId,
+        unitPrice: new Money(product.price.amount, product.price.currency),
+        quantity: line.quantity,
+      });
     }
 
     const order = new Order(id, command.customerId, lines[0]!.unitPrice.times(0));
@@ -37,7 +41,7 @@ export class OrdersModule {
 
     const authorization = this.payments.authorize({
       orderId: id,
-      amount: order.total,
+      amount: new PaymentMoney(order.total.amount, order.total.currency),
       customerId: command.customerId,
     });
     if (!authorization.approved) return this.reject(id, 'payment_declined');

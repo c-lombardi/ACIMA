@@ -17,10 +17,13 @@ a pass/fail gate. Every other rule above is an `error`.
 ## 8.2 Declaring conformance
 
 ```json
-{ "standard": "1.0.0", "language": "go", "level": "L2" }
+{ "standard": "1.0.0", "mode": "base", "language": "go", "level": "L2" }
 ```
 
 in `acima.config.json`. The declared level selects the rule subset that is executed and enforced.
+`mode` selects `base` or `service-topology`; a `service-topology` claim also requires
+`acima.topology.json` and the profile run in §8.8. Mode/base-profile precedence is defined in
+[chapter 11](11-service-topology.md#1112-relationship-to-base-acima).
 
 A repository MAY declare a level and run additional rules above it; it MUST NOT declare a level and
 waive rules required by that level as a matter of routine. Waivers are for exceptions, and their count
@@ -38,7 +41,7 @@ is reported.
 - [ ] No implementation references another implementation (`D001`).
 - [ ] The module graph is acyclic (`D005`).
 - [ ] No reference leaks an implementation transitively (`D008`).
-- [ ] The shared kernel references nothing (`D007`).
+- [ ] If a legacy shared kernel is present, it references nothing (`D007`); new contracts do not reference it.
 - [ ] Domain and application code do not reference infrastructure (`L001`).
 - [ ] Contracts expose no framework or transport types (`L002`).
 - [ ] Modules receive peers through construction, not through a locator (`L004`).
@@ -74,7 +77,8 @@ A conformance claim is credible when all five exist:
 
 1. **the configuration** — `acima.config.json` declaring units and level;
 2. **the run** — an enforcer execution on the current commit, at the declared level, zero unwaived
-   errors;
+   errors; for a **full conformance claim**, every rule required by that level must also be executed,
+   with a recorded manual/native evidence artifact where no automated enforcer exists;
 3. **the artefact** — the JSON findings file from that run, retained with the build;
 4. **the waiver report** — count, owners, soonest expiry, expired count;
 5. **the pipeline** — the gate runs on every pull request and blocks merges on `error`.
@@ -91,20 +95,26 @@ enforcers in this repository fail when a suite finds zero files.
 - Repository: <name>
 - Standard: 1.0.0
 - Declared level: L2
-- Profile: <none | service-topology, manual, n/12>
+- Profile: <none | service-topology, automated, n/12>
 - Language profile: dotnet
 - Enforcer: tests/Acima.ArchTests
 - CI gate: <link to the required check>
 
 | Check | Result |
 |---|---|
-| Rules executed | 24 of 24 required at L2 |
+| Rules executed | <executed> of <required> automated; manual/native evidence: <rules> |
+| Claim | <FULL CONFORMANCE | PARTIAL ASSESSMENT> |
 | Unwaived errors | 0 |
-| Warnings | 3 (`C007` ×2, `G003` ×1) |
+| Warnings | 3 (`C007` ×1, `G003` ×2) |
 | Waivers | 1 active, 0 expired, 1 expiring within 90 days |
 | Findings artefact | build #1234 / `acima.json` |
 | Last verified commit | `abc1234` |
 ```
+
+The count is derived from `rules.json`; never copy a fixed number. At L2 the catalog requires 25
+rules. The reference portable enforcers execute 21 of those and report `L004`, `C003`, `C007` and
+`G004` as not executed; without manual/native evidence for those four, the correct claim is
+`PARTIAL ASSESSMENT`, not `FULL CONFORMANCE`.
 
 ## 8.6 Partial conformance is not conformance
 
@@ -114,8 +124,10 @@ dynamically. "The language does not support it" is a reason to run the test, not
 it is exactly the case where nothing else will catch the violation.
 
 If an enforcer genuinely cannot evaluate a rule, it MUST report the rule as `info` with
-`"executed": false` in the findings artefact rather than omitting it. A conformance claim lists
-unenforced rules explicitly. A standard that hides what it does not check is worse than no standard.
+`"executed": false` in the findings artefact rather than omitting it. A **partial assessment** lists
+the unenforced rules explicitly and records the missing manual/native evidence; it MUST NOT be
+called conformance. A full conformance claim requires execution or recorded manual/native evidence
+for every required rule. A standard that hides what it does not check is worse than no standard.
 
 ## 8.7 Conformance and reality
 
@@ -128,20 +140,27 @@ problem to fix next. The levels exist so that:
 
 ## 8.8 Service topology profile
 
-The service topology profile in chapter 11 is the default for new systems and a set of twelve
-requirements, `ST-1`–`ST-12`. In this revision they are tested **manually**: there is no `ACIMA-S*` rule
-id and no reference enforcer for them. That is not a reason to omit them from a claim. A new
-repository reports it as:
+The service topology profile in chapter 11 is the default for new systems. Its twelve requirements,
+`ST-1`–`ST-12`, are implemented as `ACIMA-S001`–`ACIMA-S012` by
+[`conformance/topology.py`](../../conformance/topology.py). The runner reads `acima.topology.json`,
+scans the declared projects and sources, and is exercised by `conformance/test_topology.py` against a
+clean fixture and one that violates every item. A new repository reports it as:
 
 ```markdown
-- Base: L3 (machine-checked)
-- Profile: service-topology, manual, 12/12 on <date>
-- Evidence: services/ tree, contract dependency listings, domain coverage report
+- Mode: service-topology
+- Base: L3 (automated subset + recorded manual evidence)
+- Profile: service-topology, automated, 12/12 on <date>
+- Evidence: acima.topology.json and the `conformance/topology.py` JSON artifact
 ```
 
-A claim that says `service-topology` without `manual` and a checklist result is overstating what the
-build enforces. The same rule as §8.6 applies: list what is not checked rather than hiding it.
+A claim that says `service-topology` without the JSON run is overstating what the build enforces. The
+S rules are profile rules outside the base catalog; they do not change the L1–L3 rule set. The runner
+checks declared evidence — the one-sentence responsibility, business-rule traceability, 100% coverage
+reports and the shared UI/API workflow tokens — so the manifest cannot silently drift from the tree.
+It does not prove semantic completeness: a team can still declare an incomplete rule list or a
+workflow that is not the product's real one. The same rule as §8.6 applies: list what is not checked
+rather than hiding it.
 
-When S-series rules and a runner exist, this section will require the same five pieces of evidence as
-§8.4: configuration, run, artefact, waiver report and pipeline. Until then, the evidence is the
-checklist plus the dependency listings it asks for.
+The evidence is the same as §8.4: the topology configuration, the run, the JSON artefact and the CI
+gate. The profile runner is invoked by `conformance/run.py`; a repository that adopts the profile adds
+that command to the same pull-request job as its language enforcer.

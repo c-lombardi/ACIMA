@@ -1,0 +1,37 @@
+{
+  "_generatedBy": "acima-adoption preflight --write-draft",
+  "_note": "Heuristic draft. Review module names, merge or split units, then commit.",
+  "standard": "1.0.0-draft.1",
+  "language": "python",
+  "level": "L1",
+  "root": ".",
+  "units": [
+    {
+      "id": "httpx",
+      "module": "httpx",
+      "role": "implementation",
+      "paths": [
+        "httpx"
+      ]
+    },
+    {
+      "id": "tests",
+      "module": "tests",
+      "role": "implementation",
+      "paths": [
+        "tests"
+      ]
+    }
+  ],
+  "exclude": [
+    "bin",
+    "obj",
+    "node_modules",
+    "dist",
+    "build",
+    "target",
+    "tests",
+    "**/__pycache__"
+  ],
+  "waivers": ".acima/waivers.json"
+}

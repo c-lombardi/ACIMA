@@ -1,0 +1,12 @@
+version: 1
+run_id: rw-2026-11-08-01
+acima_pin: config/acima-pin.json
+portfolio: candidates/selected.json
+workspace: /tmp/acima-real-world-benchmark
+mode: sequential
+upstream_writes: forbidden
+acima_writes: forbidden
+source_snapshot: repositories/<language>/<id>/source
+baseline_copy: repositories/<language>/<id>/baseline
+adoption_copy: repositories/<language>/<id>/adoption
+evidence_root: runs/rw-2026-11-08-01

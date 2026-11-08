@@ -29,7 +29,8 @@ A **module** is the smallest part of the system that one team owns, can change w
 with another team, and could in principle be extracted. It has:
 
 - a name, used in every unit and in every finding;
-- a contracts unit;
+- a contracts unit in base mode, or one contracts project per outward-facing layer in service
+  mode;
 - one or more implementation units;
 - its own persistence and configuration;
 - a bounded context's worth of meaning.
@@ -41,6 +42,13 @@ does not, cannot.
 > **Not to be confused with:** an *assembly*, *jar*, *npm package* or *Go package* — those are units.
 > A module often spans several. Also not to be confused with a *layer* (domain, application,
 > infrastructure): layers live **inside** a module.
+
+**Modes and ownership.** `acima.config.json.mode` selects how this definition is applied. In
+`base` mode the module is the ownership unit and has exactly one contracts unit (P2.1), with the
+legacy shared-kernel allowance (P3.5). In `service-topology` mode the service is the ownership
+envelope; the service is the unit for P1/P7 ownership, each outward-facing layer has one contracts
+project, the domain has none, and contracts reference nothing (P11.1/P11.4, P12.2). P2.1 and P3.5
+are **superseded**, not reinterpreted. Every other P1–P9 obligation still applies.
 
 ## 2.3 Contracts
 

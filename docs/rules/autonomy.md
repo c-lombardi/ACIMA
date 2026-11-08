@@ -221,7 +221,9 @@ non-compliant one with a clean build.
 
 ### Fix
 
-Write the five fields. If you cannot name an owner or a date, the exception is not a decision yet.
+Write every field, including the finding fingerprint. If you cannot name an owner or a date, the
+exception is not a decision yet. A unit or path waiver without a fingerprint is rejected: it would
+hide every future finding in that scope, not just the measured baseline.
 
 ### Detection
 
@@ -239,8 +241,8 @@ catalogue — a typo must not silently excuse nothing.
 ### Violation
 
 ```json
-{ "rule": "ACIMA-C001", "scope": "unit:legacy", "owner": "team-a",
-  "reason": "…", "expires": "2026-01-01", "reviewedOn": "2025-01-01" }
+{ "rule": "ACIMA-C001", "scope": "unit:legacy", "fingerprint": "sha256:…",
+  "owner": "team-a", "reason": "…", "expires": "2026-01-01", "reviewedOn": "2025-01-01" }
 ```
 
 ### Finding

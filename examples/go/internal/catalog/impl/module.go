@@ -5,22 +5,21 @@ import (
 	"sort"
 
 	catalogcontracts "acima.example/internal/catalog/contracts"
-	"acima.example/internal/sharedkernel"
 )
 
 // store is the module's private persistence. A database would satisfy the same shape.
 type store struct {
-	rows map[sharedkernel.ProductID]catalogcontracts.ProductView
+	rows map[catalogcontracts.ProductID]catalogcontracts.ProductView
 }
 
 func newStore() *store {
-	return &store{rows: map[sharedkernel.ProductID]catalogcontracts.ProductView{}}
+	return &store{rows: map[catalogcontracts.ProductID]catalogcontracts.ProductView{}}
 }
 
 // reader adapts the store to the provided port.
 type reader struct{ s *store }
 
-func (r reader) Get(id sharedkernel.ProductID) (catalogcontracts.ProductView, bool) {
+func (r reader) Get(id catalogcontracts.ProductID) (catalogcontracts.ProductView, bool) {
 	p, ok := r.s.rows[id]
 	return p, ok
 }

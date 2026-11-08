@@ -1,0 +1,160 @@
+{
+  "skill": {
+    "name": "acima-adoption",
+    "version": "1.0.2",
+    "standard": "1.0.0-draft.1",
+    "catalogSha256": "125a1a3fc2096a25cf8a849aa701d571e73c6aead977c6f012cf4f60c4b1fe77"
+  },
+  "project": {
+    "path": "/tmp/acima-real-world-benchmark/repositories/python/httpx/adoption",
+    "mode": "adopting",
+    "language": "python",
+    "detectedLanguages": [
+      "python"
+    ]
+  },
+  "checks": [
+    {
+      "id": "SKL-001",
+      "status": "pass",
+      "detail": "manifest acima-adoption 1.0.2 loaded",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-002",
+      "status": "pass",
+      "detail": "catalog hash matches the pin (125a1a3fc209\u2026)",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-003",
+      "status": "pass",
+      "detail": "29 rules, all 23 portable ids present",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-004",
+      "status": "pass",
+      "detail": "standard version 1.0.0-draft.1",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-005",
+      "status": "pass",
+      "detail": "8 references and 4 assets present",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-006",
+      "status": "pass",
+      "detail": "every documented enforcer path exists",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-007",
+      "status": "pass",
+      "detail": "4 violation baselines present",
+      "remedy": ""
+    },
+    {
+      "id": "ENV-001",
+      "status": "pass",
+      "detail": "toolchains available: python3, node",
+      "remedy": ""
+    },
+    {
+      "id": "TGT-001",
+      "status": "pass",
+      "detail": "target /tmp/acima-real-world-benchmark/repositories/python/httpx/adoption",
+      "remedy": ""
+    },
+    {
+      "id": "TGT-002",
+      "status": "pass",
+      "detail": "language python (60 source files; detected: python)",
+      "remedy": ""
+    },
+    {
+      "id": "TGT-003",
+      "status": "pass",
+      "detail": "acima.config.json present (mode: adopting)",
+      "remedy": ""
+    },
+    {
+      "id": "GOV-001",
+      "status": "pass",
+      "detail": "2 units declared at L1",
+      "remedy": ""
+    },
+    {
+      "id": "GOV-002",
+      "status": "warn",
+      "detail": "baseline is not clean: 38 finding(s), 38 error(s)",
+      "remedy": "this is expected on day one: waive deliberately, then ratchet"
+    },
+    {
+      "id": "GOV-003",
+      "status": "fail",
+      "detail": "waivers file missing: .acima/waivers.json",
+      "remedy": "create it with an empty waivers array, or fix the path"
+    }
+  ],
+  "blockers": [
+    "GOV-003"
+  ],
+  "warnings": [
+    "GOV-002"
+  ],
+  "findings": {
+    "total": 38,
+    "errors": 38,
+    "byRule": {
+      "ACIMA-G005": 37,
+      "ACIMA-G001": 1
+    },
+    "byPath": {
+      ".acima/waivers.json": 1,
+      "tests/__init__.py": 1,
+      "tests/client/__init__.py": 1,
+      "tests/client/test_async_client.py": 1,
+      "tests/client/test_auth.py": 1,
+      "tests/client/test_client.py": 1,
+      "tests/client/test_cookies.py": 1,
+      "tests/client/test_event_hooks.py": 1,
+      "tests/client/test_headers.py": 1,
+      "tests/client/test_properties.py": 1,
+      "tests/client/test_proxies.py": 1,
+      "tests/client/test_queryparams.py": 1,
+      "tests/client/test_redirects.py": 1,
+      "tests/common.py": 1,
+      "tests/concurrency.py": 1,
+      "tests/conftest.py": 1,
+      "tests/models/__init__.py": 1,
+      "tests/models/test_cookies.py": 1,
+      "tests/models/test_headers.py": 1,
+      "tests/models/test_queryparams.py": 1,
+      "tests/models/test_requests.py": 1,
+      "tests/models/test_responses.py": 1,
+      "tests/models/test_url.py": 1,
+      "tests/models/test_whatwg.py": 1,
+      "tests/test_api.py": 1,
+      "tests/test_asgi.py": 1,
+      "tests/test_auth.py": 1,
+      "tests/test_config.py": 1,
+      "tests/test_content.py": 1,
+      "tests/test_decoders.py": 1,
+      "tests/test_exceptions.py": 1,
+      "tests/test_exported_members.py": 1,
+      "tests/test_main.py": 1,
+      "tests/test_multipart.py": 1,
+      "tests/test_status_codes.py": 1,
+      "tests/test_timeouts.py": 1,
+      "tests/test_utils.py": 1,
+      "tests/test_wsgi.py": 1
+    }
+  },
+  "proposedUnits": [],
+  "next": [
+    "Resolve GOV-003: create it with an empty waivers array, or fix the path"
+  ]
+}

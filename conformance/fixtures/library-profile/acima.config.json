@@ -1,0 +1,68 @@
+{
+  "standard": "1.0.0",
+  "mode": "base",
+  "language": "typescript",
+  "level": "L1",
+  "root": ".",
+  "units": [
+    {
+      "id": "core",
+      "module": "core",
+      "role": "implementation",
+      "paths": [
+        "src"
+      ]
+    },
+    {
+      "id": "adapters",
+      "module": "adapters",
+      "role": "implementation",
+      "paths": [
+        "adapters"
+      ]
+    }
+  ],
+  "exclude": [
+    "node_modules"
+  ],
+  "packages": {
+    "acme-widgets": {
+      "path": "src"
+    }
+  },
+  "profile": {
+    "kind": "library",
+    "owner": "platform-team",
+    "justification": "Published package: adapter packages consume the root package as their public surface.",
+    "publicApi": [
+      {
+        "unit": "core",
+        "paths": [
+          "src/index.ts"
+        ]
+      }
+    ],
+    "intentionalAdapters": [
+      {
+        "from": "adapters",
+        "to": "core",
+        "paths": [
+          "adapters/driver/**"
+        ],
+        "owner": "platform-team",
+        "reason": "Driver packages consume the published root package."
+      },
+      {
+        "from": "adapters",
+        "specifiers": [
+          "mysql2"
+        ],
+        "paths": [
+          "adapters/driver/**"
+        ],
+        "owner": "platform-team",
+        "reason": "The MySQL driver is the integration itself."
+      }
+    ]
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "standard": "1.0.0",
+  "language": "dotnet",
+  "level": "L1",
+  "root": ".",
+  "units": [
+    {
+      "id": "fluentvalidation",
+      "role": "implementation",
+      "paths": [
+        "src/FluentValidation"
+      ],
+      "module": "fluentvalidation"
+    },
+    {
+      "id": "fluentvalidation.di",
+      "role": "implementation",
+      "paths": [
+        "src/FluentValidation.DependencyInjectionExtensions"
+      ],
+      "module": "fluentvalidation.di"
+    },
+    {
+      "id": "build",
+      "role": "tooling",
+      "paths": [
+        "src/CommonAssemblyInfo.cs"
+      ],
+      "module": "build"
+    }
+  ],
+  "exclude": [
+    ".git",
+    "node_modules",
+    "bin",
+    "obj",
+    "dist",
+    "build",
+    "target",
+    "out",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "coverage",
+    "vendor",
+    "src/FluentValidation.Tests",
+    "src/FluentValidation.Tests.Benchmarks",
+    "docs",
+    "**/bin/**",
+    "**/obj/**"
+  ],
+  "waivers": ".acima/waivers.json",
+  "profile": {
+    "kind": "library",
+    "owner": "fluentvalidation-maintainers",
+    "justification": "Published validation library; the FluentValidation assembly is the package public surface.",
+    "publicApi": [
+      {
+        "unit": "fluentvalidation",
+        "paths": [
+          "src/FluentValidation/**/*.cs"
+        ]
+      }
+    ],
+    "intentionalAdapters": []
+  }
+}

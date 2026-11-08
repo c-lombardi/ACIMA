@@ -16,7 +16,9 @@ Owner: <name>            Sponsor: <name>            Start: <date>            Rev
 |---|---|---|---|---|
 | <orders.contracts> | contracts | <src/Orders/Orders.Contracts> | <team> | <name> |
 | <orders> | implementation | <src/Orders/Orders> | <team> | <name> |
-| <shared-kernel> | shared-kernel | <src/SharedKernel> | <arch group> | <name> |
+
+Value types (`Money`, ids) live in the contracts project that publishes them. Do not add a
+shared-kernel row unless you are recording a legacy exception with an owner and expiry.
 
 Decision: <why these boundaries; what was considered and rejected>
 

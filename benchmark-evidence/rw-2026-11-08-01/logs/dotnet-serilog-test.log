@@ -1,0 +1,97 @@
+  Determining projects to restore...
+  Restored /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.Tests/Serilog.Tests.csproj (in 1.6 sec).
+  Restored /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.ApprovalTests/Serilog.ApprovalTests.csproj (in 1.6 sec).
+  Restored /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/src/Serilog/Serilog.csproj (in 1.6 sec).
+  Restored /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.PerformanceTests/Serilog.PerformanceTests.csproj (in 2.47 sec).
+  Restored /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/TestDummies/TestDummies.csproj (in 3.13 sec).
+  Restored /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/AotTestApp/AotTestApp.csproj (in 3.28 sec).
+  Serilog -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/src/Serilog/bin/Debug/net10.0/Serilog.dll
+  Serilog -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/src/Serilog/bin/Debug/net6.0/Serilog.dll
+  Serilog -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/src/Serilog/bin/Debug/netstandard2.0/Serilog.dll
+  Serilog -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/src/Serilog/bin/Debug/net9.0/Serilog.dll
+  Serilog -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/src/Serilog/bin/Debug/net8.0/Serilog.dll
+  TestDummies -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/TestDummies/bin/Debug/net462/TestDummies.dll
+  TestDummies -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/TestDummies/bin/Debug/netstandard2.0/TestDummies.dll
+  Serilog.PerformanceTests -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.PerformanceTests/bin/Debug/net9.0/Serilog.PerformanceTests.dll
+  Serilog.PerformanceTests -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.PerformanceTests/bin/Debug/net10.0/Serilog.PerformanceTests.dll
+  Serilog.ApprovalTests -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.ApprovalTests/bin/Debug/net10.0/Serilog.ApprovalTests.dll
+Test run for /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.ApprovalTests/bin/Debug/net10.0/Serilog.ApprovalTests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+  Serilog.Tests -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.Tests/bin/Debug/net8.0/Serilog.Tests.dll
+  Serilog.Tests -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.Tests/bin/Debug/net9.0/Serilog.Tests.dll
+  Serilog.Tests -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.Tests/bin/Debug/net10.0/Serilog.Tests.dll
+
+Passed!  - Failed:     0, Passed:     1, Skipped:     0, Total:     1, Duration: 648 ms - Serilog.ApprovalTests.dll (net10.0)
+Test run for /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.Tests/bin/Debug/net8.0/Serilog.Tests.dll (.NETCoreApp,Version=v8.0)
+Test run for /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.Tests/bin/Debug/net9.0/Serilog.Tests.dll (.NETCoreApp,Version=v9.0)
+Test run for /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.Tests/bin/Debug/net10.0/Serilog.Tests.dll (.NETCoreApp,Version=v10.0)
+  Serilog.PerformanceTests -> /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.PerformanceTests/bin/Debug/net8.0/Serilog.PerformanceTests.dll
+Test run for /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.PerformanceTests/bin/Debug/net9.0/Serilog.PerformanceTests.dll (.NETCoreApp,Version=v9.0)
+Test run for /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.PerformanceTests/bin/Debug/net8.0/Serilog.PerformanceTests.dll (.NETCoreApp,Version=v8.0)
+Test run for /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.PerformanceTests/bin/Debug/net10.0/Serilog.PerformanceTests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+A total of 1 test files matched the specified pattern.
+Testhost process for source(s) '/tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.Tests/bin/Debug/net8.0/Serilog.Tests.dll' exited with error: You must install or update .NET to run this application.
+App: /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.Tests/bin/Debug/net8.0/testhost.dll
+Architecture: x64
+Framework: 'Microsoft.NETCore.App', version '8.0.0' (x64)
+.NET location: /tmp/toolchains/dotnet/
+The following frameworks were found:
+  10.0.14 at [/tmp/toolchains/dotnet/shared/Microsoft.NETCore.App]
+Learn more:
+https://aka.ms/dotnet/app-launch-failed
+To install missing framework, download:
+https://aka.ms/dotnet-core-applaunch?framework=Microsoft.NETCore.App&framework_version=8.0.0&arch=x64&rid=linux-x64&os=ubuntu.24.04
+. Please check the diagnostic logs for more information.
+Testhost process for source(s) '/tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.Tests/bin/Debug/net9.0/Serilog.Tests.dll' exited with error: You must install or update .NET to run this application.
+App: /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.Tests/bin/Debug/net9.0/testhost.dll
+Architecture: x64
+Framework: 'Microsoft.NETCore.App', version '9.0.0' (x64)
+.NET location: /tmp/toolchains/dotnet/
+The following frameworks were found:
+  10.0.14 at [/tmp/toolchains/dotnet/shared/Microsoft.NETCore.App]
+Learn more:
+https://aka.ms/dotnet/app-launch-failed
+To install missing framework, download:
+https://aka.ms/dotnet-core-applaunch?framework=Microsoft.NETCore.App&framework_version=9.0.0&arch=x64&rid=linux-x64&os=ubuntu.24.04
+. Please check the diagnostic logs for more information.
+Testhost process for source(s) '/tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.PerformanceTests/bin/Debug/net8.0/Serilog.PerformanceTests.dll' exited with error: You must install or update .NET to run this application.
+App: /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.PerformanceTests/bin/Debug/net8.0/testhost.dll
+Architecture: x64
+Framework: 'Microsoft.NETCore.App', version '8.0.0' (x64)
+.NET location: /tmp/toolchains/dotnet/
+The following frameworks were found:
+  10.0.14 at [/tmp/toolchains/dotnet/shared/Microsoft.NETCore.App]
+Learn more:
+https://aka.ms/dotnet/app-launch-failed
+To install missing framework, download:
+https://aka.ms/dotnet-core-applaunch?framework=Microsoft.NETCore.App&framework_version=8.0.0&arch=x64&rid=linux-x64&os=ubuntu.24.04
+. Please check the diagnostic logs for more information.
+
+Test Run Aborted.
+Testhost process for source(s) '/tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.PerformanceTests/bin/Debug/net9.0/Serilog.PerformanceTests.dll' exited with error: You must install or update .NET to run this application.
+App: /tmp/acima-real-world-benchmark/repositories/dotnet/serilog/baseline/test/Serilog.PerformanceTests/bin/Debug/net9.0/testhost.dll
+Architecture: x64
+Framework: 'Microsoft.NETCore.App', version '9.0.0' (x64)
+.NET location: /tmp/toolchains/dotnet/
+The following frameworks were found:
+  10.0.14 at [/tmp/toolchains/dotnet/shared/Microsoft.NETCore.App]
+Learn more:
+https://aka.ms/dotnet/app-launch-failed
+To install missing framework, download:
+https://aka.ms/dotnet-core-applaunch?framework=Microsoft.NETCore.App&framework_version=9.0.0&arch=x64&rid=linux-x64&os=ubuntu.24.04
+. Please check the diagnostic logs for more information.
+
+Test Run Aborted.
+
+Test Run Aborted.
+
+Test Run Aborted.
+
+Passed!  - Failed:     0, Passed:    12, Skipped:     0, Total:    12, Duration: 797 ms - Serilog.PerformanceTests.dll (net10.0)
+
+Passed!  - Failed:     0, Passed:   818, Skipped:     0, Total:   818, Duration: 6 s - Serilog.Tests.dll (net10.0)

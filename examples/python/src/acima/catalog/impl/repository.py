@@ -3,8 +3,7 @@ from __future__ import annotations
 
 from typing import Dict, Protocol
 
-from acima.catalog.contracts import ProductNotFound, ProductView
-from acima.shared_kernel import ProductId
+from acima.catalog.contracts import ProductId, ProductNotFound, ProductView
 
 
 class ProductStore(Protocol):

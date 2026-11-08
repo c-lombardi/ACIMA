@@ -9,7 +9,6 @@ import (
 	catalogcontracts "acima.example/internal/catalog/contracts"
 	orderscontracts "acima.example/internal/orders/contracts"
 	paymentscontracts "acima.example/internal/payments/contracts"
-	"acima.example/internal/sharedkernel"
 )
 
 func newID() string {
@@ -24,36 +23,42 @@ func newID() string {
 type Module struct {
 	catalog  catalogcontracts.Reader
 	payments paymentscontracts.Gateway
-	orders   map[sharedkernel.OrderID]*order
+	orders   map[orderscontracts.OrderID]*order
 	events   []any
 }
 
 // New wires Orders to the ports the host provides.
 func New(catalog catalogcontracts.Reader, payments paymentscontracts.Gateway) *Module {
-	return &Module{catalog: catalog, payments: payments, orders: map[sharedkernel.OrderID]*order{}}
+	return &Module{catalog: catalog, payments: payments, orders: map[orderscontracts.OrderID]*order{}}
 }
 
 // Place runs the place-order workflow. A rejection is returned as a value, not an error.
 func (m *Module) Place(cmd orderscontracts.PlaceOrder) (orderscontracts.Summary, *orderscontracts.Rejected, error) {
-	if len(cmd.Lines) == 0 {
+	requested := cmd.Lines()
+	if len(requested) == 0 {
 		return orderscontracts.Summary{}, nil, errors.New("an order needs at least one line")
 	}
 
-	id := sharedkernel.OrderID(newID())
-	lines := make([]orderscontracts.OrderLine, 0, len(cmd.Lines))
-	for _, line := range cmd.Lines {
-		product, ok := m.catalog.Get(line.ProductID)
+	id := orderscontracts.OrderID(newID())
+	lines := make([]orderscontracts.OrderLine, 0, len(requested))
+	for _, line := range requested {
+		product, ok := m.catalog.Get(catalogcontracts.ProductID(line.ProductID))
 		if !ok {
 			return orderscontracts.Summary{}, m.reject(id, orderscontracts.OutOfStock), nil
 		}
+		price, err := orderscontracts.NewMoney(product.Price.Minor(),
+			orderscontracts.Currency(product.Price.Currency()))
+		if err != nil {
+			return orderscontracts.Summary{}, nil, err
+		}
 		lines = append(lines, orderscontracts.OrderLine{
 			ProductID: line.ProductID,
-			UnitPrice: product.Price,
+			UnitPrice: price,
 			Quantity:  line.Quantity,
 		})
 	}
 
-	zero, err := sharedkernel.NewMoney(0, lines[0].UnitPrice.Currency())
+	zero, err := orderscontracts.NewMoney(0, lines[0].UnitPrice.Currency())
 	if err != nil {
 		return orderscontracts.Summary{}, nil, err
 	}
@@ -64,9 +69,14 @@ func (m *Module) Place(cmd orderscontracts.PlaceOrder) (orderscontracts.Summary,
 		}
 	}
 
+	amount, err := paymentscontracts.NewMoney(ord.total.Minor(),
+		paymentscontracts.Currency(ord.total.Currency()))
+	if err != nil {
+		return orderscontracts.Summary{}, nil, err
+	}
 	auth, err := m.payments.Authorize(paymentscontracts.PaymentRequest{
-		OrderID:    id,
-		Amount:     ord.total,
+		OrderID:    paymentscontracts.OrderID(id),
+		Amount:     amount,
 		CustomerID: cmd.CustomerID,
 	})
 	if err != nil {
@@ -87,7 +97,7 @@ func (m *Module) Place(cmd orderscontracts.PlaceOrder) (orderscontracts.Summary,
 }
 
 // Get returns an accepted order.
-func (m *Module) Get(id sharedkernel.OrderID) (orderscontracts.Summary, bool) {
+func (m *Module) Get(id orderscontracts.OrderID) (orderscontracts.Summary, bool) {
 	ord, ok := m.orders[id]
 	if !ok {
 		return orderscontracts.Summary{}, false
@@ -102,7 +112,7 @@ func (m *Module) Events() []any {
 	return out
 }
 
-func (m *Module) reject(id sharedkernel.OrderID, reason orderscontracts.RejectionReason) *orderscontracts.Rejected {
+func (m *Module) reject(id orderscontracts.OrderID, reason orderscontracts.RejectionReason) *orderscontracts.Rejected {
 	rejected := &orderscontracts.Rejected{OrderID: id, Reason: reason}
 	m.events = append(m.events, *rejected)
 	return rejected

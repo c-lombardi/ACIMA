@@ -1,5 +1,4 @@
-import type { OrderLine, OrderSummary } from '../contracts/index.ts';
-import type { Money, OrderId } from '../../shared-kernel/money.ts';
+import type { Money, OrderId, OrderLine, OrderSummary } from '../contracts/index.ts';
 
 /**
  * The aggregate. Mutable on purpose: immutability is a boundary rule, not an internal one.

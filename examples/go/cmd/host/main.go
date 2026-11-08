@@ -9,7 +9,6 @@ import (
 	orderscontracts "acima.example/internal/orders/contracts"
 	orders "acima.example/internal/orders/impl"
 	payments "acima.example/internal/payments/impl"
-	"acima.example/internal/sharedkernel"
 )
 
 func main() {
@@ -18,19 +17,16 @@ func main() {
 	ord := orders.New(cat.Reader(), pay.Port())
 
 	cat.Add(catalogcontracts.ProductView{
-		ID: "p-1", Name: "Espresso beans", Price: sharedkernel.MustMoney(1250, sharedkernel.EUR),
+		ID: "p-1", Name: "Espresso beans", Price: catalogcontracts.MustMoney(1250, catalogcontracts.EUR),
 	})
 	cat.Add(catalogcontracts.ProductView{
-		ID: "p-2", Name: "Filter papers", Price: sharedkernel.MustMoney(320, sharedkernel.EUR),
+		ID: "p-2", Name: "Filter papers", Price: catalogcontracts.MustMoney(320, catalogcontracts.EUR),
 	})
 
-	summary, rejected, err := ord.Place(orderscontracts.PlaceOrder{
-		CustomerID: "c-1",
-		Lines: []orderscontracts.OrderLine{
-			{ProductID: "p-1", UnitPrice: sharedkernel.MustMoney(1250, sharedkernel.EUR), Quantity: 2},
-			{ProductID: "p-2", UnitPrice: sharedkernel.MustMoney(320, sharedkernel.EUR), Quantity: 1},
-		},
-	})
+	summary, rejected, err := ord.Place(orderscontracts.NewPlaceOrder("c-1", []orderscontracts.OrderLine{
+		{ProductID: "p-1", UnitPrice: orderscontracts.MustMoney(1250, orderscontracts.EUR), Quantity: 2},
+		{ProductID: "p-2", UnitPrice: orderscontracts.MustMoney(320, orderscontracts.EUR), Quantity: 1},
+	}))
 	if err != nil {
 		panic(err)
 	}

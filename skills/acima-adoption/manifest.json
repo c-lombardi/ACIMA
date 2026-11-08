@@ -1,11 +1,11 @@
 {
   "skill": "acima-adoption",
-  "skillVersion": "1.0.0",
+  "skillVersion": "1.2.3",
   "standard": "1.0.0-draft.1",
   "verifiedAt": "2026-11-08",
   "catalog": {
     "path": "tools/acima-spec/rules.json",
-    "sha256": "e7d0c273ab9b710d83b6fd8bb859f195da0bb4c77412fdc8960e7c34d59af305",
+    "sha256": "ec2a77d7a2ed4d8c68fd71c32ad47ac486022b2eb541b959a23f1d2b7ea9221b",
     "rules": 29,
     "portable": 23,
     "portableIds": [
@@ -69,6 +69,13 @@
       "path": null,
       "run": null,
       "note": "profile only: docs/languages/java.md has no reference implementation in this revision"
+    }
+  },
+  "profiles": {
+    "library": {
+      "document": "docs/standard/12-library-profile.md",
+      "enforcers": ["typescript", "dotnet"],
+      "semantics": "declared publicApi paths and intentional adapters are classified in the report, never removed; invalid declarations fail as ACIMA-G001"
     }
   },
   "references": [

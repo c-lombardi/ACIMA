@@ -1,0 +1,12 @@
+{
+  "repository": "c-lombardi/ACIMA",
+  "commit": "5a9ef295b2605e08c967238332f10caf71c6e09d",
+  "catalog_sha256": "125a1a3fc2096a25cf8a849aa701d571e73c6aead977c6f012cf4f60c4b1fe77",
+  "skill_sha256": "cfdbc9c6998fb7031a7cb1a64f54848ebda445bb0bc3d8038826f19b6273b95a",
+  "skill_version": "1.0.2",
+  "standard": "1.0.0-draft.1",
+  "coverage_sha256": "707452d3cdc8baf44fdede33e3076f3b64034844efcd32df13c3fa6027e7c963",
+  "pinned_at": "2026-11-08",
+  "workspace": "/tmp/acima-real-world-benchmark",
+  "workspace_limitation": "The sandbox denied writable access to /workspace outside the chat directory; /tmp is external to the ACIMA repository but is not a durable host path."
+}

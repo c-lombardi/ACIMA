@@ -7,6 +7,11 @@ this file should be corrected.
 **ACIMA** — Autonomous, Contract-Isolated, Immutable Modular Architecture. A set of rules for
 keeping modules independently changeable, enforced by a machine.
 
+**Architecture mode** — `base` or `service-topology`, selected by `acima.config.json.mode`.
+Base applies P1–P9. Service topology applies P1–P9 plus P10–P13 and supersedes exactly P2.1
+(one contracts unit per module) and P3.5 (shared-kernel allowance). The topology manifest is
+evidence, not a selector.
+
 **Autonomous** — a module can change, deploy and fail without requiring coordinated changes in
 other modules. Depends on owning its data and configuration.
 
@@ -27,11 +32,12 @@ Never executes the product. Exits non-zero when the declared level is not met.
 
 **Finding** — one rule violation: rule ID, severity, message, path, line, evidence.
 
-**Greenfield** — a repository with no legacy constraints, in this skill defined as no ACIMA config
-and fewer than ten source files. Adopt the full shape immediately and declare L3.
+**Greenfield** — a repository with no ACIMA config and no source files. Adopt the full shape
+immediately; build the gate before the second module, and do not claim a level before its evidence
+exists.
 
-**Brownfield** — an existing repository with legacy constraints. Adopt by measuring, waiving,
-gating and ratcheting, starting at L1.
+**Brownfield** — a repository with no ACIMA config and at least one existing source file. Adopt by
+measuring, waiving, gating and ratcheting, starting at L1.
 
 **Host / composition root** — the only place that wires implementations together. May reference
 everything; nothing may reference it.
@@ -45,22 +51,24 @@ Other modules may not reference it.
 **Level (L1/L2/L3)** — the declared conformance level: Structural, Immutable, Autonomous. A
 repository declares one and is measured against it.
 
-**Module** — a business capability with one contracts unit and one implementation unit. Owns its
-data, its configuration and its vocabulary.
+**Module** — a business capability with one contracts surface in base mode (one per outward-facing
+layer in service mode) and one or more implementation units. Owns its data, its configuration and
+its vocabulary.
 
 **Portable rule** — a rule implementable in every supported language without a language-specific
 analyzer. This revision has 23; six need human or framework-specific review.
 
 **Ratchet** — the adoption mechanism: baseline the findings, gate on new ones, reduce monotonically.
 
-**Shared kernel** — the small set of dependency-free value types every module may use (`Money`,
-ids). Not a utility library; admission is deliberately hard.
+**Shared kernel** — a legacy compatibility unit of dependency-free value types (`Money`, ids).
+It is not the default: each contracts project declares and owns the value types it publishes. Not
+a utility library; admission is deliberately hard.
 
 **Unit** — any declared piece of the architecture: a contracts unit, an implementation unit, the
-kernel, the host. The config declares units; the enforcer classifies files by them.
+host, or a legacy kernel. The config declares units; the enforcer classifies files by them.
 
-**Waiver** — a recorded, owned, expiring exception to one rule for one unit. Not a suppression:
-it carries a person, a reason, a scope, an expiry and a review date.
+**Waiver** — a recorded, owned, expiring exception to one exact finding fingerprint. Not a
+suppression: it carries a person, a reason, a scope, a fingerprint, an expiry and a review date.
 
 **Zero findings from zero files** — the canonical false pass. A run that discovers nothing exits
 successfully and proves nothing; `G005` exists to make it fail.

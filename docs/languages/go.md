@@ -2,15 +2,16 @@
 
 Go 1.23 · one module · packages per unit · `go test ./...` as the gate.
 
-> **Compatibility example.** The tree below is the legacy shape with a shared kernel. Under the
-default, contracts reference nothing; see [section 6](#6-service-topology-profile).
+> **Reference example.** The tree below is the compiled example in `examples/go`. It uses the
+default: every contracts package imports nothing and owns its value types; see
+[section 6](#6-service-topology-profile).
 
 ## 1. Layout
 
 ```
-go.mod                          module github.com/acima/example
-sharedkernel/money.go           shared-kernel
+go.mod                          module acima.example
 catalog/contracts/contracts.go  contracts
+catalog/contracts/values.go     contract-owned Money and ids
 catalog/internal/...            implementation   (compiler-enforced private)
 orders/contracts/contracts.go   contracts
 orders/internal/...             implementation   → catalog/contracts, payments/contracts
@@ -27,7 +28,7 @@ Go is the only language here where the compiler enforces ACIMA's core rule:
 
 ```go
 // orders/internal/service.go
-import "github.com/acima/example/catalog/internal/repo"   // compile error:
+import "acima.example/catalog/internal/repo"   // compile error:
 // use of internal package not allowed
 ```
 
@@ -39,7 +40,7 @@ the architecture test, and Go's own tooling helps:
 |---|---|
 | Implementation private | `internal/` (compiler) |
 | No cycles | `go build` refuses import cycles (package level) |
-| Contracts have no dependency | `go list -deps` on the contracts package must contain only stdlib (the legacy example may also show the kernel) |
+| Contracts have no dependency | `go list -deps` on the contracts package must contain only stdlib |
 | Immutability | unexported fields + constructor + accessor returning a copy (`C001`, `C002`) |
 | No untyped payload | `interface{}`/`any` denylist (`C006`) |
 
@@ -60,10 +61,11 @@ go test ./...
 go run ./tools/archtest --root . --format json
 ```
 
-**Reference enforcer (this repository):** `tools/archtest` — uses `go/parser` and `go/ast`, so it sees
-real imports and real declarations, not text. It classifies packages from `acima.config.json` (Go needs
-the config too: `internal/` prevents cross-module *imports*, but not cross-module copies of a contracts
-type, SQL strings, or mutable exported state).
+**Reference enforcer (this repository):** `tools/archtest` — reads imports, declarations and struct
+fields from source text with a small import/declaration scanner; it does **not** use `go/parser` or
+`go/ast`. It classifies packages from `acima.config.json` (Go needs the config too: `internal/`
+prevents cross-module *imports*, but not cross-module copies of a contracts type, SQL strings, or
+mutable exported state).
 
 ## 4. Analyzers and linters
 
@@ -83,7 +85,7 @@ linters-settings:
       no-catalog-internals:
         files: ["**/orders/**"]
         deny:
-          - pkg: "github.com/acima/example/catalog/internal"
+          - pkg: "acima.example/catalog/internal"
             desc: "ACIMA-D001: use catalog/contracts"
 ```
 

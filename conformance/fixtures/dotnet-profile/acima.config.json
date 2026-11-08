@@ -1,0 +1,43 @@
+{
+  "standard": "1.0.0",
+  "mode": "base",
+  "language": "dotnet",
+  "level": "L1",
+  "root": ".",
+  "units": [
+    {
+      "id": "widget",
+      "module": "widget",
+      "role": "implementation",
+      "paths": [
+        "src/Widget"
+      ]
+    },
+    {
+      "id": "consumer",
+      "module": "consumer",
+      "role": "implementation",
+      "paths": [
+        "src/Consumer"
+      ]
+    }
+  ],
+  "exclude": [
+    "bin",
+    "obj"
+  ],
+  "profile": {
+    "kind": "library",
+    "owner": "widget-maintainers",
+    "justification": "Published widget library; the Widget assembly is the package surface.",
+    "publicApi": [
+      {
+        "unit": "widget",
+        "paths": [
+          "src/Widget/**/*.cs"
+        ]
+      }
+    ],
+    "intentionalAdapters": []
+  }
+}

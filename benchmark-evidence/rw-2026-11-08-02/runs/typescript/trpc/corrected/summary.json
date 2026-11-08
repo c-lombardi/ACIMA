@@ -1,0 +1,11 @@
+{
+  "language": "typescript",
+  "id": "trpc",
+  "exit": 0,
+  "sourceFiles": 390,
+  "findings": 0,
+  "classified": 0,
+  "bytes": 2020,
+  "byRule": {},
+  "classifiedByRule": {}
+}

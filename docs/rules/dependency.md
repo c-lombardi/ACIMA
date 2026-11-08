@@ -97,8 +97,8 @@ The mapping lives in the Catalog implementation — a place that already knows b
 **Severity** `error` · **Level** L1 · **Principle** P3, P7
 
 > A contracts unit MUST NOT reference another contracts unit. Under the default it references nothing;
-> duplicate the shape or carry identity. In a legacy repository, a genuinely universal value type may
-> live in the shared kernel.
+> duplicate the shape or carry identity. A shared kernel is a legacy migration allowance, not an
+> option for a new contract.
 
 ### Violation
 
@@ -127,13 +127,16 @@ not show.
 
 Three legitimate options:
 
-1. **Local value (default)** — declare it in `orders.contracts`; in a legacy repository, put it in the
-   shared kernel if it is a value with invariants needed everywhere (`Money`, `ProductId`).
+1. **Local value (default)** — declare `Money`, `ProductId` and the rest of the value vocabulary in
+   `orders.contracts`. If another contract needs the same shape, declare its own copy there.
 2. **Carry identity, not the model** — `OrderLine { ProductId, Money UnitPrice, int Quantity }` is
    usually better than embedding Catalog's view: it freezes the price at order time, which is what the
    business means.
 3. **Duplicate the shape** — a local `ProductSnapshot` in `orders.contracts` that happens to look like
    Catalog's today.
+
+A shared kernel is not a fourth option in the default. It is a migration allowance for an existing
+system that has not removed its kernel yet.
 
 Option 2 is almost always right and is worth the argument it causes.
 

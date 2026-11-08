@@ -1,0 +1,85 @@
+{
+  "fastapi": {
+    "ACIMA-L001": {
+      "classification": "false_positive",
+      "count": 1,
+      "why": "identifier sqlalchemy_safe at fastapi/encoders.py:206; no SQLAlchemy import"
+    }
+  },
+  "drizzle-orm": {
+    "ACIMA-L001": {
+      "classification": "valid_architectural_choice",
+      "count": 38,
+      "why": "ORM product adapters intentionally reference pg/mysql2/knex; one test path is out of production scope"
+    },
+    "test-path": {
+      "classification": "false_positive",
+      "count": 1
+    }
+  },
+  "fluentvalidation": {
+    "ACIMA-D001": {
+      "classification": "true_positive",
+      "count": 1,
+      "why": "DI extension assembly imports the implementation assembly; no contracts assembly"
+    },
+    "ACIMA-D008": {
+      "classification": "duplicate",
+      "count": 1,
+      "why": "derived from the same project reference"
+    },
+    "ACIMA-L003": {
+      "classification": "valid_architectural_choice",
+      "count": 6,
+      "why": "public library API is intentionally public; no contracts split"
+    }
+  },
+  "spectre-console": {
+    "ACIMA-D001": {
+      "classification": "probable_true_positive",
+      "count": 4,
+      "why": "extensions/testing reference core implementation assembly; public library API design is intentional but unmodelled"
+    },
+    "ACIMA-D005": {
+      "classification": "false_positive",
+      "count": 2,
+      "why": "cycles traverse analyzer-only ProjectReference with ReferenceOutputAssembly=false; sourcegenerator has no json reference"
+    },
+    "ACIMA-D008": {
+      "classification": "false_positive",
+      "count": 5,
+      "why": "transitive closure of analyzer/extension edges; duplicates D001"
+    },
+    "ACIMA-D009": {
+      "classification": "true_positive",
+      "count": 21,
+      "why": "json uses internal StringBuffer from console; cross-assembly internal access is real coupling"
+    },
+    "ACIMA-L003": {
+      "classification": "valid_architectural_choice",
+      "count": 40,
+      "why": "public types are the shipped library surface, not an accidental implementation leak"
+    }
+  },
+  "hono": {
+    "zero": {
+      "classification": "insufficient_evidence",
+      "count": 0,
+      "why": "adapter units remain zero even after module separation; relative adapter imports may be unresolved"
+    }
+  },
+  "trpc": {
+    "tool": {
+      "classification": "tool_failure",
+      "count": 0,
+      "why": "stdout truncated at 65,536 bytes; invalid JSON; no assessment"
+    }
+  },
+  "java": {
+    "no-enforcer": {
+      "classification": "not_applicable",
+      "count": 0,
+      "why": "no ACIMA Java reference enforcer; executed:false"
+    }
+  }
+}

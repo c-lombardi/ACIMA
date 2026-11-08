@@ -1,0 +1,11 @@
+{
+  "id": "CV-FLU-001",
+  "repository": "FluentValidation/FluentValidation",
+  "commit": "a8ca6ac3e7f35da9448a28e0ab84ae914cca4fb1",
+  "sealed_at": "2026-11-08T12:40:00Z",
+  "injection": "added FluentValidation -> FluentValidation.DependencyInjectionExtensions project reference, creating a project cycle",
+  "expected_rule": "ACIMA-D005",
+  "expected_path": "src/FluentValidation/FluentValidation.csproj",
+  "blind_evaluation": false,
+  "reason_not_blind": "same benchmark assistant performed injection and assessment; no separate reviewer available"
+}

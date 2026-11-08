@@ -1,0 +1,194 @@
+{
+  "skill": {
+    "name": "acima-adoption",
+    "version": "1.0.2",
+    "standard": "1.0.0-draft.1",
+    "catalogSha256": "125a1a3fc2096a25cf8a849aa701d571e73c6aead977c6f012cf4f60c4b1fe77"
+  },
+  "project": {
+    "path": "/tmp/acima-real-world-benchmark/repositories/typescript/drizzle-orm/adoption",
+    "mode": "brownfield",
+    "language": "typescript",
+    "detectedLanguages": [
+      "typescript"
+    ]
+  },
+  "checks": [
+    {
+      "id": "SKL-001",
+      "status": "pass",
+      "detail": "manifest acima-adoption 1.0.2 loaded",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-002",
+      "status": "pass",
+      "detail": "catalog hash matches the pin (125a1a3fc209\u2026)",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-003",
+      "status": "pass",
+      "detail": "29 rules, all 23 portable ids present",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-004",
+      "status": "pass",
+      "detail": "standard version 1.0.0-draft.1",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-005",
+      "status": "pass",
+      "detail": "8 references and 4 assets present",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-006",
+      "status": "pass",
+      "detail": "every documented enforcer path exists",
+      "remedy": ""
+    },
+    {
+      "id": "SKL-007",
+      "status": "pass",
+      "detail": "4 violation baselines present",
+      "remedy": ""
+    },
+    {
+      "id": "ENV-001",
+      "status": "pass",
+      "detail": "toolchains available: python3, node",
+      "remedy": ""
+    },
+    {
+      "id": "TGT-001",
+      "status": "pass",
+      "detail": "target /tmp/acima-real-world-benchmark/repositories/typescript/drizzle-orm/adoption",
+      "remedy": ""
+    },
+    {
+      "id": "TGT-002",
+      "status": "pass",
+      "detail": "language typescript (972 source files; detected: typescript)",
+      "remedy": ""
+    },
+    {
+      "id": "TGT-003",
+      "status": "pass",
+      "detail": "no config and 972 existing source file(s) (mode: brownfield)",
+      "remedy": ""
+    },
+    {
+      "id": "TGT-004",
+      "status": "pass",
+      "detail": "10 candidate unit(s) proposed from the layout",
+      "remedy": ""
+    },
+    {
+      "id": "TGT-005",
+      "status": "pass",
+      "detail": "every source file is covered by a proposed unit",
+      "remedy": ""
+    },
+    {
+      "id": "OUT-001",
+      "status": "pass",
+      "detail": "draft written to acima.config.json",
+      "remedy": ""
+    }
+  ],
+  "blockers": [],
+  "warnings": [],
+  "findings": {},
+  "proposedUnits": [
+    {
+      "id": "drizzle-arktype",
+      "module": "drizzle-arktype",
+      "role": "implementation",
+      "paths": [
+        "drizzle-arktype"
+      ]
+    },
+    {
+      "id": "drizzle-kit",
+      "module": "drizzle-kit",
+      "role": "implementation",
+      "paths": [
+        "drizzle-kit"
+      ]
+    },
+    {
+      "id": "drizzle-orm",
+      "module": "drizzle-orm",
+      "role": "implementation",
+      "paths": [
+        "drizzle-orm"
+      ]
+    },
+    {
+      "id": "drizzle-seed",
+      "module": "drizzle-seed",
+      "role": "implementation",
+      "paths": [
+        "drizzle-seed"
+      ]
+    },
+    {
+      "id": "drizzle-typebox",
+      "module": "drizzle-typebox",
+      "role": "implementation",
+      "paths": [
+        "drizzle-typebox"
+      ]
+    },
+    {
+      "id": "drizzle-valibot",
+      "module": "drizzle-valibot",
+      "role": "implementation",
+      "paths": [
+        "drizzle-valibot"
+      ]
+    },
+    {
+      "id": "drizzle-zod",
+      "module": "drizzle-zod",
+      "role": "implementation",
+      "paths": [
+        "drizzle-zod"
+      ]
+    },
+    {
+      "id": "eslint",
+      "module": "eslint",
+      "role": "implementation",
+      "paths": [
+        "eslint"
+      ]
+    },
+    {
+      "id": "eslint-plugin-drizzle",
+      "module": "eslint-plugin-drizzle",
+      "role": "implementation",
+      "paths": [
+        "eslint-plugin-drizzle"
+      ]
+    },
+    {
+      "id": "integration-tests",
+      "module": "integration-tests",
+      "role": "implementation",
+      "paths": [
+        "integration-tests"
+      ]
+    }
+  ],
+  "next": [
+    "Review the draft at acima.config.json: rename units to domain concepts, then commit it.",
+    "Run the preflight again with the config in place to measure the baseline.",
+    "Write scoped waivers for the baseline, replacing 'unassigned' with owners.",
+    "Gate CI on 'no new findings' at L1; do not fix the architecture first.",
+    "Pick the first slice from references/20-brownfield.md (contracts, not persistence)."
+  ]
+}

@@ -38,7 +38,9 @@ A tool emits findings as JSON. This is the only shape a conformance gate accepts
 | `line` | integer | yes | 1-based; `0` for unit- or file-scoped findings |
 | `evidence` | string | no | smallest source excerpt that proves it |
 
-Tools may add fields; they may not omit these.
+Tools may add fields; they may not omit these. Profile requirements use the same object with the
+`ACIMA-SNNN` namespace (chapter 11). S rules sit outside the base catalog and are produced by the
+profile runner, not by a language enforcer; they do not change the L1–L3 rule set.
 
 ## 7.3 The tool interface
 
@@ -63,11 +65,11 @@ suites and compare them against the same expected findings.
 {
   "$schema": "../tools/acima-spec/config.schema.json",
   "standard": "1.0.0",
+  "mode": "base",
   "language": "python",
   "level": "L2",
   "root": ".",
   "units": [
-    { "id": "shared-kernel", "role": "shared-kernel", "paths": ["src/acima/shared_kernel"] },
     { "id": "catalog.contracts", "module": "catalog", "role": "contracts", "paths": ["src/acima/catalog/contracts"] },
     { "id": "catalog", "module": "catalog", "role": "implementation", "paths": ["src/acima/catalog/impl"] },
     { "id": "orders.contracts", "module": "orders", "role": "contracts", "paths": ["src/acima/orders/contracts"] },
@@ -76,7 +78,6 @@ suites and compare them against the same expected findings.
     { "id": "payments", "module": "payments", "role": "implementation", "paths": ["src/acima/payments/impl"] },
     { "id": "host", "role": "host", "paths": ["src/acima/host"] }
   ],
-  "sharedKernel": "shared-kernel",
   "exclude": ["tests", "violations", "**/__pycache__/**"],
   "budgets": { "catalog": 0, "payments": 1, "orders": 3 },
   "rules": { "ACIMA-L004": "warning" }
@@ -85,6 +86,10 @@ suites and compare them against the same expected findings.
 
 Field notes:
 
+- `mode` selects the architecture mode. `base` (the default when absent) applies P1–P9.
+  `service-topology` applies P1–P9 plus P10–P13 and supersedes exactly P2.1 and P3.5 (chapter 11).
+  The topology manifest cannot select a mode; a mismatch is a configuration error (exit `2`), not a
+  finding.
 - `units[].paths` are directory prefixes or globs. **The most specific match wins**, so
   `src/acima/catalog/contracts` beats `src/acima/catalog`.
 - `role` must be one of `contracts`, `implementation`, `host`, `shared-kernel`, `test`, `tooling`.
@@ -104,6 +109,7 @@ Field notes:
     {
       "rule": "ACIMA-D009",
       "scope": "unit:reports",
+      "fingerprint": "sha256:1f0c…",
       "owner": "team-reporting",
       "reason": "Reporting reads the Orders read-model view until the analytics migration lands.",
       "expires": "2027-03-31",
@@ -116,10 +122,12 @@ Field notes:
 
 Semantics, all mandatory:
 
-1. A waiver matches a finding only when `rule` and `scope` both match. Scope is `unit:<id>`,
-   `path:<glob>` or `module:<name>`.
-2. A waiver is valid only if `owner`, `reason`, `expires` and `reviewedOn` are present and non-empty
-   (`G001`).
+1. A waiver matches a finding only when `rule`, `scope` and `fingerprint` all match. Scope is
+   `unit:<id>`, `path:<glob>` or `module:<name>`. The fingerprint is the hash of the finding's
+   identity (rule, path, evidence); scope alone MUST NOT suppress a finding, because it would hide
+   every future finding in that scope.
+2. A waiver is valid only if `fingerprint`, `owner`, `reason`, `expires` and `reviewedOn` are present
+   and non-empty (`G001`).
 3. Past `expires`, the waiver no longer matches and the finding returns (`G002`).
 4. A waiver for an unknown rule id is itself a finding (`G001`) — a typo must never silently excuse
    nothing.

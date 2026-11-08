@@ -1,0 +1,656 @@
+Scope: all 10 workspace projects
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +1626
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 1626, reused 0, downloaded 162, added 162
+Progress: resolved 1626, reused 0, downloaded 415, added 410
+Progress: resolved 1626, reused 0, downloaded 822, added 821
+Progress: resolved 1626, reused 0, downloaded 1155, added 1167
+Progress: resolved 1626, reused 0, downloaded 1462, added 1464
+Progress: resolved 1626, reused 0, downloaded 1610, added 1624
+Progress: resolved 1626, reused 0, downloaded 1612, added 1625
+Progress: resolved 1626, reused 0, downloaded 1612, added 1626, done
+.../es5-ext@0.10.64/node_modules/es5-ext postinstall$  node -e "try{require('./_postinstall')}catch(e){}" || exit 0
+.../node_modules/bufferutil install$ node-gyp-build
+.../node_modules/utf-8-validate install$ node-gyp-build
+.../esbuild@0.18.20/node_modules/esbuild postinstall$ node install.js
+.../dprint@0.46.3/node_modules/dprint postinstall$ node ./install.js
+.../es5-ext@0.10.64/node_modules/es5-ext postinstall: Done
+.../node_modules/bufferutil install: Done
+.../node_modules/better-sqlite3 install$ prebuild-install || node-gyp rebuild --release
+.../node_modules/utf-8-validate install: Done
+.../esbuild@0.18.20/node_modules/esbuild postinstall: Done
+.../sqlite3@5.1.7/node_modules/sqlite3 install$ prebuild-install -r napi || node-gyp rebuild
+.../esbuild@0.25.5/node_modules/esbuild postinstall$ node install.js
+.../dprint@0.46.3/node_modules/dprint postinstall: Done
+.../esbuild@0.21.5/node_modules/esbuild postinstall$ node install.js
+.../esbuild@0.25.5/node_modules/esbuild postinstall: Done
+.../esbuild@0.21.5/node_modules/esbuild postinstall: Done
+.../esbuild@0.14.54/node_modules/esbuild postinstall$ node install.js
+.../node_modules/protobufjs postinstall$ node scripts/postinstall
+.../node_modules/better-sqlite3 install: prebuild-install warn install No prebuilt binaries found (target=26.13.0 runtime=node arch=x64 libc= platform=linux)
+.../node_modules/cpu-features install$ node buildcheck.js > buildcheck.gypi && node-gyp rebuild
+.../esbuild@0.14.54/node_modules/esbuild postinstall: Done
+.../node_modules/protobufjs postinstall: Done
+.../node_modules/better-sqlite3 install: gyp info it worked if it ends with ok
+.../node_modules/better-sqlite3 install: gyp info using node-gyp@11.1.0
+.../node_modules/better-sqlite3 install: gyp info using node@26.13.0 | linux | x64
+.../esbuild@0.27.4/node_modules/esbuild postinstall$ node install.js
+.../sqlite3@5.1.7/node_modules/sqlite3 install: Done
+.../node_modules/@prisma/engines postinstall$ node scripts/postinstall.js
+.../node_modules/better-sqlite3 install: gyp info find Python using Python version 3.12.3 found at "/opt/freestyle/python/bin/python3"
+.../node_modules/better-sqlite3 install$ prebuild-install || node-gyp rebuild --release
+.../esbuild@0.27.4/node_modules/esbuild postinstall: Done
+.../node_modules/better-sqlite3 install: gyp http GET https://nodejs.org/download/release/v26.13.0/node-v26.13.0-headers.tar.gz
+.../node_modules/cpu-features install: gyp info it worked if it ends with ok
+.../node_modules/cpu-features install: gyp info using node-gyp@11.1.0
+.../node_modules/cpu-features install: gyp info using node@26.13.0 | linux | x64
+.../node_modules/better-sqlite3 install: gyp http 200 https://nodejs.org/download/release/v26.13.0/node-v26.13.0-headers.tar.gz
+.../node_modules/cpu-features install: gyp info find Python using Python version 3.12.3 found at "/opt/freestyle/python/bin/python3"
+.../node_modules/cpu-features install: gyp http GET https://nodejs.org/download/release/v26.13.0/node-v26.13.0-headers.tar.gz
+.../node_modules/cpu-features install: gyp http 200 https://nodejs.org/download/release/v26.13.0/node-v26.13.0-headers.tar.gz
+.../node_modules/better-sqlite3 install: prebuild-install warn install No prebuilt binaries found (target=26.13.0 runtime=node arch=x64 libc= platform=linux)
+.../node_modules/better-sqlite3 install: gyp info it worked if it ends with ok
+.../node_modules/better-sqlite3 install: gyp info using node-gyp@11.1.0
+.../node_modules/better-sqlite3 install: gyp info using node@26.13.0 | linux | x64
+.../node_modules/better-sqlite3 install: gyp info find Python using Python version 3.12.3 found at "/opt/freestyle/python/bin/python3"
+.../node_modules/better-sqlite3 install: gyp http GET https://nodejs.org/download/release/v26.13.0/node-v26.13.0-headers.tar.gz
+.../node_modules/@prisma/engines postinstall: Done
+.../node_modules/better-sqlite3 install: gyp http 200 https://nodejs.org/download/release/v26.13.0/node-v26.13.0-headers.tar.gz
+.../node_modules/cpu-features install: gyp http GET https://nodejs.org/download/release/v26.13.0/SHASUMS256.txt
+.../node_modules/cpu-features install: gyp http 200 https://nodejs.org/download/release/v26.13.0/SHASUMS256.txt
+.../node_modules/cpu-features install: gyp info spawn /opt/freestyle/python/bin/python3
+.../node_modules/cpu-features install: gyp info spawn args [
+.../node_modules/cpu-features install: gyp info spawn args '/tmp/toolchains/pnpm10/node_modules/pnpm/dist/node_modules/node-gyp/gyp/gyp_main.py',
+.../node_modules/cpu-features install: gyp info spawn args 'binding.gyp',
+.../node_modules/cpu-features install: gyp info spawn args '-f',
+.../node_modules/cpu-features install: gyp info spawn args 'make',
+.../node_modules/cpu-features install: gyp info spawn args '-I',
+.../node_modules/cpu-features install: gyp info spawn args '/tmp/acima-real-world-benchmark/repositories/typescript/drizzle-orm/baseline/node_modules/.pnpm/cpu-features@0.0.10/node_modules/cpu-features/build/config.gypi',
+.../node_modules/cpu-features install: gyp info spawn args '-I',
+.../node_modules/cpu-features install: gyp info spawn args '/tmp/toolchains/pnpm10/node_modules/pnpm/dist/node_modules/node-gyp/addon.gypi',
+.../node_modules/cpu-features install: gyp info spawn args '-I',
+.../node_modules/cpu-features install: gyp info spawn args '/workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/common.gypi',
+.../node_modules/cpu-features install: gyp info spawn args '-Dlibrary=shared_library',
+.../node_modules/cpu-features install: gyp info spawn args '-Dvisibility=default',
+.../node_modules/cpu-features install: gyp info spawn args '-Dnode_root_dir=/workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0',
+.../node_modules/cpu-features install: gyp info spawn args '-Dnode_gyp_dir=/tmp/toolchains/pnpm10/node_modules/pnpm/dist/node_modules/node-gyp',
+.../node_modules/cpu-features install: gyp info spawn args '-Dnode_lib_file=/workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/<(target_arch)/node.lib',
+.../node_modules/cpu-features install: gyp info spawn args '-Dmodule_root_dir=/tmp/acima-real-world-benchmark/repositories/typescript/drizzle-orm/baseline/node_modules/.pnpm/cpu-features@0.0.10/node_modules/cpu-features',
+.../node_modules/cpu-features install: gyp info spawn args '-Dnode_engine=v8',
+.../node_modules/cpu-features install: gyp info spawn args '--depth=.',
+.../node_modules/cpu-features install: gyp info spawn args '--no-parallel',
+.../node_modules/cpu-features install: gyp info spawn args '--generator-output',
+.../node_modules/cpu-features install: gyp info spawn args 'build',
+.../node_modules/cpu-features install: gyp info spawn args '-Goutput_dir=.'
+.../node_modules/cpu-features install: gyp info spawn args ]
+.../node_modules/cpu-features install: gyp info spawn make
+.../node_modules/cpu-features install: gyp info spawn args [ 'BUILDTYPE=Release', '-C', 'build' ]
+.../node_modules/cpu-features install: make: Entering directory '/tmp/acima-real-world-benchmark/repositories/typescript/drizzle-orm/baseline/node_modules/.pnpm/cpu-features@0.0.10/node_modules/cpu-features/build'
+.../node_modules/cpu-features install:   CC(target) Release/obj.target/cpu_features/deps/cpu_features/src/impl_aarch64_linux_or_android.o
+.../node_modules/cpu-features install:   CC(target) Release/obj.target/cpu_features/deps/cpu_features/src/impl_aarch64_macos_or_iphone.o
+.../node_modules/better-sqlite3 install: gyp http GET https://nodejs.org/download/release/v26.13.0/SHASUMS256.txt
+.../node_modules/better-sqlite3 install: gyp http 200 https://nodejs.org/download/release/v26.13.0/SHASUMS256.txt
+.../node_modules/cpu-features install:   CC(target) Release/obj.target/cpu_features/deps/cpu_features/src/impl_aarch64_windows.o
+.../node_modules/better-sqlite3 install: gyp info spawn /opt/freestyle/python/bin/python3
+.../node_modules/better-sqlite3 install: gyp info spawn args [
+.../node_modules/better-sqlite3 install: gyp info spawn args '/tmp/toolchains/pnpm10/node_modules/pnpm/dist/node_modules/node-gyp/gyp/gyp_main.py',
+.../node_modules/better-sqlite3 install: gyp info spawn args 'binding.gyp',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-f',
+.../node_modules/better-sqlite3 install: gyp info spawn args 'make',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-I',
+.../node_modules/better-sqlite3 install: gyp info spawn args '/tmp/acima-real-world-benchmark/repositories/typescript/drizzle-orm/baseline/node_modules/.pnpm/better-sqlite3@11.9.1/node_modules/better-sqlite3/build/config.gypi',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-I',
+.../node_modules/better-sqlite3 install: gyp info spawn args '/tmp/toolchains/pnpm10/node_modules/pnpm/dist/node_modules/node-gyp/addon.gypi',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-I',
+.../node_modules/better-sqlite3 install: gyp info spawn args '/workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/common.gypi',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-Dlibrary=shared_library',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-Dvisibility=default',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-Dnode_root_dir=/workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-Dnode_gyp_dir=/tmp/toolchains/pnpm10/node_modules/pnpm/dist/node_modules/node-gyp',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-Dnode_lib_file=/workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/<(target_arch)/node.lib',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-Dmodule_root_dir=/tmp/acima-real-world-benchmark/repositories/typescript/drizzle-orm/baseline/node_modules/.pnpm/better-sqlite3@11.9.1/node_modules/better-sqlite3',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-Dnode_engine=v8',
+.../node_modules/better-sqlite3 install: gyp info spawn args '--depth=.',
+.../node_modules/better-sqlite3 install: gyp info spawn args '--no-parallel',
+.../node_modules/better-sqlite3 install: gyp info spawn args '--generator-output',
+.../node_modules/better-sqlite3 install: gyp info spawn args 'build',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-Goutput_dir=.'
+.../node_modules/better-sqlite3 install: gyp info spawn args ]
+.../node_modules/better-sqlite3 install: gyp http GET https://nodejs.org/download/release/v26.13.0/SHASUMS256.txt
+.../node_modules/cpu-features install:   CC(target) Release/obj.target/cpu_features/deps/cpu_features/src/impl_arm_linux_or_android.o
+.../node_modules/better-sqlite3 install: gyp http 200 https://nodejs.org/download/release/v26.13.0/SHASUMS256.txt
+.../node_modules/better-sqlite3 install: gyp info spawn /opt/freestyle/python/bin/python3
+.../node_modules/better-sqlite3 install: gyp info spawn args [
+.../node_modules/better-sqlite3 install: gyp info spawn args '/tmp/toolchains/pnpm10/node_modules/pnpm/dist/node_modules/node-gyp/gyp/gyp_main.py',
+.../node_modules/better-sqlite3 install: gyp info spawn args 'binding.gyp',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-f',
+.../node_modules/better-sqlite3 install: gyp info spawn args 'make',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-I',
+.../node_modules/better-sqlite3 install: gyp info spawn args '/tmp/acima-real-world-benchmark/repositories/typescript/drizzle-orm/baseline/node_modules/.pnpm/better-sqlite3@11.10.0/node_modules/better-sqlite3/build/config.gypi',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-I',
+.../node_modules/better-sqlite3 install: gyp info spawn args '/tmp/toolchains/pnpm10/node_modules/pnpm/dist/node_modules/node-gyp/addon.gypi',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-I',
+.../node_modules/better-sqlite3 install: gyp info spawn args '/workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/common.gypi',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-Dlibrary=shared_library',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-Dvisibility=default',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-Dnode_root_dir=/workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-Dnode_gyp_dir=/tmp/toolchains/pnpm10/node_modules/pnpm/dist/node_modules/node-gyp',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-Dnode_lib_file=/workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/<(target_arch)/node.lib',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-Dmodule_root_dir=/tmp/acima-real-world-benchmark/repositories/typescript/drizzle-orm/baseline/node_modules/.pnpm/better-sqlite3@11.10.0/node_modules/better-sqlite3',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-Dnode_engine=v8',
+.../node_modules/better-sqlite3 install: gyp info spawn args '--depth=.',
+.../node_modules/better-sqlite3 install: gyp info spawn args '--no-parallel',
+.../node_modules/better-sqlite3 install: gyp info spawn args '--generator-output',
+.../node_modules/better-sqlite3 install: gyp info spawn args 'build',
+.../node_modules/better-sqlite3 install: gyp info spawn args '-Goutput_dir=.'
+.../node_modules/better-sqlite3 install: gyp info spawn args ]
+.../node_modules/cpu-features install:   CC(target) Release/obj.target/cpu_features/deps/cpu_features/src/impl_mips_linux_or_android.o
+.../node_modules/cpu-features install:   CC(target) Release/obj.target/cpu_features/deps/cpu_features/src/impl_ppc_linux.o
+.../node_modules/better-sqlite3 install: gyp info spawn make
+.../node_modules/better-sqlite3 install: gyp info spawn args [ 'BUILDTYPE=Release', '-C', 'build' ]
+.../node_modules/better-sqlite3 install: make: Entering directory '/tmp/acima-real-world-benchmark/repositories/typescript/drizzle-orm/baseline/node_modules/.pnpm/better-sqlite3@11.9.1/node_modules/better-sqlite3/build'
+.../node_modules/better-sqlite3 install:   TOUCH ba23eeee118cd63e16015df367567cb043fed872.intermediate
+.../node_modules/better-sqlite3 install:   ACTION deps_sqlite3_gyp_locate_sqlite3_target_copy_builtin_sqlite3 ba23eeee118cd63e16015df367567cb043fed872.intermediate
+.../node_modules/cpu-features install:   CC(target) Release/obj.target/cpu_features/deps/cpu_features/src/impl_x86_freebsd.o
+.../node_modules/better-sqlite3 install: gyp info spawn make
+.../node_modules/better-sqlite3 install: gyp info spawn args [ 'BUILDTYPE=Release', '-C', 'build' ]
+.../node_modules/better-sqlite3 install: make: Entering directory '/tmp/acima-real-world-benchmark/repositories/typescript/drizzle-orm/baseline/node_modules/.pnpm/better-sqlite3@11.10.0/node_modules/better-sqlite3/build'
+.../node_modules/better-sqlite3 install:   TOUCH ba23eeee118cd63e16015df367567cb043fed872.intermediate
+.../node_modules/better-sqlite3 install:   ACTION deps_sqlite3_gyp_locate_sqlite3_target_copy_builtin_sqlite3 ba23eeee118cd63e16015df367567cb043fed872.intermediate
+.../node_modules/better-sqlite3 install:   TOUCH Release/obj.target/deps/locate_sqlite3.stamp
+.../node_modules/cpu-features install:   CC(target) Release/obj.target/cpu_features/deps/cpu_features/src/impl_x86_linux_or_android.o
+.../node_modules/better-sqlite3 install:   CC(target) Release/obj.target/sqlite3/gen/sqlite3/sqlite3.o
+.../node_modules/better-sqlite3 install:   TOUCH Release/obj.target/deps/locate_sqlite3.stamp
+.../node_modules/better-sqlite3 install:   CC(target) Release/obj.target/sqlite3/gen/sqlite3/sqlite3.o
+.../node_modules/cpu-features install:   CC(target) Release/obj.target/cpu_features/deps/cpu_features/src/impl_x86_macos.o
+.../node_modules/cpu-features install:   CC(target) Release/obj.target/cpu_features/deps/cpu_features/src/impl_x86_windows.o
+.../node_modules/cpu-features install:   CC(target) Release/obj.target/cpu_features/deps/cpu_features/src/filesystem.o
+.../node_modules/cpu-features install:   CC(target) Release/obj.target/cpu_features/deps/cpu_features/src/stack_line_reader.o
+.../node_modules/cpu-features install:   CC(target) Release/obj.target/cpu_features/deps/cpu_features/src/string_view.o
+.../node_modules/cpu-features install: rm -f Release/obj.target/deps/cpu_features/cpu_features.a Release/obj.target/deps/cpu_features/cpu_features.a.ar-file-list; mkdir -p `dirname Release/obj.target/deps/cpu_features/cpu_features.a`
+.../node_modules/cpu-features install: ar crs Release/obj.target/deps/cpu_features/cpu_features.a @Release/obj.target/deps/cpu_features/cpu_features.a.ar-file-list
+.../node_modules/cpu-features install:   COPY Release/cpu_features.a
+.../node_modules/cpu-features install:   CXX(target) Release/obj.target/cpufeatures/src/binding.o
+.../node_modules/cpu-features install: In file included from ../../../../nan@2.22.2/node_modules/nan/nan_callbacks.h:123,
+.../node_modules/cpu-features install:                  from ../../../../nan@2.22.2/node_modules/nan/nan.h:182,
+.../node_modules/cpu-features install:                  from ../src/binding.cc:3:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h: In function ‘void Nan::imp::FunctionCallbackWrapper(const v8::FunctionCallbackInfo<v8::Value>&)’:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h:174:53: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/cpu-features install:   173 |           obj->GetInternalField(kFunctionIndex)
+.../node_modules/cpu-features install:       |           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~      
+.../node_modules/cpu-features install:   174 |           .As<v8::Value>().As<v8::External>()->Value()));
+.../node_modules/cpu-features install:       |           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~
+.../node_modules/cpu-features install: In file included from /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8.h:32,
+.../node_modules/cpu-features install:                  from /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/node.h:74,
+.../node_modules/cpu-features install:                  from ../src/binding.cc:1:
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/cpu-features install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/cpu-features install:       |         ^~~~~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h: In function ‘void Nan::imp::GetterCallbackWrapper(v8::Local<v8::Name>, const v8::PropertyCallbackInfo<v8::Value>&)’:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h:193:53: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/cpu-features install:   192 |           obj->GetInternalField(kGetterIndex)
+.../node_modules/cpu-features install:       |           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~        
+.../node_modules/cpu-features install:   193 |           .As<v8::Value>().As<v8::External>()->Value()));
+.../node_modules/cpu-features install:       |           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/cpu-features install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/cpu-features install:       |         ^~~~~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h: In function ‘void Nan::imp::SetterCallbackWrapper(v8::Local<v8::Name>, v8::Local<v8::Value>, const v8::PropertyCallbackInfo<void>&)’:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h:211:53: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/cpu-features install:   210 |           obj->GetInternalField(kSetterIndex)
+.../node_modules/cpu-features install:       |           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~        
+.../node_modules/cpu-features install:   211 |           .As<v8::Value>().As<v8::External>()->Value()));
+.../node_modules/cpu-features install:       |           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/cpu-features install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/cpu-features install:       |         ^~~~~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h: In function ‘v8::Intercepted Nan::imp::PropertyGetterCallbackWrapper(v8::Local<v8::Name>, const v8::PropertyCallbackInfo<v8::Value>&)’:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h:272:57: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/cpu-features install:   271 |           obj->GetInternalField(kPropertyGetterIndex)
+.../node_modules/cpu-features install:       |           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+.../node_modules/cpu-features install:   272 |               .As<v8::Value>().As<v8::External>()->Value()));
+.../node_modules/cpu-features install:       |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/cpu-features install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/cpu-features install:       |         ^~~~~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h: In function ‘v8::Intercepted Nan::imp::PropertySetterCallbackWrapper(v8::Local<v8::Name>, v8::Local<v8::Value>, const v8::PropertyCallbackInfo<void>&)’:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h:290:57: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/cpu-features install:   289 |           obj->GetInternalField(kPropertySetterIndex)
+.../node_modules/cpu-features install:       |           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+.../node_modules/cpu-features install:   290 |               .As<v8::Value>().As<v8::External>()->Value()));
+.../node_modules/cpu-features install:       |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/cpu-features install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/cpu-features install:       |         ^~~~~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h: In function ‘void Nan::imp::PropertyEnumeratorCallbackWrapper(const v8::PropertyCallbackInfo<v8::Array>&)’:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h:347:57: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/cpu-features install:   346 |           obj->GetInternalField(kPropertyEnumeratorIndex)
+.../node_modules/cpu-features install:       |           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.../node_modules/cpu-features install:   347 |               .As<v8::Value>().As<v8::External>()->Value()));
+.../node_modules/cpu-features install:       |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/cpu-features install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/cpu-features install:       |         ^~~~~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h: In function ‘v8::Intercepted Nan::imp::PropertyDeleterCallbackWrapper(v8::Local<v8::Name>, const v8::PropertyCallbackInfo<v8::Boolean>&)’:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h:366:57: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/cpu-features install:   365 |           obj->GetInternalField(kPropertyDeleterIndex)
+.../node_modules/cpu-features install:       |           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   
+.../node_modules/cpu-features install:   366 |               .As<v8::Value>().As<v8::External>()->Value()));
+.../node_modules/cpu-features install:       |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/cpu-features install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/cpu-features install:       |         ^~~~~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h: In function ‘v8::Intercepted Nan::imp::PropertyQueryCallbackWrapper(v8::Local<v8::Name>, const v8::PropertyCallbackInfo<v8::Integer>&)’:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h:384:57: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/cpu-features install:   383 |           obj->GetInternalField(kPropertyQueryIndex)
+.../node_modules/cpu-features install:       |           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~     
+.../node_modules/cpu-features install:   384 |               .As<v8::Value>().As<v8::External>()->Value()));
+.../node_modules/cpu-features install:       |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/cpu-features install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/cpu-features install:       |         ^~~~~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h: In function ‘v8::Intercepted Nan::imp::IndexGetterCallbackWrapper(uint32_t, const v8::PropertyCallbackInfo<v8::Value>&)’:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h:525:57: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/cpu-features install:   524 |           obj->GetInternalField(kIndexPropertyGetterIndex)
+.../node_modules/cpu-features install:       |           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.../node_modules/cpu-features install:   525 |               .As<v8::Value>().As<v8::External>()->Value()));
+.../node_modules/cpu-features install:       |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/cpu-features install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/cpu-features install:       |         ^~~~~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h: In function ‘v8::Intercepted Nan::imp::IndexSetterCallbackWrapper(uint32_t, v8::Local<v8::Value>, const v8::PropertyCallbackInfo<void>&)’:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h:543:57: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/cpu-features install:   542 |           obj->GetInternalField(kIndexPropertySetterIndex)
+.../node_modules/cpu-features install:       |           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.../node_modules/cpu-features install:   543 |               .As<v8::Value>().As<v8::External>()->Value()));
+.../node_modules/cpu-features install:       |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/cpu-features install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/cpu-features install:       |         ^~~~~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h: In function ‘void Nan::imp::IndexEnumeratorCallbackWrapper(const v8::PropertyCallbackInfo<v8::Array>&)’:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h:600:57: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/cpu-features install:   598 |           obj->GetInternalField(
+.../node_modules/cpu-features install:       |           ~~~~~~~~~~~~~~~~~~~~~~                         
+.../node_modules/cpu-features install:   599 |               kIndexPropertyEnumeratorIndex)
+.../node_modules/cpu-features install:       |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~             
+.../node_modules/cpu-features install:   600 |               .As<v8::Value>().As<v8::External>()->Value()));
+.../node_modules/cpu-features install:       |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/cpu-features install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/cpu-features install:       |         ^~~~~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h: In function ‘v8::Intercepted Nan::imp::IndexDeleterCallbackWrapper(uint32_t, const v8::PropertyCallbackInfo<v8::Boolean>&)’:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h:618:57: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/cpu-features install:   617 |           obj->GetInternalField(kIndexPropertyDeleterIndex)
+.../node_modules/cpu-features install:       |           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.../node_modules/cpu-features install:   618 |               .As<v8::Value>().As<v8::External>()->Value()));
+.../node_modules/cpu-features install:       |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/cpu-features install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/cpu-features install:       |         ^~~~~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h: In function ‘v8::Intercepted Nan::imp::IndexQueryCallbackWrapper(uint32_t, const v8::PropertyCallbackInfo<v8::Integer>&)’:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_callbacks_12_inl.h:634:57: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/cpu-features install:   633 |           obj->GetInternalField(kIndexPropertyQueryIndex)
+.../node_modules/cpu-features install:       |           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.../node_modules/cpu-features install:   634 |               .As<v8::Value>().As<v8::External>()->Value()));
+.../node_modules/cpu-features install:       |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/cpu-features install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/cpu-features install:       |         ^~~~~
+.../node_modules/cpu-features install: In file included from ../../../../nan@2.22.2/node_modules/nan/nan.h:302:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_maybe_43_inl.h: In function ‘Nan::Maybe<bool> Nan::SetPrototype(v8::Local<v8::Object>, v8::Local<v8::Value>)’:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_maybe_43_inl.h:210:15: error: ‘class v8::Object’ has no member named ‘SetPrototype’; did you mean ‘SetPrototypeV2’?
+.../node_modules/cpu-features install:   210 |   return obj->SetPrototype(isolate->GetCurrentContext(), prototype);
+.../node_modules/cpu-features install:       |               ^~~~~~~~~~~~
+.../node_modules/cpu-features install:       |               SetPrototypeV2
+.../node_modules/cpu-features install: In file included from ../../../../nan@2.22.2/node_modules/nan/nan_new.h:189,
+.../node_modules/cpu-features install:                  from ../../../../nan@2.22.2/node_modules/nan/nan.h:308:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_implementation_12_inl.h: In static member function ‘static Nan::imp::FactoryBase<v8::External>::return_t Nan::imp::Factory<v8::External>::New(void*)’:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_implementation_12_inl.h:79:27: warning: ‘static v8::Local<v8::External> v8::External::New(v8::Isolate*, void*)’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/cpu-features install:    79 |   return v8::External::New(v8::Isolate::GetCurrent(), value);
+.../node_modules/cpu-features install:       |          ~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:32:26: note: declared here
+.../node_modules/cpu-features install:    32 |   static Local<External> New(Isolate* isolate, void* value) {
+.../node_modules/cpu-features install:       |                          ^~~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_implementation_12_inl.h: In static member function ‘static Nan::imp::FactoryBase<v8::Function>::return_t Nan::imp::Factory<v8::Function>::New(Nan::FunctionCallback, v8::Local<v8::Value>)’:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_implementation_12_inl.h:95:24: warning: ‘static v8::Local<v8::External> v8::External::New(v8::Isolate*, void*)’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/cpu-features install:    95 |     , v8::External::New(isolate, reinterpret_cast<void *>(callback)));
+.../node_modules/cpu-features install:       |       ~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:32:26: note: declared here
+.../node_modules/cpu-features install:    32 |   static Local<External> New(Isolate* isolate, void* value) {
+.../node_modules/cpu-features install:       |                          ^~~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_implementation_12_inl.h: In static member function ‘static Nan::imp::FactoryBase<v8::FunctionTemplate>::return_t Nan::imp::Factory<v8::FunctionTemplate>::New(Nan::FunctionCallback, v8::Local<v8::Value>, v8::Local<v8::Signature>)’:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_implementation_12_inl.h:131:26: warning: ‘static v8::Local<v8::External> v8::External::New(v8::Isolate*, void*)’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/cpu-features install:   131 |       , v8::External::New(isolate, reinterpret_cast<void *>(callback)));
+.../node_modules/cpu-features install:       |         ~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:32:26: note: declared here
+.../node_modules/cpu-features install:    32 |   static Local<External> New(Isolate* isolate, void* value) {
+.../node_modules/cpu-features install:       |                          ^~~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan.h: At global scope:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan.h:436:59: error: ‘REPLACE_INVALID_UTF8’ is not a member of ‘v8::String’
+.../node_modules/cpu-features install:   436 |   static const unsigned kReplaceInvalidUtf8 = v8::String::REPLACE_INVALID_UTF8;
+.../node_modules/cpu-features install:       |                                                           ^~~~~~~~~~~~~~~~~~~~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan.h: In function ‘void* Nan::GetInternalFieldPointer(v8::Local<v8::Object>, int)’:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan.h:820:54: error: no matching function for call to ‘v8::Object::GetAlignedPointerFromInternalField(int&)’
+.../node_modules/cpu-features install:   820 |     return object->GetAlignedPointerFromInternalField(index);
+.../node_modules/cpu-features install:       |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~
+.../node_modules/cpu-features install: In file included from /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-array-buffer.h:14,
+.../node_modules/cpu-features install:                  from /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8.h:24:
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-object.h:960:7: note: candidate: ‘void* v8::Object::GetAlignedPointerFromInternalField(int, v8::EmbedderDataTypeTag)’
+.../node_modules/cpu-features install:   960 | void* Object::GetAlignedPointerFromInternalField(int index,
+.../node_modules/cpu-features install:       |       ^~~~~~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-object.h:960:7: note:   candidate expects 2 arguments, 1 provided
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-object.h:938:7: note: candidate: ‘void* v8::Object::GetAlignedPointerFromInternalField(v8::Isolate*, int, v8::EmbedderDataTypeTag)’
+.../node_modules/cpu-features install:   938 | void* Object::GetAlignedPointerFromInternalField(v8::Isolate* isolate,
+.../node_modules/cpu-features install:       |       ^~~~~~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-object.h:938:7: note:   candidate expects 3 arguments, 1 provided
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-object.h:550:26: note: candidate: ‘static void* v8::Object::GetAlignedPointerFromInternalField(const v8::PersistentBase<v8::Object>&, int, v8::EmbedderDataTypeTag)’
+.../node_modules/cpu-features install:   550 |   V8_INLINE static void* GetAlignedPointerFromInternalField(
+.../node_modules/cpu-features install:       |                          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-object.h:550:26: note:   candidate expects 3 arguments, 1 provided
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-object.h:558:26: note: candidate: ‘static void* v8::Object::GetAlignedPointerFromInternalField(const v8::BasicTracedReference<v8::Object>&, int, v8::EmbedderDataTypeTag)’
+.../node_modules/cpu-features install:   558 |   V8_INLINE static void* GetAlignedPointerFromInternalField(
+.../node_modules/cpu-features install:       |                          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-object.h:558:26: note:   candidate expects 3 arguments, 1 provided
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan.h: In function ‘void Nan::SetInternalFieldPointer(v8::Local<v8::Object>, int, void*)’:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan.h:827:45: error: no matching function for call to ‘v8::Object::SetAlignedPointerInInternalField(int&, void*&)’
+.../node_modules/cpu-features install:   827 |     object->SetAlignedPointerInInternalField(index, value);
+.../node_modules/cpu-features install:       |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-object.h:570:8: note: candidate: ‘void v8::Object::SetAlignedPointerInInternalField(int, void*, v8::EmbedderDataTypeTag)’
+.../node_modules/cpu-features install:   570 |   void SetAlignedPointerInInternalField(int index, void* value,
+.../node_modules/cpu-features install:       |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-object.h:570:8: note:   candidate expects 3 arguments, 2 provided
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan.h: In constructor ‘Nan::Utf8String::Utf8String(v8::Local<v8::Value>)’:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan.h:1171:25: error: ‘NO_NULL_TERMINATION’ is not a member of ‘v8::String’
+.../node_modules/cpu-features install:  1171 |             v8::String::NO_NULL_TERMINATION | imp::kReplaceInvalidUtf8;
+.../node_modules/cpu-features install:       |                         ^~~~~~~~~~~~~~~~~~~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan.h:1173:27: error: ‘class v8::String’ has no member named ‘WriteUtf8’; did you mean ‘WriteUtf8V2’?
+.../node_modules/cpu-features install:  1173 |         length_ = string->WriteUtf8(v8::Isolate::GetCurrent(), str_,
+.../node_modules/cpu-features install:       |                           ^~~~~~~~~
+.../node_modules/cpu-features install:       |                           WriteUtf8V2
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan.h: In function ‘v8::Local<v8::Value> Nan::Encode(const void*, size_t, Encoding)’:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan.h:2418:24: warning: ‘v8::Local<v8::Value> node::Encode(v8::Isolate*, const uint16_t*, size_t)’ is deprecated: Use TryEncode(...) instead [-Wdeprecated-declarations]
+.../node_modules/cpu-features install:  2418 |     return node::Encode(
+.../node_modules/cpu-features install:       |            ~~~~~~~~~~~~^
+.../node_modules/cpu-features install:  2419 |         isolate
+.../node_modules/cpu-features install:       |         ~~~~~~~         
+.../node_modules/cpu-features install:  2420 |       , reinterpret_cast<const uint16_t *>(buf)
+.../node_modules/cpu-features install:       |       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.../node_modules/cpu-features install:  2421 |       , len / 2);
+.../node_modules/cpu-features install:       |       ~~~~~~~~~~        
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/node.h:1285:50: note: declared here
+.../node_modules/cpu-features install:  1285 |                 NODE_EXTERN v8::Local<v8::Value> Encode(v8::Isolate* isolate,
+.../node_modules/cpu-features install:       |                                                  ^~~~~~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/node.h:114:70: note: in definition of macro ‘NODE_DEPRECATED’
+.../node_modules/cpu-features install:   114 | #define NODE_DEPRECATED(message, declarator) [[deprecated(message)]] declarator
+.../node_modules/cpu-features install:       |                                                                      ^~~~~~~~~~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan.h:2423:24: warning: ‘v8::Local<v8::Value> node::Encode(v8::Isolate*, const char*, size_t, encoding)’ is deprecated: Use TryEncode(...) instead [-Wdeprecated-declarations]
+.../node_modules/cpu-features install:  2423 |     return node::Encode(
+.../node_modules/cpu-features install:       |            ~~~~~~~~~~~~^
+.../node_modules/cpu-features install:  2424 |         isolate
+.../node_modules/cpu-features install:       |         ~~~~~~~         
+.../node_modules/cpu-features install:  2425 |       , reinterpret_cast<const char *>(buf)
+.../node_modules/cpu-features install:       |       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.../node_modules/cpu-features install:  2426 |       , len
+.../node_modules/cpu-features install:       |       ~~~~~             
+.../node_modules/cpu-features install:  2427 |       , node_enc);
+.../node_modules/cpu-features install:       |       ~~~~~~~~~~~       
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/node.h:1277:38: note: declared here
+.../node_modules/cpu-features install:  1277 |     NODE_EXTERN v8::Local<v8::Value> Encode(v8::Isolate* isolate,
+.../node_modules/cpu-features install:       |                                      ^~~~~~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/node.h:114:70: note: in definition of macro ‘NODE_DEPRECATED’
+.../node_modules/cpu-features install:   114 | #define NODE_DEPRECATED(message, declarator) [[deprecated(message)]] declarator
+.../node_modules/cpu-features install:       |                                                                      ^~~~~~~~~~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan.h: At global scope:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan.h:2590:5: error: ‘v8::AccessControl’ has not been declared
+.../node_modules/cpu-features install:  2590 |   , v8::AccessControl settings
+.../node_modules/cpu-features install:       |     ^~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan.h:2643:5: error: ‘v8::AccessControl’ has not been declared
+.../node_modules/cpu-features install:  2643 |   , v8::AccessControl settings = v8::DEFAULT
+.../node_modules/cpu-features install:       |     ^~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan.h:2643:38: error: ‘DEFAULT’ is not a member of ‘v8’
+.../node_modules/cpu-features install:  2643 |   , v8::AccessControl settings = v8::DEFAULT
+.../node_modules/cpu-features install:       |                                      ^~~~~~~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan.h:2692:5: error: ‘v8::AccessControl’ has not been declared
+.../node_modules/cpu-features install:  2692 |   , v8::AccessControl settings = v8::DEFAULT
+.../node_modules/cpu-features install:       |     ^~
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan.h:2692:38: error: ‘DEFAULT’ is not a member of ‘v8’
+.../node_modules/cpu-features install:  2692 |   , v8::AccessControl settings = v8::DEFAULT
+.../node_modules/cpu-features install:       |                                      ^~~~~~~
+.../node_modules/cpu-features install: In file included from ../../../../nan@2.22.2/node_modules/nan/nan.h:2937:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_weak.h: In member function ‘void Nan::Persistent<T, M>::SetWeak(P*, typename Nan::WeakCallbackInfo<P>::Callback, Nan::WeakCallbackType)’:
+.../node_modules/cpu-features install: ../../../../nan@2.22.2/node_modules/nan/nan_weak.h:279:68: error: no matching function for call to ‘v8::Object::GetAlignedPointerFromInternalField(int&)’
+.../node_modules/cpu-features install:   279 |       internal_fields[i] = self->GetAlignedPointerFromInternalField(i);
+.../node_modules/cpu-features install:       |                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-object.h:960:7: note: candidate: ‘void* v8::Object::GetAlignedPointerFromInternalField(int, v8::EmbedderDataTypeTag)’
+.../node_modules/cpu-features install:   960 | void* Object::GetAlignedPointerFromInternalField(int index,
+.../node_modules/cpu-features install:       |       ^~~~~~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-object.h:960:7: note:   candidate expects 2 arguments, 1 provided
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-object.h:938:7: note: candidate: ‘void* v8::Object::GetAlignedPointerFromInternalField(v8::Isolate*, int, v8::EmbedderDataTypeTag)’
+.../node_modules/cpu-features install:   938 | void* Object::GetAlignedPointerFromInternalField(v8::Isolate* isolate,
+.../node_modules/cpu-features install:       |       ^~~~~~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-object.h:938:7: note:   candidate expects 3 arguments, 1 provided
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-object.h:550:26: note: candidate: ‘static void* v8::Object::GetAlignedPointerFromInternalField(const v8::PersistentBase<v8::Object>&, int, v8::EmbedderDataTypeTag)’
+.../node_modules/cpu-features install:   550 |   V8_INLINE static void* GetAlignedPointerFromInternalField(
+.../node_modules/cpu-features install:       |                          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-object.h:550:26: note:   candidate expects 3 arguments, 1 provided
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-object.h:558:26: note: candidate: ‘static void* v8::Object::GetAlignedPointerFromInternalField(const v8::BasicTracedReference<v8::Object>&, int, v8::EmbedderDataTypeTag)’
+.../node_modules/cpu-features install:   558 |   V8_INLINE static void* GetAlignedPointerFromInternalField(
+.../node_modules/cpu-features install:       |                          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-object.h:558:26: note:   candidate expects 3 arguments, 1 provided
+.../node_modules/cpu-features install: ../src/binding.cc: At global scope:
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/node.h:1375:7: warning: cast between incompatible function types from ‘void (*)(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE)’ {aka ‘void (*)(v8::Local<v8::Object>)’} to ‘node::addon_register_func’ {aka ‘void (*)(v8::Local<v8::Object>, v8::Local<v8::Value>, void*)’} [-Wcast-function-type]
+.../node_modules/cpu-features install:  1375 |       (node::addon_register_func) (regfunc),                          \
+.../node_modules/cpu-features install:       |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.../node_modules/cpu-features install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/node.h:1409:3: note: in expansion of macro ‘NODE_MODULE_X’
+.../node_modules/cpu-features install:  1409 |   NODE_MODULE_X(modname, regfunc, NULL, 0)  // NOLINT (readability/null_usage)
+.../node_modules/cpu-features install:       |   ^~~~~~~~~~~~~
+.../node_modules/cpu-features install: ../src/binding.cc:151:1: note: in expansion of macro ‘NODE_MODULE’
+.../node_modules/cpu-features install:   151 | NODE_MODULE(cpufeatures, init)
+.../node_modules/cpu-features install:       | ^~~~~~~~~~~
+.../node_modules/cpu-features install: make: *** [cpufeatures.target.mk:121: Release/obj.target/cpufeatures/src/binding.o] Error 1
+.../node_modules/cpu-features install: make: Leaving directory '/tmp/acima-real-world-benchmark/repositories/typescript/drizzle-orm/baseline/node_modules/.pnpm/cpu-features@0.0.10/node_modules/cpu-features/build'
+.../node_modules/cpu-features install: gyp ERR! build error 
+.../node_modules/cpu-features install: gyp ERR! stack Error: `make` failed with exit code: 2
+.../node_modules/cpu-features install: gyp ERR! stack at ChildProcess.<anonymous> (/tmp/toolchains/pnpm10/node_modules/pnpm/dist/node_modules/node-gyp/lib/build.js:216:23)
+.../node_modules/cpu-features install: gyp ERR! System Linux 6.1.102
+.../node_modules/cpu-features install: gyp ERR! command "/usr/local/nvm/versions/node/v26.13.0/bin/node" "/tmp/toolchains/pnpm10/node_modules/pnpm/dist/node_modules/node-gyp/bin/node-gyp.js" "rebuild"
+.../node_modules/cpu-features install: gyp ERR! cwd /tmp/acima-real-world-benchmark/repositories/typescript/drizzle-orm/baseline/node_modules/.pnpm/cpu-features@0.0.10/node_modules/cpu-features
+.../node_modules/cpu-features install: gyp ERR! node -v v26.13.0
+.../node_modules/cpu-features install: gyp ERR! node-gyp -v v11.1.0
+.../node_modules/cpu-features install: gyp ERR! not ok 
+.../node_modules/cpu-features install: Failed
+.../node_modules/better-sqlite3 install: rm -f Release/obj.target/deps/sqlite3.a Release/obj.target/deps/sqlite3.a.ar-file-list; mkdir -p `dirname Release/obj.target/deps/sqlite3.a`
+.../node_modules/better-sqlite3 install: ar crs Release/obj.target/deps/sqlite3.a @Release/obj.target/deps/sqlite3.a.ar-file-list
+.../node_modules/better-sqlite3 install: rm -f Release/obj.target/deps/sqlite3.a Release/obj.target/deps/sqlite3.a.ar-file-list; mkdir -p `dirname Release/obj.target/deps/sqlite3.a`
+.../node_modules/better-sqlite3 install:   COPY Release/sqlite3.a
+.../node_modules/better-sqlite3 install: ar crs Release/obj.target/deps/sqlite3.a @Release/obj.target/deps/sqlite3.a.ar-file-list
+.../node_modules/better-sqlite3 install:   CXX(target) Release/obj.target/better_sqlite3/src/better_sqlite3.o
+.../node_modules/better-sqlite3 install:   COPY Release/sqlite3.a
+.../node_modules/better-sqlite3 install:   CXX(target) Release/obj.target/better_sqlite3/src/better_sqlite3.o
+.../node_modules/better-sqlite3 install: ./src/util/binder.lzz: In function ‘bool IsPlainObject(v8::Isolate*, v8::Local<v8::Object>)’:
+.../node_modules/better-sqlite3 install: ./src/util/binder.lzz:40:37: error: ‘class v8::Object’ has no member named ‘GetPrototype’; did you mean ‘GetPrototypeV2’?
+.../node_modules/better-sqlite3 install: ./src/util/binder.lzz:49:62: error: ‘class v8::Object’ has no member named ‘GetPrototype’; did you mean ‘GetPrototypeV2’?
+.../node_modules/better-sqlite3 install: In file included from ./src/better_sqlite3.lzz:11,
+.../node_modules/better-sqlite3 install:                  from ../src/better_sqlite3.cpp:4:
+.../node_modules/better-sqlite3 install: ./src/better_sqlite3.lzz: At global scope:
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/node.h:1395:7: warning: cast between incompatible function types from ‘void (*)(v8::Local<v8::Object>, v8::Local<v8::Value>, v8::Local<v8::Context>)’ to ‘node::addon_context_register_func’ {aka ‘void (*)(v8::Local<v8::Object>, v8::Local<v8::Value>, v8::Local<v8::Context>, void*)’} [-Wcast-function-type]
+.../node_modules/better-sqlite3 install:  1395 |       (node::addon_context_register_func) (regfunc),                  \
+.../node_modules/better-sqlite3 install:       |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/node.h:1413:3: note: in expansion of macro ‘NODE_MODULE_CONTEXT_AWARE_X’
+.../node_modules/better-sqlite3 install:  1413 |   NODE_MODULE_CONTEXT_AWARE_X(modname, regfunc, NULL, 0)
+.../node_modules/better-sqlite3 install:       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/node.h:1444:3: note: in expansion of macro ‘NODE_MODULE_CONTEXT_AWARE’
+.../node_modules/better-sqlite3 install:  1444 |   NODE_MODULE_CONTEXT_AWARE(NODE_GYP_MODULE_NAME,                     \
+.../node_modules/better-sqlite3 install:       |   ^~~~~~~~~~~~~~~~~~~~~~~~~
+.../node_modules/better-sqlite3 install: ./src/better_sqlite3.lzz:67:1: note: in expansion of macro ‘NODE_MODULE_INIT’
+.../node_modules/better-sqlite3 install: ./src/better_sqlite3.lzz: In function ‘void node_register_module_v147(v8::Local<v8::Object>, v8::Local<v8::Value>, v8::Local<v8::Context>)’:
+.../node_modules/better-sqlite3 install: ./src/better_sqlite3.lzz:68:34: error: ‘class v8::Context’ has no member named ‘GetIsolate’
+.../node_modules/better-sqlite3 install: ./src/better_sqlite3.lzz:73:50: warning: ‘static v8::Local<v8::External> v8::External::New(v8::Isolate*, void*)’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/better-sqlite3 install: In file included from /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8.h:32,
+.../node_modules/better-sqlite3 install:                  from /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/node.h:74:
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:32:26: note: declared here
+.../node_modules/better-sqlite3 install:    32 |   static Local<External> New(Isolate* isolate, void* value) {
+.../node_modules/better-sqlite3 install:       |                          ^~~
+.../node_modules/better-sqlite3 install: ./src/objects/database.lzz: In static member function ‘static void Database::JS_new(const v8::FunctionCallbackInfo<v8::Value>&)’:
+.../node_modules/better-sqlite3 install: ./src/objects/database.lzz:160:112: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/better-sqlite3 install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/better-sqlite3 install:       |         ^~~~~
+.../node_modules/better-sqlite3 install: ./src/objects/database.lzz: In static member function ‘static void Database::JS_prepare(const v8::FunctionCallbackInfo<v8::Value>&)’:
+.../node_modules/better-sqlite3 install: ./src/objects/database.lzz:208:112: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/better-sqlite3 install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/better-sqlite3 install:       |         ^~~~~
+.../node_modules/better-sqlite3 install: ./src/objects/database.lzz: In static member function ‘static void Database::JS_backup(const v8::FunctionCallbackInfo<v8::Value>&)’:
+.../node_modules/better-sqlite3 install: ./src/objects/database.lzz:266:112: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/better-sqlite3 install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/better-sqlite3 install:       |         ^~~~~
+.../node_modules/better-sqlite3 install: ./src/objects/database.lzz: In static member function ‘static void Database::JS_open(v8::Local<v8::Name>, const v8::PropertyCallbackInfo<v8::Value>&)’:
+.../node_modules/better-sqlite3 install: ./src/objects/database.lzz:416:89: error: ‘const class v8::PropertyCallbackInfo<v8::Value>’ has no member named ‘This’
+.../node_modules/better-sqlite3 install: ./src/objects/database.lzz: In static member function ‘static void Database::JS_inTransaction(v8::Local<v8::Name>, const v8::PropertyCallbackInfo<v8::Value>&)’:
+.../node_modules/better-sqlite3 install: ./src/objects/database.lzz:420:77: error: ‘const class v8::PropertyCallbackInfo<v8::Value>’ has no member named ‘This’
+.../node_modules/better-sqlite3 install: ./src/objects/statement.lzz: In static member function ‘static void Statement::JS_new(const v8::FunctionCallbackInfo<v8::Value>&)’:
+.../node_modules/better-sqlite3 install: ./src/objects/statement.lzz:86:112: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/better-sqlite3 install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/better-sqlite3 install:       |         ^~~~~
+.../node_modules/better-sqlite3 install: ./src/objects/statement.lzz: In static member function ‘static void Statement::JS_iterate(const v8::FunctionCallbackInfo<v8::Value>&)’:
+.../node_modules/better-sqlite3 install: ./src/objects/statement.lzz:216:112: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/better-sqlite3 install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/better-sqlite3 install:       |         ^~~~~
+.../node_modules/better-sqlite3 install: ./src/objects/statement.lzz: In static member function ‘static void Statement::JS_busy(v8::Local<v8::Name>, const v8::PropertyCallbackInfo<v8::Value>&)’:
+.../node_modules/better-sqlite3 install: ./src/objects/statement.lzz:322:81: error: ‘const class v8::PropertyCallbackInfo<v8::Value>’ has no member named ‘This’
+.../node_modules/better-sqlite3 install: ./src/objects/statement-iterator.lzz: In static member function ‘static void StatementIterator::JS_new(const v8::FunctionCallbackInfo<v8::Value>&)’:
+.../node_modules/better-sqlite3 install: ./src/objects/statement-iterator.lzz:39:112: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/better-sqlite3 install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/better-sqlite3 install:       |         ^~~~~
+.../node_modules/better-sqlite3 install: ./src/objects/backup.lzz: In static member function ‘static void Backup::JS_new(const v8::FunctionCallbackInfo<v8::Value>&)’:
+.../node_modules/better-sqlite3 install: ./src/objects/backup.lzz:56:112: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/better-sqlite3 install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/better-sqlite3 install:       |         ^~~~~
+.../node_modules/better-sqlite3 install: ./src/util/custom-table.lzz: At global scope:
+.../node_modules/better-sqlite3 install: ./src/util/custom-table.lzz:45:9: warning: missing initializer for member ‘sqlite3_module::xIntegrity’ [-Wmissing-field-initializers]
+.../node_modules/better-sqlite3 install: ./src/util/custom-table.lzz:72:9: warning: missing initializer for member ‘sqlite3_module::xIntegrity’ [-Wmissing-field-initializers]
+.../node_modules/better-sqlite3 install: ./src/better_sqlite3.lzz: In static member function ‘static void Addon::JS_setErrorConstructor(const v8::FunctionCallbackInfo<v8::Value>&)’:
+.../node_modules/better-sqlite3 install: ./src/better_sqlite3.lzz:37:96: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/better-sqlite3 install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/better-sqlite3 install:       |         ^~~~~
+.../node_modules/better-sqlite3 install: ./src/util/binder.lzz: In function ‘bool IsPlainObject(v8::Isolate*, v8::Local<v8::Object>)’:
+.../node_modules/better-sqlite3 install: ./src/util/binder.lzz:40:37: error: ‘class v8::Object’ has no member named ‘GetPrototype’; did you mean ‘GetPrototypeV2’?
+.../node_modules/better-sqlite3 install: ./src/util/binder.lzz:49:62: error: ‘class v8::Object’ has no member named ‘GetPrototype’; did you mean ‘GetPrototypeV2’?
+.../node_modules/better-sqlite3 install: In file included from ./src/better_sqlite3.lzz:11,
+.../node_modules/better-sqlite3 install:                  from ../src/better_sqlite3.cpp:4:
+.../node_modules/better-sqlite3 install: ./src/better_sqlite3.lzz: At global scope:
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/node.h:1395:7: warning: cast between incompatible function types from ‘void (*)(v8::Local<v8::Object>, v8::Local<v8::Value>, v8::Local<v8::Context>)’ to ‘node::addon_context_register_func’ {aka ‘void (*)(v8::Local<v8::Object>, v8::Local<v8::Value>, v8::Local<v8::Context>, void*)’} [-Wcast-function-type]
+.../node_modules/better-sqlite3 install:  1395 |       (node::addon_context_register_func) (regfunc),                  \
+.../node_modules/better-sqlite3 install:       |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/node.h:1413:3: note: in expansion of macro ‘NODE_MODULE_CONTEXT_AWARE_X’
+.../node_modules/better-sqlite3 install:  1413 |   NODE_MODULE_CONTEXT_AWARE_X(modname, regfunc, NULL, 0)
+.../node_modules/better-sqlite3 install:       |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/node.h:1444:3: note: in expansion of macro ‘NODE_MODULE_CONTEXT_AWARE’
+.../node_modules/better-sqlite3 install:  1444 |   NODE_MODULE_CONTEXT_AWARE(NODE_GYP_MODULE_NAME,                     \
+.../node_modules/better-sqlite3 install:       |   ^~~~~~~~~~~~~~~~~~~~~~~~~
+.../node_modules/better-sqlite3 install: ./src/better_sqlite3.lzz:67:1: note: in expansion of macro ‘NODE_MODULE_INIT’
+.../node_modules/better-sqlite3 install: ./src/better_sqlite3.lzz: In function ‘void node_register_module_v147(v8::Local<v8::Object>, v8::Local<v8::Value>, v8::Local<v8::Context>)’:
+.../node_modules/better-sqlite3 install: ./src/better_sqlite3.lzz:68:34: error: ‘class v8::Context’ has no member named ‘GetIsolate’
+.../node_modules/better-sqlite3 install: ./src/better_sqlite3.lzz:73:50: warning: ‘static v8::Local<v8::External> v8::External::New(v8::Isolate*, void*)’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/better-sqlite3 install: In file included from /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8.h:32,
+.../node_modules/better-sqlite3 install:                  from /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/node.h:74:
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:32:26: note: declared here
+.../node_modules/better-sqlite3 install:    32 |   static Local<External> New(Isolate* isolate, void* value) {
+.../node_modules/better-sqlite3 install:       |                          ^~~
+.../node_modules/better-sqlite3 install: ./src/objects/database.lzz: In static member function ‘static void Database::JS_new(const v8::FunctionCallbackInfo<v8::Value>&)’:
+.../node_modules/better-sqlite3 install: ./src/objects/database.lzz:160:112: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/better-sqlite3 install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/better-sqlite3 install:       |         ^~~~~
+.../node_modules/better-sqlite3 install: ./src/objects/database.lzz: In static member function ‘static void Database::JS_prepare(const v8::FunctionCallbackInfo<v8::Value>&)’:
+.../node_modules/better-sqlite3 install: ./src/objects/database.lzz:208:112: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/better-sqlite3 install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/better-sqlite3 install:       |         ^~~~~
+.../node_modules/better-sqlite3 install: ./src/objects/database.lzz: In static member function ‘static void Database::JS_backup(const v8::FunctionCallbackInfo<v8::Value>&)’:
+.../node_modules/better-sqlite3 install: ./src/objects/database.lzz:266:112: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/better-sqlite3 install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/better-sqlite3 install:       |         ^~~~~
+.../node_modules/better-sqlite3 install: ./src/objects/database.lzz: In static member function ‘static void Database::JS_open(v8::Local<v8::Name>, const v8::PropertyCallbackInfo<v8::Value>&)’:
+.../node_modules/better-sqlite3 install: ./src/objects/database.lzz:416:89: error: ‘const class v8::PropertyCallbackInfo<v8::Value>’ has no member named ‘This’
+.../node_modules/better-sqlite3 install: ./src/objects/database.lzz: In static member function ‘static void Database::JS_inTransaction(v8::Local<v8::Name>, const v8::PropertyCallbackInfo<v8::Value>&)’:
+.../node_modules/better-sqlite3 install: ./src/objects/database.lzz:420:77: error: ‘const class v8::PropertyCallbackInfo<v8::Value>’ has no member named ‘This’
+.../node_modules/better-sqlite3 install: ./src/objects/statement.lzz: In static member function ‘static void Statement::JS_new(const v8::FunctionCallbackInfo<v8::Value>&)’:
+.../node_modules/better-sqlite3 install: ./src/objects/statement.lzz:86:112: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/better-sqlite3 install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/better-sqlite3 install:       |         ^~~~~
+.../node_modules/better-sqlite3 install: ./src/objects/statement.lzz: In static member function ‘static void Statement::JS_iterate(const v8::FunctionCallbackInfo<v8::Value>&)’:
+.../node_modules/better-sqlite3 install: ./src/objects/statement.lzz:216:112: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/better-sqlite3 install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/better-sqlite3 install:       |         ^~~~~
+.../node_modules/better-sqlite3 install: ./src/objects/statement.lzz: In static member function ‘static void Statement::JS_busy(v8::Local<v8::Name>, const v8::PropertyCallbackInfo<v8::Value>&)’:
+.../node_modules/better-sqlite3 install: ./src/objects/statement.lzz:322:81: error: ‘const class v8::PropertyCallbackInfo<v8::Value>’ has no member named ‘This’
+.../node_modules/better-sqlite3 install: ./src/objects/statement-iterator.lzz: In static member function ‘static void StatementIterator::JS_new(const v8::FunctionCallbackInfo<v8::Value>&)’:
+.../node_modules/better-sqlite3 install: ./src/objects/statement-iterator.lzz:39:112: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/better-sqlite3 install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/better-sqlite3 install:       |         ^~~~~
+.../node_modules/better-sqlite3 install: ./src/objects/backup.lzz: In static member function ‘static void Backup::JS_new(const v8::FunctionCallbackInfo<v8::Value>&)’:
+.../node_modules/better-sqlite3 install: ./src/objects/backup.lzz:56:112: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/better-sqlite3 install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/better-sqlite3 install:       |         ^~~~~
+.../node_modules/better-sqlite3 install: ./src/util/custom-table.lzz: At global scope:
+.../node_modules/better-sqlite3 install: ./src/util/custom-table.lzz:45:9: warning: missing initializer for member ‘sqlite3_module::xIntegrity’ [-Wmissing-field-initializers]
+.../node_modules/better-sqlite3 install: ./src/util/custom-table.lzz:72:9: warning: missing initializer for member ‘sqlite3_module::xIntegrity’ [-Wmissing-field-initializers]
+.../node_modules/better-sqlite3 install: ./src/better_sqlite3.lzz: In static member function ‘static void Addon::JS_setErrorConstructor(const v8::FunctionCallbackInfo<v8::Value>&)’:
+.../node_modules/better-sqlite3 install: ./src/better_sqlite3.lzz:37:96: warning: ‘void* v8::External::Value() const’ is deprecated: Use the version with the type tag. [-Wdeprecated-declarations]
+.../node_modules/better-sqlite3 install: /workspace/homes/0f1a05b504fd9f340dbbe0f7/.cache/node-gyp/26.13.0/include/node/v8-external.h:55:9: note: declared here
+.../node_modules/better-sqlite3 install:    55 |   void* Value() const { return Value(kExternalPointerTypeTagDefault); }
+.../node_modules/better-sqlite3 install:       |         ^~~~~
+.../node_modules/better-sqlite3 install: ./src/util/data.lzz: In function ‘v8::Local<v8::Value> Data::GetValueJS(v8::Isolate*, sqlite3_stmt*, int, bool)’:
+.../node_modules/better-sqlite3 install: ./src/util/data.lzz:73:92: warning: this statement may fall through [-Wimplicit-fallthrough=]
+.../node_modules/better-sqlite3 install: ./src/util/data.lzz:73:197: note: here
+.../node_modules/better-sqlite3 install: ./src/util/data.lzz: In function ‘v8::Local<v8::Value> Data::GetValueJS(v8::Isolate*, sqlite3_value*, bool)’:
+.../node_modules/better-sqlite3 install: ./src/util/data.lzz:77:81: warning: this statement may fall through [-Wimplicit-fallthrough=]
+.../node_modules/better-sqlite3 install: ./src/util/data.lzz:77:175: note: here
+.../node_modules/better-sqlite3 install: make: *** [better_sqlite3.target.mk:122: Release/obj.target/better_sqlite3/src/better_sqlite3.o] Error 1
+.../node_modules/better-sqlite3 install: rm ba23eeee118cd63e16015df367567cb043fed872.intermediate
+.../node_modules/better-sqlite3 install: make: Leaving directory '/tmp/acima-real-world-benchmark/repositories/typescript/drizzle-orm/baseline/node_modules/.pnpm/better-sqlite3@11.10.0/node_modules/better-sqlite3/build'
+.../node_modules/better-sqlite3 install: gyp ERR! build error 
+.../node_modules/better-sqlite3 install: gyp ERR! stack Error: `make` failed with exit code: 2
+.../node_modules/better-sqlite3 install: gyp ERR! stack at ChildProcess.<anonymous> (/tmp/toolchains/pnpm10/node_modules/pnpm/dist/node_modules/node-gyp/lib/build.js:216:23)
+.../node_modules/better-sqlite3 install: gyp ERR! System Linux 6.1.102
+.../node_modules/better-sqlite3 install: gyp ERR! command "/usr/local/nvm/versions/node/v26.13.0/bin/node" "/tmp/toolchains/pnpm10/node_modules/pnpm/dist/node_modules/node-gyp/bin/node-gyp.js" "rebuild" "--release"
+.../node_modules/better-sqlite3 install: gyp ERR! cwd /tmp/acima-real-world-benchmark/repositories/typescript/drizzle-orm/baseline/node_modules/.pnpm/better-sqlite3@11.10.0/node_modules/better-sqlite3
+.../node_modules/better-sqlite3 install: gyp ERR! node -v v26.13.0
+.../node_modules/better-sqlite3 install: gyp ERR! node-gyp -v v11.1.0
+.../node_modules/better-sqlite3 install: gyp ERR! not ok 
+.../node_modules/better-sqlite3 install: Failed
+.../node_modules/better-sqlite3 install: ./src/util/data.lzz: In function ‘v8::Local<v8::Value> Data::GetValueJS(v8::Isolate*, sqlite3_stmt*, int, bool)’:
+.../node_modules/better-sqlite3 install: ./src/util/data.lzz:73:92: warning: this statement may fall through [-Wimplicit-fallthrough=]
+.../node_modules/better-sqlite3 install: ./src/util/data.lzz:73:197: note: here
+.../node_modules/better-sqlite3 install: ./src/util/data.lzz: In function ‘v8::Local<v8::Value> Data::GetValueJS(v8::Isolate*, sqlite3_value*, bool)’:
+.../node_modules/better-sqlite3 install: ./src/util/data.lzz:77:81: warning: this statement may fall through [-Wimplicit-fallthrough=]
+.../node_modules/better-sqlite3 install: ./src/util/data.lzz:77:175: note: here
+.../node_modules/better-sqlite3 install: make: *** [better_sqlite3.target.mk:122: Release/obj.target/better_sqlite3/src/better_sqlite3.o] Error 1
+.../node_modules/better-sqlite3 install: rm ba23eeee118cd63e16015df367567cb043fed872.intermediate
+.../node_modules/better-sqlite3 install: make: Leaving directory '/tmp/acima-real-world-benchmark/repositories/typescript/drizzle-orm/baseline/node_modules/.pnpm/better-sqlite3@11.9.1/node_modules/better-sqlite3/build'
+.../node_modules/better-sqlite3 install: gyp ERR! build error 
+.../node_modules/better-sqlite3 install: gyp ERR! stack Error: `make` failed with exit code: 2
+.../node_modules/better-sqlite3 install: gyp ERR! stack at ChildProcess.<anonymous> (/tmp/toolchains/pnpm10/node_modules/pnpm/dist/node_modules/node-gyp/lib/build.js:216:23)
+.../node_modules/better-sqlite3 install: gyp ERR! System Linux 6.1.102
+.../node_modules/better-sqlite3 install: gyp ERR! command "/usr/local/nvm/versions/node/v26.13.0/bin/node" "/tmp/toolchains/pnpm10/node_modules/pnpm/dist/node_modules/node-gyp/bin/node-gyp.js" "rebuild" "--release"
+.../node_modules/better-sqlite3 install: gyp ERR! cwd /tmp/acima-real-world-benchmark/repositories/typescript/drizzle-orm/baseline/node_modules/.pnpm/better-sqlite3@11.9.1/node_modules/better-sqlite3
+.../node_modules/better-sqlite3 install: gyp ERR! node -v v26.13.0
+.../node_modules/better-sqlite3 install: gyp ERR! node-gyp -v v11.1.0
+.../node_modules/better-sqlite3 install: gyp ERR! not ok 
+.../node_modules/better-sqlite3 install: Failed
+ ELIFECYCLE  Command failed with exit code 1.

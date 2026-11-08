@@ -1,0 +1,160 @@
+"""Adversarial checks for finding-scoped waivers.
+
+A baseline may suppress the exact findings it measured. It must not suppress a new
+finding in the same unit, path, or rule merely because the scope still matches.
+"""
+from __future__ import annotations
+
+import json
+import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
+from collections import Counter
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+CASES = {
+    "python": {
+        "dir": "examples/python",
+        "command": [sys.executable, "tools/acima_arch.py"],
+        "tool": sys.executable,
+    },
+    "typescript": {
+        "dir": "examples/typescript",
+        "command": ["node", "tools/acima-arch.mjs"],
+        "tool": "node",
+    },
+    "go": {
+        "dir": "examples/go",
+        "command": ["go", "run", "./tools/archtest"],
+        "tool": "go",
+    },
+    "dotnet": {
+        "dir": "examples/dotnet",
+        "command": ["dotnet", "run", "--project", "tools/Acima.ArchTests", "--no-build", "--"],
+        "tool": "dotnet",
+    },
+}
+
+
+def run(case: dict, root: Path) -> dict:
+    result = subprocess.run(
+        case["command"] + ["--root", str(root), "--config", "acima.gallery.config.json",
+                           "--format", "json"],
+        cwd=ROOT / case["dir"], capture_output=True, text=True,
+    )
+    assert result.stdout.strip(), result.stderr
+    return json.loads(result.stdout)
+
+
+def write_waiver(root: Path, finding: dict, fingerprint: str | None) -> None:
+    waiver = {
+        "rule": finding["rule"],
+        "scope": f"path:{finding['path']}",
+        "owner": "regression-test",
+        "reason": "prove that a baseline is finding-scoped",
+        "expires": "2099-01-01",
+        "reviewedOn": "2026-11-08",
+    }
+    if fingerprint is not None:
+        waiver["fingerprint"] = fingerprint
+    path = root / "violations" / "waivers.json"
+    path.write_text(json.dumps({"standard": "1.0.0", "waivers": [waiver]}, indent=2) + "\n",
+                    encoding="utf-8")
+
+
+class WaiverFingerprintTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        if shutil.which("dotnet"):
+            subprocess.run(
+                ["dotnet", "build", "tools/Acima.ArchTests", "-v", "q", "--nologo"],
+                cwd=ROOT / "examples/dotnet", capture_output=True, text=True, check=False,
+            )
+
+    def test_exact_fingerprint_suppresses_one_not_the_rule(self) -> None:
+        for language, case in CASES.items():
+            if shutil.which(case["tool"]) is None:
+                self.skipTest(f"{case['tool']} is not installed")
+            with self.subTest(language=language), tempfile.TemporaryDirectory() as temporary:
+                target = Path(temporary) / language
+                shutil.copytree(ROOT / case["dir"], target,
+                                ignore=shutil.ignore_patterns("bin", "obj", "__pycache__",
+                                                              "node_modules", ".git"))
+                before = run(case, target)["findings"]
+                counts = Counter(finding["rule"] for finding in before)
+                candidates = [
+                    finding for finding in before
+                    if finding["rule"] == "ACIMA-D001" and counts[finding["rule"]] >= 2
+                    and finding.get("fingerprint")
+                ]
+                if not candidates:
+                    candidates = [
+                        finding for finding in before
+                        if counts[finding["rule"]] >= 2 and finding.get("fingerprint")
+                    ]
+                self.assertTrue(candidates, f"{language}: no repeatable finding to test")
+                chosen = candidates[0]
+                baseline = counts[chosen["rule"]]
+
+                write_waiver(target, chosen, chosen["fingerprint"])
+                exact = run(case, target)["findings"]
+                exact_count = sum(1 for finding in exact if finding["rule"] == chosen["rule"])
+                self.assertEqual(exact_count, baseline - 1,
+                                 f"{language}: exact waiver suppressed the wrong number of findings")
+
+                write_waiver(target, chosen, None)
+                broad = run(case, target)["findings"]
+                broad_count = sum(1 for finding in broad if finding["rule"] == chosen["rule"])
+                self.assertEqual(broad_count, baseline,
+                                 f"{language}: a fingerprint-less waiver hid findings")
+                self.assertIn("ACIMA-G001", {finding["rule"] for finding in broad},
+                              f"{language}: a broad waiver must be reported as G001")
+
+
+class AdoptionPreflightTests(unittest.TestCase):
+    def test_one_existing_source_file_is_brownfield(self) -> None:
+        script = ROOT / "skills/acima-adoption/scripts/preflight.py"
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary)
+            (target / "src").mkdir()
+            (target / "src" / "legacy.py").write_text("VALUE = 1\n", encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(script), "--project", str(target), "--format", "json"],
+                cwd=ROOT, capture_output=True, text=True,
+            )
+            payload = json.loads(result.stdout)
+            # Classification is independent of readiness: one source file is brownfield,
+            # and with no discoverable unit the run must fail closed (TGT-004), not say READY.
+            self.assertEqual(payload["project"]["mode"], "brownfield")
+            checks = {check["id"]: check for check in payload["checks"]}
+            self.assertEqual(checks["TGT-004"]["status"], "fail")
+            self.assertEqual(result.returncode, 1, result.stderr)
+
+    def test_baseline_waivers_are_unique_and_fingerprinted(self) -> None:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "preflight", ROOT / "skills/acima-adoption/scripts/preflight.py")
+        module = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+        units = [{"id": "orders", "module": "orders", "role": "implementation",
+                  "paths": ["src/orders"]}]
+        findings = [
+            {"rule": "ACIMA-D001", "path": "src/orders/a.py", "line": 1,
+             "message": "leak", "fingerprint": "sha256:one"},
+            {"rule": "ACIMA-D001", "path": "src/orders/b.py", "line": 1,
+             "message": "leak", "fingerprint": "sha256:two"},
+        ]
+        document = module.waiver_stub(findings, units)
+        self.assertEqual(len(document["waivers"]), 2)
+        self.assertEqual({waiver["fingerprint"] for waiver in document["waivers"]},
+                         {"sha256:one", "sha256:two"})
+
+
+if __name__ == "__main__":
+    unittest.main()
