@@ -98,15 +98,21 @@ is deliberate: a catalogue of warnings is a catalogue of things nobody fixes.
 
 ## Rules that need judgement
 
-Four rules cannot be fully decided by a parser. They are still in the catalogue because the enforcer
-can do most of the work and force the conversation:
+Six normative rules cannot be decided by the portable reference enforcers. They remain in the
+catalogue because a native analyzer, package metadata or a human review can decide them, but a
+clean portable run is not evidence that they pass:
 
-| Rule | What the tool does | What a human does |
-|---|---|---|
-| `C003` | flags methods with branching, IO calls or non-trivial bodies in contract types | decides whether a helper is validation or a business rule |
-| `C007` | flags contract types with parameterless constructors and settable state | decides whether a builder is justified |
-| `A002` | flags reads of configuration keys outside the unit's namespace | decides whether the key is genuinely shared infrastructure |
-| `G003` | flags public contract types without documentation | writes the documentation |
+| Rule | Severity | What the portable tool does | What a human or native analyzer does |
+|---|---|---|---|
+| `C003` | error | reports `executed: false` | decides whether a contract helper is validation or business logic, IO or orchestration |
+| `C007` | warning | reports `executed: false` | decides whether a builder or multi-step construction is justified and whether required state is obvious |
+| `L004` | warning | reports `executed: false` | inspects framework-specific service-locator/container resolution |
+| `A002` | warning | reports `executed: false` | decides whether a configuration key is genuinely shared infrastructure or another module's key/secret |
+| `A004` | warning | reports `executed: false` | inspects published package/artifact versions across the product graph |
+| `G004` | error | reports `executed: false` | compares a reviewed per-language API baseline and classifies the change as additive or breaking |
+
+`G003` is executed, but a human still writes and reviews the documentation it looks for. The other
+23 rules are executed by all four reference enforcers and have gallery fixtures.
 
 A rule that mixes machine and human judgement must say which part is which — otherwise the tool gets
 blamed for the human's decision, and the rule gets disabled.

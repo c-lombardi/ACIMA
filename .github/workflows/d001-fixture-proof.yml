@@ -1,0 +1,44 @@
+name: D001 fixture proof
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  d001-fixtures:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: D001 fixture tests must not skip
+        shell: bash
+        env:
+          ACIMA_REQUIRE_TOOLCHAINS: "1"
+        run: |
+          set +e
+          python3 conformance/test_injected_violation.py -v 2>&1 | tee d001-fixture-tests.log
+          status=${PIPESTATUS[0]}
+          if grep -q 'skipped' d001-fixture-tests.log; then
+            echo "::error::D001 fixture tests reported skipped tests"
+            status=1
+          fi
+          exit "$status"

@@ -1,0 +1,16 @@
+{
+  "language": "typescript",
+  "id": "drizzle-orm",
+  "exit": 1,
+  "sourceFiles": 658,
+  "findings": 2,
+  "classified": 28,
+  "bytes": 14357,
+  "byRule": {
+    "ACIMA-L001": 2
+  },
+  "classifiedByRule": {
+    "ACIMA-L001": 28
+  },
+  "units": 29
+}

@@ -125,9 +125,13 @@ class AdoptionPreflightTests(unittest.TestCase):
                 [sys.executable, str(script), "--project", str(target), "--format", "json"],
                 cwd=ROOT, capture_output=True, text=True,
             )
-            self.assertEqual(result.returncode, 0, result.stderr)
             payload = json.loads(result.stdout)
+            # Classification is independent of readiness: one source file is brownfield,
+            # and with no discoverable unit the run must fail closed (TGT-004), not say READY.
             self.assertEqual(payload["project"]["mode"], "brownfield")
+            checks = {check["id"]: check for check in payload["checks"]}
+            self.assertEqual(checks["TGT-004"]["status"], "fail")
+            self.assertEqual(result.returncode, 1, result.stderr)
 
     def test_baseline_waivers_are_unique_and_fingerprinted(self) -> None:
         import importlib.util

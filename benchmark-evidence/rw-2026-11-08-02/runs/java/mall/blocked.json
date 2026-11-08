@@ -1,0 +1,5 @@
+{
+  "repository": "mall",
+  "status": "blocked",
+  "reason": "no Java reference enforcer"
+}

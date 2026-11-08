@@ -1,0 +1,12 @@
+{
+  "language": "python",
+  "id": "fastapi",
+  "exit": 0,
+  "sourceFiles": 52,
+  "findings": 0,
+  "classified": 0,
+  "bytes": 1980,
+  "byRule": {},
+  "classifiedByRule": {},
+  "units": 29
+}

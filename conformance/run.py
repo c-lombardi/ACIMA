@@ -117,7 +117,16 @@ def check_topology() -> bool:
 
 def check_tools() -> bool:
     for test in ("conformance/test_cli.py", "conformance/test_walkthrough.py",
-                 "conformance/test_waiver_fingerprints.py"):
+                 "conformance/test_waiver_fingerprints.py",
+                 "conformance/test_adoption_safety.py",
+                 "conformance/test_library_profile.py",
+                 "conformance/test_dotnet_profile.py",
+                 "conformance/test_exclusions.py",
+                 "conformance/test_rule_catalog.py",
+                 "conformance/test_injected_violation.py",
+                 "conformance/test_preflight_discovery.py",
+                 "conformance/test_mode_precedence.py",
+                 "conformance/test_documentation_contract.py"):
         result = subprocess.run([sys.executable, test], cwd=ROOT, capture_output=True, text=True)
         if result.returncode != 0:
             fail(f"tools: {test} failed")

@@ -1,0 +1,15 @@
+{
+  "language": "typescript",
+  "id": "hono",
+  "exit": 0,
+  "sourceFiles": 229,
+  "findings": 0,
+  "classified": 32,
+  "bytes": 16847,
+  "byRule": {},
+  "classifiedByRule": {
+    "ACIMA-D001": 25,
+    "ACIMA-L003": 7
+  },
+  "units": 29
+}

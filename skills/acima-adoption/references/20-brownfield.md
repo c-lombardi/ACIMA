@@ -48,13 +48,14 @@ python3 skills/acima-adoption/scripts/preflight.py --project . --format json > a
 python3 skills/acima-adoption/scripts/preflight.py --project . --write-waivers .acima/waivers.json
 ```
 
-The waiver writer groups by `(rule, unit)` and marks owners `unassigned`. That is structurally
-valid and socially useless: replace **every** owner with a person before the gate merges.
+The waiver writer emits one waiver per exact finding fingerprint and marks owners `unassigned`.
+That is structurally valid and socially useless: replace **every** owner with a person before the
+gate merges.
 
 Rules for the baseline:
 
 - Waive **errors**, not warnings. Warnings are information and should stay visible.
-- One waiver per rule per unit, not per line. Line-level waivers rot within a sprint.
+- One waiver per exact finding fingerprint, scoped to the owning unit/path. Do not group findings by unit; that suppresses future findings you have not measured.
 - Expiry is 90 days by default. Anything longer is a decision to keep the violation.
 - Exception: findings in code scheduled for deletion get a 30-day expiry and a deletion ticket.
 

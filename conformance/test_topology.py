@@ -76,7 +76,14 @@ def service_manifest(name: str, root: str, *, workflow: bool = False,
     return data
 
 
+def mode_config(root: Path, mode: str = "service-topology") -> None:
+    write(root, "acima.config.json", json.dumps({
+        "standard": "1.0.0", "mode": mode, "language": "dotnet", "level": "L3", "units": [],
+    }, indent=2) + "\n")
+
+
 def build_good(root: Path) -> None:
+    mode_config(root)
     orders = "services/Orders"
     catalog = "services/Catalog"
     write(root, f"{orders}/README.md", "# Orders\n\n## Responsibility\n\nOwns the order lifecycle.\n")
@@ -150,6 +157,7 @@ def build_good(root: Path) -> None:
 
 
 def build_bad(root: Path) -> None:
+    mode_config(root)
     bad = "not-services/Bad"
     write(root, f"{bad}/README.md",
           "# Bad\n\n## Responsibility\n\nOwns the bad workflow. Also owns a second responsibility.\n")
@@ -239,6 +247,45 @@ class TopologyTests(unittest.TestCase):
             build_good(root)
             findings = topology.Topology(root, "acima.topology.json").run()
             self.assertEqual([], [finding.as_dict() for finding in findings])
+
+    def test_service_mode_accepts_matching_config(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            build_good(root)
+            manifest = json.loads((root / "acima.topology.json").read_text(encoding="utf-8"))
+            self.assertIsNone(topology.mode_error(root, manifest))
+
+    def test_missing_config_is_a_tool_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            build_good(root)
+            (root / "acima.config.json").unlink()
+            manifest = json.loads((root / "acima.topology.json").read_text(encoding="utf-8"))
+            self.assertIn("requires acima.config.json", topology.mode_error(root, manifest) or "")
+
+    def test_base_mode_with_manifest_is_a_tool_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            build_good(root)
+            mode_config(root, "base")
+            manifest = json.loads((root / "acima.topology.json").read_text(encoding="utf-8"))
+            self.assertIn("requires mode: service-topology", topology.mode_error(root, manifest) or "")
+
+    def test_unknown_mode_is_a_tool_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            build_good(root)
+            mode_config(root, "service")
+            manifest = json.loads((root / "acima.topology.json").read_text(encoding="utf-8"))
+            self.assertIn("unknown mode", topology.mode_error(root, manifest) or "")
+
+    def test_manifest_profile_must_match(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            build_good(root)
+            manifest = json.loads((root / "acima.topology.json").read_text(encoding="utf-8"))
+            manifest["profile"] = "base"
+            self.assertIn("manifest profile", topology.mode_error(root, manifest) or "")
 
     def test_bad_topology_reports_every_st_item(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

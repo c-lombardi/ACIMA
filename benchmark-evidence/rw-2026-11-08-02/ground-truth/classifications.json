@@ -1,0 +1,194 @@
+{
+  "run_id": "rw-2026-11-08-02",
+  "basis": "Author adjudication against rw-2026-11-08-01 ground truth; no independent reviewer.",
+  "categories": {
+    "true_positive": "A real boundary or coupling violation.",
+    "probable_true_positive": "A real boundary mismatch, but a public-library surface choice could make it intentional if modeled.",
+    "duplicate": "Derived from the same underlying edge as another finding.",
+    "valid_architectural_choice": "Intentional public API or intentional third-party adapter.",
+    "false_positive": "Tool or matcher error; no product defect.",
+    "scope_configuration_false_positive": "Out-of-scope file admitted by the assessment config; not a product finding."
+  },
+  "repositories": {
+    "drizzle-orm": {
+      "findings": {
+        "ACIMA-L001": {
+          "count": 2,
+          "classification": "true_positive",
+          "why": "Core mysql/singlestore code imports the mysql2 ResultSetHeader type; driver-specific type leaks into a core API."
+        }
+      },
+      "classified": {
+        "ACIMA-L001": {
+          "count": 28,
+          "classification": "valid_architectural_choice",
+          "why": "Driver packages and migration CLI intentionally integrate pg/mysql2/knex."
+        }
+      }
+    },
+    "hono": {
+      "findings": {},
+      "classified": {
+        "ACIMA-D001": {
+          "count": 25,
+          "classification": "valid_architectural_choice",
+          "why": "Platform adapters consume the published hono package; declared intentional adapters."
+        },
+        "ACIMA-L003": {
+          "count": 7,
+          "classification": "valid_architectural_choice",
+          "why": "Declared public framework surface."
+        }
+      }
+    },
+    "trpc": {
+      "findings": {},
+      "raw_findings": {
+        "ACIMA-G005": {
+          "count": 105,
+          "classification": "scope_configuration_false_positive",
+          "why": "All paths are tooling, scripts, test-support, or upgrade files; corrected scope excludes them."
+        }
+      },
+      "classified": {},
+      "selected_run": "corrected-scope",
+      "injection_proven": false
+    },
+    "fluentvalidation": {
+      "findings": {
+        "ACIMA-D001": {
+          "count": 1,
+          "classification": "true_positive",
+          "why": "DependencyInjectionExtensions assembly references the implementation assembly; no contracts assembly exists."
+        },
+        "ACIMA-G001": {
+          "count": 1,
+          "classification": "false_positive",
+          "why": "Library profile rejected because PackageId is inherited from shared build props, not declared in the .csproj."
+        },
+        "ACIMA-L003": {
+          "count": 5,
+          "classification": "valid_architectural_choice",
+          "why": "Public validation API is intentionally public; profile could not classify it because G001 rejected the profile."
+        }
+      },
+      "classified": {
+        "ACIMA-L003": {
+          "count": 1,
+          "classification": "valid_architectural_choice",
+          "why": "Public API on the configured surface."
+        }
+      }
+    },
+    "spectre-console": {
+      "findings": {
+        "ACIMA-D001": {
+          "count": 4,
+          "classification": "probable_true_positive",
+          "why": "Extensions/testing reference the core implementation assembly instead of a contracts assembly."
+        },
+        "ACIMA-D008": {
+          "count": 3,
+          "classification": "duplicate",
+          "why": "Transitive closure of the same extension/testing project references."
+        },
+        "ACIMA-D009": {
+          "count": 21,
+          "classification": "true_positive",
+          "why": "Ansi/json assemblies reference internal console types such as StringBuffer, Constants, and ColorTable."
+        },
+        "ACIMA-L003": {
+          "count": 25,
+          "classification": "valid_architectural_choice",
+          "why": "Public console/ANSI/testing API is intentionally public."
+        }
+      },
+      "classified": {
+        "ACIMA-L003": {
+          "count": 89,
+          "classification": "valid_architectural_choice",
+          "why": "Declared public console surface."
+        }
+      }
+    },
+    "httpx": {
+      "findings": {},
+      "classified": {},
+      "injection_proven": true
+    },
+    "flask": {
+      "findings": {},
+      "classified": {},
+      "injection_proven": true
+    },
+    "fastapi": {
+      "findings": {},
+      "classified": {},
+      "injection_proven": true
+    },
+    "cobra": {
+      "findings": {},
+      "classified": {},
+      "injection_proven": true
+    },
+    "bubbletea": {
+      "findings": {},
+      "classified": {},
+      "injection_proven": true
+    },
+    "gin": {
+      "findings": {},
+      "classified": {},
+      "injection_proven": true
+    },
+    "serilog": {
+      "findings": {},
+      "classified": {},
+      "injection_proven": true
+    },
+    "jsoup": {
+      "findings": {},
+      "classified": {},
+      "blocked": "No Java reference enforcer."
+    },
+    "gson": {
+      "findings": {},
+      "classified": {},
+      "blocked": "No Java reference enforcer."
+    },
+    "mall": {
+      "findings": {},
+      "classified": {},
+      "blocked": "No Java reference enforcer."
+    }
+  },
+  "totals": {
+    "repositories": 15,
+    "assessed": 12,
+    "blocked": 3,
+    "valid_json_assessments": 12,
+    "repository_production_files": 3299,
+    "analyzed_source_files": 2196,
+    "production_loc": 707739,
+    "supported_loc": 592680,
+    "rules_total": 29,
+    "rules_portable": 23,
+    "rules_not_executed": 6,
+    "unclassified_findings": 62,
+    "classified_findings": 150,
+    "true_positive_confirmed": 24,
+    "probable_true_positive": 4,
+    "confirmed_or_probable": 28,
+    "duplicates": 3,
+    "valid_architectural_choice_unclassified": 30,
+    "false_positives": 1,
+    "actionable_yield": 0.4516,
+    "false_positive_rate": 0.0161,
+    "duplicate_rate": 0.0484,
+    "valid_choice_rate_unclassified": 0.4839,
+    "classified_share_of_detections": 0.7075,
+    "zero_finding_repositories": 9,
+    "zero_finding_proven_by_injection": 8,
+    "raw_trpc_scope_findings": 105
+  }
+}

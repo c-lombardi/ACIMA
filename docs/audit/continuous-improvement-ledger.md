@@ -5,21 +5,23 @@ Last updated: 2026-11-08
 Repository: `c-lombardi/ACIMA`
 
 Base commit before remediation: `541775b`
+Current workspace HEAD: `25ed9f8c672c4e8031af7b50cc6b60b8635a0a2b` (dirty; changes uncommitted)
 
-Verification environment: Linux, Python 3.12, Node 22, Go 1.23.4, .NET SDK 8.0.427
+Verification environment: Linux, Python 3.12.3, Node 26.13.0, Go 1.26.0, .NET SDK 10.0.403 targeting net8.0
 
 This ledger records the release-readiness audit that began from the earlier read-only
 assessment. “Verified” means the acceptance criteria were exercised on the current workspace;
-it does not mean every possible violation is detected. Hosted GitHub Actions is the one
-mandatory external check that could not be executed in this environment.
+it does not mean every possible violation is detected. Hosted GitHub Actions and independent
+review are external checks that could not be executed in this environment.
 
 ## Status summary
 
 | Status | Count |
 |---|---:|
-| Verified | 13 |
+| Verified | 17 |
 | Awaiting external verification | 1 |
-| Deferred with justification | 3 |
+| Deferred with justification | 2 |
+| Deferred with disclosure | 1 |
 | Rejected | 0 |
 | Unresolved Critical / High | 0 / 0 |
 
@@ -65,9 +67,9 @@ mandatory external check that could not be executed in this environment.
 - **Remediation:** Reworked `examples/typescript/tools/acima-arch.mjs`, added the missing
   fixtures and expected paths, and added execution/source evidence.
 - **Acceptance:** `.tsx` and `require` probes fire D001/D008; mutable aliases fire C001/C002/G003;
-  clean tree is zero; gallery is 23 rules.
+  clean tree is zero;  gallery is 23 rules.
 - **Tests/evidence:** TypeScript behaviour suite (4 tests); conformance profile `typescript`
-  (32 findings, 23 rules).
+  (33 findings, 23 rules).
 - **Verified:** 2026-11-08.
 
 ### ACIMA-004 — Go parser and waiver false negatives
@@ -94,8 +96,8 @@ mandatory external check that could not be executed in this environment.
 - **Remediation:** Added the full catalog and execution map, invalid-level handling, array C002,
   PackageReference edge mapping, C002 reference correction, and source-file evidence.
 - **Acceptance:** Clean host build and `--verify` pass; gallery 23 rules; invalid level exits 2.
-- **Tests/evidence:** `dotnet build host/Host/Host.csproj`; `dotnet run ... --verify` (clean,
-  23 rules / 38 findings); conformance profile `dotnet`.
+- **Tests/evidence:**  `dotnet build host/Host/Host.csproj`; `dotnet run ... --verify` (clean,
+  23 rules / 37 findings); conformance profile `dotnet`.
 - **Verified:** 2026-11-08.
 
 ### ACIMA-006 — Unit waivers could hide future findings
@@ -250,6 +252,63 @@ mandatory external check that could not be executed in this environment.
   fingerprinted; `conformance/test_waiver_fingerprints.py` still passes.
 - **Verified:** 2026-11-08.
 
+### ACIMA-018 — Literal exclusions admitted out-of-scope sibling prefixes
+
+- **Severity:** Critical
+- **Status:** Verified
+- **Evidence:** Python and TypeScript literal exclusions were compared as substrings or exact
+  paths. A declared `tooling` exclusion could therefore admit `tooling-extra`, and multi-segment
+  path handling differed from Go/.NET.
+- **Remediation:** Literal exclusions now match a file or directory subtree only; sibling prefixes
+  do not match. Glob patterns remain globs and bare segments retain legacy any-directory matching.
+- **Acceptance:** A file under the declared subtree is excluded; a sibling prefix is not; a glob
+  exclusion still matches; the clean examples remain clean.
+- **Tests/evidence:** `conformance/test_exclusions.py`; `conformance/run.py` tools profile.
+- **Verified:** 2026-11-08.
+
+### ACIMA-019 — `G005` catalog title contradicted its documented meaning
+
+- **Severity:** High
+- **Status:** Verified
+- **Evidence:** `tools/acima-spec/rules.json` called `G005` “Module without architecture tests”
+  while the standard and every enforcer used it for unclassified source.
+- **Remediation:** Corrected the catalog title/summary to “Unclassified source”; added a contract
+  test so docs and catalog cannot drift silently again.
+- **Acceptance:** The catalog title/summary matches the documented meaning and all enforcers.
+- **Tests/evidence:** `conformance/test_rule_catalog.py`; preflight `SKL-002` after re-pinning;
+  catalog SHA-256 `ec2a77d7a2ed4d8c68fd71c32ad47ac486022b2eb541b959a23f1d2b7ea9221b`.
+- **Verified:** 2026-11-08.
+
+### ACIMA-020 — .NET library profiles rejected inherited PackageId
+
+- **Severity:** Critical
+- **Status:** Verified
+- **Evidence:** FluentValidation’s `PackageId` is inherited/defaulted by MSBuild, not written as
+  literal `<PackageId>` XML. The enforcer concatenated project/props text, so it emitted `G001`
+  and disabled the profile, leaving five public-API findings unclassified.
+- **Remediation:** Profile validation now evaluates `PackageId` and `IsPackable` with
+  `dotnet msbuild -getProperty` (evaluation only, no target build). Evaluation failures produce a
+  `G001` instead of silently rejecting or accepting the profile.
+- **Acceptance:** Direct, inherited, and SDK-defaulted package IDs are accepted; `IsPackable=false`
+  is rejected; the FluentValidation repro has no `G001`.
+- **Tests/evidence:** `conformance/test_dotnet_profile.py` (5 tests); targeted FluentValidation
+  run: 144 source files, 6 classified, 1 remaining D001.
+- **Verified:** 2026-11-08.
+
+### ACIMA-021 — .NET publicApi glob missed root-level package files
+
+- **Severity:** High
+- **Status:** Verified
+- **Evidence:** `src/FluentValidation/**/*.cs` classified nested files but not root-level public
+  types, so five legitimate public-API findings remained unclassified after ACIMA-020.
+- **Remediation:** .NET path globs now convert `**/` to zero-or-more directories; `*` does not
+  cross separators and `?` matches one non-separator character.
+- **Acceptance:** The same pattern classifies both `src/Widget/Widget.cs` and
+  `src/Widget/Internal/Nested.cs`; undeclared paths still fail.
+- **Tests/evidence:** `conformance/test_dotnet_profile.py::test_public_api_glob_matches_root_and_nested_files`;
+  FluentValidation targeted run classified all five L003 findings.
+- **Verified:** 2026-11-08.
+
 ## Verification evidence
 
 Commands executed on 2026-11-08, in this workspace:
@@ -257,14 +316,22 @@ Commands executed on 2026-11-08, in this workspace:
 | Check | Result |
 |---|---|
 | `python3 conformance/run.py` | PASS — topology, python, typescript, go, dotnet, tools |
-| `python3 conformance/test_waiver_fingerprints.py` | PASS — 3 tests |
-| `python3 conformance/test_cli.py` | PASS — 7 tests |
+| `python3 -m unittest discover -s conformance -p 'test_*.py'` | PASS — 64 tests |
+| `conformance/test_exclusions.py` | PASS — 1 test |
+| `conformance/test_rule_catalog.py` | PASS — 1 test |
+| `conformance/test_dotnet_profile.py` | PASS — 5 tests |
+| `conformance/test_waiver_fingerprints.py` | PASS — 3 tests |
+| `conformance/test_preflight_discovery.py` | PASS — 2 tests |
+| `conformance/test_documentation_contract.py` | PASS — 8 tests |
+| `conformance/test_mode_precedence.py` | PASS — 6 tests |
+| `conformance/test_topology.py` | PASS — 7 tests |
+| `conformance/test_cli.py` | PASS — 7 tests |
 | Python behaviour suite | PASS — 10 tests |
 | TypeScript behaviour suite | PASS — 4 tests |
 | `go test ./...` | PASS |
 | .NET host build | PASS |
-| .NET `--verify` | PASS — clean tree, 23 rules / 38 gallery findings |
-| `preflight --deep` | PASS — 4 enforcers clean, Java skipped, no blockers |
+| .NET `--verify` | PASS — clean tree, 23 rules / 37 gallery findings |
+| `preflight --deep` with all toolchains on PATH | PASS — 4 enforcers clean, Java explicitly skipped, no blockers |
 | `python3 conformance/run.py java` | FAIL-CLOSED — exit 1, no false green |
 | YAML parse of workflow | PASS |
 | `git diff --check` | PASS |
@@ -274,9 +341,44 @@ Per-profile measured galleries:
 | Profile | Clean findings | Gallery findings | Gallery rules | Source files |
 |---|---:|---:|---:|---:|
 | Python | 0 | 33 | 23 | 27 |
-| TypeScript | 0 | 32 | 23 | 12 |
+| TypeScript | 0 | 33 | 23 | 12 |
 | Go | 0 | 34 | 23 | 12 |
-| .NET | 0 | 38 | 23 | 11 |
+| .NET | 0 | 37 | 23 | 11 |
+
+## Validation remediation iteration (2026-11-08)
+
+Applied the audit's P0 documentation, discovery and claim corrections, then re-ran the gate:
+
+- `docs/rules/index.md` names all six non-executed rules and the correct 23 executed rules.
+- `docs/standard/08-conformance.md` removes the fixed “24 of 24”, distinguishes full
+  conformance from `PARTIAL ASSESSMENT`, and corrects the warning example.
+- `docs/standard/07-executable-governance.md` §7.5 now requires `rule` + `scope` +
+  `fingerprint` to match, resolving C-05; the finding schema still omits `fingerprint` (C-14).
+- `preflight.py` adds `fingerprint` to `WAIVER_FIELDS`, removes the 16-unit cap, and fails
+  `TGT-004` when a source-bearing repository yields no units; the 50,000-file walk cap is
+  still unreported (R-30).
+- The skill is 1.2.3: partial-assessment rule, mode selector and explicit service-topology
+  stop, Python/Go library stops, corrected brownfield/waiver/glossary guidance.
+- New tests: `test_preflight_discovery.py` (2), `test_documentation_contract.py` (8),
+  `test_mode_precedence.py` (6), plus five new topology mode tests.
+
+Verified after the changes: conformance exit 0; 64 unittest tests OK; repo preflight exit 0
+with 5 units and no blockers/warnings; `--deep` exit 0; .NET `--verify` exit 0; `git diff
+--check` clean. Hosted CI and independent review remain unobserved.
+
+## Mode selector iteration (2026-11-08)
+
+Resolved AD-02/AD-03 (C-03/C-04) with a single machine-readable selector:
+
+- `acima.config.json.mode` is authoritative: `base` (default when absent) or
+  `service-topology`.
+- `service-topology` applies P1–P9 plus P10–P13 and supersedes exactly P2.1 and P3.5;
+  all other base obligations remain in force.
+- `conformance/topology.py` rejects a missing/mismatched mode or manifest profile with exit 2.
+- `preflight.py` reports `TGT-006` and blocks service mode as `NOT SUPPORTED` by this skill.
+- All example, gallery and fixture configs now declare `mode`; the preflight draft does too.
+- Tests: `test_mode_precedence.py` (6), five new topology mode tests; full gate 64 tests,
+  conformance exit 0, repo preflight base mode, `--deep` and .NET verify clean.
 
 ## Remaining limitations
 
@@ -286,11 +388,18 @@ Per-profile measured galleries:
 4. Python/TypeScript/Go/.NET enforcers are source-text analysis, not full type/symbol analysis.
 5. No historical trend store or calibrated architecture health score exists.
 6. The final adversarial pass was not performed by a separate agent.
-7. The remediation is uncommitted in the workspace at base commit `541775b`.
+7. The remediation is uncommitted in the workspace at base commit `25ed9f8`.
+8. The published `rw-2026-11-08-02` benchmark predates ACIMA-018–021; a new immutable rerun is
+   required before portfolio-level claims move.
+9. Path-glob semantics are not yet uniform: .NET now treats `**/` as zero-or-more directories;
+   Python, TypeScript and Go retain library-specific behavior. The product contract discloses this.
+10. The benchmark record correctly says skill 1.2.0 / the old catalog hash; it must not be edited
+    retroactively.
 
 ## Release disposition
 
-No unresolved Critical or High finding remains in the implemented scope. The accepted Medium
-items are either resolved, explicitly deferred with a future acceptance criterion, or awaiting
-the external hosted-CI run. The evidence supports a **small-team pilot** recommendation, not
-enterprise-wide adoption.
+No unresolved Critical or High finding remains in the locally verified implementation scope. The
+remaining Medium items are explicitly deferred, awaiting hosted CI, or awaiting independent
+review. The evidence supports a **technical-preview / advisory pilot** recommendation only; beta
+and GA remain blocked by the product contract’s gate criteria. This is not an independent
+certification and not a claim of organizational adoption.

@@ -660,9 +660,12 @@ func checkLayering(add func(string, string, string, int, string), files map[stri
 		if file.unit == nil || file.unit.Role != "implementation" || strings.Contains(path, "/infrastructure/") {
 			continue
 		}
-		for _, token := range persistence {
-			if idx := strings.Index(file.text, `"`+token); idx >= 0 {
-				add("ACIMA-L001", fmt.Sprintf("%s references infrastructure (%s) outside infrastructure/.", file.unit.ID, token), path, lineOf(file.text, idx), token)
+		for _, im := range importsOf(file.text) {
+			for _, token := range persistence {
+				if im.spec != token && !strings.HasPrefix(im.spec, strings.TrimSuffix(token, "/")+"/") {
+					continue
+				}
+				add("ACIMA-L001", fmt.Sprintf("%s imports infrastructure (%s) outside infrastructure/.", file.unit.ID, im.spec), path, im.line, im.evidence)
 			}
 		}
 	}

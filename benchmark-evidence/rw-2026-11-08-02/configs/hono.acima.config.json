@@ -1,0 +1,78 @@
+{
+  "standard": "1.0.0",
+  "language": "typescript",
+  "level": "L1",
+  "root": ".",
+  "units": [
+    {
+      "id": "hono",
+      "role": "implementation",
+      "paths": [
+        "src"
+      ],
+      "module": "hono"
+    },
+    {
+      "id": "hono.adapters",
+      "role": "implementation",
+      "paths": [
+        "adapters"
+      ],
+      "module": "hono.adapters"
+    }
+  ],
+  "exclude": [
+    ".git",
+    "node_modules",
+    "bin",
+    "obj",
+    "dist",
+    "build",
+    "target",
+    "out",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "coverage",
+    "vendor",
+    "runtime-tests",
+    "benchmarks",
+    "perf-measures",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/*.test.tsx",
+    "vite.config.ts",
+    "vitest.config.ts"
+  ],
+  "waivers": ".acima/waivers.json",
+  "packages": {
+    "hono": {
+      "path": "src"
+    }
+  },
+  "profile": {
+    "kind": "library",
+    "owner": "hono-maintainers",
+    "justification": "Published framework package: adapter packages consume the root hono package as their public surface.",
+    "publicApi": [
+      {
+        "unit": "hono",
+        "paths": [
+          "src/index.ts",
+          "src/types.ts"
+        ]
+      }
+    ],
+    "intentionalAdapters": [
+      {
+        "from": "hono.adapters",
+        "to": "hono",
+        "paths": [
+          "adapters/**"
+        ],
+        "owner": "hono-maintainers",
+        "reason": "Adapter packages are separately published packages that consume the root hono package."
+      }
+    ]
+  }
+}

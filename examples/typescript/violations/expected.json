@@ -51,6 +51,7 @@
     "src/orders/impl/module.ts",
     "violations/a003_use.ts",
     "violations/d002_contracts_impl.ts",
+    "violations/d003_contracts_contracts.ts",
     "violations/d006_contracts_host.ts"
   ],
   "ACIMA-D009": [

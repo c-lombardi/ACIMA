@@ -54,16 +54,22 @@ preflight reports it so you do not promise a gate you cannot run.
 | `TGT-003` | classification: `greenfield`, `brownfield`, `adopting` | if ambiguous, ask the owner |
 | `TGT-004` | candidate units can be proposed | declare units manually with the plan's ADR |
 | `TGT-005` | every source file falls inside a proposed unit | uncovered files become `G005` findings |
+| `TGT-006` | the architecture mode is valid and matches the tree: `base` (or absent) with no manifest, or `service-topology` with `acima.topology.json` | repair `mode` and the manifest; service mode is `NOT SUPPORTED` by this skill and must not be assessed as base |
 
 Classification rules, stated plainly:
 
 - **adopting** — `acima.config.json` exists.
 - **greenfield** — no config and no source files.
-- **brownfield** — no config, 10 or more source files.
+- **brownfield** — no config and at least one existing source file.
+- **architecture mode** — `acima.config.json.mode` is `base` (default) or `service-topology`.
+  A `service-topology` declaration requires `acima.topology.json`; the manifest without the mode is
+  a configuration error. The preflight reports the mode as `TGT-006` and blocks a service target
+  because this skill has no service workflow.
 
-The threshold is a heuristic, not a doctrine. A 400-line prototype with no users is greenfield
-in spirit; a 9-file service that is already deployed is brownfield in spirit. When the number
-and the situation disagree, trust the situation and say why in the plan.
+There is no numeric threshold. A 400-line prototype with one source file is still brownfield by
+the classification the tool uses; the plan can say it is early-stage, but it must not call the
+same repository greenfield. The classification changes the adoption path, not the quality of the
+code.
 
 ## Governance checks (`GOV`)
 
@@ -72,13 +78,15 @@ Only run when `acima.config.json` exists.
 | ID | Asserts | If it fails |
 |---|---|---|
 | `GOV-001` | units are declared and the level is `L1`, `L2` or `L3` | repair the config; an empty config classifies nothing |
-| `GOV-002` | the enforcer runs, and reports the baseline | exit `2` is a tool failure — stop; exit `1` is a baseline, which is expected on day one |
-| `GOV-003` | waivers have all six fields and none are expired | `G001`/`G002`: complete them or renew deliberately |
+| `GOV-002` | the enforcer runs, and reports the baseline; a profile with no runner blocks | exit `2` is a tool failure — stop; exit `1` is a baseline, expected on day one; no reference runner is `fail` (unsupported, not clean) |
+| `GOV-003` | waivers have the required fields — including the exact finding fingerprint — and none are expired | `G001`/`G002`: complete them or renew deliberately |
 | `GOV-004` | no waiver is still owned by `unassigned` | replace with real names before merging the gate |
 
-`GOV-002` deliberately distinguishes three outcomes: clean (`pass`), baseline findings (`warn`),
-and enforcer failure (`fail`). Collapsing the first two teaches teams to ignore the gate;
-collapsing the third hides a broken tool.
+`GOV-002` deliberately distinguishes four outcomes: clean (`pass`), baseline findings (`warn`),
+enforcer failure (`fail`), and unsupported language profile (`fail`). Collapsing the first two
+teaches teams to ignore the gate; collapsing tool failure hides a broken tool; collapsing
+"unsupported" into pass turns "we could not check" into a false conformance claim. A Java target
+must report `BLOCKED` with `GOV-002` until a native analyzer result is supplied and reviewed.
 
 ## Deep checks (`ENF`)
 
@@ -107,11 +115,11 @@ and can take a minute for .NET.
 The draft is a **draft**. It derives units from directory names, which is the least reliable
 signal available. Review it with someone who knows the domain before committing it.
 
-The waiver writer groups findings by the unit that owns each path and emits one waiver per
-`(rule, unit)` pair, with owner `unassigned`, a 90-day expiry and today's review date. That
-makes the file structurally valid but **not acceptable**: `GOV-004` warns until a human replaces
-every owner. That is intentional. An automatically generated exception file that passes review
-is how governance dies.
+The waiver writer emits one waiver per **exact finding fingerprint**, scoped to the unit that owns
+the path, with owner `unassigned`, a 90-day expiry and today's review date. The scope is a filter,
+not permission to suppress every future finding in the unit. The file is structurally valid but
+**not acceptable**: `GOV-004` warns until a human replaces every owner. That is intentional. An
+automatically generated exception file that passes review is how governance dies.
 
 ## Reading the report
 
@@ -120,7 +128,7 @@ JSON output is stable and safe to attach to a ticket:
 
 ```json
 {
-  "skill": { "name": "acima-adoption", "version": "1.0.0", "standard": "1.0.0-draft.1" },
+  "skill": { "name": "acima-adoption", "version": "1.2.3", "standard": "1.0.0-draft.1" },
   "project": { "path": "/repo", "mode": "brownfield", "language": "python" },
   "checks": [{ "id": "SKL-002", "status": "pass", "detail": "...", "remedy": "" }],
   "blockers": [],

@@ -17,10 +17,13 @@ a pass/fail gate. Every other rule above is an `error`.
 ## 8.2 Declaring conformance
 
 ```json
-{ "standard": "1.0.0", "language": "go", "level": "L2" }
+{ "standard": "1.0.0", "mode": "base", "language": "go", "level": "L2" }
 ```
 
 in `acima.config.json`. The declared level selects the rule subset that is executed and enforced.
+`mode` selects `base` or `service-topology`; a `service-topology` claim also requires
+`acima.topology.json` and the profile run in §8.8. Mode/base-profile precedence is defined in
+[chapter 11](11-service-topology.md#1112-relationship-to-base-acima).
 
 A repository MAY declare a level and run additional rules above it; it MUST NOT declare a level and
 waive rules required by that level as a matter of routine. Waivers are for exceptions, and their count
@@ -74,7 +77,8 @@ A conformance claim is credible when all five exist:
 
 1. **the configuration** — `acima.config.json` declaring units and level;
 2. **the run** — an enforcer execution on the current commit, at the declared level, zero unwaived
-   errors;
+   errors; for a **full conformance claim**, every rule required by that level must also be executed,
+   with a recorded manual/native evidence artifact where no automated enforcer exists;
 3. **the artefact** — the JSON findings file from that run, retained with the build;
 4. **the waiver report** — count, owners, soonest expiry, expired count;
 5. **the pipeline** — the gate runs on every pull request and blocks merges on `error`.
@@ -98,13 +102,19 @@ enforcers in this repository fail when a suite finds zero files.
 
 | Check | Result |
 |---|---|
-| Rules executed | 24 of 24 required at L2 |
+| Rules executed | <executed> of <required> automated; manual/native evidence: <rules> |
+| Claim | <FULL CONFORMANCE | PARTIAL ASSESSMENT> |
 | Unwaived errors | 0 |
-| Warnings | 3 (`C007` ×2, `G003` ×1) |
+| Warnings | 3 (`C007` ×1, `G003` ×2) |
 | Waivers | 1 active, 0 expired, 1 expiring within 90 days |
 | Findings artefact | build #1234 / `acima.json` |
 | Last verified commit | `abc1234` |
 ```
+
+The count is derived from `rules.json`; never copy a fixed number. At L2 the catalog requires 25
+rules. The reference portable enforcers execute 21 of those and report `L004`, `C003`, `C007` and
+`G004` as not executed; without manual/native evidence for those four, the correct claim is
+`PARTIAL ASSESSMENT`, not `FULL CONFORMANCE`.
 
 ## 8.6 Partial conformance is not conformance
 
@@ -114,8 +124,10 @@ dynamically. "The language does not support it" is a reason to run the test, not
 it is exactly the case where nothing else will catch the violation.
 
 If an enforcer genuinely cannot evaluate a rule, it MUST report the rule as `info` with
-`"executed": false` in the findings artefact rather than omitting it. A conformance claim lists
-unenforced rules explicitly. A standard that hides what it does not check is worse than no standard.
+`"executed": false` in the findings artefact rather than omitting it. A **partial assessment** lists
+the unenforced rules explicitly and records the missing manual/native evidence; it MUST NOT be
+called conformance. A full conformance claim requires execution or recorded manual/native evidence
+for every required rule. A standard that hides what it does not check is worse than no standard.
 
 ## 8.7 Conformance and reality
 
@@ -135,7 +147,8 @@ scans the declared projects and sources, and is exercised by `conformance/test_t
 clean fixture and one that violates every item. A new repository reports it as:
 
 ```markdown
-- Base: L3 (machine-checked)
+- Mode: service-topology
+- Base: L3 (automated subset + recorded manual evidence)
 - Profile: service-topology, automated, 12/12 on <date>
 - Evidence: acima.topology.json and the `conformance/topology.py` JSON artifact
 ```

@@ -1,0 +1,100 @@
+{
+  "standard": "1.0.0",
+  "language": "dotnet",
+  "level": "L1",
+  "root": ".",
+  "units": [
+    {
+      "id": "console",
+      "role": "implementation",
+      "paths": [
+        "src/Spectre.Console"
+      ],
+      "module": "console"
+    },
+    {
+      "id": "ansi",
+      "role": "implementation",
+      "paths": [
+        "src/Spectre.Console.Ansi"
+      ],
+      "module": "ansi"
+    },
+    {
+      "id": "testing",
+      "role": "implementation",
+      "paths": [
+        "src/Spectre.Console.Testing"
+      ],
+      "module": "testing"
+    },
+    {
+      "id": "json",
+      "role": "implementation",
+      "paths": [
+        "src/Extensions/Spectre.Console.Json"
+      ],
+      "module": "json"
+    },
+    {
+      "id": "imagesharp",
+      "role": "implementation",
+      "paths": [
+        "src/Extensions/Spectre.Console.ImageSharp"
+      ],
+      "module": "imagesharp"
+    },
+    {
+      "id": "sourcegenerator",
+      "role": "tooling",
+      "paths": [
+        "src/Spectre.Console.SourceGenerator"
+      ],
+      "module": "sourcegenerator"
+    },
+    {
+      "id": "build",
+      "role": "tooling",
+      "paths": [
+        "build.cs"
+      ],
+      "module": "build"
+    }
+  ],
+  "exclude": [
+    ".git",
+    "node_modules",
+    "bin",
+    "obj",
+    "dist",
+    "build",
+    "target",
+    "out",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "coverage",
+    "vendor",
+    "src/Spectre.Console.Tests",
+    "src/Spectre.Console.Ansi.Tests",
+    "src/Benchmarks",
+    "docs",
+    "**/bin/**",
+    "**/obj/**"
+  ],
+  "waivers": ".acima/waivers.json",
+  "profile": {
+    "kind": "library",
+    "owner": "spectre-maintainers",
+    "justification": "Published console library; the Spectre.Console assembly is the package public surface.",
+    "publicApi": [
+      {
+        "unit": "console",
+        "paths": [
+          "src/Spectre.Console/**/*.cs"
+        ]
+      }
+    ],
+    "intentionalAdapters": []
+  }
+}

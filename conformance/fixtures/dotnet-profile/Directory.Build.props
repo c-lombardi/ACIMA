@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <PackageId>Acme.Widgets</PackageId>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+</Project>

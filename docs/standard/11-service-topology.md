@@ -312,7 +312,14 @@ Claim format:
 
 ## 11.12 Relationship to base ACIMA
 
-The profile refines, and in two places tightens, the base standard:
+`acima.config.json` selects the mode. `"mode": "service-topology"` puts the profile in force;
+`"mode": "base"` or an absent field keeps only P1–P9. `acima.topology.json` is the profile's
+evidence manifest and does not select anything by itself. The runner rejects an inconsistent
+declaration with exit `2`: a topology manifest without `mode: service-topology`, a service mode
+without the manifest, an unknown mode, or a manifest whose `profile` is not `service-topology`.
+
+Precedence is deliberately narrow. The profile refines, and in exactly two places tightens, the base
+standard:
 
 | Compatibility (legacy) | Default |
 |---|---|

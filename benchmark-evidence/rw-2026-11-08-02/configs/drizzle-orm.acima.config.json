@@ -1,0 +1,151 @@
+{
+  "standard": "1.0.0",
+  "language": "typescript",
+  "level": "L1",
+  "root": ".",
+  "units": [
+    {
+      "id": "orm",
+      "role": "implementation",
+      "paths": [
+        "drizzle-orm"
+      ],
+      "module": "orm"
+    },
+    {
+      "id": "kit",
+      "role": "implementation",
+      "paths": [
+        "drizzle-kit"
+      ],
+      "module": "kit"
+    },
+    {
+      "id": "zod",
+      "role": "implementation",
+      "paths": [
+        "drizzle-zod"
+      ],
+      "module": "zod"
+    },
+    {
+      "id": "valibot",
+      "role": "implementation",
+      "paths": [
+        "drizzle-valibot"
+      ],
+      "module": "valibot"
+    },
+    {
+      "id": "typebox",
+      "role": "implementation",
+      "paths": [
+        "drizzle-typebox"
+      ],
+      "module": "typebox"
+    },
+    {
+      "id": "arktype",
+      "role": "implementation",
+      "paths": [
+        "drizzle-arktype"
+      ],
+      "module": "arktype"
+    },
+    {
+      "id": "seed",
+      "role": "implementation",
+      "paths": [
+        "drizzle-seed"
+      ],
+      "module": "seed"
+    },
+    {
+      "id": "eslint-plugin-drizzle",
+      "role": "implementation",
+      "paths": [
+        "eslint-plugin-drizzle"
+      ],
+      "module": "eslint-plugin-drizzle"
+    },
+    {
+      "id": "eslint-internal",
+      "role": "tooling",
+      "paths": [
+        "eslint"
+      ],
+      "module": "eslint"
+    }
+  ],
+  "exclude": [
+    ".git",
+    "node_modules",
+    "bin",
+    "obj",
+    "dist",
+    "build",
+    "target",
+    "out",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "coverage",
+    "vendor",
+    "integration-tests",
+    "type-tests",
+    "drizzle-orm/type-tests",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "examples",
+    "docs",
+    "eslint-plugin-drizzle/tests"
+  ],
+  "waivers": ".acima/waivers.json",
+  "profile": {
+    "kind": "library",
+    "owner": "drizzle-maintainers",
+    "justification": "Published ORM toolkit: each database driver package and the migration CLI are intentional integration points.",
+    "publicApi": [],
+    "intentionalAdapters": [
+      {
+        "from": "orm",
+        "specifiers": [
+          "mysql2",
+          "mysql2/promise",
+          "pg",
+          "@prisma/client",
+          "@prisma/client/extension",
+          "knex"
+        ],
+        "paths": [
+          "drizzle-orm/src/mysql2/**",
+          "drizzle-orm/src/node-postgres/**",
+          "drizzle-orm/src/prisma/**",
+          "drizzle-orm/src/singlestore/**",
+          "drizzle-orm/src/mysql-proxy/**",
+          "drizzle-orm/src/singlestore-proxy/**",
+          "drizzle-orm/src/knex/**"
+        ],
+        "owner": "drizzle-maintainers",
+        "reason": "Driver packages implement the database integration itself."
+      },
+      {
+        "from": "kit",
+        "specifiers": [
+          "mysql2",
+          "mysql2/promise",
+          "pg",
+          "@prisma/client",
+          "@prisma/client/extension",
+          "knex"
+        ],
+        "paths": [
+          "drizzle-kit/src/**"
+        ],
+        "owner": "drizzle-maintainers",
+        "reason": "The migration CLI must connect to each supported database."
+      }
+    ]
+  }
+}

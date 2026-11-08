@@ -1,0 +1,8 @@
+{
+  "name": "acme-widgets",
+  "version": "1.0.0",
+  "description": "Fixture: a published library with one declared public surface and one intentional adapter",
+  "files": [
+    "dist"
+  ]
+}

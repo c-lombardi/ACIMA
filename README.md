@@ -12,7 +12,8 @@ of rules, a machine-readable unit map, and reference enforcers for Python, TypeS
 and C#/.NET. The Java profile is documented but has no reference enforcer in this revision.
 
 > Status: **Draft 1** (`1.0.0-draft.1`). See [Capability status](docs/status.md) for what is
-> verified, what is limited, and what is still proposed.
+> verified, what is limited, and what is still proposed, and the
+> [product contract](docs/product-contract.md) for consumer guarantees and release gates.
 
 ---
 

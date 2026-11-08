@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -23,6 +24,26 @@ internal sealed class Config
     public List<Unit> Units { get; set; } = new();
     public List<string> Exclude { get; set; } = new();
     public string? Waivers { get; set; }
+    public Profile? Profile { get; set; }
+}
+
+internal sealed class Profile
+{
+    public string? Kind { get; set; }
+    public string? Owner { get; set; }
+    public string? Justification { get; set; }
+    public List<JsonElement>? PublicApi { get; set; }
+    public List<AdapterEntry>? IntentionalAdapters { get; set; }
+}
+
+internal sealed class AdapterEntry
+{
+    public string? From { get; set; }
+    public string? To { get; set; }
+    public List<string>? Specifiers { get; set; }
+    public List<string>? Paths { get; set; }
+    public string? Owner { get; set; }
+    public string? Reason { get; set; }
 }
 
 internal sealed class Waiver
@@ -44,6 +65,10 @@ internal sealed class WaiverDocument
 internal sealed record Finding(string Rule, string Severity, string Message, string Path, int Line, string Evidence, string Fingerprint);
 
 internal sealed record Edge(string From, string To, string Path, int Line, string Evidence);
+
+internal sealed record Classified(string Rule, string Path, int Line, string Evidence, string Classification, string DeclaredBy, string? Target, string Owner, string Reason);
+
+internal sealed record PublicApiSurface(string Unit, List<string> Paths);
 
 internal sealed class Enforcer
 {
@@ -115,6 +140,7 @@ internal sealed class Enforcer
     private static readonly Regex CollectionMember = new(@"\b(?:List|IList|ICollection|Dictionary|HashSet)\s*<|\b[A-Za-z_][A-Za-z0-9_.<>?]*\s*\[\s*\]", RegexOptions.Compiled);
     private static readonly Regex Ambient = new(@"\bDateTime(?:Offset)?\.(?:Now|UtcNow)\b|\bGuid\.NewGuid\s*\(|\bnew\s+Random\s*\(|\bEnvironment\.(?:MachineName|TickCount|GetEnvironmentVariable)|TimeProvider\.System", RegexOptions.Compiled);
     private static readonly Regex Persistence = new(@"\bDbContext\b|\bDbSet\s*<|\bIDbConnection\b|\bSqlConnection\b|\bNpgsql\w*\b|\bDapper\b|Microsoft\.EntityFrameworkCore", RegexOptions.Compiled);
+    private static readonly Regex PersistenceNamespace = new(@"\b(?:Microsoft\.EntityFrameworkCore|System\.Data\.SqlClient|Microsoft\.Data\.Sqlite|Npgsql|Dapper)\b", RegexOptions.Compiled);
     private static readonly Regex Untyped = new(@"\bobject\??\s+\w+|\bdynamic\b", RegexOptions.Compiled);
     private static readonly Regex Framework = new(@"\bMicrosoft\.AspNetCore\b|\bMicrosoft\.EntityFrameworkCore\b|\bSystem\.Net\.Http\b|\bMicrosoft\.Extensions\.Configuration\b", RegexOptions.Compiled);
     private static readonly Regex UsingDirective = new(@"^\s*using\s+(?:static\s+)?([\w\.]+)\s*;", RegexOptions.Multiline | RegexOptions.Compiled);
@@ -133,6 +159,11 @@ internal sealed class Enforcer
     private readonly List<string> _projects = new();
     private readonly List<Edge> _edges = new();
     private readonly Dictionary<string, Unit> _namespaceUnits = new(StringComparer.Ordinal);
+    private readonly List<Classified> _classified = new();
+    private readonly List<PublicApiSurface> _publicApi = new();
+    private string? _packagingError;
+
+    public IReadOnlyList<Classified> ClassifiedFindings => _classified;
 
     public Enforcer(string root, Config config, string level)
     {
@@ -145,6 +176,7 @@ internal sealed class Enforcer
     {
         Collect();
         Classify();
+        ValidateProfile();
         CheckProjects();
         CheckUsings();
         CheckCycles();
@@ -308,6 +340,221 @@ internal sealed class Enforcer
         return best;
     }
 
+    private void ValidateProfile()
+    {
+        var profile = _cfg.Profile;
+        if (profile is null) return;
+        const string configPath = "acima.config.json";
+        var kind = profile.Kind ?? string.Empty;
+        if (kind != "application" && kind != "library")
+        {
+            Add(G001, $"profile.kind is \"{profile.Kind}\"; expected \"application\" or \"library\".", configPath, 1, "profile.kind");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(profile.Justification))
+        {
+            Add(G001, "profile has no justification; it would be an undocumented exemption.", configPath, 1, "profile.justification");
+        }
+
+        if (string.IsNullOrWhiteSpace(profile.Owner))
+        {
+            Add(G001, "profile has no owner; an exception without an owner is not reviewable.", configPath, 1, "profile.owner");
+        }
+
+        if (kind == "library" && !_projects.Any(IsPublishable))
+        {
+            var detail = _packagingError is null
+                ? "library profile is not supported by the project files: no project evaluates as packable with a PackageId."
+                : $"library profile could not evaluate package metadata: {_packagingError}";
+            Add(G001, detail, configPath, 1, "profile.kind");
+        }
+
+        foreach (var element in profile.PublicApi ?? new List<JsonElement>())
+        {
+            if (element.ValueKind != JsonValueKind.Object)
+            {
+                Add(G001, "profile.publicApi entries must be objects with unit and paths; a bare unit is a blanket exemption.", configPath, 1, "profile.publicApi");
+                continue;
+            }
+
+            var unit = element.TryGetProperty("unit", out var unitValue) ? unitValue.GetString() : null;
+            var paths = element.TryGetProperty("paths", out var pathsValue) && pathsValue.ValueKind == JsonValueKind.Array
+                ? pathsValue.EnumerateArray().Select(p => p.GetString())
+                    .Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p!).ToList()
+                : new List<string>();
+            if (string.IsNullOrWhiteSpace(unit) || _cfg.Units.All(u => u.Id != unit))
+            {
+                Add(G001, $"profile.publicApi names the unknown unit {unit}.", configPath, 1, "profile.publicApi");
+            }
+
+            if (paths.Count == 0)
+            {
+                Add(G001, $"profile.publicApi for {unit} declares no paths; the whole unit would become public.", configPath, 1, "profile.publicApi");
+            }
+            else if (!string.IsNullOrWhiteSpace(unit))
+            {
+                _publicApi.Add(new PublicApiSurface(unit, paths));
+            }
+        }
+
+        foreach (var adapter in profile.IntentionalAdapters ?? new List<AdapterEntry>())
+        {
+            var missing = new List<string>();
+            if (string.IsNullOrWhiteSpace(adapter.From)) missing.Add("from");
+            if (string.IsNullOrWhiteSpace(adapter.Owner)) missing.Add("owner");
+            if (string.IsNullOrWhiteSpace(adapter.Reason)) missing.Add("reason");
+            if (missing.Count > 0)
+            {
+                Add(G001, $"intentional adapter is missing: {string.Join(", ", missing)}.", configPath, 1, "profile.intentionalAdapters");
+                continue;
+            }
+
+            if (_cfg.Units.All(u => u.Id != adapter.From))
+            {
+                Add(G001, $"intentional adapter names the unknown unit {adapter.From}.", configPath, 1, "profile.intentionalAdapters");
+            }
+
+            if (!string.IsNullOrWhiteSpace(adapter.To) && _cfg.Units.All(u => u.Id != adapter.To))
+            {
+                Add(G001, $"intentional adapter names the unknown target {adapter.To}.", configPath, 1, "profile.intentionalAdapters");
+            }
+
+            if (adapter.Paths is null || adapter.Paths.Count == 0)
+            {
+                Add(G001, $"intentional adapter {adapter.From} declares no paths; a whole-unit exemption can hide new edges.", configPath, 1, "profile.intentionalAdapters");
+            }
+
+            if (string.IsNullOrWhiteSpace(adapter.To) && (adapter.Specifiers is null || adapter.Specifiers.Count == 0))
+            {
+                Add(G001, $"intentional adapter {adapter.From} declares neither a target unit nor specifiers.", configPath, 1, "profile.intentionalAdapters");
+            }
+        }
+    }
+
+    private bool IsPublishable(string project)
+    {
+        var (packageId, isPackable, error) = EvaluatePackagingMetadata(project);
+        if (error is not null)
+        {
+            _packagingError ??= $"{project}: {error}";
+            return false;
+        }
+
+        return string.Equals(isPackable, "true", StringComparison.OrdinalIgnoreCase)
+               && !string.IsNullOrWhiteSpace(packageId);
+    }
+
+    /// <summary>
+    /// Evaluate PackageId and IsPackable instead of concatenating project XML.
+    /// This deliberately lets MSBuild resolve SDK defaults and imports: PackageId
+    /// may be inherited from Directory.Build.props, default to AssemblyName/project
+    /// name, or be conditional, and IsPackable may be set in an imported file. This
+    /// is evaluation only; it does not build or execute the target.
+    /// </summary>
+    private (string? PackageId, string? IsPackable, string? Error) EvaluatePackagingMetadata(string project)
+    {
+        var full = Path.Combine(_root, project);
+        var start = new ProcessStartInfo("dotnet")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        start.ArgumentList.Add("msbuild");
+        start.ArgumentList.Add(full);
+        start.ArgumentList.Add("-nologo");
+        start.ArgumentList.Add("-getProperty:PackageId");
+        start.ArgumentList.Add("-getProperty:IsPackable");
+
+        try
+        {
+            using var process = Process.Start(start);
+            if (process is null) return (null, null, "dotnet msbuild could not start");
+
+            var stdout = process.StandardOutput.ReadToEndAsync();
+            var stderr = process.StandardError.ReadToEndAsync();
+            if (!process.WaitForExit(30000))
+            {
+                process.Kill(entireProcessTree: true);
+                return (null, null, "dotnet msbuild timed out");
+            }
+
+            var output = stdout.GetAwaiter().GetResult();
+            var diagnostics = stderr.GetAwaiter().GetResult();
+            if (process.ExitCode != 0)
+            {
+                var message = string.IsNullOrWhiteSpace(diagnostics) ? output : diagnostics;
+                return (null, null, $"dotnet msbuild exited {process.ExitCode}: {message.Trim()}");
+            }
+
+            using var document = JsonDocument.Parse(output);
+            if (!document.RootElement.TryGetProperty("Properties", out var properties))
+                return (null, null, "dotnet msbuild returned no Properties");
+
+            var packageId = properties.TryGetProperty("PackageId", out var packageValue)
+                ? packageValue.GetString() : null;
+            var isPackable = properties.TryGetProperty("IsPackable", out var packableValue)
+                ? packableValue.GetString() : null;
+            return (packageId, isPackable, null);
+        }
+        catch (Exception exception) when (exception is IOException or InvalidOperationException or JsonException or System.ComponentModel.Win32Exception)
+        {
+            return (null, null, exception.Message);
+        }
+    }
+
+    private static bool PathDeclared(List<string>? patterns, string path)
+    {
+        if (patterns is null) return false;
+        foreach (var pattern in patterns)
+        {
+            if (GlobMatch(pattern, path)) return true;
+            var literal = pattern.TrimEnd('*');
+            if (literal.Length > 0 && path.StartsWith(literal, StringComparison.Ordinal)) return true;
+        }
+
+        return false;
+    }
+
+    private bool ClassifyAdapter(string rule, string path, int line, string evidence, Unit from, Unit? to,
+        string? specifier, string separator = "/")
+    {
+        if (_cfg.Profile?.IntentionalAdapters is null) return false;
+        foreach (var adapter in _cfg.Profile.IntentionalAdapters)
+        {
+            if (adapter.From != from.Id) continue;
+            if (!PathDeclared(adapter.Paths, path)) continue;
+            if (to is not null && (string.IsNullOrWhiteSpace(adapter.To) || adapter.To != to.Id)) continue;
+            if (!string.IsNullOrWhiteSpace(specifier))
+            {
+                var specs = adapter.Specifiers ?? new List<string>();
+                if (!specs.Any(candidate => specifier == candidate
+                        || specifier.StartsWith(candidate + separator, StringComparison.Ordinal))) continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(adapter.To) && (adapter.Specifiers is null || adapter.Specifiers.Count == 0)) continue;
+            _classified.Add(new Classified(rule, path, Math.Max(line, 1),
+                evidence.Length > 200 ? evidence[..200] : evidence, "intentional-adapter", adapter.From!,
+                adapter.To, adapter.Owner ?? string.Empty, adapter.Reason ?? string.Empty));
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool ClassifyPublicApi(string rule, string path, int line, string evidence, Unit unit)
+    {
+        var surface = _publicApi.FirstOrDefault(candidate => candidate.Unit == unit.Id
+            && PathDeclared(candidate.Paths, path));
+        if (surface is null) return false;
+        _classified.Add(new Classified(rule, path, Math.Max(line, 1),
+            evidence.Length > 200 ? evidence[..200] : evidence, "declared-public-api", surface.Unit,
+            null, _cfg.Profile?.Owner ?? string.Empty, _cfg.Profile?.Justification ?? string.Empty));
+        return true;
+    }
+
     private void CheckProjects()
     {
         foreach (var project in _projects)
@@ -332,6 +579,17 @@ internal sealed class Enforcer
             {
                 var include = element.Attribute("Include")?.Value;
                 if (string.IsNullOrWhiteSpace(include)) continue;
+
+                // Analyzer and source-generator references do not produce runtime assembly
+                // dependencies. Treating them as runtime edges creates false D005/D008 cycles.
+                var referenceOutput = element.Attribute("ReferenceOutputAssembly")?.Value;
+                var outputItem = element.Attribute("OutputItemType")?.Value;
+                if (string.Equals(referenceOutput, "false", StringComparison.OrdinalIgnoreCase) ||
+                    (outputItem?.Contains("Analyzer", StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (outputItem?.Contains("SourceGenerator", StringComparison.OrdinalIgnoreCase) ?? false))
+                {
+                    continue;
+                }
 
                 var baseDirectory = Path.GetDirectoryName(full)!;
                 var targetFull = Path.GetFullPath(Path.Combine(baseDirectory, include.Replace('\\', Path.DirectorySeparatorChar)));
@@ -467,7 +725,10 @@ internal sealed class Enforcer
             }
             else if (to.Role == "implementation" && to.Module != from.Module)
             {
-                Add(D001, $"Module {from.Module} imports the implementation unit {to.Id} (expected {to.Module}.contracts).", path, line, evidence);
+                if (!ClassifyAdapter(D001, path, line, evidence, from, to, null))
+                {
+                    Add(D001, $"Module {from.Module} imports the implementation unit {to.Id} (expected {to.Module}.contracts).", path, line, evidence);
+                }
             }
         }
     }
@@ -540,6 +801,11 @@ internal sealed class Enforcer
             nexts.Add(edge.To);
         }
 
+        var direct = _edges
+            .GroupBy(edge => edge.From, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Select(edge => edge.To).ToHashSet(StringComparer.Ordinal),
+                StringComparer.Ordinal);
+
         var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (var edge in _edges)
         {
@@ -565,6 +831,7 @@ internal sealed class Enforcer
             {
                 var target = UnitById(id);
                 if (target is null || target.Module == from.Module || target.Role != "implementation") continue;
+                if (direct.TryGetValue(from.Id, out var directTargets) && directTargets.Contains(target.Id)) continue;
                 if (!seen.Add(from.Id + ">" + target.Id)) continue;
                 Add(D008, $"{from.Id} reaches the implementation unit {target.Id} transitively through {to.Id}.", edge.Path, edge.Line, edge.Evidence);
             }
@@ -600,7 +867,10 @@ internal sealed class Enforcer
             {
                 if (declaration.Unit.Module == unit.Module) continue;
                 if (!Regex.IsMatch(text, $@"\b{Regex.Escape(name)}\b")) continue;
-                Add(D009, $"{unit.Id} references the internal type {name} from module {declaration.Unit.Module}.", path, LineOf(text, name), name);
+                if (!ClassifyAdapter(D009, path, LineOf(text, name), name, unit, declaration.Unit, null))
+                {
+                    Add(D009, $"{unit.Id} references the internal type {name} from module {declaration.Unit.Module}.", path, LineOf(text, name), name);
+                }
             }
         }
 
@@ -613,7 +883,10 @@ internal sealed class Enforcer
             {
                 if (declaration.Unit.Module == unit.Module) continue;
                 if (!Regex.IsMatch(text, $@"\b{Regex.Escape(name)}\b")) continue;
-                Add(L003, $"implementation unit {declaration.Unit.Id} publishes the public type {name} outside the module", declaration.Path, declaration.Line, name);
+                if (!ClassifyPublicApi(L003, declaration.Path, declaration.Line, name, declaration.Unit))
+                {
+                    Add(L003, $"implementation unit {declaration.Unit.Id} publishes the public type {name} outside the module", declaration.Path, declaration.Line, name);
+                }
             }
         }
     }
@@ -679,9 +952,16 @@ internal sealed class Enforcer
         {
             var unit = _fileUnits[path];
             if (unit.Role != "implementation" || path.Contains("/infrastructure/", StringComparison.Ordinal)) continue;
-            foreach (Match match in Persistence.Matches(text))
+            // L001 is a dependency edge. A using directive is a conservative,
+            // identifier-safe approximation; a bare name or string is not an import.
+            foreach (Match match in UsingDirective.Matches(text))
             {
-                Add(L001, $"{unit.Id} references infrastructure ({match.Value}) outside infrastructure/.", path, LineOf(text, match.Value), match.Value);
+                var ns = match.Groups[1].Value;
+                if (!PersistenceNamespace.IsMatch(ns)) continue;
+                if (!ClassifyAdapter(L001, path, LineOf(text, match.Value), match.Value.Trim(), unit, null, ns, "."))
+                {
+                    Add(L001, $"{unit.Id} imports infrastructure ({ns}) outside infrastructure/.", path, LineOf(text, match.Value), match.Value.Trim());
+                }
             }
         }
     }
@@ -825,8 +1105,45 @@ internal sealed class Enforcer
 
     private static bool GlobMatch(string pattern, string value)
     {
-        var regex = "^" + Regex.Escape(pattern).Replace("\\*", ".*").Replace("\\?", ".") + "$";
-        return Regex.IsMatch(value, regex);
+        // Path globs, not regular expressions: **/ matches zero or more
+        // directories (so src/**/*.cs also matches src/Foo.cs), * does not
+        // cross a separator, and ? matches one non-separator character.
+        var regex = new StringBuilder("^");
+        for (var index = 0; index < pattern.Length; index++)
+        {
+            var character = pattern[index];
+            if (character == '*')
+            {
+                if (index + 1 < pattern.Length && pattern[index + 1] == '*')
+                {
+                    index++;
+                    if (index + 1 < pattern.Length && pattern[index + 1] == '/')
+                    {
+                        index++;
+                        regex.Append("(?:.*/)?");
+                    }
+                    else
+                    {
+                        regex.Append(".*");
+                    }
+                }
+                else
+                {
+                    regex.Append("[^/]*");
+                }
+            }
+            else if (character == '?')
+            {
+                regex.Append("[^/]");
+            }
+            else
+            {
+                regex.Append(Regex.Escape(character.ToString()));
+            }
+        }
+
+        regex.Append('$');
+        return Regex.IsMatch(value, regex.ToString());
     }
 
     private Unit? UnitById(string id) => _cfg.Units.FirstOrDefault(u => u.Id == id);
@@ -922,7 +1239,7 @@ internal static class Program
             }
             var enforcer = new Enforcer(rootPath, cfg, effective);
             var findings = enforcer.Run();
-            Print(findings, format, cfg.Standard, effective, enforcer.SourceFiles);
+            Print(findings, format, cfg.Standard, effective, enforcer.SourceFiles, cfg, enforcer.ClassifiedFindings);
             return findings.Any(f => f.Severity == "error") ? 1 : 0;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException)
@@ -990,7 +1307,7 @@ internal static class Program
     }
 
     private static void Print(IReadOnlyList<Finding> findings, string format, string standard, string level,
-        int sourceFiles = 0)
+        int sourceFiles = 0, Config? cfg = null, IReadOnlyList<Classified>? classified = null)
     {
         if (format == "json")
         {
@@ -1000,12 +1317,33 @@ internal static class Program
                     pair => (object)(Enforcer.NotExecutedRules.TryGetValue(pair.Key, out var reason)
                         ? new { executed = false, reason }
                         : new { executed = true }));
+            object? profileSummary = cfg?.Profile is null ? null : new
+            {
+                kind = cfg.Profile.Kind,
+                owner = cfg.Profile.Owner,
+                justification = cfg.Profile.Justification,
+                publicApi = cfg.Profile.PublicApi,
+                intentionalAdapters = cfg.Profile.IntentionalAdapters?.Count ?? 0,
+            };
             var payload = new
             {
                 standard,
                 level,
                 sourceFiles,
+                profile = profileSummary,
                 execution,
+                classified = (classified ?? Array.Empty<Classified>()).Select(c => new
+                {
+                    rule = c.Rule,
+                    path = c.Path,
+                    line = c.Line,
+                    evidence = c.Evidence,
+                    classification = c.Classification,
+                    declaredBy = c.DeclaredBy,
+                    target = c.Target,
+                    owner = c.Owner,
+                    reason = c.Reason,
+                }),
                 findings = findings.Select(f => new
                 {
                     rule = f.Rule,
@@ -1025,6 +1363,11 @@ internal static class Program
         {
             Console.WriteLine($"{finding.Rule}  {finding.Severity,-7} {finding.Message}");
             Console.WriteLine($"  {finding.Path}:{finding.Line}");
+        }
+
+        if (classified is { Count: > 0 })
+        {
+            Console.WriteLine($"\n{classified.Count} classified finding(s) (declared public API or intentional adapters)");
         }
 
         var errors = findings.Count(f => f.Severity == "error");

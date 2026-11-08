@@ -48,8 +48,9 @@ python3 conformance/run.py
 ```
 
 This runs the topology checks, the Python/TypeScript/Go/.NET galleries, and the CLI and
-walkthrough tests. A profile is skipped only when its toolchain is unavailable; Java is
-skipped because this revision has no Java enforcer.
+walkthrough tests. A selected profile fails when its toolchain is unavailable. Java has
+no reference enforcer in this revision, so a Java assessment fails closed rather than
+reporting a clean result.
 
 ## 5. Apply it to another repository
 

@@ -51,6 +51,6 @@
     { "id": "ACIMA-G002", "severity": "error", "level": "L1", "title": "Expired waiver", "summary": "An expired waiver is a violation until it is renewed or removed." },
     { "id": "ACIMA-G003", "severity": "warning", "level": "L2", "title": "Undocumented contract surface", "summary": "Every public contract type documents its meaning and its invariants." },
     { "id": "ACIMA-G004", "severity": "error", "level": "L2", "title": "Unreviewed contract change", "summary": "A change to a published contracts surface must be captured in the versioned API baseline." },
-    { "id": "ACIMA-G005", "severity": "error", "level": "L1", "title": "Module without architecture tests", "summary": "Every module is covered by the enforceable rule set; undiscovered modules fail the run." }
+    { "id": "ACIMA-G005", "severity": "error", "level": "L1", "title": "Unclassified source", "summary": "Every production source file belongs to a declared unit; a file outside every unit fails the run." }
   ]
 }

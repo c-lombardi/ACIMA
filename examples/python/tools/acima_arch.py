@@ -48,6 +48,10 @@ RANK = {"L1": 1, "L2": 2, "L3": 3}
 
 PERSISTENCE = ("sqlalchemy", "QuerySet", "psycopg", "sqlite3", "db.execute", "IQueryable",
                "DbContext", "EntityManager", "django.db", "asyncpg", "pymongo")
+# L001 is about dependency edges. Only importable persistence roots qualify here;
+# bare names such as QuerySet or db.execute are handled by the contract rules.
+PERSISTENCE_MODULES = ("sqlalchemy", "psycopg", "psycopg2", "sqlite3", "django.db",
+                       "asyncpg", "pymongo")
 FRAMEWORK = ("flask", "fastapi", "starlette", "django", "http.server", "werkzeug", "celery",
              "requests", "httpx", "aiohttp")
 AMBIENT = (r"datetime\.now\b", r"datetime\.utcnow\b", r"date\.today\b", r"time\.time\b",
@@ -107,9 +111,24 @@ class Enforcer:
         return path.relative_to(self.root).as_posix()
 
     def excluded(self, rel: str) -> bool:
-        parts = rel.split("/")
-        return any(fnmatch.fnmatch(rel, p) or any(fnmatch.fnmatch(x, p) for x in parts)
-                   for p in self.excludes)
+        value = rel.rstrip("/")
+        parts = value.split("/")
+        for raw in self.excludes:
+            pattern = str(raw).strip().replace("\\", "/")
+            if pattern.startswith("./"):
+                pattern = pattern[2:]
+            pattern = pattern.rstrip("/")
+            if not pattern:
+                continue
+            if any(char in pattern for char in "*?["):
+                if fnmatch.fnmatchcase(value, pattern):
+                    return True
+                continue
+            if value == pattern or value.startswith(pattern + "/"):
+                return True
+            if pattern in parts:
+                return True
+        return False
 
     def unit_by_path(self, rel: str) -> Unit | None:
         best: Unit | None = None
@@ -472,12 +491,17 @@ class Enforcer:
             unit = self.units_of[rel]
             if unit.role != "implementation" or "/infrastructure/" in rel:
                 continue
-            source = (self.root / rel).read_text(encoding="utf-8", errors="replace")
-            for token in PERSISTENCE:
-                if token in source:
-                    self.add("ACIMA-L001",
-                             f"{unit.id} references infrastructure ({token}) outside infrastructure/.",
-                             rel, self.line_of(source, token), token)
+            if "/tests/" in rel or "/test/" in rel:
+                continue
+            for module, line, evidence, _names, level in self.imports(rel):
+                if level:
+                    continue
+                if not any(module == root or module.startswith(root + ".")
+                           for root in PERSISTENCE_MODULES):
+                    continue
+                self.add("ACIMA-L001",
+                         f"{unit.id} imports infrastructure ({module}) outside infrastructure/.",
+                         rel, line, evidence)
 
     def check_sql(self) -> None:
         for rel, tree in self.files.items():

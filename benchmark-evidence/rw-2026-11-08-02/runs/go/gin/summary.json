@@ -1,0 +1,12 @@
+{
+  "language": "go",
+  "id": "gin",
+  "exit": 0,
+  "sourceFiles": 99,
+  "findings": 0,
+  "classified": 0,
+  "bytes": 1980,
+  "byRule": {},
+  "classifiedByRule": {},
+  "units": 29
+}

@@ -14,6 +14,7 @@ make a build fail when that stops being true.
 | Understand the before/after value | [Executable before/after](guides/before-after.md) |
 | Apply it to an existing system | [Brownfield adoption](start/brownfield.md) |
 | Know what is verified vs proposed | [Capability status](status.md) |
+| Know what ACIMA promises consumers | [Product contract](product-contract.md) |
 | Make the investment case | [For engineering leaders](guides/engineering-leadership.md) |
 | Give an agent the constraints | [AI coding agents](guides/ai-agents.md) |
 

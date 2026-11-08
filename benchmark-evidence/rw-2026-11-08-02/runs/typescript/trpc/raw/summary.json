@@ -1,0 +1,14 @@
+{
+  "language": "typescript",
+  "id": "trpc",
+  "exit": 1,
+  "sourceFiles": 396,
+  "findings": 105,
+  "classified": 0,
+  "bytes": 34723,
+  "byRule": {
+    "ACIMA-G005": 105
+  },
+  "classifiedByRule": {},
+  "units": 29
+}

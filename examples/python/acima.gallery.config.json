@@ -1,5 +1,6 @@
 {
   "standard": "1.0.0",
+  "mode": "base",
   "language": "python",
   "level": "L3",
   "root": ".",

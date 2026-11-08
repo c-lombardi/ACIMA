@@ -71,6 +71,16 @@ const units = (config.units || []).map((u) => ({ ...u, paths: u.paths || [] }));
 const excludes = config.exclude || ['node_modules', 'tests', 'violations'];
 const moduleNames = new Set(units.filter((u) => u.module).map((u) => u.module));
 
+// Optional, explicit architecture profile. A library's published surface and its
+// intentional adapters are classified, never silently suppressed: every classified
+// finding still appears in the JSON report with its owner and reason.
+const profile = config.profile && typeof config.profile === 'object' ? config.profile : null;
+const profileKind = profile ? String(profile.kind || '') : '';
+const profilePublicApi = Array.isArray(profile?.publicApi) ? profile.publicApi : [];
+const profileAdapters = Array.isArray(profile?.intentionalAdapters) ? profile.intentionalAdapters : [];
+const workspacePackages = config.packages && typeof config.packages === 'object' ? config.packages : {};
+const classified = [];
+
 const findings = [];
 const files = new Map();      // rel -> source
 const unitsOf = new Map();    // rel -> unit
@@ -78,10 +88,18 @@ const edges = [];             // { from, to, line, evidence }
 
 const rel = (p) => relative(ROOT, p).split(sep).join('/');
 const excluded = (r) => {
-  const parts = r.split('/');
-  return excludes.some((pattern) => {
-    const clean = pattern.replace(/\*\*/g, '').replace(/\*/g, '');
-    return r === pattern || parts.includes(clean) || parts.some((p) => p === clean);
+  const value = r.replace(/\/$/, '');
+  const parts = value.split('/');
+  return excludes.some((raw) => {
+    let pattern = String(raw).trim().replace(/\\/g, '/');
+    if (pattern.startsWith('./')) pattern = pattern.slice(2);
+    pattern = pattern.replace(/\/+$/, '');
+    if (!pattern) return false;
+    // Glob patterns such as **/*.test.ts must be matched as globs, not as
+    // literal fragments. Literal paths match a file or a directory subtree;
+    // a bare segment keeps the legacy "any directory named tests" behaviour.
+    if (pattern.includes('*')) return globMatch(value, pattern);
+    return value === pattern || value.startsWith(pattern + '/') || parts.includes(pattern);
   });
 };
 
@@ -145,6 +163,142 @@ function add(rule, message, path, line, evidence = '') {
     evidence: trimmed, fingerprint: findingFingerprint(rule, path, trimmed) });
 }
 
+function pathDeclared(adapter, path) {
+  const patterns = Array.isArray(adapter.paths) ? adapter.paths : [];
+  return patterns.some((pattern) => {
+    const literal = String(pattern).replace(/\*+$/, '');
+    return globMatch(path, String(pattern)) || (literal && path.startsWith(literal));
+  });
+}
+
+function adapterFor(fromUnit, toUnit, specifier, path) {
+  return profileAdapters.find((adapter) => {
+    if (!adapter || adapter.from !== fromUnit?.id) return false;
+    if (!pathDeclared(adapter, path)) return false;
+    if (toUnit) {
+      if (!adapter.to || adapter.to !== toUnit.id) return false;
+    }
+    if (specifier) {
+      const specs = Array.isArray(adapter.specifiers) ? adapter.specifiers : [];
+      if (!specs.some((candidate) => specifier === candidate || specifier.startsWith(`${candidate}/`))) return false;
+    }
+    return Boolean(adapter.to || (adapter.specifiers || []).length);
+  });
+}
+
+function classifyAdapter(rule, path, line, evidence, fromUnit, toUnit, specifier) {
+  const adapter = adapterFor(fromUnit, toUnit, specifier, path);
+  if (!adapter) return false;
+  classified.push({
+    rule, path, line: Math.max(line, 1), evidence: evidence.slice(0, 200),
+    classification: 'intentional-adapter', declaredBy: adapter.from,
+    target: adapter.to || null, owner: adapter.owner, reason: adapter.reason,
+  });
+  return true;
+}
+
+function classifyPublicApi(rule, path, line, evidence, unit) {
+  const entry = profilePublicApi.find((candidate) => {
+    if (!candidate || candidate.unit !== unit?.id) return false;
+    return (Array.isArray(candidate.paths) ? candidate.paths : []).some((pattern) => {
+      const literal = String(pattern).replace(/\*+$/, '');
+      return globMatch(path, String(pattern)) || (literal && path.startsWith(literal));
+    });
+  });
+  if (!entry) return false;
+  classified.push({
+    rule, path, line: Math.max(line, 1), evidence: evidence.slice(0, 200),
+    classification: 'declared-public-api', declaredBy: entry.unit,
+    owner: profile.owner || '', reason: profile.justification || '',
+  });
+  return true;
+}
+
+function validateProfile() {
+  if (!profile) return;
+  if (profileKind !== 'application' && profileKind !== 'library') {
+    add('ACIMA-G001', `profile.kind is ${JSON.stringify(profile.kind)}; expected "application" or "library".`,
+      CONFIG, 1, 'profile.kind');
+    return;
+  }
+  if (!String(profile.justification || '').trim()) {
+    add('ACIMA-G001', 'profile has no justification; it would be an undocumented exemption.',
+      CONFIG, 1, 'profile.justification');
+  }
+  if (!String(profile.owner || '').trim()) {
+    add('ACIMA-G001', 'profile has no owner; an exception without an owner is not reviewable.',
+      CONFIG, 1, 'profile.owner');
+  }
+  if (profileKind === 'library') {
+    // A monorepo root is usually private; the evidence is whichever declared
+    // workspace package is actually published.
+    const candidates = [join(ROOT, 'package.json')];
+    for (const value of Object.values(workspacePackages)) {
+      const base = typeof value === 'string' ? value : value && value.path;
+      if (!base) continue;
+      if (value && value.manifest) candidates.push(join(ROOT, value.manifest));
+      candidates.push(join(ROOT, base, 'package.json'));
+      candidates.push(join(ROOT, base, '..', 'package.json'));
+    }
+    // A monorepo root is often private while its sibling packages are published.
+    try {
+      for (const entry of readdirSync(ROOT)) candidates.push(join(ROOT, entry, 'package.json'));
+    } catch (error) {
+      // best effort: the root manifest remains the evidence
+    }
+    const publishable = candidates.some((candidate) => {
+      try {
+        const manifest = JSON.parse(readFileSync(candidate, 'utf8'));
+        return Boolean(String(manifest.name || '').trim()) && manifest.private !== true;
+      } catch (error) {
+        return false;
+      }
+    });
+    if (!publishable) {
+      add('ACIMA-G001', 'library profile is not supported by the repository manifests: no root or declared workspace package is named and publishable.',
+        CONFIG, 1, 'profile.kind');
+    }
+  }
+  for (const entry of profilePublicApi) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      add('ACIMA-G001', 'profile.publicApi entries must be objects with unit and paths; a bare unit is a blanket exemption.',
+        CONFIG, 1, 'profile.publicApi');
+      continue;
+    }
+    if (!units.some((unit) => unit.id === entry.unit)) {
+      add('ACIMA-G001', `profile.publicApi names the unknown unit ${entry.unit}.`, CONFIG, 1, 'profile.publicApi');
+    }
+    if (!Array.isArray(entry.paths) || entry.paths.length === 0) {
+      add('ACIMA-G001', `profile.publicApi for ${entry.unit} declares no paths; the whole unit would become public.`,
+        CONFIG, 1, 'profile.publicApi');
+    }
+  }
+  for (const adapter of profileAdapters) {
+    const missing = ['from', 'owner', 'reason'].filter((key) => !String(adapter?.[key] || '').trim());
+    if (missing.length > 0) {
+      add('ACIMA-G001', `intentional adapter is missing: ${missing.join(', ')}.`,
+        CONFIG, 1, 'profile.intentionalAdapters');
+      continue;
+    }
+    if (!units.some((unit) => unit.id === adapter.from)) {
+      add('ACIMA-G001', `intentional adapter names the unknown unit ${adapter.from}.`,
+        CONFIG, 1, 'profile.intentionalAdapters');
+    }
+    if (adapter.to && !units.some((unit) => unit.id === adapter.to)) {
+      add('ACIMA-G001', `intentional adapter names the unknown target ${adapter.to}.`,
+        CONFIG, 1, 'profile.intentionalAdapters');
+    }
+    if (!Array.isArray(adapter.paths) || adapter.paths.length === 0) {
+      add('ACIMA-G001', `intentional adapter ${adapter.from} declares no paths; a whole-unit exemption can hide new edges.`,
+        CONFIG, 1, 'profile.intentionalAdapters');
+    }
+    if (!adapter.to && (!Array.isArray(adapter.specifiers) || adapter.specifiers.length === 0)) {
+      add('ACIMA-G001', `intentional adapter ${adapter.from} declares neither a target unit nor specifiers.`,
+        CONFIG, 1, 'profile.intentionalAdapters');
+    }
+  }
+}
+
 function resolveSpecifier(spec, fromRel) {
   if (spec.startsWith('.')) {
     const target = normalize(join(dirname(join(ROOT, fromRel)), spec)).replace(/\.(?:ts|tsx|js|mjs|cjs)$/, '');
@@ -160,6 +314,24 @@ function resolveSpecifier(spec, fromRel) {
   }
   const alias = (config.aliases || {})[spec];
   if (alias) return alias.replace(/^\.\//, '');
+  // Workspace packages declared in the config resolve to their source, so an
+  // adapter that imports the published package name is a real internal edge
+  // rather than an external dependency. Undeclared packages stay external.
+  for (const [name, value] of Object.entries(workspacePackages)) {
+    if (spec !== name && !spec.startsWith(`${name}/`)) continue;
+    const base = typeof value === 'string' ? value : value && value.path;
+    if (!base) continue;
+    const sub = spec === name ? '' : spec.slice(name.length + 1);
+    const stem = rel(resolve(ROOT, base, sub));
+    for (const extension of ['.ts', '.tsx', '.js', '.mjs', '.cjs']) {
+      if (stem && files.has(`${stem}${extension}`)) return `${stem}${extension}`;
+    }
+    for (const extension of ['.ts', '.tsx', '.js', '.mjs', '.cjs']) {
+      const candidate = rel(resolve(ROOT, base, sub, `index${extension}`));
+      if (files.has(candidate)) return candidate;
+    }
+    return undefined;
+  }
   return undefined; // external
 }
 
@@ -258,18 +430,23 @@ function checkEdges() {
         if (to.role === 'host') {
           add('ACIMA-D006', `${from.id} references the host unit.`, r, line, evidence);
         } else if (to.role === 'implementation' && to.module !== from.module) {
-          add('ACIMA-D001',
-            `Module ${from.module} imports the implementation unit ${to.id} (expected ${to.module}.contracts).`,
-            r, line, evidence);
+          if (!classifyAdapter('ACIMA-D001', r, line, evidence, from, to)) {
+            add('ACIMA-D001',
+              `Module ${from.module} imports the implementation unit ${to.id} (expected ${to.module}.contracts).`,
+              r, line, evidence);
+          }
           const named = /\{([^}]*)\}/.exec(clause);
           if (named && named[1].split(',').some((n) => n.trim().replace(/^type\s+/, '').startsWith('_'))) {
-            add('ACIMA-D009', `${from.module} imports a private type from module ${to.module}.`, r, line, evidence);
+            if (!classifyAdapter('ACIMA-D009', r, line, evidence, from, to)) {
+              add('ACIMA-D009', `${from.module} imports a private type from module ${to.module}.`, r, line, evidence);
+            }
           }
           const types = publicTypes(target);
           if (types.size > 0) {
-            add('ACIMA-L003',
-              `implementation unit ${to.id} publishes the public type ${[...types].sort().join(', ')} outside the module`,
-              target, 1);
+            const message = `implementation unit ${to.id} publishes the public type ${[...types].sort().join(', ')} outside the module`;
+            if (!classifyPublicApi('ACIMA-L003', target, 1, message, to)) {
+              add('ACIMA-L003', message, target, 1);
+            }
           }
         }
       }
@@ -332,6 +509,9 @@ function checkTransitive() {
     for (const id of [...reachable].sort()) {
       const target = byId.get(id);
       if (!target || target.module === a.module || target.role !== 'implementation') continue;
+      // D008 is transitive exposure. Repeating the direct edge that D001 already
+      // reports is duplicate output, not additional coverage.
+      if (id === b.id) continue;
       const key = `${a.id}>${target.id}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -432,9 +612,15 @@ function checkLayering() {
   for (const [r, source] of files) {
     const unit = unitsOf.get(r);
     if (unit.role !== 'implementation' || r.includes('/infrastructure/')) continue;
-    for (const token of PERSISTENCE) {
-      if (source.includes(`'${token}'`) || source.includes(`"${token}"`)) {
-        add('ACIMA-L001', `${unit.id} references infrastructure (${token}) outside infrastructure/.`, r, lineOf(source, source.indexOf(token)), token);
+    if (r.includes('/tests/') || /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(r)) continue;
+    for (const imported of importsOf(source)) {
+      const token = PERSISTENCE.find((candidate) =>
+        imported.spec === candidate || imported.spec.startsWith(`${candidate}/`));
+      if (!token) continue;
+      if (!classifyAdapter('ACIMA-L001', r, imported.line, imported.evidence, unit, null, imported.spec)) {
+        add('ACIMA-L001',
+          `${unit.id} imports infrastructure (${imported.spec}) outside infrastructure/.`,
+          r, imported.line, imported.evidence);
       }
     }
   }
@@ -576,6 +762,7 @@ function applyWaivers(waivers) {
 }
 
 collect();
+validateProfile();
 checkEdges();
 checkContracts();
 checkLayering();
@@ -597,12 +784,25 @@ const execution = Object.fromEntries(Object.keys(CATALOG).sort().map((rule) => [
     : { executed: true },
 ]));
 
+const profileSummary = profile
+  ? { kind: profileKind, owner: profile.owner || null, justification: profile.justification || '',      publicApi: profilePublicApi.map((entry) => ({ unit: entry?.unit, paths: [...(entry?.paths || [])].sort() })),
+      intentionalAdapters: profileAdapters.length
+  }
+  : null;
+
 if (FORMAT === 'json') {
-  console.log(JSON.stringify({ standard: config.standard || '1.0.0', level, sourceFiles: files.size, execution, findings: ordered }, null, 2));
+  console.log(JSON.stringify({ standard: config.standard || '1.0.0', level, sourceFiles: files.size,
+    profile: profileSummary, execution, classified, findings: ordered }, null, 2));
 } else {
   for (const f of ordered) {
     console.log(`${f.rule}  ${f.severity.padEnd(7)} ${f.message}\n  ${f.path}:${f.line}${f.evidence ? `\n  ${f.evidence}` : ''}`);
   }
+  if (classified.length > 0) {
+    console.log(`\n${classified.length} classified finding(s) (declared public API or intentional adapters)`);
+  }
   console.log(`\n${ordered.length} finding(s), ${errors.length} error(s) at level ${level}`);
 }
-process.exit(errors.length ? 1 : 0);
+// Set the exit code instead of calling process.exit(): a large JSON report written
+// to a pipe must be allowed to drain. process.exit() truncates at the pipe buffer
+// (65536 bytes on Linux), which turns a complete assessment into invalid JSON.
+process.exitCode = errors.length ? 1 : 0;

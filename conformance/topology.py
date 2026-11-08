@@ -29,6 +29,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 PROFILE = "service-topology"
+DEFAULT_MODE = "base"
+MODES = ("base", "service-topology")
+# The profile changes exactly two base obligations; everything else in P1-P9 still applies.
+SUPERSEDED_BASE_OBLIGATIONS = ("P2.1", "P3.5")
 ST_RULES = {
     "ST-1": "ACIMA-S001",
     "ST-2": "ACIMA-S002",
@@ -661,6 +665,27 @@ class Topology:
                              rel, 0)
 
 
+def mode_error(root: Path, manifest: dict) -> str | None:
+    """Reject an ambiguous or contradictory mode declaration (a tool failure, not a finding)."""
+    if manifest.get("profile") != PROFILE:
+        return (f"manifest profile is {manifest.get('profile')!r}; expected {PROFILE!r}")
+    path = root / "acima.config.json"
+    if not path.is_file():
+        return ("service-topology requires acima.config.json declaring "
+                "\"mode\": \"service-topology\"")
+    try:
+        config = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return f"cannot read acima.config.json: {exc}"
+    mode = config.get("mode", DEFAULT_MODE)
+    if mode not in MODES:
+        return f"unknown mode {mode!r}; expected one of {', '.join(MODES)}"
+    if mode != PROFILE:
+        return (f"acima.config.json mode is {mode!r}; a service-topology manifest requires "
+                "mode: service-topology")
+    return None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="ACIMA service-topology checker")
     parser.add_argument("--root", default=".")
@@ -677,18 +702,25 @@ def main() -> int:
     if not topology.services:
         print("acima-topology: manifest declares no services", file=sys.stderr)
         return 2
+    error = mode_error(root, topology.config)
+    if error:
+        print(f"acima-topology: {error}", file=sys.stderr)
+        return 2
 
     findings = topology.run()
     if args.format == "json":
         print(json.dumps({"standard": topology.config.get("standard", "1.0.0"),
+                          "mode": PROFILE,
                           "profile": PROFILE,
+                          "supersedes": list(SUPERSEDED_BASE_OBLIGATIONS),
                           "findings": [finding.as_dict() for finding in findings]}, indent=2))
     else:
         for finding in findings:
             print(f"{finding.rule}  {finding.severity:<7} {finding.message}\n  {finding.path}:{finding.line}")
             if finding.evidence:
                 print(f"  {finding.evidence}")
-        print(f"\n{len(findings)} finding(s) in the {PROFILE} profile")
+        print(f"\n{len(findings)} finding(s) in the {PROFILE} profile; "
+              f"supersedes base {', '.join(SUPERSEDED_BASE_OBLIGATIONS)}")
     return 1 if findings else 0
 
 
