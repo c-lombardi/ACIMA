@@ -1,0 +1,56 @@
+{
+  "$schema": "./rules.schema.json",
+  "standard": "ACIMA",
+  "version": "1.0.0-draft.1",
+  "findingSchema": {
+    "rule": "ACIMA-<CATEGORY><NNN>",
+    "severity": "error | warning | info",
+    "message": "human readable, one sentence",
+    "path": "path relative to the analysis root",
+    "line": "1-based integer, 0 when the finding is file- or project-scoped",
+    "evidence": "the smallest source excerpt that proves the finding"
+  },
+  "categories": {
+    "D": "Dependency and structure: what may reference what",
+    "L": "Layering inside a module",
+    "C": "Contract shape and immutability",
+    "A": "Autonomy at runtime",
+    "G": "Governance and exception hygiene"
+  },
+  "levels": {
+    "L1": { "name": "Structural", "requires": ["D*", "L*", "G*"] },
+    "L2": { "name": "Immutable", "requires": ["L1", "C*"] },
+    "L3": { "name": "Autonomous", "requires": ["L2", "A*"] }
+  },
+  "rules": [
+    { "id": "ACIMA-D001", "severity": "error", "level": "L1", "title": "Implementation references another implementation", "summary": "A module implementation may never reference, import or link another module's implementation." },
+    { "id": "ACIMA-D002", "severity": "error", "level": "L1", "title": "Contracts reference an implementation", "summary": "A contracts unit must not depend on any implementation unit, including its own." },
+    { "id": "ACIMA-D003", "severity": "error", "level": "L1", "title": "Contracts reference another contracts unit", "summary": "Contracts must be independently consumable. Sharing types between contracts units requires the shared kernel." },
+    { "id": "ACIMA-D004", "severity": "error", "level": "L1", "title": "Contracts carry a third-party dependency", "summary": "Contracts may depend only on their language's core library and the ACIMA shared kernel." },
+    { "id": "ACIMA-D005", "severity": "error", "level": "L1", "title": "Circular module dependency", "summary": "The module dependency graph must be acyclic." },
+    { "id": "ACIMA-D006", "severity": "error", "level": "L1", "title": "Contracts reference the host or composition root", "summary": "Contracts must not know how they are hosted, wired or deployed." },
+    { "id": "ACIMA-D007", "severity": "error", "level": "L1", "title": "Shared kernel violation", "summary": "The shared kernel may hold only dependency-free value types; it must not reference modules or carry behaviour." },
+    { "id": "ACIMA-D008", "severity": "error", "level": "L1", "title": "Transitive implementation leak", "summary": "A reference must not deliver another module's implementation transitively." },
+    { "id": "ACIMA-D009", "severity": "error", "level": "L1", "title": "Access to another module's internals", "summary": "Non-contract types of a module must not be reachable from outside it." },
+    { "id": "ACIMA-L001", "severity": "error", "level": "L1", "title": "Domain references infrastructure", "summary": "A module's domain and application logic must not depend on its infrastructure or delivery mechanisms." },
+    { "id": "ACIMA-L002", "severity": "error", "level": "L1", "title": "Contracts reference a framework type", "summary": "Contracts must not expose hosting, transport, ORM or serialization framework types." },
+    { "id": "ACIMA-L003", "severity": "error", "level": "L1", "title": "Implementation type published outside the module", "summary": "Only contracts types may be public outside a module." },
+    { "id": "ACIMA-L004", "severity": "warning", "level": "L1", "title": "Module resolved through a service locator", "summary": "Modules must declare their dependencies explicitly; resolving peers at runtime hides coupling." },
+    { "id": "ACIMA-C001", "severity": "error", "level": "L2", "title": "Mutable contract state", "summary": "Contract members are set at construction and never mutated afterwards." },
+    { "id": "ACIMA-C002", "severity": "error", "level": "L2", "title": "Mutable collection exposure", "summary": "Contracts expose immutable or defensively copied collections, never shared mutable state." },
+    { "id": "ACIMA-C003", "severity": "error", "level": "L2", "title": "Behaviour in contracts", "summary": "Contracts carry data and validation only; no business logic, IO or orchestration." },
+    { "id": "ACIMA-C004", "severity": "error", "level": "L2", "title": "Ambient or non-deterministic state in contracts", "summary": "Contracts must not read clocks, generate identifiers, or touch static mutable state." },
+    { "id": "ACIMA-C005", "severity": "error", "level": "L2", "title": "Persistence type leak", "summary": "Contracts must not expose entities, sessions, queryables or database types." },
+    { "id": "ACIMA-C006", "severity": "error", "level": "L2", "title": "Untyped payload", "summary": "Contracts must be explicitly typed; object, dynamic, any or bare dictionaries are not contracts." },
+    { "id": "ACIMA-C007", "severity": "warning", "level": "L2", "title": "Contract cannot be constructed in one step", "summary": "A contract type must make its required state obvious and constructible atomically." },
+    { "id": "ACIMA-A001", "severity": "error", "level": "L3", "title": "Shared database ownership", "summary": "Each module owns its persistence; no other module reads or writes its schema." },
+    { "id": "ACIMA-A002", "severity": "warning", "level": "L3", "title": "Cross-module configuration key", "summary": "A module must not read another module's configuration keys." },
+    { "id": "ACIMA-A003", "severity": "error", "level": "L3", "title": "Cross-module mutable static state", "summary": "Modules must not communicate through shared mutable statics." },
+    { "id": "ACIMA-A004", "severity": "warning", "level": "L3", "title": "Version-lock coupling", "summary": "Consumers depend on a contracts version range, never on an implementation version." },
+    { "id": "ACIMA-G001", "severity": "error", "level": "L1", "title": "Undocumented exception", "summary": "Every waiver carries an owner, a reason, a scope and an expiry date." },
+    { "id": "ACIMA-G002", "severity": "error", "level": "L1", "title": "Expired waiver", "summary": "An expired waiver is a violation until it is renewed or removed." },
+    { "id": "ACIMA-G003", "severity": "warning", "level": "L2", "title": "Undocumented contract surface", "summary": "Every public contract type documents its meaning and its invariants." },
+    { "id": "ACIMA-G004", "severity": "error", "level": "L2", "title": "Unreviewed contract change", "summary": "A change to a published contracts surface must be captured in the versioned API baseline." },
+    { "id": "ACIMA-G005", "severity": "error", "level": "L1", "title": "Module without architecture tests", "summary": "Every module is covered by the enforceable rule set; undiscovered modules fail the run." }
+  ]
+}

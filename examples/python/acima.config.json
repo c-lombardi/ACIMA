@@ -1,0 +1,96 @@
+{
+  "standard": "1.0.0",
+  "language": "python",
+  "level": "L3",
+  "root": ".",
+  "units": [
+    {
+      "id": "shared-kernel",
+      "role": "shared-kernel",
+      "paths": [
+        "src/acima/shared_kernel"
+      ]
+    },
+    {
+      "id": "catalog.contracts",
+      "module": "catalog",
+      "role": "contracts",
+      "paths": [
+        "src/acima/catalog/contracts"
+      ]
+    },
+    {
+      "id": "catalog",
+      "module": "catalog",
+      "role": "implementation",
+      "paths": [
+        "src/acima/catalog/impl"
+      ]
+    },
+    {
+      "id": "orders.contracts",
+      "module": "orders",
+      "role": "contracts",
+      "paths": [
+        "src/acima/orders/contracts"
+      ]
+    },
+    {
+      "id": "orders",
+      "module": "orders",
+      "role": "implementation",
+      "paths": [
+        "src/acima/orders/impl"
+      ]
+    },
+    {
+      "id": "payments.contracts",
+      "module": "payments",
+      "role": "contracts",
+      "paths": [
+        "src/acima/payments/contracts"
+      ]
+    },
+    {
+      "id": "payments",
+      "module": "payments",
+      "role": "implementation",
+      "paths": [
+        "src/acima/payments/impl"
+      ]
+    },
+    {
+      "id": "host",
+      "role": "host",
+      "paths": [
+        "src/acima/host"
+      ]
+    },
+    {
+      "id": "namespace",
+      "role": "tooling",
+      "paths": [
+        "src/acima"
+      ]
+    },
+    {
+      "id": "tools",
+      "role": "tooling",
+      "paths": [
+        "tools"
+      ]
+    }
+  ],
+  "sharedKernel": "shared-kernel",
+  "exclude": [
+    "tests",
+    "violations",
+    "**/__pycache__/**"
+  ],
+  "budgets": {
+    "catalog": 0,
+    "payments": 1,
+    "orders": 3
+  },
+  "waivers": ".acima/waivers.json"
+}

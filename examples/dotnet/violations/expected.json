@@ -1,0 +1,85 @@
+{
+  "ACIMA-A001": [
+    "violations/a001_cross_sql.cs"
+  ],
+  "ACIMA-A003": [
+    "violations/a003_static.cs"
+  ],
+  "ACIMA-C001": [
+    "violations/c001_mutable.cs"
+  ],
+  "ACIMA-C002": [
+    "violations/c002_collection.cs"
+  ],
+  "ACIMA-C004": [
+    "violations/c004_ambient.cs"
+  ],
+  "ACIMA-C005": [
+    "violations/c005_persistence.cs"
+  ],
+  "ACIMA-C006": [
+    "violations/c006_any.cs"
+  ],
+  "ACIMA-D001": [
+    "violations/a003_use.cs",
+    "violations/d001_d009_impl.cs",
+    "violations/d005_cycle_a.cs",
+    "violations/d005_cycle_b.cs"
+  ],
+  "ACIMA-D002": [
+    "violations/d002_contracts_impl.cs"
+  ],
+  "ACIMA-D003": [
+    "violations/d003_contracts_contracts.cs"
+  ],
+  "ACIMA-D004": [
+    "violations/c005_persistence.cs",
+    "violations/d004_thirdparty.cs",
+    "violations/l002_framework.cs"
+  ],
+  "ACIMA-D005": [
+    "src/Orders/Orders/Orders.csproj",
+    "violations/d008_transitive.cs"
+  ],
+  "ACIMA-D006": [
+    "violations/d006_host.cs"
+  ],
+  "ACIMA-D007": [
+    "violations/d007_kernel.cs"
+  ],
+  "ACIMA-D008": [
+    "src/Catalog/Catalog.Contracts/Catalog.Contracts.csproj",
+    "src/Catalog/Catalog/Catalog.csproj",
+    "src/Orders/Orders.Contracts/Orders.Contracts.csproj",
+    "src/Orders/Orders/Orders.csproj",
+    "src/Payments/Payments.Contracts/Payments.Contracts.csproj",
+    "src/Payments/Payments/Payments.csproj"
+  ],
+  "ACIMA-D009": [
+    "violations/a003_use.cs",
+    "violations/d001_d009_impl.cs"
+  ],
+  "ACIMA-G001": [
+    "violations/waivers.json"
+  ],
+  "ACIMA-G002": [
+    "violations/waivers.json"
+  ],
+  "ACIMA-G003": [
+    "violations/c001_mutable.cs",
+    "violations/g003_undocumented.cs"
+  ],
+  "ACIMA-G005": [
+    "violations/g005_orphan.cs"
+  ],
+  "ACIMA-L001": [
+    "violations/l001_domain_db.cs"
+  ],
+  "ACIMA-L002": [
+    "violations/c005_persistence.cs",
+    "violations/l002_framework.cs"
+  ],
+  "ACIMA-L003": [
+    "src/Catalog/Catalog/CatalogModule.cs"
+  ]
+}

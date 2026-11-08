@@ -1,0 +1,7 @@
+{
+  "standard": "1.0.0",
+  "waivers": [
+    { "rule": "ACIMA-A001", "scope": "unit:catalog", "owner": "", "reason": "legacy report", "expires": "2030-01-01", "reviewedOn": "2026-01-05" },
+    { "rule": "ACIMA-D009", "scope": "unit:orders", "owner": "team-orders", "reason": "temporary", "expires": "2020-01-01", "reviewedOn": "2019-01-01" }
+  ]
+}

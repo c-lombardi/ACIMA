@@ -1,0 +1,16 @@
+# Build output
+bin/
+obj/
+node_modules/
+__pycache__/
+*.py[cod]
+*.user
+.vs/
+
+# Toolchain scratch
+.dotnet/
+.pytest_cache/
+
+# Logs and OS noise
+*.log
+.DS_Store

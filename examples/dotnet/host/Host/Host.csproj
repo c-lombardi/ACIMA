@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Acima.Host</RootNamespace>
+    <AssemblyName>Acima.Host</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Catalog/Catalog/Catalog.csproj" />
+    <ProjectReference Include="../../src/Orders/Orders/Orders.csproj" />
+    <ProjectReference Include="../../src/Payments/Payments/Payments.csproj" />
+    <ProjectReference Include="../../src/SharedKernel/SharedKernel.csproj" />
+  </ItemGroup>
+</Project>

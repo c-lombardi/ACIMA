@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Acima.SharedKernel</RootNamespace>
+    <AssemblyName>Acima.SharedKernel</AssemblyName>
+  </PropertyGroup>
+</Project>

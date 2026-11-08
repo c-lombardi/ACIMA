@@ -1,0 +1,14 @@
+{
+  "standard": "1.0.0",
+  "waivers": [
+    { "rule": "ACIMA-D001", "scope": "unit:orders" },
+    {
+      "rule": "ACIMA-C001",
+      "scope": "unit:legacy",
+      "owner": "team-legacy",
+      "reason": "The legacy adapter predates the standard and is scheduled for deletion.",
+      "expires": "2020-01-01",
+      "reviewedOn": "2019-01-01"
+    }
+  ]
+}

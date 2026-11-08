@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Acima.Orders.Contracts</RootNamespace>
+    <AssemblyName>Acima.Orders.Contracts</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../SharedKernel/SharedKernel.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Acima.Catalog</RootNamespace>
+    <AssemblyName>Acima.Catalog</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Catalog.Contracts/Catalog.Contracts.csproj" />
+    <ProjectReference Include="../../SharedKernel/SharedKernel.csproj" />
+  </ItemGroup>
+</Project>
