@@ -1,7 +1,8 @@
 # Rule catalog
 
-29 rules. Five categories. Every rule has a permanent id, a severity, a conformance level, a detection
-strategy and — in each language profile — a reference implementation.
+29 rules. Five categories. Every rule has a permanent id, a severity, a conformance level and a
+detection strategy. Each of the four implemented language profiles has a reference enforcer; Java
+is a documented profile only and has no reference enforcer in this revision.
 
 The machine-readable source of truth is [`tools/acima-spec/rules.json`](../../tools/acima-spec/rules.json).
 This catalog is its human-readable form; if they disagree, the JSON is authoritative.
@@ -113,7 +114,8 @@ blamed for the human's decision, and the rule gets disabled.
 ## Profile requirements outside the catalog
 
 Chapter 11 defines the service topology default as `ST-1`–`ST-12`. They are conformance requirements,
-not catalog rules: they have no `ACIMA-S*` ids and no enforcer support in this revision. A claim that
-includes the profile must say **manual** and cite the checklist — see
-[Conformance](../standard/08-conformance.md#88-service-topology-profile). Rule ids are assigned when
-a runner can produce findings, not before.
+not base-catalog rules, and use the profile namespace `ACIMA-S001`–`S012`. The runner is
+[`conformance/topology.py`](../../conformance/topology.py), which reads `acima.topology.json`,
+scans the tree and emits findings in the same shape as the language enforcers. A claim that includes
+the profile cites the JSON run, not a hand-completed checklist — see
+[Conformance](../standard/08-conformance.md#88-service-topology-profile).

@@ -38,7 +38,7 @@ is reported.
 - [ ] No implementation references another implementation (`D001`).
 - [ ] The module graph is acyclic (`D005`).
 - [ ] No reference leaks an implementation transitively (`D008`).
-- [ ] The shared kernel references nothing (`D007`).
+- [ ] If a legacy shared kernel is present, it references nothing (`D007`); new contracts do not reference it.
 - [ ] Domain and application code do not reference infrastructure (`L001`).
 - [ ] Contracts expose no framework or transport types (`L002`).
 - [ ] Modules receive peers through construction, not through a locator (`L004`).
@@ -91,7 +91,7 @@ enforcers in this repository fail when a suite finds zero files.
 - Repository: <name>
 - Standard: 1.0.0
 - Declared level: L2
-- Profile: <none | service-topology, manual, n/12>
+- Profile: <none | service-topology, automated, n/12>
 - Language profile: dotnet
 - Enforcer: tests/Acima.ArchTests
 - CI gate: <link to the required check>
@@ -128,20 +128,26 @@ problem to fix next. The levels exist so that:
 
 ## 8.8 Service topology profile
 
-The service topology profile in chapter 11 is the default for new systems and a set of twelve
-requirements, `ST-1`–`ST-12`. In this revision they are tested **manually**: there is no `ACIMA-S*` rule
-id and no reference enforcer for them. That is not a reason to omit them from a claim. A new
-repository reports it as:
+The service topology profile in chapter 11 is the default for new systems. Its twelve requirements,
+`ST-1`–`ST-12`, are implemented as `ACIMA-S001`–`ACIMA-S012` by
+[`conformance/topology.py`](../../conformance/topology.py). The runner reads `acima.topology.json`,
+scans the declared projects and sources, and is exercised by `conformance/test_topology.py` against a
+clean fixture and one that violates every item. A new repository reports it as:
 
 ```markdown
 - Base: L3 (machine-checked)
-- Profile: service-topology, manual, 12/12 on <date>
-- Evidence: services/ tree, contract dependency listings, domain coverage report
+- Profile: service-topology, automated, 12/12 on <date>
+- Evidence: acima.topology.json and the `conformance/topology.py` JSON artifact
 ```
 
-A claim that says `service-topology` without `manual` and a checklist result is overstating what the
-build enforces. The same rule as §8.6 applies: list what is not checked rather than hiding it.
+A claim that says `service-topology` without the JSON run is overstating what the build enforces. The
+S rules are profile rules outside the base catalog; they do not change the L1–L3 rule set. The runner
+checks declared evidence — the one-sentence responsibility, business-rule traceability, 100% coverage
+reports and the shared UI/API workflow tokens — so the manifest cannot silently drift from the tree.
+It does not prove semantic completeness: a team can still declare an incomplete rule list or a
+workflow that is not the product's real one. The same rule as §8.6 applies: list what is not checked
+rather than hiding it.
 
-When S-series rules and a runner exist, this section will require the same five pieces of evidence as
-§8.4: configuration, run, artefact, waiver report and pipeline. Until then, the evidence is the
-checklist plus the dependency listings it asks for.
+The evidence is the same as §8.4: the topology configuration, the run, the JSON artefact and the CI
+gate. The profile runner is invoked by `conformance/run.py`; a repository that adopts the profile adds
+that command to the same pull-request job as its language enforcer.

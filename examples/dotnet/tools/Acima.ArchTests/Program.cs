@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
@@ -31,6 +33,7 @@ internal sealed class Waiver
     public string? Reason { get; set; }
     public string? Expires { get; set; }
     public string? ReviewedOn { get; set; }
+    public string? Fingerprint { get; set; }
 }
 
 internal sealed class WaiverDocument
@@ -38,7 +41,7 @@ internal sealed class WaiverDocument
     public List<Waiver> Waivers { get; set; } = new();
 }
 
-internal sealed record Finding(string Rule, string Severity, string Message, string Path, int Line, string Evidence);
+internal sealed record Finding(string Rule, string Severity, string Message, string Path, int Line, string Evidence, string Fingerprint);
 
 internal sealed record Edge(string From, string To, string Path, int Line, string Evidence);
 
@@ -56,16 +59,22 @@ internal sealed class Enforcer
     private const string L001 = "ACIMA-L001";
     private const string L002 = "ACIMA-L002";
     private const string L003 = "ACIMA-L003";
+    private const string L004 = "ACIMA-L004";
     private const string C001 = "ACIMA-C001";
     private const string C002 = "ACIMA-C002";
+    private const string C003 = "ACIMA-C003";
     private const string C004 = "ACIMA-C004";
     private const string C005 = "ACIMA-C005";
     private const string C006 = "ACIMA-C006";
+    private const string C007 = "ACIMA-C007";
     private const string A001 = "ACIMA-A001";
+    private const string A002 = "ACIMA-A002";
     private const string A003 = "ACIMA-A003";
+    private const string A004 = "ACIMA-A004";
     private const string G001 = "ACIMA-G001";
     private const string G002 = "ACIMA-G002";
     private const string G003 = "ACIMA-G003";
+    private const string G004 = "ACIMA-G004";
     private const string G005 = "ACIMA-G005";
 
     private static readonly Dictionary<string, (string Severity, string Level)> Catalog = new(StringComparer.Ordinal)
@@ -74,18 +83,36 @@ internal sealed class Enforcer
         [D004] = ("error", "L1"), [D005] = ("error", "L1"), [D006] = ("error", "L1"),
         [D007] = ("error", "L1"), [D008] = ("error", "L1"), [D009] = ("error", "L1"),
         [L001] = ("error", "L1"), [L002] = ("error", "L1"), [L003] = ("error", "L1"),
-        [C001] = ("error", "L2"), [C002] = ("error", "L2"), [C004] = ("error", "L2"),
-        [C005] = ("error", "L2"), [C006] = ("error", "L2"),
-        [A001] = ("error", "L3"), [A003] = ("error", "L3"),
+        [L004] = ("warning", "L1"),
+        [C001] = ("error", "L2"), [C002] = ("error", "L2"), [C003] = ("error", "L2"),
+        [C004] = ("error", "L2"), [C005] = ("error", "L2"), [C006] = ("error", "L2"),
+        [C007] = ("warning", "L2"),
+        [A001] = ("error", "L3"), [A002] = ("warning", "L3"),
+        [A003] = ("error", "L3"), [A004] = ("warning", "L3"),
         [G001] = ("error", "L1"), [G002] = ("error", "L1"),
-        [G003] = ("warning", "L2"), [G005] = ("error", "L1"),
+        [G003] = ("warning", "L2"), [G004] = ("error", "L2"),
+        [G005] = ("error", "L1"),
+    };
+
+    private static readonly Dictionary<string, string> NotExecuted = new(StringComparer.Ordinal)
+    {
+        [C003] = "behaviour versus validation is a semantic judgement",
+        [C007] = "constructor completeness needs symbol and API analysis",
+        [L004] = "service-locator APIs are framework-specific",
+        [A002] = "configuration APIs differ per ecosystem",
+        [A004] = "version-lock coupling is visible only across published packages",
+        [G004] = "an API baseline needs a per-language surface format",
     };
 
     private static readonly Dictionary<string, int> Rank = new() { ["L1"] = 1, ["L2"] = 2, ["L3"] = 3 };
 
+    public static IReadOnlyDictionary<string, (string Severity, string Level)> CatalogRules => Catalog;
+    public static IReadOnlyDictionary<string, string> NotExecutedRules => NotExecuted;
+    public int SourceFiles => _files.Count;
+
     private static readonly Regex PropertySetter = new(@"\{[^{}]*\bset\s*;[^{}]*\}", RegexOptions.Compiled);
     private static readonly Regex PublicField = new(@"^\s*public\s+(?!static\b|const\b|readonly\b)[\w<>,\[\]\.\?]+\s+\w+\s*;", RegexOptions.Multiline | RegexOptions.Compiled);
-    private static readonly Regex CollectionMember = new(@"\b(?:List|IList|ICollection|Dictionary|HashSet)<", RegexOptions.Compiled);
+    private static readonly Regex CollectionMember = new(@"\b(?:List|IList|ICollection|Dictionary|HashSet)\s*<|\b[A-Za-z_][A-Za-z0-9_.<>?]*\s*\[\s*\]", RegexOptions.Compiled);
     private static readonly Regex Ambient = new(@"\bDateTime(?:Offset)?\.(?:Now|UtcNow)\b|\bGuid\.NewGuid\s*\(|\bnew\s+Random\s*\(|\bEnvironment\.(?:MachineName|TickCount|GetEnvironmentVariable)|TimeProvider\.System", RegexOptions.Compiled);
     private static readonly Regex Persistence = new(@"\bDbContext\b|\bDbSet\s*<|\bIDbConnection\b|\bSqlConnection\b|\bNpgsql\w*\b|\bDapper\b|Microsoft\.EntityFrameworkCore", RegexOptions.Compiled);
     private static readonly Regex Untyped = new(@"\bobject\??\s+\w+|\bdynamic\b", RegexOptions.Compiled);
@@ -192,7 +219,12 @@ internal sealed class Enforcer
     {
         foreach (var path in _files.Keys.OrderBy(k => k, StringComparer.Ordinal).ToList())
         {
+            var declared = UnitForPathByPrefix(path);
             var unit = UnitForPath(path, _files[path]);
+            if (declared is not null && unit is not null && declared.Id != unit.Id)
+            {
+                Add(G005, $"Role override changes {path} from {declared.Id} to {unit.Id}.", path, 1, "acima-unit override");
+            }
             if (unit is null)
             {
                 Add(G005, $"Source file is not part of any declared unit: {path}", path, 1, string.Empty);
@@ -202,6 +234,37 @@ internal sealed class Enforcer
 
             _fileUnits[path] = unit;
         }
+
+        foreach (var unit in _cfg.Units)
+        {
+            foreach (var prefix in unit.Paths)
+            {
+                if (Excluded(prefix))
+                {
+                    Add(G005, $"Declared unit {unit.Id} excludes its own source: {prefix}.", prefix, 1, "exclude overrides unit mapping");
+                }
+            }
+        }
+    }
+
+    private Unit? UnitForPathByPrefix(string path)
+    {
+        Unit? best = null;
+        var bestLength = -1;
+        foreach (var unit in _cfg.Units)
+        {
+            foreach (var prefix in unit.Paths)
+            {
+                var clean = prefix.TrimEnd('/');
+                if ((path.Equals(clean, StringComparison.Ordinal) || path.StartsWith(clean + "/", StringComparison.Ordinal)) && clean.Length > bestLength)
+                {
+                    best = unit;
+                    bestLength = clean.Length;
+                }
+            }
+        }
+
+        return best;
     }
 
     private Unit? UnitForPath(string path, string text)
@@ -294,8 +357,31 @@ internal sealed class Enforcer
                 {
                     Add(D007, $"shared kernel project has a PackageReference: {include}", project, line, include);
                 }
+
+                var packageTarget = UnitForPackage(include);
+                if (packageTarget is not null && packageTarget.Id != unit.Id)
+                {
+                    _edges.Add(new Edge(unit.Id, packageTarget.Id, project, line, include));
+                    CheckEdge(unit, packageTarget, project, line, include);
+                }
             }
         }
+    }
+
+    private Unit? UnitForPackage(string package)
+    {
+        var normalized = package.Replace(".", string.Empty).Replace("-", string.Empty).ToLowerInvariant();
+        var wantsContracts = normalized.Contains("contracts", StringComparison.Ordinal);
+        foreach (var unit in _cfg.Units)
+        {
+            if (string.IsNullOrWhiteSpace(unit.Module)) continue;
+            var module = unit.Module.Replace(".", string.Empty).Replace("-", string.Empty).ToLowerInvariant();
+            if (!normalized.Contains(module, StringComparison.Ordinal)) continue;
+            if (wantsContracts && unit.Role == "contracts") return unit;
+            if (!wantsContracts && unit.Role == "implementation") return unit;
+        }
+
+        return null;
     }
 
     private void CheckUsings()
@@ -699,6 +785,12 @@ internal sealed class Enforcer
                 continue;
             }
 
+            if (string.IsNullOrWhiteSpace(waiver.Fingerprint))
+            {
+                Add(G001, $"Waiver for {waiver.Rule} has no finding fingerprint; a broad waiver can hide future findings.", _cfg.Waivers, index + 1, string.Empty);
+                continue;
+            }
+
             active.Add(waiver);
         }
 
@@ -707,7 +799,12 @@ internal sealed class Enforcer
         _findings.RemoveAll(finding =>
         {
             if (!_fileUnits.TryGetValue(finding.Path, out var unit)) return false;
-            return active.Any(waiver => waiver.Rule == finding.Rule && waiver.Scope == "unit:" + unit.Id);
+            return active.Any(waiver => waiver.Rule == finding.Rule
+                && waiver.Fingerprint == finding.Fingerprint
+                && (waiver.Scope == "unit:" + unit.Id
+                    || waiver.Scope == "module:" + unit.Module
+                    || (waiver.Scope!.StartsWith("path:", StringComparison.Ordinal)
+                        && GlobMatch(waiver.Scope[5..], finding.Path))));
         });
     }
 
@@ -716,7 +813,20 @@ internal sealed class Enforcer
         if (!Catalog.TryGetValue(rule, out var entry)) return;
         if (Rank[entry.Level] > Rank[_level]) return;
         var trimmed = evidence.Length > 200 ? evidence[..200] : evidence;
-        _findings.Add(new Finding(rule, entry.Severity, message, path, Math.Max(line, 1), trimmed));
+        _findings.Add(new Finding(rule, entry.Severity, message, path, Math.Max(line, 1), trimmed,
+            FingerprintFor(rule, path, trimmed)));
+    }
+
+    private static string FingerprintFor(string rule, string path, string evidence)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes($"{rule}\0{path}\0{evidence}"));
+        return "sha256:" + Convert.ToHexString(bytes)[..16].ToLowerInvariant();
+    }
+
+    private static bool GlobMatch(string pattern, string value)
+    {
+        var regex = "^" + Regex.Escape(pattern).Replace("\\*", ".*").Replace("\\?", ".") + "$";
+        return Regex.IsMatch(value, regex);
     }
 
     private Unit? UnitById(string id) => _cfg.Units.FirstOrDefault(u => u.Id == id);
@@ -805,8 +915,14 @@ internal static class Program
         {
             var cfg = Load(rootPath, config ?? "acima.config.json");
             var effective = (level ?? cfg.Level).ToUpperInvariant();
-            var findings = new Enforcer(rootPath, cfg, effective).Run();
-            Print(findings, format, cfg.Standard, effective);
+            if (!new[] { "L1", "L2", "L3" }.Contains(effective, StringComparer.Ordinal))
+            {
+                Console.Error.WriteLine($"acima: unknown level {effective}; expected L1, L2 or L3");
+                return 2;
+            }
+            var enforcer = new Enforcer(rootPath, cfg, effective);
+            var findings = enforcer.Run();
+            Print(findings, format, cfg.Standard, effective, enforcer.SourceFiles);
             return findings.Any(f => f.Severity == "error") ? 1 : 0;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException)
@@ -873,14 +989,23 @@ internal static class Program
         return cfg ?? throw new JsonException($"config {name} is empty");
     }
 
-    private static void Print(IReadOnlyList<Finding> findings, string format, string standard, string level)
+    private static void Print(IReadOnlyList<Finding> findings, string format, string standard, string level,
+        int sourceFiles = 0)
     {
         if (format == "json")
         {
+            var execution = Enforcer.CatalogRules.OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                .ToDictionary(
+                    pair => pair.Key,
+                    pair => (object)(Enforcer.NotExecutedRules.TryGetValue(pair.Key, out var reason)
+                        ? new { executed = false, reason }
+                        : new { executed = true }));
             var payload = new
             {
                 standard,
                 level,
+                sourceFiles,
+                execution,
                 findings = findings.Select(f => new
                 {
                     rule = f.Rule,
@@ -889,6 +1014,7 @@ internal static class Program
                     path = f.Path,
                     line = f.Line,
                     evidence = f.Evidence,
+                    fingerprint = f.Fingerprint,
                 }),
             };
             Console.WriteLine(JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true }));

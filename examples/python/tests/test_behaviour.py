@@ -9,24 +9,46 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from acima.catalog.contracts import ProductView  # noqa: E402
+from acima.catalog.contracts import (  # noqa: E402
+    Currency as CatalogCurrency,
+    Money as CatalogMoney,
+    ProductId as CatalogProductId,
+    ProductView,
+)
 from acima.catalog.impl import CatalogModule  # noqa: E402
-from acima.orders.contracts import OrderLine, PlaceOrder  # noqa: E402
+from acima.customers.contracts import (  # noqa: E402
+    CustomerId as CustomersCustomerId,
+    CustomerView,
+)
+from acima.customers.impl import CustomersModule  # noqa: E402
+from acima.orders.contracts import (  # noqa: E402
+    Currency,
+    Money,
+    OrderLine,
+    PlaceOrder,
+    ProductId,
+)
 from acima.orders.impl import OrdersModule  # noqa: E402
 from acima.payments.impl import PaymentsModule  # noqa: E402
-from acima.shared_kernel import Currency, Money, ProductId  # noqa: E402
 
 
 def eur(amount: str) -> Money:
     return Money(Decimal(amount), Currency.EUR)
 
 
+def catalog_eur(amount: str) -> CatalogMoney:
+    return CatalogMoney(Decimal(amount), CatalogCurrency.EUR)
+
+
 class OrderingTests(unittest.TestCase):
     def setUp(self) -> None:
         self.catalog = CatalogModule()
+        self.customers = CustomersModule()
         self.payments = PaymentsModule()
-        self.orders = OrdersModule(self.catalog.reader(), self.payments.gateway())
-        self.catalog.add(ProductView(ProductId("p-1"), "Beans", eur("12.50")))
+        self.orders = OrdersModule(
+            self.catalog.reader(), self.customers.reader(), self.payments.gateway())
+        self.catalog.add(ProductView(CatalogProductId("p-1"), "Beans", catalog_eur("12.50")))
+        self.customers.add(CustomerView(CustomersCustomerId("c-1"), "Ada", "ada@example.test"))
 
     def test_places_an_order_and_publishes_one_event(self) -> None:
         result = self.orders.place(
@@ -41,8 +63,14 @@ class OrderingTests(unittest.TestCase):
         )
         self.assertEqual(getattr(result, "reason", None), "out_of_stock")
 
+    def test_unknown_customer_is_rejected_not_raised(self) -> None:
+        result = self.orders.place(
+            PlaceOrder("missing", (OrderLine(ProductId("p-1"), eur("12.50"), 1),))
+        )
+        self.assertEqual(getattr(result, "reason", None), "customer_not_found")
+
     def test_declined_payment_is_rejected(self) -> None:
-        self.catalog.add(ProductView(ProductId("p-2"), "Machine", eur("5000.00")))
+        self.catalog.add(ProductView(CatalogProductId("p-2"), "Machine", catalog_eur("5000.00")))
         result = self.orders.place(
             PlaceOrder("c-1", (OrderLine(ProductId("p-2"), eur("5000.00"), 1),))
         )

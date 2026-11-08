@@ -38,7 +38,9 @@ A tool emits findings as JSON. This is the only shape a conformance gate accepts
 | `line` | integer | yes | 1-based; `0` for unit- or file-scoped findings |
 | `evidence` | string | no | smallest source excerpt that proves it |
 
-Tools may add fields; they may not omit these.
+Tools may add fields; they may not omit these. Profile requirements use the same object with the
+`ACIMA-SNNN` namespace (chapter 11). S rules sit outside the base catalog and are produced by the
+profile runner, not by a language enforcer; they do not change the L1–L3 rule set.
 
 ## 7.3 The tool interface
 
@@ -67,7 +69,6 @@ suites and compare them against the same expected findings.
   "level": "L2",
   "root": ".",
   "units": [
-    { "id": "shared-kernel", "role": "shared-kernel", "paths": ["src/acima/shared_kernel"] },
     { "id": "catalog.contracts", "module": "catalog", "role": "contracts", "paths": ["src/acima/catalog/contracts"] },
     { "id": "catalog", "module": "catalog", "role": "implementation", "paths": ["src/acima/catalog/impl"] },
     { "id": "orders.contracts", "module": "orders", "role": "contracts", "paths": ["src/acima/orders/contracts"] },
@@ -76,7 +77,6 @@ suites and compare them against the same expected findings.
     { "id": "payments", "module": "payments", "role": "implementation", "paths": ["src/acima/payments/impl"] },
     { "id": "host", "role": "host", "paths": ["src/acima/host"] }
   ],
-  "sharedKernel": "shared-kernel",
   "exclude": ["tests", "violations", "**/__pycache__/**"],
   "budgets": { "catalog": 0, "payments": 1, "orders": 3 },
   "rules": { "ACIMA-L004": "warning" }

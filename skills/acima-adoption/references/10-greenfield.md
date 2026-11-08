@@ -30,18 +30,19 @@ import statement.
 |---|---|---|
 | `<module>.contracts` | immutable messages, commands, queries, views, events, the capability interface, local value types | language core only |
 | `<module>` | aggregates, services, adapters, persistence | its own contracts, **other modules' contracts** |
-| `shared-kernel` | legacy compatibility value types (`Money`, ids); not referenced by default contracts | language core only |
 | `host` | composition root, configuration, transport, DI wiring | everything |
 
-Nothing else. A "common" or "shared" project beyond the kernel is the first violation, even
-before it has a name that sounds like one.
+Nothing else. There is no shared kernel in the default: `Money` and identifiers live in the
+contracts project that publishes them and are duplicated where another contract needs the same
+shape. A "common" or "shared" project is the first violation, even before it has a name that sounds
+like one.
 
 ## Minimal skeletons
 
 ### C#
 
 ```csharp
-// Kernel/Money.cs — readonly struct, validation in the factory, no IO.
+// Catalog.Contracts/Money.cs — contract-owned; duplicate the shape in Orders.Contracts, never share it.
 public readonly struct Money
 {
     private Money(decimal amount, Currency currency) { Amount = amount; Currency = currency; }
@@ -61,29 +62,54 @@ public interface IOrders { PlaceOrderResult Place(PlaceOrder command); }
 `.csproj` shape: contracts reference nothing; value types are declared locally. Implementations
 reference contracts; the host references implementations and is the only project that wires them. If a
 `PackageReference` appears in a contracts project, `ACIMA-D004` is already true even if nothing imports
-it yet. The skeletons below use the legacy kernel to match the reference examples; under the default,
-declare those types in the contracts project.
+it yet.
 
 ### TypeScript
 
 ```ts
+// orders/contracts/values.ts — owned here; duplicate the shape where another contract needs it.
+export type Currency = 'EUR' | 'USD';
+export class Money {
+  constructor(readonly amount: number, readonly currency: Currency) {}
+  times(quantity: number): Money { return new Money(this.amount * quantity, this.currency); }
+}
+export interface ProductId { readonly value: string; }
+```
+
+```ts
 // orders/contracts/index.ts
-import type { Money, ProductId } from '../../shared-kernel/money.ts';
+import type { Money, ProductId } from './values.ts';
 
 export interface OrderLine { readonly productId: ProductId; readonly unitPrice: Money; readonly quantity: number; }
 export interface PlaceOrder { readonly customerId: string; readonly lines: readonly OrderLine[]; }
 export interface Orders { place(command: PlaceOrder): OrderSummary | OrderRejected; }
 ```
 
-`readonly` on every member, `readonly T[]` for collections, and no imports at all; the snippet's kernel import is the legacy shape, so under the default declare those types locally.
-`import type` keeps the runtime graph honest.
+`readonly` on every member, `readonly T[]` for collections, and imports only from this contract
+package. `Money` and `ProductId` are declared in `values.ts`; another module that needs the same
+shape declares its own. `import type` keeps the runtime graph honest.
 
 ### Python
 
 ```python
+# orders/contracts/values.py — owned here; duplicate the shape where another contract needs it.
+from dataclasses import dataclass
+from decimal import Decimal
+
+@dataclass(frozen=True, slots=True)
+class Money:
+    amount: Decimal
+    currency: str
+
+@dataclass(frozen=True, slots=True)
+class ProductId:
+    value: str
+```
+
+```python
 # orders/contracts/__init__.py
 from dataclasses import dataclass
-from acima.shared_kernel import Money, ProductId
+from .values import Money, ProductId
 
 @dataclass(frozen=True, slots=True)
 class OrderLine:
@@ -97,17 +123,39 @@ class PlaceOrder:
     lines: tuple[OrderLine, ...]
 ```
 
-Frozen dataclasses, tuples rather than lists, no imports from `impl/`, no framework imports.
+Frozen dataclasses, tuples rather than lists, imports only from this contract package, no `impl/`,
+no framework imports.
 
 ### Go
+
+```go
+// internal/orders/contracts/values.go — owned here; duplicate the shape where another contract needs it.
+package orderscontracts
+
+import "errors"
+
+type ProductID string
+
+type Money struct {
+    amountMinor int64
+    currency    string
+}
+
+func NewMoney(amountMinor int64, currency string) (Money, error) {
+    if amountMinor < 0 || currency == "" {
+        return Money{}, errors.New("invalid money")
+    }
+    return Money{amountMinor: amountMinor, currency: currency}, nil
+}
+```
 
 ```go
 // internal/orders/contracts/contracts.go
 package orderscontracts
 
 type OrderLine struct {
-    ProductID sharedkernel.ProductID
-    UnitPrice sharedkernel.Money
+    ProductID ProductID
+    UnitPrice Money
     Quantity  int
 }
 
@@ -117,9 +165,9 @@ type PlaceOrder struct {
 }
 ```
 
-Go has no immutability keyword: value semantics plus no pointer fields is the contract shape.
-`internal/` gives you the boundary for free; the enforcer checks that the *contracts* package
-does not reach back into an implementation.
+Go has no immutability keyword: value semantics plus unexported fields and no pointer fields is
+the contract shape. `internal/` gives you the boundary for free; the enforcer checks that the
+*contracts* package does not reach back into an implementation.
 
 ## acima.config.json
 
@@ -133,7 +181,6 @@ file at the repository root and commit it with the skeleton, not later.
   "language": "typescript",
   "level": "L3",
   "units": [
-    { "id": "shared-kernel", "role": "shared-kernel", "paths": ["src/shared-kernel"] },
     { "id": "catalog.contracts", "module": "catalog", "role": "contracts", "paths": ["src/catalog/contracts"] },
     { "id": "catalog", "module": "catalog", "role": "implementation", "paths": ["src/catalog/impl"] },
     { "id": "host", "role": "host", "paths": ["src/host"] }
@@ -182,7 +229,7 @@ the team will assume is decorative.
 
 - [ ] every module has a contracts unit and an implementation unit
 - [ ] the module graph is acyclic, and the enforcer proves it
-- [ ] contracts import nothing (`ST-5`); the kernel is legacy
+- [ ] contracts import nothing and declare their value types locally (`ST-5`)
 - [ ] `acima.config.json` is committed and declares L3
 - [ ] the waiver file exists and is empty
 - [ ] CI fails on a deliberately introduced violation (verified, then reverted)

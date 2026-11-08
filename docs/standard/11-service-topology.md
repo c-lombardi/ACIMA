@@ -11,9 +11,8 @@ game session or a billing run; the obligations are the same.
 
 > **Status.** This is the default architecture for new systems. The base module rules remain the
 > compatibility path for existing systems; their shared-kernel allowance is legacy. These requirements
-> are verified by the manual checklist in §11.10 in this revision. They do not yet have `ACIMA-S*` rule
-> ids or enforcer support. A conformance claim MUST say **manual** and cite the checklist, per §8.8.
-> Rule ids are assigned when a runner can produce findings, not before (§7).
+> are checked by [`conformance/topology.py`](../../conformance/topology.py) as `ACIMA-S001`–`S012`,
+> against the manifest described in §11.10. A conformance claim MUST cite the JSON run, per §8.8.
 
 ## 11.1 The service is the unit of ownership
 
@@ -218,8 +217,53 @@ The test is not size; it is whether a single product outcome owns the decisions 
 
 ## 11.10 Profile conformance checklist
 
-A repository claims the profile only when every item has evidence. The claim is manual in this
-revision.
+A repository claims the profile only when every item passes the runner. The runner reads
+`acima.topology.json`; the manifest is the declared evidence, and the runner checks it against the
+project files, source imports, coverage reports and workflow sources.
+
+```bash
+python3 conformance/topology.py --root . --config acima.topology.json --format json
+```
+
+The manifest names the services, their layers and contracts, domain tests, coverage reports,
+business rules, workflows, vendor seams, inter-service contracts, boundary transforms and deployment
+packages. The minimal shape is:
+
+```json
+{
+  "standard": "1.0.0",
+  "profile": "service-topology",
+  "services": [{
+    "name": "Orders",
+    "path": "services/Orders",
+    "layers": [
+      { "name": "Api", "path": "services/Orders/Orders.Api", "contracts": "services/Orders/Orders.Api.Contracts" },
+      { "name": "Application", "path": "services/Orders/Orders.Application", "contracts": "services/Orders/Orders.Application.Contracts" },
+      { "name": "Domain", "path": "services/Orders/Orders.Domain", "contracts": null },
+      { "name": "Host", "path": "services/Orders/Orders.Host" }
+    ],
+    "domain": "services/Orders/Orders.Domain",
+    "domainTests": "services/Orders/Orders.Domain.Tests",
+    "coverage": { "line": 100, "branch": 100, "report": "services/Orders/coverage.json" },
+    "businessRules": [{ "id": "ORD-1", "test": "Order_rejects_empty_lines" }]
+  }],
+  "interService": [],
+  "boundaries": [{
+    "caller": "Orders.Api",
+    "callee": "Orders.Application",
+    "callerContract": "services/Orders/Orders.Api.Contracts",
+    "calleeContract": "services/Orders/Orders.Application.Contracts",
+    "transform": "services/Orders/Orders.Api/PlaceOrderMapper.cs"
+  }],
+  "deploymentPackages": []
+}
+```
+
+Add `workflow` when the service has a UI, and `vendors` for each `<Service>.<Vendor>` seam. The
+runner checks that every declared business rule appears in the domain source and in a named test,
+that the coverage report is 100% line/branch, and that both UI and API sources mention every declared
+state, transition event and error. Those declarations are review evidence, not a substitute for
+review; the runner's job is to keep them from drifting.
 
 - [ ] **ST-1** One directory per service under `services/`, named for the service.
 - [ ] **ST-2** Each service has one responsibility, stated in its README in one sentence.
@@ -240,14 +284,17 @@ revision.
 - [ ] **ST-12** No deployment or vendor SDK appears outside an adapter or the host; services are
       described independently of their infrastructure.
 
+Each item maps directly to the profile finding namespace: `ST-1` → `ACIMA-S001`, through `ST-12` →
+`ACIMA-S012`. The checklist is the human-readable form of the same rule set.
+
 Claim format:
 
 ```markdown
 ## ACIMA conformance
 
 - Base: L3 (machine-checked)
-- Profile: service-topology, manual, 12/12 on <date>
-- Evidence: services/ tree, contract dependency listings, domain coverage report
+- Profile: service-topology, automated, 12/12 on <date>
+- Evidence: acima.topology.json and the `conformance/topology.py` JSON artifact
 ```
 
 ## 11.11 Anti-patterns
@@ -272,7 +319,7 @@ The profile refines, and in two places tightens, the base standard:
 | P3.5: contracts may reference the shared kernel (legacy compatibility) | ST-5 (default): contracts reference nothing; the kernel is not permitted inside contracts |
 | A module has one contracts unit | A service has one contracts unit **per outward-facing layer**, each zero-reference |
 | Boundary crossings are module-to-module | Boundary crossings are layer-to-layer **and** service-to-service, each with an explicit transform |
-| Conformance is L1–L3, machine-checked | Profile conformance is manual until S-series rules and runners exist (§8.8) |
+| Conformance is L1–L3, machine-checked | Profile conformance is automated by `conformance/topology.py` as `ACIMA-S001`–`S012` (§8.8) |
 
 Everything else in the base standard still applies: immutability, acyclic dependencies, no
 implementation references, owned persistence, owned configuration and owned data. The profile is an

@@ -2,18 +2,22 @@
 
 Python 3.12 · `src/` layout · packages per unit · `pytest` as the gate.
 
-> **Compatibility example.** The tree below is the legacy shape with a shared kernel. Under the
-default, contracts reference nothing; see [section 6](#6-service-topology-profile).
+> **Reference example.** The tree below is the compiled example in `examples/python`. It uses the
+default: every contracts package imports nothing and owns its value types; see
+[section 6](#6-service-topology-profile).
 
 ## 1. Layout
 
 ```
 src/acima/
-  shared_kernel/money.py            shared-kernel
   catalog/contracts/__init__.py     contracts   (__all__ is the surface)
+  catalog/contracts/values.py       contract-owned Money and ids
   catalog/impl/*.py                 implementation
+  customers/contracts/__init__.py   contracts
+  customers/contracts/values.py     contract-owned customer view and id
+  customers/impl/*.py               implementation
   orders/contracts/__init__.py      contracts
-  orders/impl/*.py                  implementation  → catalog.contracts, payments.contracts
+  orders/impl/*.py                  implementation  → catalog.contracts, customers.contracts, payments.contracts
   payments/contracts/__init__.py    contracts
   payments/impl/*.py                implementation
   host/main.py                      host
@@ -53,14 +57,14 @@ root_packages = ["acima"]
 [[tool.importlinter.contracts]]
 name = "Contracts are leaves"
 type = "forbidden"
-source_modules = ["acima.catalog.contracts", "acima.orders.contracts", "acima.payments.contracts"]
-forbidden_modules = ["acima.catalog.impl", "acima.orders.impl", "acima.payments.impl", "acima.host"]
+source_modules = ["acima.catalog.contracts", "acima.orders.contracts", "acima.customers.contracts", "acima.payments.contracts"]
+forbidden_modules = ["acima.catalog.impl", "acima.orders.impl", "acima.customers.impl", "acima.payments.impl", "acima.host"]
 
 [[tool.importlinter.contracts]]
 name = "No implementation coupling"
 type = "forbidden"
 source_modules = ["acima.orders.impl"]
-forbidden_modules = ["acima.catalog.impl", "acima.payments.impl"]
+forbidden_modules = ["acima.catalog.impl", "acima.customers.impl", "acima.payments.impl"]
 ```
 
 **Reference enforcer (this repository):** `tools/acima_arch.py`, driven by `pytest`.

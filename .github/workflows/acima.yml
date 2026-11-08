@@ -1,0 +1,61 @@
+name: ACIMA conformance
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Python behaviour tests
+        working-directory: examples/python
+        run: python3 -m unittest discover -s tests -p 'test_*.py'
+
+      - name: TypeScript behaviour tests
+        working-directory: examples/typescript
+        run: node --test tests/*.test.mjs
+
+      - name: Go tests
+        working-directory: examples/go
+        run: go test ./...
+
+      - name: .NET build, host, and gallery
+        working-directory: examples/dotnet
+        run: |
+          dotnet build host/Host/Host.csproj --nologo -v q
+          dotnet run --project tools/Acima.ArchTests -- --root . --verify
+
+      - name: Full conformance suite
+        run: python3 conformance/run.py --artifacts acima-artifacts
+
+      - name: Evidence report
+        run: python3 tools/acima.py report --root examples/python --format markdown > acima-report.md
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: acima-evidence
+          path: |
+            acima-report.md
+            acima-artifacts/

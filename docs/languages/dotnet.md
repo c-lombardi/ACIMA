@@ -2,21 +2,21 @@
 
 `net8.0` · C# 12 · one solution, one project per unit.
 
-> **Compatibility example.** The tree below is the legacy shape with a shared kernel. Under the
-default, contracts reference nothing; see [section 6](#6-service-topology-profile).
+> **Reference example.** The tree below is the compiled example in `examples/dotnet`. It uses the
+default: every contracts project imports nothing and owns its value types; see
+[section 6](#6-service-topology-profile).
 
 ## 1. Layout
 
 ```
 examples/dotnet/
   Directory.Build.props            net8.0, nullable, implicit usings
-  src/SharedKernel/                shared-kernel   no references, no packages
-  src/Catalog/Catalog.Contracts/   contracts       → nothing (default); example uses SharedKernel
-  src/Catalog/Catalog/             implementation  → Catalog.Contracts, SharedKernel
-  src/Orders/Orders.Contracts/     contracts       → nothing (default); example uses SharedKernel
+  src/Catalog/Catalog.Contracts/   contracts       → nothing (owns Money, ProductId)
+  src/Catalog/Catalog/             implementation  → Catalog.Contracts
+  src/Orders/Orders.Contracts/     contracts       → nothing (owns Money, ids)
   src/Orders/Orders/               implementation  → Orders.Contracts, Catalog.Contracts, Payments.Contracts
-  src/Payments/Payments.Contracts/ contracts       → nothing (default); example uses SharedKernel
-  src/Payments/Payments/           implementation  → Payments.Contracts, SharedKernel
+  src/Payments/Payments.Contracts/ contracts       → nothing (owns Money, PaymentId)
+  src/Payments/Payments/           implementation  → Payments.Contracts
   host/Host/                       host            → every implementation
   tools/Acima.ArchTests/           tooling         the rule runner (no packages)
   violations/                      gallery         deliberately broken sources, never compiled
@@ -72,7 +72,7 @@ public void Contracts_must_have_no_third_party_dependencies() =>
     typeof(Acima.Catalog.Contracts.ProductView).Assembly
         .GetReferencedAssemblies()
         .Select(a => a.Name!)
-        .Where(n => n is not "System.Runtime" and not "System.Private.CoreLib" and not "Acima.SharedKernel")
+        .Where(n => n is not "System.Runtime" and not "System.Private.CoreLib")
         .Should().BeEmpty();
 ```
 

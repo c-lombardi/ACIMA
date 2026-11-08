@@ -1,24 +1,23 @@
 // Package paymentscontracts is Payments' public surface: a port, a request and a result.
+// It imports nothing outside the standard library.
 package paymentscontracts
-
-import "acima.example/internal/sharedkernel"
 
 // PaymentRequest asks the gateway to authorize an amount for an order.
 type PaymentRequest struct {
-	OrderID    sharedkernel.OrderID
-	Amount     sharedkernel.Money
+	OrderID    OrderID
+	Amount     Money
 	CustomerID string
 }
 
 // Authorization is the gateway's answer.
 type Authorization struct {
 	Approved  bool
-	PaymentID sharedkernel.PaymentID
+	PaymentID PaymentID
 	Reference string
 }
 
 // Gateway is the capability Payments promises.
 type Gateway interface {
 	Authorize(req PaymentRequest) (Authorization, error)
-	Refund(id sharedkernel.PaymentID, amount sharedkernel.Money) error
+	Refund(id PaymentID, amount Money) error
 }

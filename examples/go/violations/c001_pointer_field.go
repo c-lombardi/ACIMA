@@ -3,9 +3,9 @@
 // acima-unit: catalog.contracts
 package catalogcontracts
 
-import "acima.example/internal/sharedkernel"
+import catalogcontracts "acima.example/internal/catalog/contracts"
 
 // Draft exposes a pointer, so any consumer can rewrite the price.
 type Draft struct {
-	Price *sharedkernel.Money
+	Price *catalogcontracts.Money
 }

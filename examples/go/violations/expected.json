@@ -47,12 +47,22 @@
     "violations/d007_kernel.go"
   ],
   "ACIMA-D008": [
-    "internal/catalog/contracts/contracts.go",
-    "internal/catalog/impl/module.go",
-    "internal/orders/contracts/contracts.go",
     "internal/orders/impl/module.go",
-    "internal/payments/contracts/contracts.go",
-    "internal/payments/impl/module.go"
+    "violations/a003_use.go",
+    "violations/d002_impl.go",
+    "violations/d006_host.go"
+  ],
+  "ACIMA-D009": [
+    "violations/a003_use.go",
+    "violations/d001_d009_impl.go",
+    "violations/d005_cycle_a.go",
+    "violations/d005_cycle_b.go"
+  ],
+  "ACIMA-G001": [
+    "violations/waivers.json"
+  ],
+  "ACIMA-G002": [
+    "violations/waivers.json"
   ],
   "ACIMA-G003": [
     "violations/g003_undocumented.go"

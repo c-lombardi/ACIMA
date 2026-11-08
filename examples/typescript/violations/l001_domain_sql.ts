@@ -1,4 +1,4 @@
 // acima-unit: catalog
-import { prisma } from 'zod';
+import { PrismaClient } from '@prisma/client';
 
-export const load = async () => prisma.query('select 1');
+export const load = async () => new PrismaClient().$queryRaw`select 1`;

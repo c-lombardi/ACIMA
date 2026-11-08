@@ -171,14 +171,30 @@ def propose_dotnet_units(project: Path) -> list[dict]:
     return units[:16]
 
 
+def has_direct_sources(directory: Path) -> bool:
+    return any(path.is_file() and path.suffix.lower() in SOURCE_EXTENSIONS
+               for path in directory.iterdir())
+
+
 def propose_directory_units(project: Path) -> list[dict]:
-    bases = [base for base in (project / "src", project / "internal", project / "packages")
+    bases = [base for base in (project / "src", project / "internal", project / "packages",
+                              project / "app", project / "apps", project / "services",
+                              project / "lib", project / "modules")
              if base.is_dir()]
     if not bases:
         bases = [project]
     units: list[dict] = []
     seen_paths: set[str] = set()
     for base in bases:
+        # A source root often contains one namespace directory (for example
+        # src/acima/catalog, src/acima/orders). Descend through that wrapper so the
+        # modules, not the namespace, become the proposed units.
+        while base.is_dir() and not has_direct_sources(base):
+            children = [child for child in sorted(base.iterdir())
+                        if child.is_dir() and child.name not in PRUNE and not child.name.startswith(".")]
+            if len(children) != 1:
+                break
+            base = children[0]
         if not base.is_dir():
             continue
         for child in sorted(base.iterdir()):
@@ -232,25 +248,30 @@ def unit_for_path(path: str, units: list[dict]) -> dict | None:
 
 def waiver_stub(findings: list[dict], units: list[dict], days: int = 90) -> dict:
     today = date.today()
-    grouped: dict[tuple[str, str], int] = {}
+    seen: set[tuple[str, str]] = set()
+    waivers = []
     for finding in findings:
         rule = finding.get("rule")
-        unit = unit_for_path(finding.get("path", ""), units)
-        if not rule or unit is None:
+        path = finding.get("path", "")
+        fingerprint = finding.get("fingerprint")
+        if not rule or not path or not fingerprint:
             continue
-        key = (rule, unit["id"])
-        grouped[key] = grouped.get(key, 0) + 1
-
-    waivers = []
-    for (rule, unit_id), count in sorted(grouped.items()):
+        unit = unit_for_path(path, units)
+        scope = f"unit:{unit['id']}" if unit else f"path:{path}"
+        key = (scope, fingerprint)
+        if key in seen:
+            continue
+        seen.add(key)
         waivers.append({
             "rule": rule,
-            "scope": f"unit:{unit_id}",
+            "scope": scope,
+            "fingerprint": fingerprint,
             "owner": "unassigned",
-            "reason": f"baseline: {count} pre-existing finding(s) in {unit_id}",
+            "reason": f"baseline: {path}:{finding.get('line', 1)} — {finding.get('message', rule)}",
             "expires": (today + timedelta(days=days)).isoformat(),
             "reviewedOn": today.isoformat(),
         })
+    waivers.sort(key=lambda waiver: (waiver["rule"], waiver["scope"], waiver["fingerprint"]))
     return {"standard": "1.0.0-draft.1", "waivers": waivers}
 
 
@@ -501,6 +522,11 @@ def check_target(project: Path, report: Report, manifest: dict) -> tuple[list[di
                         waiver for waiver in waivers
                         if str(waiver.get("expires", ""))[:10] < date.today().isoformat()
                     ]
+                    unhashed = [
+                        waiver for waiver in waivers
+                        if str(waiver.get("expires", ""))[:10] >= date.today().isoformat()
+                        and not str(waiver.get("fingerprint", "")).strip()
+                    ]
                     unassigned = [
                         waiver for waiver in waivers
                         if str(waiver.get("owner", "")).strip().lower() == "unassigned"
@@ -513,6 +539,10 @@ def check_target(project: Path, report: Report, manifest: dict) -> tuple[list[di
                         report.add("GOV-003", "fail",
                                    f"{len(expired)} expired waiver(s)",
                                    "renew deliberately with the owner, or fix the violation")
+                    elif unhashed:
+                        report.add("GOV-003", "fail",
+                                   f"{len(unhashed)} active waiver(s) have no finding fingerprint",
+                                   "regenerate the baseline with --write-waivers; broad waivers hide new findings")
                     else:
                         report.add("GOV-003", "pass",
                                    f"{len(waivers)} active waiver(s), none expired")
@@ -521,14 +551,14 @@ def check_target(project: Path, report: Report, manifest: dict) -> tuple[list[di
                                    f"{len(unassigned)} waiver(s) still owned by 'unassigned'",
                                    "replace with real names before the first gate is merged")
     else:
-        if total < 10:
+        if total == 0:
             report.mode = "greenfield"
             report.add("TGT-003", "pass",
-                       f"no config and {total} source file(s) (mode: greenfield)")
+                       "no config and no source files (mode: greenfield)")
         else:
             report.mode = "brownfield"
             report.add("TGT-003", "pass",
-                       f"no config and {total} source file(s) (mode: brownfield)")
+                       f"no config and {total} existing source file(s) (mode: brownfield)")
 
         report.proposed_units = propose_units(project, report.language)
         if report.proposed_units:
@@ -609,7 +639,7 @@ def build_next_steps(report: Report, project: Path, manifest: dict,
 
     if report.mode == "greenfield":
         steps = [
-            "Create the shared kernel, then the first two contracts, then their implementations.",
+            "Create the first two contracts with their own value types, then their implementations.",
             "Write acima.config.json and an empty waiver file in the same commit.",
             "Wire the enforcer into CI before the second module exists.",
             "Declare L3 and keep it: nothing is fighting you yet.",

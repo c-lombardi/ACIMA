@@ -6,32 +6,66 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from acima.catalog.contracts import ProductView
+from acima.catalog.contracts import (
+    Currency as CatalogCurrency,
+    Money as CatalogMoney,
+    ProductId as CatalogProductId,
+    ProductView,
+)
 from acima.catalog.impl import CatalogModule
-from acima.orders.contracts import OrderLine, PlaceOrder
+from acima.customers.contracts import CustomerId as CustomersCustomerId, CustomerView
+from acima.customers.impl import CustomersModule
+from acima.orders.contracts import (
+    Currency as OrderCurrency,
+    Money as OrderMoney,
+    OrderLine,
+    PlaceOrder,
+    ProductId as OrderProductId,
+)
 from acima.orders.impl import OrdersModule
 from acima.payments.impl import PaymentsModule
-from acima.shared_kernel import Currency, Money, ProductId
 
 
-def build() -> tuple[CatalogModule, OrdersModule, PaymentsModule]:
+def build() -> tuple[CatalogModule, CustomersModule, OrdersModule, PaymentsModule]:
     """Wire the object graph explicitly. No container, no globals, no discovery."""
     catalog = CatalogModule()
+    customers = CustomersModule()
     payments = PaymentsModule()
-    orders = OrdersModule(catalog=catalog.reader(), payments=payments.gateway())
-    return catalog, orders, payments
+    orders = OrdersModule(
+        catalog=catalog.reader(),
+        customers=customers.reader(),
+        payments=payments.gateway(),
+    )
+    return catalog, customers, orders, payments
 
 
 def main() -> None:
-    catalog, orders, _payments = build()
-    catalog.add(ProductView(ProductId("p-1"), "Espresso beans", Money(Decimal("12.50"), Currency.EUR)))
-    catalog.add(ProductView(ProductId("p-2"), "Filter papers", Money(Decimal("3.20"), Currency.EUR)))
+    catalog, customers, orders, _payments = build()
+    customers.add(CustomerView(CustomersCustomerId("c-1"), "Ada Lovelace", "ada@example.test"))
+    catalog.add(ProductView(
+        CatalogProductId("p-1"),
+        "Espresso beans",
+        CatalogMoney(Decimal("12.50"), CatalogCurrency.EUR),
+    ))
+    catalog.add(ProductView(
+        CatalogProductId("p-2"),
+        "Filter papers",
+        CatalogMoney(Decimal("3.20"), CatalogCurrency.EUR),
+    ))
 
     command = PlaceOrder(
         customer_id="c-1",
         lines=(
-            OrderLine(ProductId("p-1"), Money(Decimal("12.50"), Currency.EUR), 2),
-            OrderLine(ProductId("p-2"), Money(Decimal("3.20"), Currency.EUR), 1),
+            OrderLine(
+                OrderProductId("p-1"),
+                OrderMoney(Decimal("12.50"), OrderCurrency.EUR),
+                2,
+            ),
+            OrderLine(
+                OrderProductId("p-2"),
+                OrderMoney(Decimal("3.20"), OrderCurrency.EUR),
+                1,
+            ),
         ),
     )
     result = orders.place(command)

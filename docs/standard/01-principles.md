@@ -4,7 +4,7 @@ Thirteen principles. Each states an obligation, the reasoning behind it, and the
 requirements — that make it fail a build. The principles are ordered so that each one is only achievable because of the ones before it.
 
 P1–P9 are the base standard. P10–P13 belong to the service topology profile in
-[chapter 11](11-service-topology.md); they are checked manually in this revision.
+[chapter 11](11-service-topology.md); they are checked by the profile runner as `ACIMA-S001`–`S012`.
 
 | # | Principle | Enforced by |
 |---|-----------|-------------|
@@ -17,10 +17,10 @@ P1–P9 are the base standard. P10–P13 belong to the service topology profile 
 | P7 | [Independent Evolution](#p7-independent-evolution) | `A001`–`A004` `G004` |
 | P8 | [Executable Governance](#p8-executable-governance) | `G001`–`G005` and the harness contract |
 | P9 | [Explicit Exceptions](#p9-explicit-exceptions) | `G001` `G002` |
-| P10 | [Service-Aligned Topology](#p10-service-aligned-topology) | `ST-1`–`ST-3` `ST-7` (profile, manual) |
-| P11 | [Layer Contract Independence](#p11-layer-contract-independence) | `ST-4` `ST-6` (profile, manual) |
-| P12 | [Absolute Contract Isolation](#p12-absolute-contract-isolation) | `ST-5` (profile, manual) |
-| P13 | [Product-Oriented Services](#p13-product-oriented-services) | `ST-11` `ST-12` (profile, manual) |
+| P10 | [Service-Aligned Topology](#p10-service-aligned-topology) | `ST-1`–`ST-3` `ST-7` (profile, automated) |
+| P11 | [Layer Contract Independence](#p11-layer-contract-independence) | `ST-4` `ST-6` (profile, automated) |
+| P12 | [Absolute Contract Isolation](#p12-absolute-contract-isolation) | `ST-5` (profile, automated) |
+| P13 | [Product-Oriented Services](#p13-product-oriented-services) | `ST-11` `ST-12` (profile, automated) |
 
 ---
 
@@ -54,8 +54,9 @@ A module is a unit of ownership before it is a unit of code. It owns:
 
 The `Common`/`Shared`/`Core` project. It starts as five extension methods, becomes the de-facto
 domain model, and ends up referenced by everything — at which point ownership is diffuse and every
-change is a coordination event. In ACIMA the only cross-module unit that may exist is a
-dependency-free **shared kernel** (P3), and it is deliberately hostile to growth (`D007`).
+change is a coordination event. In the default there is no cross-module unit at all: value types live
+in the contract that publishes them. A legacy **shared kernel** remains only as a migration allowance
+(P3.5), and it is deliberately hostile to growth (`D007`).
 
 ---
 
@@ -312,8 +313,8 @@ explicit exception to an enforced rule is a decision; a comment saying "we know,
 
 ### Obligations
 
-- **P9.1** Every waiver MUST name the rule it waives, the unit or path it applies to, an accountable
-  owner, a written justification and an expiry date (`G001`).
+- **P9.1** Every waiver MUST name the rule it waives, the unit or path it applies to, the exact
+  finding fingerprint, an accountable owner, a written justification and an expiry date (`G001`).
 - **P9.2** An expired waiver MUST fail the build (`G002`). Renewing is an explicit act.
 - **P9.3** A waiver MUST be as narrow as possible: one rule, one unit, one reason. Repository-wide
   rule disabling is not a waiver and MUST NOT be used.
@@ -328,6 +329,7 @@ explicit exception to an enforced rule is a decision; a comment saying "we know,
 {
   "rule": "ACIMA-D009",
   "scope": "unit:reports",
+  "fingerprint": "sha256:1f0c…",
   "owner": "team-reporting",
   "reason": "The reporting module reads Orders' read-model view until the analytics migration lands in Q2.",
   "expires": "2027-03-31",
@@ -336,8 +338,10 @@ explicit exception to an enforced rule is a decision; a comment saying "we know,
 }
 ```
 
-The value is not the file. The value is that the exception appears in a report with an owner and a
-date, so it is *impossible to forget* and *impossible to hide*. The most common outcome of writing
+The fingerprint is what makes the exception finding-specific: a unit or path alone would suppress
+future findings in that scope. The value is not the file. The value is that the exception appears in
+a report with an owner, a date and an exact finding, so it is *impossible to forget* and
+*impossible to hide*. The most common outcome of writing
 one of these is that the author solves the problem instead.
 
 ---

@@ -1,19 +1,28 @@
-"""Orders' public surface: one command, one view, one provided port, two events."""
+"""Orders' public surface: one command, one view, one provided port, two events.
+
+The value types below are Orders' own. A caller maps its identifiers and money into
+this project at the boundary; it does not pass another module's contract types through.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Protocol, Sequence
 
-from acima.shared_kernel import Money, OrderId, ProductId
+from .values import Currency, Money, OrderId, PaymentId, ProductId
 
 __all__ = [
+    "Currency",
+    "Money",
+    "OrderId",
     "OrderLine",
     "OrderPlaced",
     "OrderRejected",
     "OrderRejectedReason",
     "OrderSummary",
     "OrdersReader",
+    "PaymentId",
     "PlaceOrder",
+    "ProductId",
 ]
 
 
@@ -76,6 +85,7 @@ class OrderRejectedReason:
     """The closed set of rejection reasons. A contract, not an enum, so it can gain values safely."""
 
     OUT_OF_STOCK = "out_of_stock"
+    CUSTOMER_NOT_FOUND = "customer_not_found"
     PAYMENT_DECLINED = "payment_declined"
 
 

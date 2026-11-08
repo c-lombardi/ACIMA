@@ -27,7 +27,7 @@ a convention**. That is all it is. Everything else is detail.
 | **Module** | A business capability that owns its data and its code | A folder named after a team |
 | **Contracts unit** | The small, stable set of types a module shows to the outside | Public classes, DTOs scattered everywhere |
 | **Implementation unit** | Everything the module keeps to itself | Anything someone imported "just this once" |
-| **Shared kernel** | A tiny set of value types everybody may use (`Money`, ids) | The `Common` project |
+| **Contract-owned value types** | `Money` and ids declared by the contract that publishes them | A shared kernel or `Common` project |
 | **Enforcer** | A test that fails the build when a boundary is crossed | An architecture diagram in Confluence |
 
 Analogy that works for mixed audiences: contracts are a **published API**, implementations are
@@ -84,7 +84,7 @@ does not have yet.
 |---|---|
 | "This is microservices." | It is a modular monolith with enforceable seams. Services are an option later, not a requirement. |
 | "Contracts are DTOs for the API layer." | Contracts are the module's published surface for *all* consumers: HTTP, jobs, other modules. |
-| "The shared kernel is a shared library." | It is a value-type vocabulary with no behaviour and no dependencies. It is deliberately hard to extend. |
+| "We need a shared kernel for `Money` and ids." | No: each contracts unit owns the value types it publishes. A shared kernel is a legacy compatibility allowance, not the default. |
 | "The enforcer is a lint rule; I can suppress it." | A waiver is a reviewed, expiring exception with your name on it. Suppression without a waiver fails CI. |
 | "We need to fix everything before turning it on." | No: baseline, waive, gate, ratchet. Fixing everything first is how this fails. |
 | "Contracts should have validation and business rules." | Contracts carry data and shape validation; decisions live in the implementation (`C003`). |

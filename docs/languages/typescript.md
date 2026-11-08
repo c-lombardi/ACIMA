@@ -2,15 +2,16 @@
 
 Node 22+ · TypeScript 5 · ESM · one directory per unit, one package entry point per contracts unit.
 
-> **Compatibility example.** The tree below is the legacy shape with a shared kernel. Under the
-default, contracts reference nothing; see [section 6](#6-service-topology-profile).
+> **Reference example.** The tree below is the compiled example in `examples/typescript`. It uses the
+default: every contracts package imports nothing and owns its value types; see
+[section 6](#6-service-topology-profile).
 
 ## 1. Layout
 
 ```
 src/
-  shared-kernel/money.ts             shared-kernel
   catalog/contracts/index.ts         contracts   (public entry point)
+  catalog/contracts/values.ts        contract-owned Money and ids
   catalog/impl/*.ts                  implementation
   orders/contracts/index.ts          contracts
   orders/impl/*.ts                   implementation   → catalog/contracts, payments/contracts
@@ -24,7 +25,7 @@ violations/                          fixtures (excluded from the build)
 The boundary is **the import specifier**. Consumers may only import:
 
 - `@acima/catalog-contracts` (the alias for `src/catalog/contracts/index.ts`), or
-- the shared kernel.
+- the contracts entry point of another module.
 
 Everything under `*/impl/` is off limits, and the lint rule plus the alias make the forbidden import
 awkward to write, which is the TypeScript equivalent of a compiler error.
@@ -60,7 +61,6 @@ awkward to write, which is the TypeScript equivalent of a compiler error.
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "paths": {
-      "@acima/shared-kernel": ["./src/shared-kernel/index.ts"],
       "@acima/catalog-contracts": ["./src/catalog/contracts/index.ts"],
       "@acima/orders-contracts": ["./src/orders/contracts/index.ts"],
       "@acima/payments-contracts": ["./src/payments/contracts/index.ts"]

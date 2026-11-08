@@ -58,7 +58,7 @@ preflight reports it so you do not promise a gate you cannot run.
 Classification rules, stated plainly:
 
 - **adopting** — `acima.config.json` exists.
-- **greenfield** — no config, fewer than 10 source files.
+- **greenfield** — no config and no source files.
 - **brownfield** — no config, 10 or more source files.
 
 The threshold is a heuristic, not a doctrine. A 400-line prototype with no users is greenfield

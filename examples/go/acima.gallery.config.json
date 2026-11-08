@@ -6,13 +6,6 @@
   "modulePath": "acima.example",
   "units": [
     {
-      "id": "shared-kernel",
-      "role": "shared-kernel",
-      "paths": [
-        "internal/sharedkernel"
-      ]
-    },
-    {
       "id": "catalog.contracts",
       "module": "catalog",
       "role": "contracts",
@@ -73,9 +66,15 @@
       "paths": [
         "tools"
       ]
+    },
+    {
+      "id": "shared-kernel",
+      "role": "shared-kernel",
+      "paths": [
+        "violations/d007_kernel.go"
+      ]
     }
   ],
-  "sharedKernel": "shared-kernel",
   "exclude": [
     "tests"
   ],

@@ -1,11 +1,10 @@
 {
-  "_comment": "Copy to <repo>/acima.config.json. Replace the units with your own; every source file must belong to exactly one. Contract units never reference implementations.",
+  "_comment": "Copy to <repo>/acima.config.json. Replace the units with your own; every source file must belong to exactly one. Contract units never reference implementations and own their value types.",
   "standard": "1.0.0-draft.1",
   "language": "dotnet",
   "level": "L1",
   "root": ".",
   "units": [
-    { "id": "shared-kernel", "role": "shared-kernel", "paths": ["src/SharedKernel"] },
     { "id": "catalog.contracts", "module": "catalog", "role": "contracts", "paths": ["src/Catalog/Catalog.Contracts"] },
     { "id": "catalog", "module": "catalog", "role": "implementation", "paths": ["src/Catalog/Catalog"] },
     { "id": "orders.contracts", "module": "orders", "role": "contracts", "paths": ["src/Orders/Orders.Contracts"] },

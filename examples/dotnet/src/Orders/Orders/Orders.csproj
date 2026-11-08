@@ -7,6 +7,5 @@
     <ProjectReference Include="../Orders.Contracts/Orders.Contracts.csproj" />
     <ProjectReference Include="../../Catalog/Catalog.Contracts/Catalog.Contracts.csproj" />
     <ProjectReference Include="../../Payments/Payments.Contracts/Payments.Contracts.csproj" />
-    <ProjectReference Include="../../SharedKernel/SharedKernel.csproj" />
   </ItemGroup>
 </Project>

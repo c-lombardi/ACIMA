@@ -1,8 +1,7 @@
 import type {
-  PaymentAuthorization, PaymentGateway, PaymentRequest,
+  Money, PaymentAuthorization, PaymentGateway, PaymentId, PaymentRequest,
 } from '../contracts/index.ts';
-import type { Money, PaymentId } from '../../shared-kernel/money.ts';
-import { paymentId } from '../../shared-kernel/money.ts';
+import { paymentId } from '../contracts/index.ts';
 
 /** A fake gateway: deterministic, testable, and replaceable without touching Payments. */
 export class FakeGateway implements PaymentGateway {

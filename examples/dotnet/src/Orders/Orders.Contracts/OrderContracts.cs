@@ -1,5 +1,3 @@
-using Acima.SharedKernel;
-
 namespace Acima.Orders.Contracts;
 
 /// <summary>One product in one order, with the price captured at placement time.</summary>

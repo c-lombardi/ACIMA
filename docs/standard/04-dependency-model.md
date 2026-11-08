@@ -41,7 +41,6 @@ undeclared module cannot hide.
   "language": "python",
   "root": ".",
   "units": [
-    { "id": "shared-kernel", "role": "shared-kernel", "paths": ["src/acima/shared_kernel"] },
     { "id": "catalog.contracts", "module": "catalog", "role": "contracts", "paths": ["src/acima/catalog/contracts"] },
     { "id": "catalog", "module": "catalog", "role": "implementation", "paths": ["src/acima/catalog/impl"] },
     { "id": "orders.contracts", "module": "orders", "role": "contracts", "paths": ["src/acima/orders/contracts"] },

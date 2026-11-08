@@ -8,6 +8,5 @@
     <ProjectReference Include="../../src/Catalog/Catalog/Catalog.csproj" />
     <ProjectReference Include="../../src/Orders/Orders/Orders.csproj" />
     <ProjectReference Include="../../src/Payments/Payments/Payments.csproj" />
-    <ProjectReference Include="../../src/SharedKernel/SharedKernel.csproj" />
   </ItemGroup>
 </Project>

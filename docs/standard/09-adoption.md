@@ -68,8 +68,8 @@ ACIMA's module boundaries should match ownership, or they will be renegotiated b
 - one module, one owning team (or one team owning several modules — but never one module owned by
   several);
 - contracts changes are reviewed by the owner, and by consumers only when breaking;
-- the shared kernel is owned by an architecture group or by whoever is willing to be its bottleneck —
-  this is intentional friction;
+- a legacy shared kernel, where one still exists during migration, is owned by an architecture group
+  or by whoever is willing to be its bottleneck — this is intentional friction;
 - the waiver file has named owners, which means it doubles as a map of who owes what.
 
 If two teams cannot agree on a boundary, the boundary is wrong, and no rule will fix it. Fix the

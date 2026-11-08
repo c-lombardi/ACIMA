@@ -53,11 +53,12 @@ analyzer. This revision has 23; six need human or framework-specific review.
 
 **Ratchet** — the adoption mechanism: baseline the findings, gate on new ones, reduce monotonically.
 
-**Shared kernel** — the small set of dependency-free value types every module may use (`Money`,
-ids). Not a utility library; admission is deliberately hard.
+**Shared kernel** — a legacy compatibility unit of dependency-free value types (`Money`, ids).
+It is not the default: each contracts project declares and owns the value types it publishes. Not
+a utility library; admission is deliberately hard.
 
 **Unit** — any declared piece of the architecture: a contracts unit, an implementation unit, the
-kernel, the host. The config declares units; the enforcer classifies files by them.
+host, or a legacy kernel. The config declares units; the enforcer classifies files by them.
 
 **Waiver** — a recorded, owned, expiring exception to one rule for one unit. Not a suppression:
 it carries a person, a reason, a scope, an expiry and a review date.

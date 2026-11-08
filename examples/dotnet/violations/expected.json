@@ -48,12 +48,11 @@
     "violations/d007_kernel.cs"
   ],
   "ACIMA-D008": [
-    "src/Catalog/Catalog.Contracts/Catalog.Contracts.csproj",
-    "src/Catalog/Catalog/Catalog.csproj",
-    "src/Orders/Orders.Contracts/Orders.Contracts.csproj",
     "src/Orders/Orders/Orders.csproj",
-    "src/Payments/Payments.Contracts/Payments.Contracts.csproj",
-    "src/Payments/Payments/Payments.csproj"
+    "violations/a003_use.cs",
+    "violations/d002_contracts_impl.cs",
+    "violations/d006_host.cs",
+    "violations/d008_transitive.cs"
   ],
   "ACIMA-D009": [
     "violations/a003_use.cs",

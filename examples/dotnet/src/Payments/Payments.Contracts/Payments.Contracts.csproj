@@ -4,6 +4,5 @@
     <AssemblyName>Acima.Payments.Contracts</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../SharedKernel/SharedKernel.csproj" />
   </ItemGroup>
 </Project>

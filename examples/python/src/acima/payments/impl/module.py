@@ -3,8 +3,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from acima.payments.contracts import PaymentAuthorized, PaymentRequest
-from acima.shared_kernel import Currency, Money
+from acima.payments.contracts import Currency, Money, PaymentAuthorized, PaymentRequest
 
 from .gateway import FakeGateway
 

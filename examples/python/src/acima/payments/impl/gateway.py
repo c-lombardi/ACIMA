@@ -6,12 +6,12 @@ from decimal import Decimal
 from typing import Dict, Set
 
 from acima.payments.contracts import (
+    Money,
     PaymentAuthorized,
     PaymentDeclined,
     PaymentId,
     PaymentRequest,
 )
-from acima.shared_kernel import Money
 
 
 class FakeGateway:

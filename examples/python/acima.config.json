@@ -5,13 +5,6 @@
   "root": ".",
   "units": [
     {
-      "id": "shared-kernel",
-      "role": "shared-kernel",
-      "paths": [
-        "src/acima/shared_kernel"
-      ]
-    },
-    {
       "id": "catalog.contracts",
       "module": "catalog",
       "role": "contracts",
@@ -25,6 +18,22 @@
       "role": "implementation",
       "paths": [
         "src/acima/catalog/impl"
+      ]
+    },
+    {
+      "id": "customers.contracts",
+      "module": "customers",
+      "role": "contracts",
+      "paths": [
+        "src/acima/customers/contracts"
+      ]
+    },
+    {
+      "id": "customers",
+      "module": "customers",
+      "role": "implementation",
+      "paths": [
+        "src/acima/customers/impl"
       ]
     },
     {
@@ -81,7 +90,6 @@
       ]
     }
   ],
-  "sharedKernel": "shared-kernel",
   "exclude": [
     "tests",
     "violations",
@@ -90,7 +98,8 @@
   "budgets": {
     "catalog": 0,
     "payments": 1,
-    "orders": 3
+    "orders": 4,
+    "customers": 0
   },
   "waivers": ".acima/waivers.json"
 }

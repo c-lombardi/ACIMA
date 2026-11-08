@@ -25,8 +25,8 @@
   "rules": [
     { "id": "ACIMA-D001", "severity": "error", "level": "L1", "title": "Implementation references another implementation", "summary": "A module implementation may never reference, import or link another module's implementation." },
     { "id": "ACIMA-D002", "severity": "error", "level": "L1", "title": "Contracts reference an implementation", "summary": "A contracts unit must not depend on any implementation unit, including its own." },
-    { "id": "ACIMA-D003", "severity": "error", "level": "L1", "title": "Contracts reference another contracts unit", "summary": "Contracts must be independently consumable. Sharing types between contracts units requires the shared kernel." },
-    { "id": "ACIMA-D004", "severity": "error", "level": "L1", "title": "Contracts carry a third-party dependency", "summary": "Contracts may depend only on their language's core library and the ACIMA shared kernel." },
+    { "id": "ACIMA-D003", "severity": "error", "level": "L1", "title": "Contracts reference another contracts unit", "summary": "Contracts must be independently consumable. Declare local value types or carry identity instead of importing another contracts unit." },
+    { "id": "ACIMA-D004", "severity": "error", "level": "L1", "title": "Contracts carry a third-party dependency", "summary": "Contracts may depend only on the language's core library. Third-party packages and framework types belong in implementations or adapters." },
     { "id": "ACIMA-D005", "severity": "error", "level": "L1", "title": "Circular module dependency", "summary": "The module dependency graph must be acyclic." },
     { "id": "ACIMA-D006", "severity": "error", "level": "L1", "title": "Contracts reference the host or composition root", "summary": "Contracts must not know how they are hosted, wired or deployed." },
     { "id": "ACIMA-D007", "severity": "error", "level": "L1", "title": "Shared kernel violation", "summary": "The shared kernel may hold only dependency-free value types; it must not reference modules or carry behaviour." },

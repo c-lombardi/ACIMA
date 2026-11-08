@@ -7,7 +7,6 @@ import (
 	"errors"
 
 	paymentscontracts "acima.example/internal/payments/contracts"
-	"acima.example/internal/sharedkernel"
 )
 
 // FakeGateway is a deterministic gateway for development and tests.
@@ -35,13 +34,13 @@ func (g *FakeGateway) Authorize(req paymentscontracts.PaymentRequest) (paymentsc
 	}
 	return paymentscontracts.Authorization{
 		Approved:  true,
-		PaymentID: sharedkernel.PaymentID(token()),
+		PaymentID: paymentscontracts.PaymentID(token()),
 		Reference: "ref-" + token(),
 	}, nil
 }
 
 // Refund implements the port.
-func (g *FakeGateway) Refund(id sharedkernel.PaymentID, amount sharedkernel.Money) error {
+func (g *FakeGateway) Refund(id paymentscontracts.PaymentID, amount paymentscontracts.Money) error {
 	if id == "" {
 		return errors.New("refund needs a payment id")
 	}

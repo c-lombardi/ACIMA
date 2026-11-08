@@ -1,6 +1,6 @@
 # acima-unit: orders.contracts
 """Violation C001: mutable contract state."""
-from acima.shared_kernel import Money
+from acima.orders.contracts import Money
 
 
 class PlaceOrderDraft:

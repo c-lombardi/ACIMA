@@ -6,6 +6,17 @@ ACIMA defines how to build a system out of modules that own their behaviour, exp
 immutable contracts, and can be changed or extracted without touching their consumers — and how to
 make a build fail when that stops being true.
 
+## Start here
+
+| Need | Read |
+|---|---|
+| See ACIMA working in five minutes | [Quickstart](start/quickstart.md) |
+| Understand the before/after value | [Executable before/after](guides/before-after.md) |
+| Apply it to an existing system | [Brownfield adoption](start/brownfield.md) |
+| Know what is verified vs proposed | [Capability status](status.md) |
+| Make the investment case | [For engineering leaders](guides/engineering-leadership.md) |
+| Give an agent the constraints | [AI coding agents](guides/ai-agents.md) |
+
 ## Read in this order
 
 | # | Chapter | You will learn |
@@ -31,7 +42,7 @@ make a build fail when that stops being true.
 - [Architecture tests](guides/architecture-tests.md) and [analyzers](guides/analyzers-and-linters.md)
 - [Agent skill](../skills/acima-adoption/SKILL.md) — applying and auditing ACIMA with a coding agent
 - [Review and decisions](guides/review-and-decisions.md) — faster reviews, auditable AI assistance, narrow scopes and fewer side effects
-- [Service topology (default)](standard/11-service-topology.md) — the product-oriented service and layer model, with a language section in every profile
+- [Service topology (default)](standard/11-service-topology.md) — the product-oriented service and layer model, with executable ST-1–ST-12 checks and a language section in every profile
 
 ## The shortest possible summary
 

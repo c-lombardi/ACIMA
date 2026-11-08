@@ -4,6 +4,7 @@
     {
       "rule": "ACIMA-D001",
       "scope": "unit:orders",
+      "fingerprint": "sha256:copy-the-fingerprint-from-the-matching-finding",
       "owner": "name.surname@example.com",
       "reason": "Compatibility shim while orders moves off catalog internals; removal tracked in ORD-412.",
       "expires": "2027-02-06",

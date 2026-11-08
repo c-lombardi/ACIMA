@@ -1,5 +1,4 @@
 using Acima.Catalog.Contracts;
-using Acima.SharedKernel;
 
 namespace Acima.Catalog;
 

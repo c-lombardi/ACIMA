@@ -1,13 +1,11 @@
-// Package sharedkernel holds the tiny set of value types every module may use.
-// It is a leaf: it imports nothing but the standard library.
-package sharedkernel
+package paymentscontracts
 
 import (
 	"errors"
 	"fmt"
 )
 
-// Currency is the closed set of currencies the shop trades in.
+// Currency is the closed set of currencies this contract accepts.
 type Currency string
 
 const (
@@ -17,13 +15,13 @@ const (
 	USD Currency = "USD"
 )
 
-// Money is an immutable amount in minor units. Zero value is zero EUR.
+// Money is an immutable amount in minor units. The zero value is zero EUR.
 type Money struct {
 	amount   int64
 	currency Currency
 }
 
-// NewMoney builds a Money, rejecting negative or zero-currency amounts.
+// NewMoney builds Money, rejecting negative amounts and empty currencies.
 func NewMoney(minor int64, currency Currency) (Money, error) {
 	if minor < 0 {
 		return Money{}, errors.New("money cannot be negative")
@@ -34,7 +32,7 @@ func NewMoney(minor int64, currency Currency) (Money, error) {
 	return Money{amount: minor, currency: currency}, nil
 }
 
-// MustMoney panics on invalid input. Use only with compile-time constants.
+// MustMoney panics on invalid input. Use only with constants.
 func MustMoney(minor int64, currency Currency) Money {
 	m, err := NewMoney(minor, currency)
 	if err != nil {
@@ -49,7 +47,7 @@ func (m Money) Minor() int64 { return m.amount }
 // Currency returns the currency.
 func (m Money) Currency() Currency { return m.currency }
 
-// Times multiplies by a non-negative integer quantity.
+// Times multiplies by a non-negative quantity.
 func (m Money) Times(quantity int) (Money, error) {
 	if quantity < 0 {
 		return Money{}, errors.New("quantity cannot be negative")
@@ -70,11 +68,11 @@ func (m Money) String() string {
 	return fmt.Sprintf("%d.%02d %s", m.amount/100, m.amount%100, m.currency)
 }
 
-// ProductID identifies a product.
+// ProductID identifies a product in this contract's vocabulary.
 type ProductID string
 
-// OrderID identifies an order.
+// OrderID identifies an order in this contract's vocabulary.
 type OrderID string
 
-// PaymentID identifies a payment.
+// PaymentID identifies a payment in this contract's vocabulary.
 type PaymentID string

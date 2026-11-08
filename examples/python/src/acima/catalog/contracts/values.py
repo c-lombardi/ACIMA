@@ -1,4 +1,8 @@
-"""Money: an immutable value with invariants. The only kind of type allowed in the kernel."""
+"""Value types owned by this contracts project. No imports outside the language core.
+
+The same file is duplicated in each module's contracts package on purpose: value types
+belong to the boundary that publishes them, not to a shared kernel.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -7,6 +11,8 @@ from enum import Enum
 
 
 class Currency(str, Enum):
+    """The currencies this module accepts at its boundary."""
+
     EUR = "EUR"
     USD = "USD"
     GBP = "GBP"
@@ -14,7 +20,7 @@ class Currency(str, Enum):
 
 @dataclass(frozen=True, slots=True)
 class Money:
-    """An amount in a single currency. Never negative, always quantised to cents."""
+    """An immutable amount in one currency, quantised to cents."""
 
     amount: Decimal
     currency: Currency
@@ -39,3 +45,36 @@ class Money:
 
     def __str__(self) -> str:
         return f"{self.amount:.2f} {self.currency.value}"
+
+
+@dataclass(frozen=True, slots=True)
+class ProductId:
+    """Identifies a product in this module's vocabulary."""
+
+    value: str
+
+    def __post_init__(self) -> None:
+        if not self.value:
+            raise ValueError("product id cannot be empty")
+
+
+@dataclass(frozen=True, slots=True)
+class OrderId:
+    """Identifies an order in this module's vocabulary."""
+
+    value: str
+
+    def __post_init__(self) -> None:
+        if not self.value:
+            raise ValueError("order id cannot be empty")
+
+
+@dataclass(frozen=True, slots=True)
+class PaymentId:
+    """Identifies a payment in this module's vocabulary."""
+
+    value: str
+
+    def __post_init__(self) -> None:
+        if not self.value:
+            raise ValueError("payment id cannot be empty")

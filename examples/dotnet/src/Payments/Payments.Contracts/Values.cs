@@ -1,6 +1,6 @@
-namespace Acima.SharedKernel;
+namespace Acima.Payments.Contracts;
 
-/// <summary>The currencies the shop trades in.</summary>
+/// <summary>The currencies this contract accepts.</summary>
 public enum Currency
 {
     /// <summary>Euro.</summary>
@@ -11,7 +11,7 @@ public enum Currency
 }
 
 /// <summary>An immutable amount of money. Construct through <see cref="Of"/>.</summary>
-public readonly struct Money : IEquatable<Money>
+public readonly struct Money
 {
     private Money(decimal amount, Currency currency)
     {
@@ -58,9 +58,6 @@ public readonly struct Money : IEquatable<Money>
     public bool Equals(Money other) => Amount == other.Amount && Currency == other.Currency;
 
     /// <inheritdoc />
-    public override bool Equals(object? obj) => obj is Money other && Equals(other);
-
-    /// <inheritdoc />
     public override int GetHashCode() => HashCode.Combine(Amount, Currency);
 
     /// <inheritdoc />
@@ -72,3 +69,12 @@ public readonly struct Money : IEquatable<Money>
     /// <summary>Inequality operator.</summary>
     public static bool operator !=(Money left, Money right) => !left.Equals(right);
 }
+
+/// <summary>Identifies a product in this contract's vocabulary.</summary>
+public readonly record struct ProductId(string Value);
+
+/// <summary>Identifies an order in this contract's vocabulary.</summary>
+public readonly record struct OrderId(string Value);
+
+/// <summary>Identifies a payment in this contract's vocabulary.</summary>
+public readonly record struct PaymentId(string Value);

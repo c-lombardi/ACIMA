@@ -4,8 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from decimal import Decimal
 
-from acima.orders.contracts import OrderLine, OrderSummary
-from acima.shared_kernel import Currency, Money, OrderId
+from acima.orders.contracts import Currency, Money, OrderId, OrderLine, OrderSummary
 
 
 @dataclass

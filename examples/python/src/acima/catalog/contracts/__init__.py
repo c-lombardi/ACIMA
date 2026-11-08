@@ -1,4 +1,4 @@
-"""Catalog's complete public surface. Zero dependencies beyond the kernel.
+"""Catalog's complete public surface. Zero external dependencies.
 
 Every type here fits one of the seven contract kinds: view, provided port, value.
 """
@@ -7,9 +7,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol, Sequence
 
-from acima.shared_kernel import Money, ProductId
+from .values import Currency, Money, OrderId, PaymentId, ProductId
 
-__all__ = ["CatalogReader", "ProductNotFound", "ProductView"]
+__all__ = [
+    "CatalogReader",
+    "Currency",
+    "Money",
+    "OrderId",
+    "PaymentId",
+    "ProductId",
+    "ProductNotFound",
+    "ProductView",
+]
 
 
 class ProductNotFound(Exception):

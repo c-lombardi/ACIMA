@@ -1,6 +1,12 @@
-/** Money: an immutable value with invariants. The only kind of type allowed in the kernel. */
+/**
+ * Value types owned by this contracts project. No imports outside the language core.
+ *
+ * Duplicated in each module's contracts package on purpose: value types belong to the
+ * boundary that publishes them, not to a shared kernel.
+ */
 export type Currency = 'EUR' | 'USD' | 'GBP';
 
+/** An immutable amount in one currency, quantised to cents. */
 export class Money {
   readonly amount: number;
   readonly currency: Currency;
@@ -28,9 +34,11 @@ export class Money {
   }
 }
 
-/** Strongly typed identifiers. */
+/** Strongly typed identifiers in this module's vocabulary. */
 export interface ProductId { readonly value: string; }
+/** A typed order identifier; it prevents accidental cross-module identity mixing. */
 export interface OrderId { readonly value: string; }
+/** A typed payment identifier; it prevents accidental cross-module identity mixing. */
 export interface PaymentId { readonly value: string; }
 
 export const productId = (value: string): ProductId => ({ value });

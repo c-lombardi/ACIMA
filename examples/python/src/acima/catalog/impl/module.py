@@ -3,8 +3,7 @@ from __future__ import annotations
 
 from typing import Sequence
 
-from acima.catalog.contracts import ProductView
-from acima.shared_kernel import ProductId
+from acima.catalog.contracts import ProductId, ProductView
 
 from .repository import InMemoryProductStore, ProductStore
 

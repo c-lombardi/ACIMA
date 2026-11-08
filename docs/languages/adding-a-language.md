@@ -8,7 +8,7 @@ the standard — only how it is expressed and enforced. This chapter is the chec
 | Deliverable | Location | Requirement |
 |---|---|---|
 | **Profile** | `docs/languages/<language>.md` | the five sections every profile has (layout, toolchain, arch tests, analyzers, pitfalls) |
-| **Reference implementation** | `examples/<language>/` | three modules (catalog, orders, payments), a kernel, a host, behaviour tests |
+| **Reference implementation** | `examples/<language>/` | three modules (catalog, orders, payments), a host, behaviour tests. Python additionally carries a fourth Customers module. |
 | **Architecture enforcer** | `examples/<language>/tools/` | implements the 23 portable rules, emits [the finding format](../standard/07-executable-governance.md#72-the-finding-format) |
 | **`acima.config.json`** | `examples/<language>/` | declares units, level, excludes |
 | **Violation gallery** | `examples/<language>/violations/` | one fixture per rule, plus `expected.json` |
@@ -65,6 +65,7 @@ a fact rather than a claim.
 
 1. Write the profile's layout section first. If you cannot describe the units, the language is not ready.
 2. Build the three-module example. It will force every design question the profile has to answer.
+   Python's fourth Customers module is an enrichment of one profile, not a requirement for a new one.
 3. Write the enforcer against the example: it must produce **zero** findings on the good code.
 4. Write the gallery, one fixture per rule. Every fixture should be the smallest code that violates the
    rule and compiles in isolation (or is excluded from the build).

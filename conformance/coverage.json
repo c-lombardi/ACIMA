@@ -1,0 +1,94 @@
+{
+  "standard": "1.0.0",
+  "catalog": "tools/acima-spec/rules.json",
+  "profiles": {
+    "python": {
+      "executed": [
+        "ACIMA-A001", "ACIMA-A003",
+        "ACIMA-C001", "ACIMA-C002", "ACIMA-C004", "ACIMA-C005", "ACIMA-C006",
+        "ACIMA-D001", "ACIMA-D002", "ACIMA-D003", "ACIMA-D004", "ACIMA-D005",
+        "ACIMA-D006", "ACIMA-D007", "ACIMA-D008", "ACIMA-D009",
+        "ACIMA-G001", "ACIMA-G002", "ACIMA-G003", "ACIMA-G005",
+        "ACIMA-L001", "ACIMA-L002", "ACIMA-L003"
+      ],
+      "notExecuted": [
+        "ACIMA-A002", "ACIMA-A004", "ACIMA-C003", "ACIMA-C007",
+        "ACIMA-G004", "ACIMA-L004"
+      ],
+      "galleryRules": [
+        "ACIMA-A001", "ACIMA-A003",
+        "ACIMA-C001", "ACIMA-C002", "ACIMA-C004", "ACIMA-C005", "ACIMA-C006",
+        "ACIMA-D001", "ACIMA-D002", "ACIMA-D003", "ACIMA-D004", "ACIMA-D005",
+        "ACIMA-D006", "ACIMA-D007", "ACIMA-D008", "ACIMA-D009",
+        "ACIMA-G001", "ACIMA-G002", "ACIMA-G003", "ACIMA-G005",
+        "ACIMA-L001", "ACIMA-L002", "ACIMA-L003"
+      ]
+    },
+    "typescript": {
+      "executed": [
+        "ACIMA-A001", "ACIMA-A003",
+        "ACIMA-C001", "ACIMA-C002", "ACIMA-C004", "ACIMA-C005", "ACIMA-C006",
+        "ACIMA-D001", "ACIMA-D002", "ACIMA-D003", "ACIMA-D004", "ACIMA-D005",
+        "ACIMA-D006", "ACIMA-D007", "ACIMA-D008", "ACIMA-D009",
+        "ACIMA-G001", "ACIMA-G002", "ACIMA-G003", "ACIMA-G005",
+        "ACIMA-L001", "ACIMA-L002", "ACIMA-L003"
+      ],
+      "notExecuted": [
+        "ACIMA-A002", "ACIMA-A004", "ACIMA-C003", "ACIMA-C007",
+        "ACIMA-G004", "ACIMA-L004"
+      ],
+      "galleryRules": [
+        "ACIMA-A001", "ACIMA-A003",
+        "ACIMA-C001", "ACIMA-C002", "ACIMA-C004", "ACIMA-C005", "ACIMA-C006",
+        "ACIMA-D001", "ACIMA-D002", "ACIMA-D003", "ACIMA-D004", "ACIMA-D005",
+        "ACIMA-D006", "ACIMA-D007", "ACIMA-D008", "ACIMA-D009",
+        "ACIMA-G001", "ACIMA-G002", "ACIMA-G003", "ACIMA-G005",
+        "ACIMA-L001", "ACIMA-L002", "ACIMA-L003"
+      ]
+    },
+    "go": {
+      "executed": [
+        "ACIMA-A001", "ACIMA-A003",
+        "ACIMA-C001", "ACIMA-C002", "ACIMA-C004", "ACIMA-C005", "ACIMA-C006",
+        "ACIMA-D001", "ACIMA-D002", "ACIMA-D003", "ACIMA-D004", "ACIMA-D005",
+        "ACIMA-D006", "ACIMA-D007", "ACIMA-D008", "ACIMA-D009",
+        "ACIMA-G001", "ACIMA-G002", "ACIMA-G003", "ACIMA-G005",
+        "ACIMA-L001", "ACIMA-L002", "ACIMA-L003"
+      ],
+      "notExecuted": [
+        "ACIMA-A002", "ACIMA-A004", "ACIMA-C003", "ACIMA-C007",
+        "ACIMA-G004", "ACIMA-L004"
+      ],
+      "galleryRules": [
+        "ACIMA-A001", "ACIMA-A003",
+        "ACIMA-C001", "ACIMA-C002", "ACIMA-C004", "ACIMA-C005", "ACIMA-C006",
+        "ACIMA-D001", "ACIMA-D002", "ACIMA-D003", "ACIMA-D004", "ACIMA-D005",
+        "ACIMA-D006", "ACIMA-D007", "ACIMA-D008", "ACIMA-D009",
+        "ACIMA-G001", "ACIMA-G002", "ACIMA-G003", "ACIMA-G005",
+        "ACIMA-L001", "ACIMA-L002", "ACIMA-L003"
+      ]
+    },
+    "dotnet": {
+      "executed": [
+        "ACIMA-A001", "ACIMA-A003",
+        "ACIMA-C001", "ACIMA-C002", "ACIMA-C004", "ACIMA-C005", "ACIMA-C006",
+        "ACIMA-D001", "ACIMA-D002", "ACIMA-D003", "ACIMA-D004", "ACIMA-D005",
+        "ACIMA-D006", "ACIMA-D007", "ACIMA-D008", "ACIMA-D009",
+        "ACIMA-G001", "ACIMA-G002", "ACIMA-G003", "ACIMA-G005",
+        "ACIMA-L001", "ACIMA-L002", "ACIMA-L003"
+      ],
+      "notExecuted": [
+        "ACIMA-A002", "ACIMA-A004", "ACIMA-C003", "ACIMA-C007",
+        "ACIMA-G004", "ACIMA-L004"
+      ],
+      "galleryRules": [
+        "ACIMA-A001", "ACIMA-A003",
+        "ACIMA-C001", "ACIMA-C002", "ACIMA-C004", "ACIMA-C005", "ACIMA-C006",
+        "ACIMA-D001", "ACIMA-D002", "ACIMA-D003", "ACIMA-D004", "ACIMA-D005",
+        "ACIMA-D006", "ACIMA-D007", "ACIMA-D008", "ACIMA-D009",
+        "ACIMA-G001", "ACIMA-G002", "ACIMA-G003", "ACIMA-G005",
+        "ACIMA-L001", "ACIMA-L002", "ACIMA-L003"
+      ]
+    }
+  }
+}

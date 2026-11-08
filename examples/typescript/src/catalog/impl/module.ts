@@ -1,5 +1,4 @@
-import type { CatalogReader, ProductView } from '../contracts/index.ts';
-import type { ProductId } from '../../shared-kernel/money.ts';
+import type { CatalogReader, ProductId, ProductView } from '../contracts/index.ts';
 
 /** In-memory product store. A database would implement the same class shape. */
 export class InMemoryProductStore {

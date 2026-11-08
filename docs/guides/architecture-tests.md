@@ -65,13 +65,11 @@ failure distinguishable from architecture debt.
   "level": "L3",
   "root": ".",
   "units": [
-    { "id": "shared-kernel", "role": "shared-kernel", "paths": ["src/shared-kernel"] },
     { "id": "catalog.contracts", "module": "catalog", "role": "contracts", "paths": ["src/catalog/contracts"] },
     { "id": "catalog", "module": "catalog", "role": "implementation", "paths": ["src/catalog/impl"] },
     { "id": "host", "role": "host", "paths": ["src/host"] },
     { "id": "tools", "role": "tooling", "paths": ["tools"] }
   ],
-  "sharedKernel": "shared-kernel",
   "exclude": ["node_modules", "tests", "violations"],
   "waivers": ".acima/waivers.json"
 }

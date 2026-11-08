@@ -1,5 +1,3 @@
-using Acima.SharedKernel;
-
 namespace Acima.Catalog.Contracts;
 
 /// <summary>A purchasable product as other modules see it.</summary>

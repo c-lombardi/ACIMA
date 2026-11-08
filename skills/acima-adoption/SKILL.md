@@ -6,8 +6,8 @@ compatibility: Python 3.9+ for the preflight script. The target language toolcha
 allowed-tools: Read Grep Glob Bash Edit Write
 metadata:
   standard: "1.0.0-draft.1"
-  skill-version: "1.0.0"
-  catalog-sha256: "e7d0c273ab9b710d83b6fd8bb859f195da0bb4c77412fdc8960e7c34d59af305"
+  skill-version: "1.0.2"
+  catalog-sha256: "125a1a3fc2096a25cf8a849aa701d571e73c6aead977c6f012cf4f60c4b1fe77"
 ---
 
 # ACIMA adoption
@@ -18,7 +18,8 @@ Modular Architecture — to a real repository. The standard lives in this reposi
 - `tools/acima-spec/rules.json` — the 29-rule catalog. **Normative.**
 - `docs/standard/` — the specification. Chapters 4 (dependency model), 5 (contract design),
   8 (conformance) and 9 (adoption) are the ones you will use most.
-- `examples/<language>/` — a working three-module system, an enforcer, and a violation gallery.
+- `examples/<language>/` — a working ordering system (four modules in Python, three in
+  TypeScript, Go and .NET), an enforcer, and a violation gallery.
 
 Your job is not to explain ACIMA. It is to leave the target repository with **units declared, a
 baseline measured, an enforcer wired, a first slice merged, and a named human owner for every
@@ -44,8 +45,9 @@ at that level on the current commit. Anything less is a plan, and you must call 
 1. **Never invent a rule ID.** Every finding cites an ID from `rules.json`.
 2. **Never edit `rules.json`, an `expected.json`, or a manifest hash to make a check pass.**
    If the catalog has moved, stop and re-read it; the mismatch is the point.
-3. **Never waive without owner, reason, scope, expiry and review date.** `ACIMA-G001` exists
-   because unowned exceptions become permanent.
+3. **Never waive without owner, reason, scope, finding fingerprint, expiry and review date.**
+   `ACIMA-G001` exists because unowned exceptions become permanent, and a fingerprint is what
+   stops a baseline from hiding a new finding in the same unit.
 4. **Never bulk-renew waivers.** Renewal is an individual decision by the named owner.
 5. **Never declare conformance without a run.** "The architecture tests pass" is not evidence
    unless the run discovered files — zero findings from zero files is the most common false claim.
@@ -77,8 +79,8 @@ The preflight reports one of:
 
 | Mode | Evidence | You do |
 |---|---|---|
-| `greenfield` | no `acima.config.json`, fewer than 10 source files | [greenfield playbook](references/10-greenfield.md) — full shape from day zero, declare L3 |
-| `brownfield` | no `acima.config.json`, existing source and build files | [brownfield playbook](references/20-brownfield.md) — measure, freeze, ratchet |
+| `greenfield` | no `acima.config.json` and no source files | [greenfield playbook](references/10-greenfield.md) — full shape from day zero, declare L3 |
+| `brownfield` | no `acima.config.json` and at least one existing source file | [brownfield playbook](references/20-brownfield.md) — measure, freeze, ratchet |
 | `adopting` | `acima.config.json` present | verify the baseline, then resume at the current level |
 
 If the mode is ambiguous, say so and ask one question: *"Is this repository allowed to gain a
@@ -98,9 +100,10 @@ alone.
 
 ### Step 3a — Greenfield: scaffold, don't negotiate
 
-Follow [references/10-greenfield.md](references/10-greenfield.md). The order is fixed: shared
-kernel → contracts → implementation → host → `acima.config.json` → empty waiver file → CI gate.
-The gate goes in **before** the second module exists, so the rules are never optional.
+Follow [references/10-greenfield.md](references/10-greenfield.md). The order is fixed: contracts →
+implementation → host → `acima.config.json` → empty waiver file → CI gate. Each contract owns its
+value types; there is no shared kernel. The gate goes in **before** the second module exists, so the
+rules are never optional.
 
 ### Step 3b — Brownfield: measure, freeze, then move
 

@@ -1,197 +1,267 @@
 # ACIMA
 
-**Autonomous, Contract-Isolated, Immutable Modular Architecture** — an engineering standard for
-systems whose modules can be changed, tested and extracted independently, and whose boundaries are
-enforced by the build rather than by review.
+**Build systems that stay modular as your organization grows.**
 
-> Status: **Draft 1** (`1.0.0-draft.1`) · Normative specification plus executable reference
-> implementations in TypeScript, Python, Go and C#/.NET. The Java profile is written; its
-> reference implementation is not included in this revision, and the status table says so.
+ACIMA is an executable architecture standard for codebases where modules must be changed,
+tested and released without coordinated rewrites. It makes ownership, contracts,
+dependencies and architectural exceptions visible to the build — not just to the people who
+remember the diagram.
 
-ACIMA is not a project template and not a diagram. It is a set of obligations about **what may
-reference what**, **what a contract is allowed to contain**, and **how violations are found**.
-Everything in it is written so a machine can fail a build over it.
+It is not a framework, a project template or a microservices requirement. It is a small set
+of rules, a machine-readable unit map, and reference enforcers for Python, TypeScript, Go
+and C#/.NET. The Java profile is documented but has no reference enforcer in this revision.
+
+> Status: **Draft 1** (`1.0.0-draft.1`). See [Capability status](docs/status.md) for what is
+> verified, what is limited, and what is still proposed.
 
 ---
 
-## The idea in one page
+## If this sounds familiar, ACIMA is for you
 
-Split every module into two halves that cannot be confused with each other:
+| What teams experience | What it costs |
+|---|---|
+| A `Common` or `Shared` project everyone depends on | every change becomes a cross-team release |
+| Orders imports Catalog's implementation “just this once” | Catalog can no longer change its store or be tested alone |
+| A contract change requires several teams to coordinate | independent evolution stops; releases become lockstep |
+| Two modules read and write the same tables | incidents and schema changes cross ownership boundaries |
+| The architecture rules live in a wiki | nobody knows they were broken until production |
+| A cycle appears between two modules | neither can be extracted or replaced |
+| A waiver has no owner or expiry | “temporary” becomes permanent |
+| An AI agent adds an unauthorized dependency | review catches it late, or not at all |
 
-```
-        ┌──────────────────────┐          ┌──────────────────────┐
-        │  Catalog.Contracts   │◄─────────│       Catalog        │
-        │  zero dependencies   │  owns    │  domain, data, logic │
-        │  immutable messages  │          │  nothing published   │
-        └──────────▲───────────┘          └──────────────────────┘
-                   │ referenced
-        ┌──────────┴───────────┐
-        │        Orders        │
-        │  never references    │
-        │  Catalog's internals │
-        └──────────────────────┘
-```
+The underlying problem is the same: **the boundary exists as a convention, not as a fact the
+build can check**.
 
-A module's **contracts** are its entire public surface: immutable messages and the capabilities it
-promises. Its **implementation** is private, replaceable, and invisible to every other module. Because
-contracts depend on nothing and implementations depend only on contracts, cycles become structurally
-impossible and every module becomes extractable.
+## What changes with ACIMA
 
-That core is the *Explicit Contract Projects* pattern. ACIMA's contribution is to make the rest of
-the promise enforceable: contracts are **zero-dependency and immutable by rule**, module autonomy
-extends to **runtime state and persistence ownership**, and every rule ships with **a finding format,
-a waiver format and a conformance level** so teams can adopt it incrementally and prove it.
-
-## The thirteen principles
-
-| # | Principle | What it forbids |
-|---|-----------|-----------------|
-| P1 | **Service Ownership** — every module owns its implementation, abstractions, dependencies and domain | shared "common" projects that quietly own everyone's code |
-| P2 | **Contract Isolation** — every module owns its public contracts | publishing implementation types; implicit public surface |
-| P3 | **Zero-Dependency Contracts** — contracts reference nothing but the language core; the shared kernel is legacy compatibility | framework, ORM, transport and utility packages inside contracts |
-| P4 | **Dependency Inversion** — consumers own their integration abstractions | provider contracts reshaped to fit one consumer; resolving peers at runtime |
-| P5 | **Strict Dependency Boundaries** — no cross-module implementation references, no cycles | "just this once" implementation references |
-| P6 | **Immutable by Default** — contracts, messages, commands, queries and value objects never mutate | setters, mutable collections, ambient clocks and identifiers in contracts |
-| P7 | **Independent Evolution** — modules change and ship without coordinating with consumers | version-locked modules; shared schemas; shared mutable statics |
-| P8 | **Executable Governance** — violations fail the build | architecture rules that live only in a wiki |
-| P9 | **Explicit Exceptions** — every departure is owned, justified, scoped and dated | silent suppressions and permanent waivers |
-| P10 | **Service-Aligned Topology** — one service, one directory, projects named for the owner | cross-service `Shared` projects; service names that do not match the directory |
-| P11 | **Layer Contract Independence** — every layer owns its contract surface and transforms at the boundary | DTOs passed through layers; one contracts project serving two layers |
-| P12 | **Absolute Contract Isolation (default)** — contracts reference nothing, not even the kernel | shared-kernel or serializer attributes inside contracts |
-| P13 | **Product-Oriented Services** — UI/API workflow parity, core logic in the API domain, deployment-agnostic services | UI-only rules; vendor SDKs in the domain; infrastructure-shaped services |
-
-P1–P9 are the base standard. P10–P13 are the service topology profile in
-[chapter 11](docs/standard/11-service-topology.md); they are checked manually in this revision.
-
-Full text: [Principles](docs/standard/01-principles.md).
-
-## What you get in this repository
-
-| Area | Contents |
-|------|----------|
-| **Standard** | The normative specification: principles, vocabulary, module anatomy, dependency matrix, contract design, runtime boundaries, governance, conformance levels, adoption path, FAQ |
-| **Rule catalog** | 29 rules across five categories with detection strategy, remediation and per-language examples |
-| **Language profiles** | How each obligation is expressed, enforced and tested in C#, TypeScript, Python, Go and Java |
-| **Service topology (default)** | One directory per service, independent layer contracts, absolute contract isolation, vendor adapter seams and `<Source>.<Target>` messaging — chapter 11 plus a section in every language profile |
-| **Reference implementations** | A three-module ordering system in TypeScript, Python, Go and C#/.NET, compiled and tested |
-| **Violation gallery** | Deliberately broken fixtures for every portable rule, in each implemented language, with expected findings checked into the repository |
-| **Conformance harness** | A single runner that executes every language's architecture tests and asserts the gallery produces the documented findings |
-| **Agent skill** | `skills/acima-adoption` — a portable skill that classifies a target as greenfield, brownfield or adopting, pins the catalog hash, drafts a unit map and baseline waivers, and carries the adoption, communication, onboarding and outcomes playbooks |
-
-```
-docs/            the standard, the rules, the language profiles, the guides
-examples/        dotnet | typescript | python | go   (compiling reference implementations)
-                 java                                (profile written; implementation not included yet)
-tools/           the machine-readable rule catalog + per-language analyzers
-conformance/     runs every language suite and compares against the expected findings
-skills/          agent skill for applying and auditing the standard (preflight, playbooks, templates)
-```
-
-## What this buys you in review
-
-ACIMA's day-to-day value is not the diagram; it is the **decision speed of a pull request**. The
-gate answers the structural questions before a human spends time on the diff, so review attention
-goes to product outcomes instead of boundary archaeology.
-
-| Review question | Answered mechanically by | A human still decides |
+| Problem | ACIMA mechanism | Executable evidence |
 |---|---|---|
-| May this unit depend on that one? | the unit map and `D001`–`D009` | whether the dependency is the right product boundary |
-| Is the change's blast radius contained? | contracts-only edges, acyclic graph (`D005`), `G004` API baseline | whether the scope matches the intent |
-| Can a caller mutate this contract? | `C001`, `C002` | whether the contract models the domain |
-| Does this touch another module's data or state? | `A001`, `A003` | whether the capability split is right |
-| Is this exception acceptable? | `G001`, `G002` — owner, reason, scope, expiry | whether to grant it at all |
+| Implementation coupling | Contracts are the only public surface; implementations are private | `D001`, `D008`, `D009` |
+| Contracts are not independent | Each contracts unit imports nothing; value types are local | `D003`, `D004`, `P12`, `ST-5` |
+| Contract changes are unpredictable | Immutable messages and a reviewed API baseline | `C001`–`C007`, `G004` |
+| Shared persistence | One module owns each schema and store | `A001` |
+| Hidden configuration coupling | Each module owns its configuration namespace | `A002` (manual/native review) |
+| Unowned exceptions | Waivers carry owner, reason, scope, finding fingerprint, expiry and review date | `G001`, `G002` |
+| Architecture is not enforced | Findings fail the gate at the declared level | `L1`–`L3`, `G005` |
+| AI agents drift | Catalog hash, unit map, CLI, structured findings and an agent skill | [AI agents](docs/guides/ai-agents.md) |
 
-Three consequences follow:
+The rule catalog has **29 rules**; **23 are portable** across the reference enforcers. The
+six remaining rules need native analyzers, package metadata or human judgement, and are
+listed explicitly rather than silently counted as passes.
 
-- **Narrow scopes are visible.** A contracts change is a published-surface change; an
-  implementation change is private. They can be reviewed — and required — as separate pull
-  requests, so a surface change cannot hide inside a refactor.
-- **Side effects are computable.** No implementation references, no cycles, no shared mutable
-  statics and no shared schema mean the affected units are derivable from the declared graph,
-  not discovered in staging.
-- **AI assistance becomes auditable.** Findings are JSON with a rule id, path, line, evidence and
-  remedy, so an agent can run the enforcer and cite the same rubric a human uses. The
-  [agent skill](skills/acima-adoption/SKILL.md) pins the catalog hash, so its advice is written
-  against the rules actually in this revision. The agent proposes; the owner decides.
+## Before and after
 
-Full outline, reviewer checklist and AI-assisted review protocol:
-[Review and decisions](docs/guides/review-and-decisions.md).
+```text
+Before: convenience coupling
 
-## Conformance levels
+Orders ──> Catalog implementation ──> catalog_products
+   │
+   ├────> mutable DTO from Common
+   └────> direct SQL into Catalog's schema
 
-ACIMA is adopted in levels. Each level is a superset of the last, and each is machine-verifiable.
+After: contract isolation
 
-| Level | Name | Adds | Rules |
-|-------|------|------|-------|
-| **L1** | Structural | Contracts exist; dependency matrix and layering enforced | `D*` `L*` `G*` |
-| **L2** | Immutable | Contract shape, immutability and API baseline enforcement | `C*` `G003` `G004` |
-| **L3** | Autonomous | Persistence, configuration and state ownership | `A*` |
+Orders ──> Catalog.Contracts (ProductView, CatalogReader)
+   │
+   ├────> its own value types and orders schema
+   └────> explicit map at the boundary
 
-Declare the target level in `acima.config.json`; a repository is conformant at a level only when
-every rule required by that level passes with zero findings outside a valid waiver.
+Catalog ──> its own schema
+Payments ──> Payments.Contracts and its own schema
+Host ─────> constructs every module; modules never construct each other
+```
 
-## Quickstart
+A module can be tested with a fake port. A contract can be versioned without recompiling
+the world. A schema has one owner. Exceptions are visible, owned and expiring.
+
+See the full [before/after demonstration](docs/guides/before-after.md), including the
+violations that are intentionally **not** claimed as automatically detected.
+
+## See it work
+
+From the repository root, the walkthrough injects a real defect into a temporary copy of the
+ordering application, prints the enforcer finding, corrects the code and reruns the gate:
 
 ```bash
-# run one language's architecture tests
-cd examples/python     && python3 -m unittest discover -s tests -p 'test_*.py'
-cd examples/typescript && node --test tests/*.test.mjs
-cd examples/go         && go test ./tests/...
-cd examples/dotnet     && dotnet run --project tools/Acima.ArchTests -- --verify
+python3 tools/acima_walkthrough.py
+```
 
-# run every implemented profile and verify each gallery matches its documented findings
+```text
+before: clean ordering application — 0 findings
+introduced: Orders imports Catalog's implementation (src/acima/orders/impl/reach_into_catalog.py)
+finding: ACIMA-D001 — Module orders imports the implementation unit catalog (expected catalog.contracts).
+  src/acima/orders/impl/reach_into_catalog.py:1  from acima.catalog.impl.repository import InMemoryProductStore
+fixed: depend on Catalog's contract instead of its implementation
+after: 0 findings
+result: violation detected, corrected, and verified
+```
+
+This is a real run of the Python enforcer, not a screenshot. The test that proves it is
+[`conformance/test_walkthrough.py`](conformance/test_walkthrough.py).
+
+## Five-minute quickstart
+
+The Python path needs only Python 3.12. The full suite also uses Node, Go and .NET when
+those toolchains are installed.
+
+```bash
+# 1. See the declared units and run the enforcer
+python3 tools/acima.py inspect --root examples/python
+python3 tools/acima.py analyze --root examples/python
+
+# 2. Produce an evidence report with explicit unevaluated rules
+python3 tools/acima.py report --root examples/python
+
+# 3. See a violation detected and corrected
+python3 tools/acima_walkthrough.py
+
+# 4. Run the verified suite
 python3 conformance/run.py
 ```
 
-### With a coding agent
+`analyze` returns exit code `1` when unwaived errors exist, `0` when clean, and `2` when
+the tool cannot run. A tool failure is not architectural debt. A clean run with unevaluated
+rules is not a conformance certificate.
 
-[`skills/acima-adoption`](skills/acima-adoption/SKILL.md) is a portable agent skill. Install it
-where your agent reads skills (`.claude/skills/` for Claude Code) and ask it to adopt ACIMA in a
-repository. It starts with a read-only preflight that verifies the skill still matches this
-catalog, classifies the target, and prints the exact next step:
+Full instructions: [Five-minute quickstart](docs/start/quickstart.md).
+
+## Apply it to an existing repository
+
+Start read-only. Do not rewrite the application first.
 
 ```bash
-python3 skills/acima-adoption/scripts/preflight.py --project <target> --format text
+export TARGET=/path/to/repository
+
+python3 skills/acima-adoption/scripts/preflight.py --project "$TARGET" --format text
+python3 tools/acima.py inspect  --root "$TARGET"
+python3 tools/acima.py analyze  --root "$TARGET" --format json > acima-baseline.json
+python3 tools/acima.py report   --root "$TARGET" --format markdown > acima-report.md
 ```
 
-The preflight pins the `rules.json` hash and enforcer paths, so it fails loudly when the standard
-changes instead of giving stale advice. The skill also ships the adoption plan, communication plan
-and onboarding path as templates. See [skills/README.md](skills/README.md).
+Then review the proposed unit map, write owned waivers for the baseline, gate new findings
+in CI, and merge one boundary change. The full phased path is in
+[Brownfield adoption](docs/start/brownfield.md).
 
-## Repository status
+Do not use `acima verify` as the target's gate: that command verifies this ACIMA repository
+and its examples. The target must run its own enforcer in its own pipeline.
 
-| Profile | Example | Enforcer | Clean tree | Violation gallery | Verified |
-|---|---|---|---|---|---|
-| Python 3.12 | `examples/python` | `tools/acima_arch.py` | 0 findings | 23 rules / 33 findings | yes |
-| TypeScript 5 / Node 22+ | `examples/typescript` | `tools/acima-arch.mjs` | 0 findings | 19 rules / 30 findings | yes |
-| Go 1.22+ | `examples/go` | `tools/archtest` | 0 findings | 20 rules / 30 findings | yes |
-| C# / .NET 8 | `examples/dotnet` | `tools/Acima.ArchTests` | 0 findings | 23 rules / 39 findings | yes |
-| Java 21 | — | profile only | — | — | no |
+## Adoption paths
 
-"Verified" means the commands in the quickstart were executed against this revision and
-`conformance/run.py` reported `ok`. The Java profile document describes the intended layout and
-enforcer contract; it is not a tested artifact, and the conformance runner skips it explicitly
-rather than reporting a pass. Service topology and absolute contract isolation (chapter 11) are the
-default for new systems and are manually checkable in this revision; the reference examples implement
-the legacy compatibility baseline (shared kernel allowed), not the default.
+| Starting point | Path |
+|---|---|
+| Greenfield product or new service | Full shape from day zero; see [Adoption](docs/standard/09-adoption.md#91-greenfield) and the agent skill. |
+| Existing monolith | Measure, waive, gate, then extract one boundary at a time: [Brownfield adoption](docs/start/brownfield.md). |
+| Modular monolith with weak seams | Start with contract extraction for the two most-coupled modules. |
+| Distributed services | Apply the same contract and ownership rules at the network boundary; see [Service topology](docs/standard/11-service-topology.md). |
+| AI-assisted engineering | Use the pinned [agent skill](skills/acima-adoption/SKILL.md), CLI and structured findings; see [AI agents](docs/guides/ai-agents.md). |
 
-## Prior art and what ACIMA adds
+## What is in this repository
+
+| Area | Contents |
+|---|---|
+| Standard | 13 principles, dependency model, contract design, runtime boundaries, governance, conformance and adoption. |
+| Rule catalog | 29 rules with IDs, severity, level, detection strategy and remediation. |
+| Language profiles | Python, TypeScript, Go, C#/.NET and Java. Four have reference enforcers; Java is profile-only. |
+| Reference implementations | Ordering systems in Python, TypeScript, Go and C#/.NET. Python carries four modules (Catalog, Orders, Customers, Payments); the others carry three. |
+| Violation galleries | Deliberately broken fixtures with checked-in expected findings. |
+| Conformance runner | Good tree + gallery + topology + CLI/walkthrough checks. |
+| Developer CLI | `python3 tools/acima.py inspect/analyze/report/verify`. |
+| Agent skill | `skills/acima-adoption` — preflight, unit-map draft, waiver baseline and playbooks. |
+| CI workflow | [`.github/workflows/acima.yml`](.github/workflows/acima.yml). |
+
+## Technical specification
+
+- [Principles](docs/standard/01-principles.md)
+- [Vocabulary](docs/standard/02-vocabulary.md) — module, service, contract, implementation and integration boundary
+- [Dependency model](docs/standard/04-dependency-model.md)
+- [Contract design](docs/standard/05-contract-design.md)
+- [Runtime boundaries](docs/standard/06-runtime-boundaries.md)
+- [Executable governance](docs/standard/07-executable-governance.md)
+- [Conformance levels](docs/standard/08-conformance.md)
+- [Rule catalog](docs/rules/index.md)
+- [Language profiles](docs/languages/index.md)
+- [Service topology](docs/standard/11-service-topology.md)
+- [Capability status](docs/status.md)
+
+The machine-readable source of truth for rules is
+[`tools/acima-spec/rules.json`](tools/acima-spec/rules.json). The standard version is
+declared in that catalog; changing a rule's meaning is a standards change, not an adoption
+shortcut.
+
+## FAQ
+
+**Is ACIMA another Clean Architecture implementation?** No. Clean Architecture constrains
+layers inside an application. ACIMA constrains ownership and the public surface between
+modules. You can comply with one and violate the other.
+
+**Why not just use ArchUnit or NetArchTest?** Use them where they fit. ACIMA adds portable
+rule IDs, one finding format, contract-shape rules, waiver hygiene and a conformance runner
+that compares profiles. The reference enforcers are deliberately thin and readable.
+
+**Do I need microservices?** No. ACIMA is designed for modular monoliths first. A module
+that satisfies the rules is easier to extract later; extraction is not required to get
+value.
+
+**Does adoption require a rewrite?** No. The brownfield path is measure → waive → gate →
+one boundary at a time. Do not start with persistence.
+
+**Can I adopt incrementally?** Yes. Start at L1, baseline existing findings, and ratchet.
+A waiver is an owned, expiring exception, not a silent suppression.
+
+**Does it work with an existing modular monolith?** Yes, that is the primary use case.
+
+**Can modules use different databases?** They can, and they may also share a database
+server as long as each module owns its own schema and no module reads another's tables.
+The rule is ownership, not deployment topology.
+
+**Does ACIMA dictate infrastructure or deployment technology?** No. Infrastructure and
+vendor SDKs belong in adapters and the host; the standard is neutral about the platform.
+
+**Can AI coding agents use it?** Yes. The agent skill verifies the catalog hash, reads the
+unit map, runs the enforcer and reports contract changes. It is instructed not to edit the
+config or waivers to pass a check.
+
+**What happens when a rule needs an exception?** Write a scoped waiver with an owner,
+reason, expiry and review date. Expired waivers fail the build. Bulk renewal is forbidden.
+
+**How much developer overhead does enforcement add?** The gate runs in the existing
+pipeline. The recurring work is reviewing findings and waivers; the one-off work is
+contract extraction and boundary cleanup. The standard gives cost ranges, not invented
+delivery estimates.
+
+**What is not verified?** Runtime autonomy, deployment independence and organizational
+ownership are not proven by a static enforcer. Six portable rules require native analyzers
+or human review. Java is profile-only. See [Capability status](docs/status.md).
+
+## Prior art
 
 ACIMA assembles documented practice rather than inventing it:
 
-- **[Explicit Contract Projects](https://modularmonoliths.com/patterns/explicit-contract-projects/)** (ModularMonoliths) — module + contracts project split, contracts free of dependencies, cycles structurally prevented. *ACIMA adopts this whole, and names it P2/P3/P5.*
-- **[NetArchTest](https://github.com/BenMorris/NetArchTest)** and **[ArchUnit](https://www.archunit.org/)** — architecture rules as executable tests. *ACIMA adopts the execution model and standardises the finding format and rule identifiers across languages.*
-- **[Purview Architests](https://purview.dev/projects/architests/)** — project responsibilities and dependency directions as data, with reviewed, dated waivers and transitive assembly checks. *ACIMA adopts the policy-as-data model and the waiver discipline (P9).*
-- **Clean Architecture / Hexagonal / Ports & Adapters**, **DDD** and **Modular Monoliths** — layering, aggregates, bounded contexts, composition roots. *ACIMA constrains them into rules that can be checked.*
-- **[Microsoft library guidance](https://learn.microsoft.com/dotnet/standard/library-guidance/dependencies)** and MSBuild `PrivateAssets` — dependency minimisation and transitive control. *ACIMA uses these as the .NET expression of P3 and D008.*
+- **Explicit Contract Projects** — module + contracts split and dependency-light contracts.
+- **Clean Architecture / Hexagonal / Ports & Adapters** — layering and boundary direction.
+- **Domain-Driven Design and Modular Monoliths** — bounded contexts and composition roots.
+- **ArchUnit, NetArchTest and Purview Architests** — architecture rules as executable tests.
+- **Microsoft library guidance and MSBuild `PrivateAssets`** — dependency minimisation and
+  transitive control.
 
-What is genuinely new here is the **combination made normative and portable**: zero-dependency
-contracts *and* contract immutability as build-blocking rules, autonomy extended past compile time
-into persistence/configuration/state ownership, and one rule catalogue with one finding format
-replicated across five languages so the same violation is caught the same way everywhere.
+ACIMA's contribution is the combination made portable and enforceable: absolute contract
+isolation by default, immutable contract shape, runtime ownership rules, owned expiring
+waivers, one finding format across languages, and an agent-readable adoption path.
 
-## Licence and governance of the standard itself
+## Repository map
 
-The standard is versioned (`major.minor.patch`). Adding a rule is a minor version; changing the
-meaning of an existing rule or its identifier is a major version. Rule identifiers are permanent:
+```text
+docs/            standard, rules, language profiles, guides, quickstart and status
+examples/        Python, TypeScript, Go and .NET reference implementations + galleries
+conformance/     cross-profile runner, topology checks, CLI and walkthrough tests
+tools/           rule catalog, CLI, executable walkthrough
+skills/          portable adoption skill and templates
+```
+
+## Licence and governance
+
+The standard is versioned (`major.minor.patch`). Adding a rule is a minor version; changing
+an existing rule's meaning or identifier is a major version. Rule identifiers are permanent:
 `ACIMA-D001` means the same thing in every language and every version.
+
+See the repository's licence terms when present.
