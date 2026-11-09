@@ -126,3 +126,47 @@ log belongs in the evidence, not in the conversation.
 - `summarize.py` writes only when `--out` is passed; otherwise it prints.
 - Older artefacts still render: a report without per-finding `status` falls back to
   `newFindings` for priority, and a missing `execution` map yields `Assessment incomplete`.
+
+## What each phase sounds like
+
+Short examples of the interaction contract. Adapt the facts; keep the shape.
+
+**Assessment (read-only).**
+
+> **Where you are:** nothing has been changed. I inspected the repository and ran the read-only
+> analysis.
+> **What I found:** three deployable services share one `Common` project, and `Orders` reads
+> `Billing`'s internal models directly. That is why a Billing refactor keeps breaking Orders.
+> **What it means:** ACIMA can make that dependency explicit and fail a pull request that adds a new
+> one. It cannot fix the shared project for you, and it does not require splitting the services.
+> **Limits:** the Go enforcer did not run here, so those rules are unproven.
+> **Next:** if this is useful, I will propose the smallest adoption — a unit map and a local check.
+> No files will be created without your approval.
+
+**Proposal.** Recommendation first, then discovery, what ACIMA adds, evidence-grounded benefits,
+scope in plain English, the exact path table with required/conditional/optional status, tradeoffs,
+sequence, and one question: "Would you like me to proceed with the listed files and scope?"
+
+**Implementation progress.**
+
+> **Where you are:** phase 4, implementing the approved unit map and local check.
+> **Done:** `acima.config.json` now declares five units; the local check reports 14 findings, all
+> pre-existing.
+> **Not done:** no CI gate and no waivers — both were outside the approved list.
+> **Next:** review the unit map. If it is right, the next decision is whether to gate pull requests.
+
+**Blocker.**
+
+> I stopped before writing the baseline: the Go toolchain is not installed, so that run would be
+> incomplete. Nothing was changed. Either install Go and I continue, or I record the Python and
+> TypeScript results only and mark the rest unverified.
+
+**Handoff.**
+
+> **What changed:** five units declared, a local check wired, a baseline kept at
+> `docs/acima/baseline-2026-11-09.json`.
+> **Verified:** the check runs, finds 14 pre-existing errors, and rejects a new cross-module import.
+> **Not verified:** CI is configured but has not been observed on a pull request; the manual rules
+> have no evidence, so the claim is a partial assessment.
+> **How to use it:** run the check before opening a pull request; a failure names the rule and its
+> remedy. **Next:** approve the CI gate, or watch the check on the next pull request.

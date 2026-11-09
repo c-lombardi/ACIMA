@@ -128,7 +128,7 @@ JSON output is stable and safe to attach to a ticket:
 
 ```json
 {
-  "skill": { "name": "acima-adoption", "version": "1.17.0", "standard": "1.9.0-draft.1" },
+  "skill": { "name": "acima-adoption", "version": "1.18.0", "standard": "1.9.0-draft.1" },
   "project": { "path": "/repo", "mode": "brownfield", "language": "python" },
   "checks": [{ "id": "SKL-002", "status": "pass", "detail": "...", "remedy": "" }],
   "blockers": [],

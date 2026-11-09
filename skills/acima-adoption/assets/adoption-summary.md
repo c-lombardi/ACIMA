@@ -50,5 +50,5 @@ Then, in order:
 - Frozen baseline: `<path>`.
 - Waivers: `<path>`.
 - Triage: `<path>`.
-- Adoption plan: `<path>`.
-- Status dashboard: `<path>`.
+- Adoption plan: `<path>` (if created).
+- Status dashboard: `<path>` (if created).

@@ -102,18 +102,21 @@ class CliTests(unittest.TestCase):
             report = acima.status_project(root)
             self.assertFalse(report["config"]["present"])
             self.assertEqual(len(report["steps"]), 11)
-            self.assertEqual(report["steps"][0]["state"], "ready")
+            self.assertEqual(report["steps"][0]["state"], "READY")
             self.assertIn("assess", report["next"]["command"])
             self.assertIn("preflight.py", report["next"]["command"])
+            self.assertFalse(report["next"]["writes"])
 
     def test_status_marks_the_declared_example(self) -> None:
         report = acima.status_project(ROOT / "examples/python")
         self.assertTrue(report["config"]["present"])
         self.assertEqual(report["config"]["units"], 11)
         states = {step["name"]: step["state"] for step in report["steps"]}
-        self.assertEqual(states["declare"], "done")
-        self.assertIn("waiver", report["steps"][6]["evidence"])
+        self.assertEqual(states["declare"], "COMPLETE")
+        self.assertIn("11 unit", report["steps"][4]["evidence"])
         self.assertTrue(report["next"]["action"])
+        self.assertIn(report["steps"][5]["state"],
+                      {"NOT_STARTED", "IN_PROGRESS", "COMPLETE", "BLOCKED"})
 
 
     def test_fix_names_the_remedy_for_one_selector(self) -> None:

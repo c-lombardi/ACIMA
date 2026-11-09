@@ -102,7 +102,7 @@ A gate is not marked PASS because code exists. Its required evidence must be pre
 
 ## Versioning and change control
 
-- The standard version is `1.9.0-draft.1`; the skill version is `1.17.0`.
+- The standard version is `1.9.0-draft.1`; the skill version is `1.18.0`.
 - Assessment is read-only. Adoption artifacts require explicit owner approval of a proposal naming
   the paths, scope and level; partial approval is supported and must be described honestly.
 - Rule IDs are never renumbered. A meaning change requires a catalog version change,

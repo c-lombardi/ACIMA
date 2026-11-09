@@ -1,6 +1,6 @@
 # ACIMA status — <repository>
 
-Updated: <date> by <name>   Phase: <preflight | classified | planned | baselined | first slice | gated | handed off>
+Updated: <date> by <name>   Phase: <assess | propose | authorize | implement | verify>
 Declared level: <L1 | L2 | L3 | none>   Run artefact: <path to baseline JSON>
 Reader report: `docs/acima/adoption-summary.md`   Evidence: <path to gate-status / assessment>
 
@@ -40,7 +40,7 @@ In order. Tick what is finished so the route to the next level is visible.
 
 - [x] Preflight — <evidence>
 - [x] Classified — <greenfield | brownfield | adopting>
-- [ ] Planned — adoption-plan and communication-plan filled
+- [ ] Planned — scope agreed in the proposal (an adoption plan is optional)
 - [ ] Baselined — every pre-existing finding waived with owner + expiry
 - [ ] First slice — <boundary> changes and the gate stays green
 - [ ] Gated — CI blocks new errors on the default branch
@@ -57,7 +57,7 @@ In order. Tick what is finished so the route to the next level is visible.
 
 - Findings detail: `<path>` — <what it contains, why to open it>
 - Raw run: `<path>` — <command that regenerates it>
-- Plans: `docs/acima/adoption-plan.md`, `docs/acima/communication-plan.md`
+- Plans (optional, if created): `docs/acima/adoption-plan.md`, `docs/acima/communication-plan.md`
 - Rule meanings: `docs/acima/README.md`
 - Correction recipes: the rule page's Fix section in `docs/rules/`, and `references/70-corrections.md` in the skill
 - Commands: `docs/commands.md` in the ACIMA repository — run one, not a programme

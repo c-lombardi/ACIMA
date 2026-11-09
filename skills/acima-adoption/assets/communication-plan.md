@@ -1,5 +1,7 @@
 # ACIMA communication plan — <repository>
 
+> Optional. Create this only when the approved scope includes coordinated communication across teams.
+
 Owner: <name>            Audience size: <n>            Cadence: weekly + monthly
 
 ## 1. Audiences and messages

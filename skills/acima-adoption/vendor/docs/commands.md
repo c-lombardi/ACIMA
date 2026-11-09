@@ -65,10 +65,14 @@ python3 tools/acima.py status --root .              # human summary
 python3 tools/acima.py status --root . --format json
 ```
 
-It reports the eleven steps below as `done`, `pending`, `ready`, `not recorded` or
-`standard changes only`, each with the artefact that justifies it, then prints one next action and
-the command to run it. Two honest limits: step 3 leaves no artefact, so it stays `not recorded` until
-`inject_violation.py` is run, and step 9 is a throughput claim that can only read `in progress`.
+It reports the eleven steps with evidence-verified states — `NOT_STARTED`, `READY`, `IN_PROGRESS`,
+`BLOCKED`, `COMPLETE`, `NOT_APPLICABLE`, `UNKNOWN` — rendered in plain English. A step is complete
+only when its criterion is verified: calibration compares the manifest pin with the catalog, a
+baseline must parse with `sourceFiles > 0` and an execution map, a workflow is read to see whether it
+invokes a gate (configured is `in progress`, observed is `complete`), and the claim is computed with
+`acima.py claim`. Optional documents never appear in the next action. It prints one next action, why,
+its done condition, and whether approval is required. Two honest limits remain: step 3 leaves no
+artefact until `inject_violation.py` is run, and step 9 needs two measurements to show a fall.
 
 Exit `0` whenever a status is produced, `2` when the root or its config cannot be read. It never
 writes, so it is safe to run first in any session — including on a repository you do not own.
@@ -80,10 +84,10 @@ conformant at the level we claim.
 
 | # | Stage | Question | Command | Move on when |
 |---|---|---|---|---|
-| 1 | Recon | what is in here? | `acima.py inspect --root .` | language, units and enforcer readiness are known |
-| 2 | Fit | is it worth adopting? | `acima.py assess --root .` | verdict `ASSESSED`, or `NEEDS_UNIT_MAP` with a plan to declare units |
-| 3 | Trust the tool | can it even see violations? | `inject_violation.py --project .` | `L001` and `D001` are both detected |
-| 4 | Calibrate | is the skill right for this commit? | `preflight.py --project .` | exit 0 |
+| 1 | Calibrate | is the skill right for this commit, and what kind of repository is this? | `preflight.py --project .` | exit 0 and a classification |
+| 2 | Recon | what is in here? | `acima.py inspect --root .` | language, units and enforcer readiness are known |
+| 3 | Fit | is it worth adopting? | `acima.py assess --root .` | verdict `ASSESSED`, or `NEEDS_UNIT_MAP` with a plan to declare units |
+| 4 | Trust the tool | can it even see violations? | `inject_violation.py --project .` | `L001` and `D001` are both detected |
 | 5 | Declare, after approval | what are the units? | `preflight.py --write-draft` | a human reviewed and committed `acima.config.json` |
 | 6 | Freeze | how bad is it, exactly? | `preflight.py --format json > baseline.json` | the artefact is kept and dated |
 | 7 | Own | who answers for each finding? | `preflight.py --write-waivers` | no `unassigned` owners, every expiry set |

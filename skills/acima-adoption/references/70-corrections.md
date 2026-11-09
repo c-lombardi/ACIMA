@@ -173,3 +173,24 @@ Sometimes the honest answer is not a code change:
 - the design is deliberately outside the rule's intent → propose a standard amendment, not a permanent
   waiver;
 - the enforcer is wrong or blind → fix the enforcer or disclose the gap; never report clean.
+
+## Reviewing an effect boundary
+
+Use this sequence for `C008` and `A010`–`A014`. It is a review, not a source scan:
+
+1. **Enumerate effects.** Use the contract, handlers, adapters and tests. Distinguish an external
+   effect from ordinary local mutation; aggregate mutation is not a defect.
+2. **Name the owner and boundary.** The owner is the module or declared adapter/host policy that can
+   decide failure and duplicate behaviour. If two owners are plausible, say so; do not invent one.
+3. **Check applicability.** Decide whether retry, duplicate handling, a consistency guarantee,
+   cancellation and evidence apply. "Not applicable" is a valid, reviewable answer; it is not a
+   pass by omission.
+4. **Trace the outcome path.** Follow success, failure, unknown and partial completion. A caller must
+   not mistake acceptance for durability, or a post-commit exception for no effect.
+5. **Check the evidence.** A success-only test is not evidence for a critical effect. Name the missing
+   failure-path test, reconciliation or operational signal.
+6. **Report uncertainty.** Confirmed, suspected and insufficient evidence are different results.
+
+A retry does not imply idempotency; idempotency does not imply atomicity; a transaction does not
+cover a distributed workflow; cancellation does not undo a committed side effect. A clean scan of
+these rules, a retry library or a transaction API proves nothing.

@@ -4,6 +4,48 @@ All normative changes to the ACIMA standard. The machine-readable catalog is
 [`tools/acima-spec/rules.json`](tools/acima-spec/rules.json); this file explains *why* it changed and
 what an adopting repository has to do about it.
 
+## 1.18.0 — guided adoption experience
+
+**Skill change only.** The catalog, standard version, rule ids, levels, severity and claim semantics
+are unchanged; `acima-adoption` moves from 1.17.0 to 1.18.0. No adopting repository has to change
+configuration, waivers or evidence.
+
+### Why
+
+The adoption skill was accurate but not guided. The routing table started with `acima.py assess`
+while Step 0 said preflight always ran first; `status` inferred progress from file existence (an
+adoption plan blocked nothing technically, yet was recommended before measurement; a workflow that
+mentioned ACIMA counted as a gate; a manual-evidence file counted as a claim); and `SKILL.md` had
+grown to 620 lines of per-rule detail. A first-time user had to understand ACIMA, their own
+architecture and the command set before getting value.
+
+### What changed
+
+- **One workflow.** Assessment (preflight first, then the read-only fit analysis), proposal,
+explicit authorization, approved implementation, verification. `docs/commands.md` and §9.9 use the
+same order.
+- **Evidence-based status.** Seven states rendered in plain English. Calibration compares the
+manifest pin with the catalog; a baseline must parse with `sourceFiles > 0`, an execution map and a
+findings list; a workflow is read for a real gate invocation and distinguished from an observed run;
+the claim is computed with `acima.py claim`; a slice requires a falling measured count. Optional
+documents never block and never appear in the next action.
+- **Actionable next step.** Status prints one action with why, done-condition, command and whether
+approval is required; write actions are proposed, never performed.
+- **A decision document.** The proposal has nine sections: recommendation, application discovered,
+what ACIMA adds, evidence-grounded benefits, recommended scope, exact changes, tradeoffs, next steps
+and one approval question supporting partial approval.
+- **Progressive documentation.** Assessment brief → proposal → implementation guide → verified
+handoff; persistent documents only when approved or requested.
+- **Execution contexts.** Checkout, copied/installed skill using `vendor/`, and a separate target
+repository are distinguished, with the correct command form for each.
+- **Compact controller.** `SKILL.md` is 303 lines (from 620). Per-rule correction detail, effect
+review and lifecycle guidance live in `references/70-corrections.md`; phase-response examples live in
+`references/80-reporting.md`.
+- **Tests.** `conformance/test_adoption_experience.py` covers 14 scenarios: read-only default,
+optional artifacts, mention-only and configured and observed gates, rejected zero-source baselines,
+manual evidence that is not a claim, expired evidence, fix-as-plan, untouched assessment, returning
+user, unsupported language, copied-skill availability, and contract/compactness.
+
 ## 1.9.0-draft.1 — conformance integrity, consent, and application-wide execution ownership
 
 **Version change:** MINOR. `1.8.0-draft.1` → `1.9.0-draft.1`. Two manual rules added; no rule

@@ -129,14 +129,14 @@ def test_proposal_contract_is_reviewable() -> None:
     skill = SKILL.read_text(encoding="utf-8")
     reference = CONSENT_REF.read_text(encoding="utf-8")
 
-    for heading in ("## 1. Recommendation", "## 2. Proposed scope",
-                    "## 3. Files to be created or modified", "## 4. Proposed module map",
-                    "## 5. Architectural decisions required", "## 6. Tradeoffs and maintenance",
-                    "## 7. Approval"):
+    for heading in ("## 1. Recommendation", "## 2. Application discovered",
+                    "## 3. What ACIMA adds", "## 4. Expected benefits",
+                    "## 5. Recommended adoption scope", "## 6. Proposed changes",
+                    "## 7. Tradeoffs and risks", "## 8. Next steps", "## 9. Approval"):
         assert heading in proposal, heading
     assert "Required" in proposal and "Conditional" in proposal and "Optional" in proposal
     assert "What this will not accomplish" in proposal
-    assert "Would you like me to proceed with this adoption plan and create the listed files and changes?" in proposal
+    assert "Would you like me to proceed with the listed files and scope?" in proposal
     assert "No persistent repository changes have been made" in proposal
     assert "Analysis is never authorization" in " ".join(skill.split())
     assert "Analysis is not authorization to adopt" in " ".join(reference.split())
@@ -170,6 +170,13 @@ def test_five_phase_consent_and_optional_artifacts() -> None:
         text = " ".join((SKILL.parent / path).read_text(encoding="utf-8").split())
         assert "Phase 3" in text, path
         assert "Phase 4" in text, path
+
+    for name in ("adoption-plan.md", "communication-plan.md"):
+        text = " ".join((SKILL.parent / "assets" / name).read_text(encoding="utf-8").split())
+        assert "Optional." in text, name
+    dashboard = " ".join(
+        (SKILL.parent / "assets/status-dashboard.md").read_text(encoding="utf-8").split())
+    assert "an adoption plan is optional" in dashboard
 
 
 def test_ambiguous_mapping_stays_a_proposal() -> None:

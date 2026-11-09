@@ -4,7 +4,7 @@ Portable instructions for coding agents (Claude Code, Codex, Cursor, and anythin
 
 | Skill | Use it for |
 |---|---|
-| [`acima-adoption`](acima-adoption/SKILL.md) | assessing, adopting, and maintaining ACIMA in a greenfield or brownfield repository |
+| [`acima-adoption`](acima-adoption/SKILL.md) | assessing, adopting, and maintaining ACIMA in a greenfield or brownfield repository; it explains ACIMA in plain English, inspects the application, recommends a scope, and writes only after explicit approval |
 
 ## Install
 
@@ -30,3 +30,5 @@ Other agents: point them at `acima-adoption/SKILL.md` and allow them to read tha
 
 - `SKILL.md` is the only required file; depth lives in `references/`, loaded on demand.
 - Scripts are read-only by default, standard-library only, and exit `0` ready / `1` blocked / `2` tool failure.
+- Assessment is read-only. Repository changes need an explicit, scope-specific approval; adoption,
+  communication and status documents are optional unless the approved scope includes them.

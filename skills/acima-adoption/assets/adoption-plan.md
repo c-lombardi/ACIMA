@@ -1,5 +1,8 @@
 # ACIMA adoption plan — <repository>
 
+> Optional. Create this only when the approved scope includes a written plan. A small adoption can
+> proceed from the approved proposal alone.
+
 Owner: <name>            Sponsor: <name>            Start: <date>            Review: monthly
 
 ## 1. Context
