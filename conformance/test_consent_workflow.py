@@ -144,6 +144,34 @@ def test_proposal_contract_is_reviewable() -> None:
     assert "Merge, publish or release" in skill
 
 
+def test_five_phase_consent_and_optional_artifacts() -> None:
+    """The authoritative skill and its reference agree on consent and artifact status."""
+    skill = " ".join(SKILL.read_text(encoding="utf-8").split())
+    reference = " ".join(CONSENT_REF.read_text(encoding="utf-8").split())
+
+    for phase in ("Phase 1 — Assessment", "Phase 2 — Proposal",
+                  "Phase 3 — Explicit authorization",
+                  "Phase 4 — Approved implementation",
+                  "Phase 5 — Verification and handoff"):
+        assert phase in skill, phase
+    assert "Phase 3 — Approved adoption" not in skill
+    assert "Do not create optional artifacts" in skill
+    assert "Every adoption ends with" not in skill, "the summary must not be mandatory"
+    assert "Do not create a communication plan by default" in skill
+    assert "optional" in skill.lower()
+
+    assert "The five phases" in reference
+    for phase in ("3. Explicit authorization", "4. Approved implementation",
+                  "5. Verification and handoff"):
+        assert phase in reference, phase
+    assert "optional unless the owner asks" in reference
+
+    for path in ("references/10-greenfield.md", "references/20-brownfield.md"):
+        text = " ".join((SKILL.parent / path).read_text(encoding="utf-8").split())
+        assert "Phase 3" in text, path
+        assert "Phase 4" in text, path
+
+
 def test_ambiguous_mapping_stays_a_proposal() -> None:
     """Scenario G (tool half): heuristic roles are labelled and never written without a request."""
     with tempfile.TemporaryDirectory() as directory:

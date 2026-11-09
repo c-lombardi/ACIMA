@@ -12,7 +12,7 @@ One principle maps to several rules; one rule always traces back to exactly one 
 | Artifact | Role | Authority |
 |---|---|---|
 | [`../../tools/acima-spec/rules.json`](../../tools/acima-spec/rules.json) | id, severity, level, `automation`, manual evidence hint | **authoritative** |
-| [`index.md`](index.md) | the same 53 rules as tables, plus severity policy | generated-equivalent; a test fails if it drifts |
+| [`index.md`](index.md) | the same 55 rules as tables, plus severity policy | generated-equivalent; a test fails if it drifts |
 | [`dependency.md`](dependency.md) | `D` and `L` rules with violation/fix examples per language | explanatory |
 | [`contracts.md`](contracts.md) | `C` rules | explanatory |
 | [`autonomy.md`](autonomy.md) | `A` and `G` rules | explanatory |
@@ -22,7 +22,7 @@ There is exactly one catalog. Do not create a second one in a report, spreadshee
 
 ## Automated versus human judgement
 
-41 of 53 rules are executed by the reference enforcers; twelve are normative but require judgement or native analyzers and are reported as `executed: false`. Python and TypeScript execute all 41. Go and .NET execute 23, reporting the five tier rules (`L005`–`L007`, `D010`, `G006`), the two explicit-input rules (`D011`, `D012`), the two value rules (`A005`, `A006`), the two composition rules (`D013`, `D014`), the two functional-capture rules (`D015`, `D016`), the three lifecycle rules (`A007`–`A009`) and the two naming rules (`N001`–`N002`) as `executed: false` with that reason:
+41 of 55 rules are executed by the reference enforcers; fourteen are normative but require judgement or native analyzers and are reported as `executed: false`. Python and TypeScript execute all 41. Go and .NET execute 23, reporting the five tier rules (`L005`–`L007`, `D010`, `G006`), the two explicit-input rules (`D011`, `D012`), the two value rules (`A005`, `A006`), the two composition rules (`D013`, `D014`), the two functional-capture rules (`D015`, `D016`), the three lifecycle rules (`A007`–`A009`) and the two naming rules (`N001`–`N002`) as `executed: false` with that reason:
 
 | Rule | Who decides |
 |---|---|
@@ -33,6 +33,8 @@ There is exactly one catalog. Do not create a second one in a report, spreadshee
 | `A011` effect semantics | contract, retry and consistency review |
 | `A012` truthful effect outcome | failure-path review |
 | `A013` critical-effect evidence | test, reconciliation or operational evidence review |
+| `A014` telemetry and business behaviour | observability, business-event and audit review |
+| `A015` consistency boundary ownership | design review of the owner, guarantee and recovery path |
 | `L004` service locator | human review or framework analyzer |
 | `A002` cross-module configuration key | human review |
 | `A004` version-lock coupling | package metadata review |

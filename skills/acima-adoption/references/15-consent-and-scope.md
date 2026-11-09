@@ -9,14 +9,15 @@ This reference is the long form of the phase gate in `SKILL.md`. It does not rel
 requirement: it decides *whether* and *how much* to implement, never whether the implemented part is
 described accurately.
 
-## The four phases
+## The five phases
 
 | Phase | Purpose | May write to the target? | Ends with |
 |---|---|---|---|
 | 1. Assessment | understand fit, findings and limits | no | a recommendation and named gaps |
-| 2. Proposal | make the adoption decision reviewable | no | one direct approval question |
-| 3. Approved adoption | implement only the approved scope | approved paths only | working artifacts and a verification record |
-| 4. Verification and handoff | prove what exists and state what does not | no new scope | a handoff with capabilities and limits |
+| 2. Proposal | make the adoption decision reviewable | no | exact paths, statuses, decisions and risks |
+| 3. Explicit authorization | the owner accepts a named scope | no | one direct approval answer |
+| 4. Approved implementation | implement only the approved scope | approved paths only | the approved artifacts and slices |
+| 5. Verification and handoff | prove what exists and state what does not | no new scope | a handoff with capabilities and limits |
 
 Read-only analysis may use operating-system temporary directories outside the target. Delete them
 or leave them outside; never commit them. If an analysis genuinely cannot run without a persistent
@@ -36,28 +37,38 @@ entry points, deployments, tests and documentation. Run only read-only checks. R
 
 `NEEDS_UNIT_MAP` means the architecture was not assessed. It is not a clean result.
 
-### Phase 2: proposal and consent
+### Phase 2: proposal
 
 Present the proposal from `assets/adoption-proposal.md` before creating anything. It must name every
 path, what the file contains, why it exists, its status, the dependencies, the maintenance burden,
 the decisions only a human can make, and the risks. Keep it readable without the rule catalog.
+
+Classify each artifact honestly: required, conditional or optional. An adoption plan, a communication
+plan, a status dashboard and a summary are optional unless the owner asks for them or coordination
+genuinely requires them. Do not mark an artifact required because a template exists for it.
+
+### Phase 3: explicit authorization
 
 The approval question is explicit:
 
 > Would you like me to proceed with this adoption plan and create the listed files and changes?
 
 Do not substitute “Should I proceed with ACIMA?” or “Want me to set it up?”. A general expression
-of interest, continued conversation, silence, or approval of the assessment is not consent.
+of interest, continued conversation, silence, or approval of the assessment is not consent. Wait for
+the answer before the first write.
 
-### Phase 3: approved adoption
+Approval covers only what was shown. Partial approval is supported and is the normal case: implement
+the approved paths and level, then state the capability and the gap of what was not approved.
 
-Implement the approved paths and level. Routine choices inside that scope are allowed. Stop and ask
-before adding a path, changing application source or build configuration, adding CI, raising the
-level, or introducing a boundary that was not in the proposal. If implementation reveals that the
-proposal was wrong, say what changed, why the approved scope cannot deliver the stated result, and
-what new approval is needed.
+### Phase 4: approved implementation
 
-### Phase 4: verification and handoff
+Implement the approved paths and level. Routine choices inside that scope are allowed. Do not create
+optional artifacts that were not in the approved list. Stop and ask before adding a path, changing
+application source or build configuration, adding CI, raising the level, or introducing a boundary
+that was not in the proposal. If implementation reveals that the proposal was wrong, say what
+changed, why the approved scope cannot deliver the stated result, and what new approval is needed.
+
+### Phase 5: verification and handoff
 
 Verify the generated configuration, run the available enforcement, validate waiver and baseline
 integrity, exercise controlled violations where supported, and inspect CI configuration without

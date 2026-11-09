@@ -4,6 +4,77 @@ All normative changes to the ACIMA standard. The machine-readable catalog is
 [`tools/acima-spec/rules.json`](tools/acima-spec/rules.json); this file explains *why* it changed and
 what an adopting repository has to do about it.
 
+## 1.9.0-draft.1 — conformance integrity, consent, and application-wide execution ownership
+
+**Version change:** MINOR. `1.8.0-draft.1` → `1.9.0-draft.1`. Two manual rules added; no rule
+removed, renumbered or weakened. The catalog total goes from 53 to 55. Automated rules stay at 41;
+manual rules go from 12 to 14. There is no new automated rule, profile or conformance level.
+
+### Why
+
+Three gaps remained after 1.8. First, P8.1 required every rule at the declared level to *execute in
+CI*, while the conformance model accepted manual evidence for rules that cannot be executed. The two
+statements described different standards. Second, the claim layer trusted an execution map that
+reported a catalog-manual rule as `executed: true`, so an unsupported check could pass without
+evidence. Third, P15 owned externally visible effects but not the state mutation, consistency boundary
+and telemetry decisions that surround them, and the adoption skill described artifacts as mandatory
+without a single, explicit authorization phase.
+
+### Normative changes
+
+- **P8.1 is rewritten** to require every required rule to be *accounted for*: automated rules execute
+  through their designated enforcement mechanism, manual rules require accepted, current,
+  repository-scoped evidence, and a manual rule is never counted as executed. Missing or expired
+  evidence, an unsupported check reported as passing, or an incomplete execution map cannot produce
+  full conformance. Chapter 8 §8.4, §8.6 and §8.9 state the same rule.
+- **`ACIMA-A014` — Telemetry conceals or alters business behaviour.** L3, `error`, manual. Logging,
+  metrics and telemetry observe behaviour; they do not make a business decision, swallow a failure,
+  compute the value they report or replace a required audit record. Operational diagnostics, business
+  events and audit records are distinguishable by owner and purpose (chapter 6 §6.10).
+- **`ACIMA-A015` — Unowned consistency boundary.** L3, `error`, manual. A multi-step state change or
+  transaction has one identifiable owner and a declared guarantee on return. Atomic, recoverable,
+  compensating and reconciled are all valid; an unowned gap described as atomic is not (chapter 6
+  §6.5.3).
+- **P15 is extended** with state-mutation ownership (`P15.5`), consistency-boundary ownership
+  (`P15.6`) and observability (`P15.7`). P15.5 distinguishes architectural state ownership from
+  ordinary local mutation and reuses `A001`/`A009` rather than duplicating them.
+
+### Deliberately unchanged
+
+No new automated rule, detector or gallery fixture was added. Whether telemetry replaces a business
+decision and who owns a consistency guarantee are semantic and design questions; a heuristic that
+guessed would be worse than an honest manual rule. Retries, idempotency, transactions, cancellation
+and all-or-nothing atomicity remain conditional on the design. Naming is not expanded: no new naming
+rule, analyzer or subjective violation was introduced. The P4/P7 dependency, value and lifecycle
+obligations were reviewed and extended in prose where the existing rules already covered the
+concern; no duplicate rule IDs were created.
+
+### Claim-layer hardening
+
+The claim model now treats a catalog-manual rule reported as `executed: true` as unsupported: the
+rule is listed in `unsupportedExecution`, still requires repository-scoped evidence, and keeps the
+result `PARTIAL ASSESSMENT` until that evidence is accepted. A catalog rule with an unknown
+`automation` value is an invalid assessment. This is what makes “a clean automated run cannot establish
+full conformance by itself” executable rather than aspirational.
+
+### Adoption consent
+
+The adoption skill is **1.17.0** and now implements five phases: assessment, proposal, explicit
+authorization, approved implementation, and verification and handoff. Authorization is its own phase;
+approval is scope-specific and partial approval is supported. Adoption plans, communication plans,
+status dashboards and summaries are optional unless the approved scope includes them or the owner asks
+for them. The skill, its consent reference and chapter 9 §9.9 agree, and `test_consent_workflow.py`
+asserts the phase structure, the optional-artifact rule and the read-only default.
+
+### Verification
+
+Executed in this change: `python conformance/test_claim_model.py`, `test_rule_catalog.py`,
+`test_consent_workflow.py`, `test_documentation_contract.py`, and the full `conformance/run.py`
+routine, whose results are reported in the change record. The gallery expectations are unchanged
+because no automated rule was added; the Python, TypeScript, Go and .NET execution maps carry both
+new IDs as `executed: false` with a reason, and `coverage.json` records 14 manual rules for Python and
+TypeScript and 32 not-executed rules for Go and .NET.
+
 ## 1.8.0-draft.1 — owned effects, retries, transactions and truthful outcomes
 
 **Version change:** MINOR. `1.7.0-draft.1` → `1.8.0-draft.1`. Five manual rules added; no rule removed,

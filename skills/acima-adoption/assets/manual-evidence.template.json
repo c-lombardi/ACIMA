@@ -1,6 +1,6 @@
 {
   "_note": "One repository-scoped entry per manual rule required by the declared level. Without these, the claim is PARTIAL ASSESSMENT. Replace owner, reviewer and artifact with real evidence; the artifact must exist and contain the recorded review. Do not add entries for rules that are not required by the level. Applicability is recorded in the review: a non-applicable obligation is explained, never silently omitted.",
-  "standard": "1.8.0-draft.1",
+  "standard": "1.9.0-draft.1",
   "evidence": [
     {
       "rule": "ACIMA-C003",
@@ -119,6 +119,28 @@
       "reviewer": "architecture-review",
       "method": "review",
       "artifact": "docs/reviews/G004-api-baseline.md",
+      "reviewedOn": "2026-11-09",
+      "expires": "2027-05-09",
+      "result": "pass"
+    },
+    {
+      "rule": "ACIMA-A014",
+      "scope": "repository",
+      "owner": "team-platform",
+      "reviewer": "architecture-review",
+      "method": "review",
+      "artifact": "docs/reviews/A014-telemetry-behaviour.md",
+      "reviewedOn": "2026-11-09",
+      "expires": "2027-05-09",
+      "result": "pass"
+    },
+    {
+      "rule": "ACIMA-A015",
+      "scope": "repository",
+      "owner": "team-platform",
+      "reviewer": "architecture-review",
+      "method": "review",
+      "artifact": "docs/reviews/A015-consistency-boundary.md",
       "reviewedOn": "2026-11-09",
       "expires": "2027-05-09",
       "result": "pass"

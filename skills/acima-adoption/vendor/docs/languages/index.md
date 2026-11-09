@@ -35,7 +35,7 @@ Go and .NET carry the catalog entries for the tier rules (`L005`–`L007`, `D010
 explicit-input rules (`D011`, `D012`), the value rules (`A005`, `A006`), the composition rules
 (`D013`, `D014`), the functional-capture rules (`D015`, `D016`), the lifecycle rules
 (`A007`–`A009`) and the naming rules (`N001`–`N002`), and report those eighteen `executed: false`.
-`N003` is one of the twelve manual rules, not an automated gap.
+`N003` is one of the fourteen manual rules, not an automated gap.
 
 Each profile implements what its language can express. This table is the measured coverage of
 the reference enforcers, not the coverage of the standard:
@@ -44,7 +44,7 @@ the reference enforcers, not the coverage of the standard:
 |---|---|---|---|---|---|
 | Automated rules fired by the gallery | 41 / 41 | 41 / 41 | 23 / 41 | 23 / 41 | — |
 | Manual rules executed | 0 / 12 | 0 / 12 | 0 / 12 | 0 / 12 | 0 / 12 |
-| Documented gaps | twelve manual | twelve manual | eighteen automated + twelve manual | eighteen automated + twelve manual | no enforcer |
+| Documented gaps | fourteen manual | fourteen manual | eighteen automated + fourteen manual | eighteen automated + fourteen manual | no enforcer |
 
 A rule counts only when a violation fixture makes it fire **and** the resulting finding is checked by
 `conformance/run.py`. Rules in the documented-gap column are still normative for that language; the

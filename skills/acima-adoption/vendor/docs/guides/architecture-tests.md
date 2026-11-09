@@ -3,7 +3,7 @@
 An architecture test is the mechanism that turns ACIMA from prose into a build step. It has
 one job: read the source tree, classify every file into a unit, evaluate the automated rules,
 and fail the build when a rule is broken and not waived. Automated success does not decide the
-twelve manual rules; the report must say so.
+fourteen manual rules; the report must say so.
 
 This guide covers the contract every enforcer implements, how to wire it into CI, and how to
 keep the violation gallery trustworthy.

@@ -82,6 +82,7 @@ var catalog = map[string][2]string{
 	"ACIMA-A007": {"warning", "L3"}, "ACIMA-A008": {"warning", "L3"}, "ACIMA-A009": {"warning", "L3"},
 	"ACIMA-A010": {"error", "L3"}, "ACIMA-A011": {"error", "L3"},
 	"ACIMA-A012": {"error", "L3"}, "ACIMA-A013": {"warning", "L3"},
+	"ACIMA-A014": {"error", "L3"}, "ACIMA-A015": {"error", "L3"},
 	"ACIMA-N001": {"warning", "L3"}, "ACIMA-N002": {"warning", "L3"}, "ACIMA-N003": {"warning", "L3"},
 }
 
@@ -116,6 +117,8 @@ var notExecuted = map[string]string{
 	"ACIMA-A011": "effect semantics require contract and API review",
 	"ACIMA-A012": "outcome truthfulness requires failure, retry and cancellation evidence",
 	"ACIMA-A013": "critical-effect evidence requires audit and telemetry inspection",
+	"ACIMA-A014": "whether telemetry observes or alters business behaviour needs review",
+	"ACIMA-A015": "consistency ownership and guarantees need design review",
 }
 
 var rank = map[string]int{"L1": 1, "L2": 2, "L3": 3}

@@ -677,6 +677,100 @@ A test that only exercises the success path does not satisfy the rule.
 
 ---
 
+## ACIMA-A014 · Telemetry conceals or alters business behaviour
+
+**Severity** `error` · **Level** L3 · **Principle** P15.7 · **Automation** manual
+
+> Logging, metrics and telemetry MUST observe behaviour without concealing it, replacing a business
+> decision or materially changing the outcome, and the diagnostic, business-event and audit-record
+> purposes MUST be distinguishable.
+
+### Violation
+
+```python
+def place_order(order):
+    result = orders.place(order)
+    logger.info("order failed")       # ❌ a diagnostic that contradicts the business outcome
+    return result
+```
+
+```typescript
+// The audit record is a best-effort log line; nobody owns its retention or failure.
+logger.info(`refund approved by ${approver} for ${amount}`);
+await refunds.approve(refund);       // ❌ the required record is not part of the effect
+```
+
+### Finding
+
+Manual rules do not produce a source finding. A review records the call, what it observes, and what
+it conceals, replaces or changes.
+
+### Why
+
+Telemetry is code that runs in the middle of a business operation. When it decides whether to proceed,
+swallows an exception, computes the value it reports or stands in for an audit record, the observable
+behaviour and the actual behaviour diverge. Operators then trust a record that was never accountable
+for the fact it claims.
+
+### Fix
+
+Log the outcome the business decision produced rather than deciding it inside the logger. Keep
+emission failure from changing the business result unless the record is part of the effect's contract.
+Emit business events and required audit records as owned outputs with their own retention and failure
+semantics; do not treat a diagnostic log as either. Never write a secret or sensitive value as an
+operational diagnostic (chapter 14).
+
+### Evidence
+
+The review names each telemetry call adjacent to a business decision, its category (diagnostic,
+business event or required audit record), its owner, its failure behaviour, and whether the absence of
+emission changes the outcome. A clean scan does not establish any of it.
+
+---
+
+## ACIMA-A015 · Unowned consistency boundary
+
+**Severity** `error` · **Level** L3 · **Principle** P15.6 · **Automation** manual
+
+> A multi-step state change or transaction MUST have exactly one identifiable owner and a declared
+> consistency guarantee on return; atomicity is one strategy, not a universal requirement.
+
+### Violation
+
+```python
+# The host owns the boundary, but the invariants live inside two modules.
+with db.transaction():
+    orders_repo.save(order)
+    payments.charge(order.total)
+```
+
+### Finding
+
+Manual rules do not produce a source finding. A review records the unowned boundary, the callers that
+believe it is atomic, and the correction.
+
+### Why
+
+A consistency boundary is where the system decides what "done" means. If the caller, the host and the
+module all believe they own it, the first partial failure discovers the disagreement. Conversely,
+requiring all-or-nothing atomicity everywhere is equally wrong: a durable intermediate state with an
+owned resume, compensation or reconciliation is often the better design.
+
+### Fix
+
+Name one owning component. State whether the operation is atomic, recoverable, compensating or
+reconciled, what a caller may observe on return, and which intermediate states are legal. Move the
+transaction inside the module that owns the state and its outbox writes; use an outbox, a saga or
+reconciliation across modules instead of a shared connection. Record who resumes, compensates or
+reconciles an interrupted workflow.
+
+### Evidence
+
+For each multi-step change, record the owner, the guarantee on return, the observable intermediate
+states and the recovery path with its owner. A transaction API in the code proves none of these.
+
+---
+
 ## Governance (`G`)
 
 ---

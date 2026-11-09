@@ -22,7 +22,7 @@ cover 23 of them, because the five tier rules (`L005`–`L007`, `D010`, `G006`),
 explicit-input rules (`D011`, `D012`), the two value rules (`A005`, `A006`), the two composition
 rules (`D013`, `D014`), the two functional-capture rules (`D015`, `D016`), the three lifecycle rules
 (`A007`–`A009`) and the two naming rules (`N001`–`N002`) report `executed: false` there in this
-revision. The twelve manual rules, including `N003`, report `executed: false` in every language. Each profile documents
+revision. The fourteen manual rules, including `N003`, report `executed: false` in every language. Each profile documents
 the other constructs it cannot see; the gaps are listed in [the language profiles](../languages/index.md).
 
 ---

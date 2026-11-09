@@ -16,6 +16,7 @@ import acima_claim as claim  # noqa: E402
 CATALOG = claim.load_catalog(ROOT)
 MANUAL = {
     "ACIMA-A002", "ACIMA-A004", "ACIMA-A010", "ACIMA-A011", "ACIMA-A012", "ACIMA-A013",
+    "ACIMA-A014", "ACIMA-A015",
     "ACIMA-C003", "ACIMA-C007", "ACIMA-C008", "ACIMA-G004", "ACIMA-L004", "ACIMA-N003",
 }
 
@@ -68,7 +69,7 @@ class ClaimModelTests(unittest.TestCase):
     def test_required_rule_counts_and_manual_partition(self) -> None:
         self.assertEqual(len(claim.required_rules(CATALOG, "L1")), 27)
         self.assertEqual(len(claim.required_rules(CATALOG, "L2")), 37)
-        self.assertEqual(len(claim.required_rules(CATALOG, "L3")), 53)
+        self.assertEqual(len(claim.required_rules(CATALOG, "L3")), 55)
         self.assertEqual(
             {rule["id"] for rule in CATALOG["rules"] if rule["automation"] == "manual"},
             MANUAL,
@@ -81,12 +82,27 @@ class ClaimModelTests(unittest.TestCase):
             {"ACIMA-C003", "ACIMA-C007", "ACIMA-C008", "ACIMA-G004", "ACIMA-L004"},
         )
 
-    def test_all_executed_is_full(self) -> None:
+    def test_complete_automated_run_with_valid_manual_evidence_is_full(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            document = evidence_document(MANUAL, root)
+            result = claim.assess(payload("L3", MANUAL), CATALOG,
+                                  evidence=document["evidence"], root=root)
+            self.assertEqual(result["claim"], claim.FULL)
+            self.assertTrue(result["eligible"])
+            self.assertEqual(result["missing"], [])
+            self.assertEqual(result["executed"], 41)
+            self.assertEqual(result["manualEvidence"], 14)
+
+    def test_manual_rule_reported_as_executed_cannot_supplant_evidence(self) -> None:
+        # A clean automated run cannot establish full conformance by asserting that
+        # catalog-manual rules executed. An unsupported check must not pass silently.
         result = claim.assess(payload("L3"), CATALOG)
-        self.assertEqual(result["claim"], claim.FULL)
-        self.assertTrue(result["eligible"])
-        self.assertEqual(result["missing"], [])
-        self.assertEqual(result["executed"], 53)
+        self.assertEqual(result["claim"], claim.PARTIAL)
+        self.assertFalse(result["eligible"])
+        self.assertEqual(set(result["unsupportedExecution"]), MANUAL)
+        self.assertEqual(set(result["missing"]), MANUAL)
+        self.assertTrue(any("cannot substitute" in reason for reason in result["reasons"]))
 
     def test_missing_manual_evidence_is_partial_and_named(self) -> None:
         result = claim.assess(payload("L3", MANUAL), CATALOG)
@@ -104,7 +120,7 @@ class ClaimModelTests(unittest.TestCase):
             result = claim.assess(payload("L3", MANUAL), CATALOG,
                                   evidence=document["evidence"], root=root)
             self.assertEqual(result["claim"], claim.FULL)
-            self.assertEqual(result["manualEvidence"], 12)
+            self.assertEqual(result["manualEvidence"], 14)
 
     def test_expired_evidence_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -119,9 +135,10 @@ class ClaimModelTests(unittest.TestCase):
                                 for error in entry["errors"]))
 
     def test_c008_is_required_at_l2(self) -> None:
-        result = claim.assess(payload("L2", {"ACIMA-C008"}), CATALOG)
+        l2_manual = {"ACIMA-C003", "ACIMA-C007", "ACIMA-C008", "ACIMA-L004", "ACIMA-G004"}
+        result = claim.assess(payload("L2", l2_manual), CATALOG)
         self.assertEqual(result["claim"], claim.PARTIAL)
-        self.assertEqual(result["missing"], ["ACIMA-C008"])
+        self.assertIn("ACIMA-C008", result["missing"])
 
     def test_unit_scoped_evidence_cannot_certify_the_repository(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -141,7 +158,7 @@ class ClaimModelTests(unittest.TestCase):
         self.assertEqual(result["claim"], claim.PARTIAL)
         self.assertEqual(result["blockingFindings"], 1)
 
-    def test_incomplete_execution_map_is_invalid(self) -> None:
+    def test_incomplete_execution_map_cannot_establish_full_conformance(self) -> None:
         document = payload("L2", {"ACIMA-L004"})
         del document["execution"]["ACIMA-C003"]
         with self.assertRaises(claim.ClaimError):

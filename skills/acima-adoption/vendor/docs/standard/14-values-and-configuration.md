@@ -89,6 +89,17 @@ The semantic meaning and the owner decide. A value shared by independently deplo
 be owned by the service that owns the concept, or be part of an explicit inter-service contract — not
 silently read from a central table.
 
+### Meaningful defaults
+
+A default is a value the caller did not choose. It is legitimate when it is a declared policy the
+owner reviews — a documented fallback, a framework-required optional parameter, a compatibility
+default on a published library API. It is not legitimate when it silently decides an application
+input the caller should supply (`D011`, `D012`). The distinction is ownership, not syntax: a default
+inside a signature has no named owner, while a named policy value at the composition boundary does.
+
+Do not move a default into the host as a bare literal and call it fixed. Give it a name in its
+owner: an application constant, a typed configuration value, or a documented policy object.
+
 ### Explicit injection
 
 Meaningful application-level values MUST be supplied to their consumers at the composition boundary.

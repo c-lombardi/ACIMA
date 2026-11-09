@@ -11,6 +11,12 @@ team can keep discussing.
 proposal naming the paths and scope. “Adopt ACIMA” starts the assessment and proposal; it does not
 pre-approve unseen configuration, baseline, waivers or CI.
 
+The six phases below elaborate the five-phase consent workflow in the
+[adoption skill](../../skills/acima-adoption/SKILL.md): Phase 1 is assessment, Phase 2 is proposal,
+Phase 3 is explicit authorization, Phases 4–6 are the approved implementation, and verification and
+handoff close each one. Only the approved paths are created; plans and communication documents are
+optional.
+
 Adoption does not replace the architecture the team already chose. Clean Architecture, Hexagonal,
 DDD, a modular monolith and microservices all remain valid shapes; ACIMA measures and enforces the
 boundaries inside the chosen shape. Read [Your architecture, enforced](../guides/architecture-families.md)
@@ -34,13 +40,13 @@ If the target has no `acima.config.json`, do not run `analyze` yet. The enforcer
 claim a pass without declared units; it will return a tool failure, not an architecture
 finding.
 
-## Phase 2 — Proposal and consent
+## Phase 2 — Proposal
 
 Before creating a unit map, present the proposed modules, exact paths, status of each artifact,
 owners and tradeoffs. The proposal template and approval question are in
 [the adoption skill](../../skills/acima-adoption/assets/adoption-proposal.md).
 
-## Phase 3 — Approved adoption
+## Phase 3 — Explicit authorization and approved scope
 
 Only after approval for these paths, generate a first draft when the target has no config:
 

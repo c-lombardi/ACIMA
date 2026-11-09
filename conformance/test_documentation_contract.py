@@ -17,14 +17,14 @@ class DocumentationContractTests(unittest.TestCase):
     def test_rule_index_names_every_non_executed_rule(self) -> None:
         coverage = json.loads(read("conformance/coverage.json"))
         not_executed = set(coverage["profiles"]["python"]["notExecuted"])
-        self.assertEqual(len(not_executed), 12)
+        self.assertEqual(len(not_executed), 14)
         index = read("docs/rules/index.md")
         # coverage.json uses the ACIMA- prefixed ids; the human catalog table uses short ids.
         for rule in sorted(not_executed):
             short = rule.split("-", 1)[-1]
             self.assertIn(f"`{short}`", index, f"{rule} is not documented in the rule index")
         self.assertNotIn("Four rules cannot", index)
-        self.assertIn("Twelve normative rules", index)
+        self.assertIn("Fourteen normative rules", index)
 
     def test_preflight_reference_matches_any_source_classification(self) -> None:
         preflight = read("skills/acima-adoption/references/00-preflight.md")
@@ -76,8 +76,9 @@ class DocumentationContractTests(unittest.TestCase):
         manual = {rule["id"] for rule in catalog["rules"]
                   if rule.get("automation") == "manual"}
         self.assertEqual(manual, {"ACIMA-A002", "ACIMA-A004", "ACIMA-A010", "ACIMA-A011",
-                                  "ACIMA-A012", "ACIMA-A013", "ACIMA-C003", "ACIMA-C007",
-                                  "ACIMA-C008", "ACIMA-G004", "ACIMA-L004", "ACIMA-N003"})
+                                  "ACIMA-A012", "ACIMA-A013", "ACIMA-A014", "ACIMA-A015",
+                                  "ACIMA-C003", "ACIMA-C007", "ACIMA-C008", "ACIMA-G004",
+                                  "ACIMA-L004", "ACIMA-N003"})
         self.assertEqual(sum(1 for rule in catalog["rules"]
                              if rule.get("automation") == "automated"), 41)
         self.assertEqual(catalog["claimModel"]["manualEvidencePath"],

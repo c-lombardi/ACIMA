@@ -57,7 +57,7 @@ independently, and scoped to boundaries rather than internal design. A departure
 waiver, never a silent exception. The full mapping, including what ACIMA does not decide, is in
 [Your architecture, enforced](docs/guides/architecture-families.md).
 
-Five obligations carry the standard: **module ownership**, **explicit contracts**, **dependency isolation**, **data and configuration ownership**, and **controlled composition**. They are expressed as eleven base principles and a 53-rule catalog — 41 of which the reference enforcers decide from source (eighteen of those in Python and TypeScript only, in this revision), and twelve of which require recorded human evidence. P15 adds **owned effects**: every externally visible effect has an owner, visible semantics, a truthful outcome and evidence proportionate to its criticality. The obligations are conditional on the design: retries, transactions, idempotency keys and cancellation are required only where the operation's contract makes them applicable.
+Five obligations carry the standard: **module ownership**, **explicit contracts**, **dependency isolation**, **data and configuration ownership**, and **controlled composition**. They are expressed as eleven base principles and a 55-rule catalog — 41 of which the reference enforcers decide from source (eighteen of those in Python and TypeScript only, in this revision), and fourteen of which require recorded human evidence. P15 adds **owned effects**: every externally visible effect has an owner, visible semantics, a truthful outcome and evidence proportionate to its criticality. It also makes state mutation, consistency and observability explicit: one owner per consistency boundary, a declared guarantee instead of assumed atomicity, and telemetry that observes behaviour rather than replacing it. The obligations are conditional on the design: retries, transactions, idempotency keys and cancellation are required only where the operation's contract makes them applicable.
 
 The catalog also makes **instance lifetime and state ownership** explicit: share stateless services, keep request- and tenant-bound state inside its boundary, never let a longer-lived component retain a shorter-lived one, and give shared mutable state an owner and a concurrency policy. It is not a requirement to register everything as a singleton.
 
@@ -109,22 +109,25 @@ The default workflow is deliberately small:
 
 Adoption is a separate, explicit decision. It adds a unit map, a measured baseline, owned waivers, a CI gate and a ratchet — the full process is in the [adoption skill](skills/acima-adoption/SKILL.md). Nothing in the assessment phase modifies your code, your build or your CI.
 
-Assessment requires no authorization to modify anything. Adoption does, and merging and releasing always remain yours.
+Assessment requires no authorization to modify anything. Adoption does: the workflow is assessment,
+proposal, explicit authorization of a named scope, approved implementation, then verification and
+handoff. Partial approval is supported, and plans and communication documents are optional unless
+you ask for them. Merging and releasing always remain yours.
 
 ## Language support
 
 | Language | Enforcement | Status |
 |---|---|---|
-| C# / .NET | reference enforcer, 23 of 41 automated rules | implemented and verified on the clean example and 23-rule gallery; eighteen automated rules (the five tier rules, two explicit-input, two value, two composition, two functional-capture, three lifecycle, and `N001`–`N002`) and the twelve manual rules report `executed: false` |
-| TypeScript | reference enforcer, 41 automated rules | implemented and verified against its own fixtures; twelve manual rules remain unevaluated |
-| Python | reference enforcer, 41 automated rules | implemented and verified against its own fixtures; twelve manual rules remain unevaluated |
-| Go | reference enforcer, 23 of 41 automated rules | implemented and verified on the clean example and 23-rule gallery; eighteen automated and twelve manual rules report `executed: false` |
+| C# / .NET | reference enforcer, 23 of 41 automated rules | implemented and verified on the clean example and 23-rule gallery; eighteen automated rules (the five tier rules, two explicit-input, two value, two composition, two functional-capture, three lifecycle, and `N001`–`N002`) and the fourteen manual rules report `executed: false` |
+| TypeScript | reference enforcer, 41 automated rules | implemented and verified against its own fixtures; fourteen manual rules remain unevaluated |
+| Python | reference enforcer, 41 automated rules | implemented and verified against its own fixtures; fourteen manual rules remain unevaluated |
+| Go | reference enforcer, 23 of 41 automated rules | implemented and verified on the clean example and 23-rule gallery; eighteen automated and fourteen manual rules report `executed: false` |
 | Java | profile documented, no enforcer | not supported: an assessment fails closed rather than reporting clean |
 
 Two limits matter more than the table:
 
 - The enforcers analyse **source and project metadata**, not runtime behaviour. They do not prove isolation, type correctness or framework behaviour.
-- Twelve rules always require human evidence: `C003`, `C007`, `C008`, `L004`, `A002`, `A004`, `A010`–`A013`, `G004` and `N003`. A run that reports zero findings has not evaluated them.
+- Fourteen rules always require human evidence: `C003`, `C007`, `C008`, `L004`, `A002`, `A004`, `A010`–`A015`, `G004` and `N003`. A run that reports zero findings has not evaluated them.
 
 Independent validation is **incomplete**. The standard has been exercised against its own examples and a small number of external repositories, not against independent evaluators. [`docs/status.md`](docs/status.md) separates verified from proposed capability, and [`docs/product-contract.md`](docs/product-contract.md) lists the release gates and what is still missing.
 

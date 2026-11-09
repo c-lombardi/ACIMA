@@ -6,10 +6,11 @@ other's internals and the cheap version of this work is gone.
 
 Rule: the gate exists before the second module does.
 
-> **Consent gate.** This playbook is Phase 3. Phase 1 may inspect and plan; Phase 2 must present
-> the exact files, level and maintenance in the proposal. Do not scaffold source, config, waivers
-> or CI until the owner approves that list. If the approved scope is assessment only, stop after
-> the proposal.
+> **Consent gate.** This playbook is Phase 4 (approved implementation). Phase 1 may inspect and
+> plan; Phase 2 must present the exact files, level and maintenance in the proposal; Phase 3 must
+> receive an explicit answer. Do not scaffold source, config, waivers or CI until the owner approves
+> that list. If the approved scope is assessment only, stop after the proposal. Do not create an
+> adoption plan or communication plan unless the owner asks for one.
 
 ## Day 0 — the order is fixed
 

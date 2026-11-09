@@ -1,5 +1,5 @@
 {
-  "standard": "1.8.0",
+  "standard": "1.9.0",
   "catalog": "tools/acima-spec/rules.json",
   "profiles": {
     "python": {
@@ -58,7 +58,9 @@
         "ACIMA-C008",
         "ACIMA-G004",
         "ACIMA-L004",
-        "ACIMA-N003"
+        "ACIMA-N003",
+        "ACIMA-A014",
+        "ACIMA-A015"
       ],
       "galleryRules": [
         "ACIMA-A001",
@@ -160,7 +162,9 @@
         "ACIMA-C008",
         "ACIMA-G004",
         "ACIMA-L004",
-        "ACIMA-N003"
+        "ACIMA-N003",
+        "ACIMA-A014",
+        "ACIMA-A015"
       ],
       "galleryRules": [
         "ACIMA-A001",
@@ -262,7 +266,9 @@
         "ACIMA-A009",
         "ACIMA-N001",
         "ACIMA-N002",
-        "ACIMA-N003"
+        "ACIMA-N003",
+        "ACIMA-A014",
+        "ACIMA-A015"
       ],
       "galleryRules": [
         "ACIMA-A001",
@@ -346,7 +352,9 @@
         "ACIMA-A009",
         "ACIMA-N001",
         "ACIMA-N002",
-        "ACIMA-N003"
+        "ACIMA-N003",
+        "ACIMA-A014",
+        "ACIMA-A015"
       ],
       "galleryRules": [
         "ACIMA-A001",

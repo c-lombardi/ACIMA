@@ -3,8 +3,11 @@
 The standard distinguishes two claim classes:
 
 * ``FULL CONFORMANCE`` -- every rule required by the declared level was either
-  executed by the run or covered by an accepted, repository-scoped manual
-  evidence entry, and the run has no unwaived error findings.
+  executed by the run through its designated enforcement mechanism or covered
+  by an accepted, current, repository-scoped manual evidence entry, and the run
+  has no unwaived error findings.  A run that reports a catalog-manual rule as
+  ``executed: true`` does not satisfy the rule: manual rules are only ever
+  satisfied by evidence.
 * ``PARTIAL ASSESSMENT`` -- the run is useful, but at least one required rule
   was not executed and has no accepted manual evidence.  It is not a
   conformance claim and must never be labelled as one.
@@ -188,16 +191,27 @@ def assess(payload: Any, catalog: dict, level: str | None = None,
     missing: list[str] = []
     executed_ids: list[str] = []
     manual_ids: list[str] = []
+    unsupported: list[str] = []
     reasons: list[str] = []
     for rule in rules:
         rule_id = rule["id"]
+        automation = rule.get("automation")
+        if automation not in ("automated", "manual"):
+            raise ClaimError(
+                f"catalog rule {rule_id} has unknown automation {automation!r}")
         value = execution.get(rule_id)
         if not isinstance(value, dict) or type(value.get("executed")) is not bool:
             raise ClaimError(f"execution entry for {rule_id} has no boolean executed flag")
-        if value["executed"] is True:
+        if value["executed"] is True and automation == "automated":
             executed_ids.append(rule_id)
             continue
-        if not str(value.get("reason", "")).strip():
+        if value["executed"] is True:
+            # A rule the catalog marks manual is not decidable by a portable
+            # enforcer.  Trusting this flag would let an unsupported check pass
+            # as evaluated, so the claim still requires repository-scoped
+            # evidence and the run is reported as a misstated execution map.
+            unsupported.append(rule_id)
+        elif not str(value.get("reason", "")).strip():
             raise ClaimError(f"execution entry for {rule_id} is unexecuted without a reason")
 
         valid_entry = None
@@ -213,10 +227,11 @@ def assess(payload: Any, catalog: dict, level: str | None = None,
             continue
 
         missing.append(rule_id)
-        if rule.get("automation") == "manual" or rule_id in {
-            "ACIMA-C003", "ACIMA-C007", "ACIMA-L004",
-            "ACIMA-A002", "ACIMA-A004", "ACIMA-G004", "ACIMA-N003",
-        }:
+        if rule_id in unsupported:
+            reasons.append(
+                f"{rule_id} is manual in the catalog; an execution claim cannot substitute "
+                "for repository-scoped manual evidence")
+        elif automation == "manual":
             requirement = rule.get("manualEvidence") or "record a repository-scoped manual review"
             reasons.append(f"{rule_id} needs manual evidence: {requirement}")
         else:
@@ -245,6 +260,7 @@ def assess(payload: Any, catalog: dict, level: str | None = None,
                                      {}).get("automation") != "manual"],
         "executedIds": executed_ids,
         "manualEvidenceIds": manual_ids,
+        "unsupportedExecution": unsupported,
         "invalidEvidence": invalid,
         "blockingFindings": len(blocking_findings),
         "reasons": reasons,

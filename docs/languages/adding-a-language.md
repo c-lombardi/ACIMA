@@ -9,7 +9,7 @@ the standard — only how it is expressed and enforced. This chapter is the chec
 |---|---|---|
 | **Profile** | `docs/languages/<language>.md` | the five sections every profile has (layout, toolchain, arch tests, analyzers, pitfalls) |
 | **Reference implementation** | `examples/<language>/` | three modules (catalog, orders, payments), a host, behaviour tests. Python additionally carries a fourth Customers module. |
-| **Architecture enforcer** | `examples/<language>/tools/` | implements the automated rules it can (including `D011`/`D012`, `A005`/`A006`, `D013`/`D014`, `D015`/`D016`, `A007`–`A009` and `N001`–`N002`, or an explicit `executed: false`), reports the twelve manual rules including `N003` `executed: false`, emits [the finding format](../standard/07-executable-governance.md#72-the-finding-format) |
+| **Architecture enforcer** | `examples/<language>/tools/` | implements the automated rules it can (including `D011`/`D012`, `A005`/`A006`, `D013`/`D014`, `D015`/`D016`, `A007`–`A009` and `N001`–`N002`, or an explicit `executed: false`), reports the fourteen manual rules including `N003` `executed: false`, emits [the finding format](../standard/07-executable-governance.md#72-the-finding-format) |
 | **`acima.config.json`** | `examples/<language>/` | declares units, level, excludes |
 | **Violation gallery** | `examples/<language>/violations/` | one fixture per rule, plus `expected.json` |
 | **Conformance entry** | `conformance/run.py` | one line adding the language to the run |

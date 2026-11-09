@@ -153,6 +153,26 @@ the evidence required by `A013` is proportionate to the failure mode: a test of 
 path, a reconciliation report, an operational alert or a recorded review. This chapter does not require
 distributed transactions, global locks or universal atomicity.
 
+## 6.5.3 One owner per consistency boundary
+
+`A015` asks a different question from §6.5.1 and §6.5.2: not *which API* opens a transaction, but
+*who owns the guarantee*. A multi-step state change MUST name one owning component and state what the
+caller can rely on when the operation returns — committed, accepted, recoverable, compensating or
+unknown. The owner is normally the module that owns the state; a host policy may own a delivery
+workflow, but it MUST NOT own a consistency decision whose invariants live inside a module.
+
+Review questions:
+
+1. Which component decides that the step succeeded, and where is that decision recorded?
+2. Which intermediate states can a concurrent reader observe, and are they legal?
+3. If the operation stops between steps, who resumes, compensates or reconciles it?
+4. Does the contract say which of those outcomes is possible, or does it imply all-or-nothing?
+
+"We use a transaction" is not an answer to any of these. Neither is a caller wrapping two module
+calls and calling the result atomic. The obligation is conditional: a single local write may need no
+consistency discussion at all. `A015` is manual in every profile because ownership and guarantees
+are design intent, not syntax.
+
 ## 6.6 Configuration ownership
 
 Configuration is a boundary like any other (`A002`).
@@ -243,3 +263,27 @@ A component that cannot safely stop MUST report that honestly rather than acknow
 continue silently. A completed durable effect MUST NOT be reported as cancelled; it is a completed
 effect with a separate compensation, if one exists. ACIMA does not require a cancellation parameter on
 every method, and an unused or ignored token is not evidence of cancellation support.
+
+## 6.10 Telemetry and observability
+
+Logging, metrics and tracing are also runtime boundaries. They cross out of the module and may be
+read by operators, auditors, customers and later code. `A014` requires them to *observe* behaviour:
+
+- telemetry MUST NOT make a business decision. A logger, interceptor or metric callback that decides
+  whether to proceed, what to return or whether a failure is swallowed has become business logic in
+  the wrong place;
+- telemetry MUST NOT replace a required output. A business event, a required audit record and an
+  operational diagnostic are different things: the event carries a fact other components act on, the
+audit record carries accountability and retention, and the diagnostic explains runtime behaviour.
+  A best-effort log line is not an audit record;
+- emission failure MUST have a declared behaviour. It must not silently change the business outcome,
+  and it must not turn a successful effect into a reported failure unless the record is part of the
+  effect's contract;
+- telemetry MUST NOT conceal a meaningful nondeterministic input or external dependency. Logging the
+  result that was computed is observation; computing the result inside the telemetry path is not.
+
+ACIMA does not prescribe a logging framework, a metric taxonomy, a trace format, log levels or a
+retention period. It requires the owner, the purpose and the failure behaviour of each category to be
+reviewable. Chapter 14 governs secret and sensitive values: an operational diagnostic MUST NOT become
+the place a secret is written. `A014` is manual in every profile because whether a call observes or
+alters behaviour is a semantic judgement.

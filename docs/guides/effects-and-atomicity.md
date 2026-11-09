@@ -108,6 +108,35 @@ For a multi-step operation, choose one guarantee and say so:
 Partial completion must be observable, and someone must own the resume, compensation or
 reconciliation. A retry is not a recovery strategy.
 
+## Consistency ownership
+
+`A015` is about who owns the guarantee, not which transaction API is used. For every multi-step
+change, name one owner and state what the caller can rely on when the operation returns: committed,
+accepted, recoverable, compensating or unknown. If two components both believe they own the
+boundary, the first partial failure discovers the disagreement.
+
+Atomicity remains one strategy among four. A recoverable intermediate state with an owned resume, a
+committed step with an owned compensation, or a reconciliation loop against the source of truth are
+all legitimate. What is not legitimate is an unowned gap between two commits that callers describe as
+atomic. See [chapter 6 §6.5.3](../standard/06-runtime-boundaries.md#653-one-owner-per-consistency-boundary).
+
+## Observability
+
+Telemetry is part of the runtime boundary, not an afterthought (`A014`). A log line, metric or trace
+span may observe a business decision; it must not make one, swallow a failure, compute the value it
+reports or stand in for a required audit record. Distinguish three categories and give each an owner
+and a failure behaviour:
+
+- **operational diagnostics** — explain runtime behaviour to engineers;
+- **business events** — carry a fact other components act on, with the same semantics as any other
+  published message;
+- **required audit records** — carry accountability, retention and access requirements as part of the
+  effect's contract.
+
+A best-effort log is not an audit record. Emission failure must not silently change the business
+outcome, and it must not turn a successful effect into a reported failure unless the record is part
+of the contract. Never write a secret or sensitive value to a diagnostic.
+
 ## Truthful outcomes
 
 An effect owner must not lie about what happened:
@@ -141,7 +170,7 @@ effects are low-impact, but a payment, inventory decrement or required audit rec
 
 ## Assessment and reporting
 
-`C008` and `A010`–`A013` are manual in every profile. In an assessment:
+`C008` and `A010`–`A015` are manual in every profile. In an assessment:
 
 - **confirmed defect** — the reviewed effect is unowned, duplicates are silently repeated, or the
   outcome is false;

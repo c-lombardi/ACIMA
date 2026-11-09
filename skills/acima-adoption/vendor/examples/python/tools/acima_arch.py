@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ACIMA reference enforcer for Python.
 
-Implements the 41 automated rules and reports the 12 manual review requirements against the units declared in acima.config.json.
+Implements the 41 automated rules and reports the 14 manual review requirements against the units declared in acima.config.json.
 Reads source with `ast`; never imports the product code.
 
     python3 tools/acima_arch.py --root . --config acima.config.json --format json
@@ -42,6 +42,7 @@ CATALOG: dict[str, tuple[str, str]] = {
     "ACIMA-A009": ("warning", "L3"),
     "ACIMA-A010": ("error", "L3"), "ACIMA-A011": ("error", "L3"),
     "ACIMA-A012": ("error", "L3"), "ACIMA-A013": ("warning", "L3"),
+    "ACIMA-A014": ("error", "L3"), "ACIMA-A015": ("error", "L3"),
     "ACIMA-N001": ("warning", "L3"), "ACIMA-N002": ("warning", "L3"),
     "ACIMA-N003": ("warning", "L3"),
     "ACIMA-G001": ("error", "L1"), "ACIMA-G002": ("error", "L1"),
@@ -61,6 +62,8 @@ NOT_EXECUTED = {
     "ACIMA-A011": "effect semantics require contract and API review",
     "ACIMA-A012": "outcome truthfulness requires failure, retry and cancellation evidence",
     "ACIMA-A013": "critical-effect evidence requires audit and telemetry inspection",
+    "ACIMA-A014": "whether telemetry observes or alters business behaviour needs review",
+    "ACIMA-A015": "consistency ownership and guarantees need design review",
 }
 # Third-party governance: the tier rules only execute when externals is declared.
 TIER_RULES = ("ACIMA-L005", "ACIMA-L006", "ACIMA-L007", "ACIMA-D010", "ACIMA-G006")

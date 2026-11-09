@@ -5,9 +5,9 @@ license: MIT
 compatibility: Python 3.9+ for the preflight script. The target language toolchain is only needed to run that language's enforcer.
 allowed-tools: Read Grep Glob Bash Edit Write
 metadata:
-  standard: "1.8.0-draft.1"
-  skill-version: "1.16.0"
-  catalog-sha256: "b908a5f739b80c323778f47bfe574036294f268a6e1f905522a654970aef2578"
+  standard: "1.9.0-draft.1"
+  skill-version: "1.17.0"
+  catalog-sha256: "084d53a04582b955a4f64f80ca41067ff609bba812f2437ff8cc5c2306454822"
 ---
 
 # ACIMA adoption
@@ -15,7 +15,7 @@ metadata:
 You are applying the ACIMA architecture standard — Autonomous, Contract-Isolated, Immutable
 Modular Architecture — to a real repository. The standard lives in this repository:
 
-- `tools/acima-spec/rules.json` — the 53-rule catalog: 41 automated and 12 manual-evidence rules. **Normative.**
+- `tools/acima-spec/rules.json` — the 55-rule catalog: 41 automated and 14 manual-evidence rules. **Normative.**
 - `docs/standard/` — the specification. Chapters 4 (dependency model), 5 (contract design),
   8 (conformance) and 9 (adoption) are the ones you will use most.
 - `examples/<language>/` — a working ordering system (four modules in Python, three in
@@ -62,7 +62,7 @@ it, and never upgrade an assessment into an adoption because the assessment foun
 If the request is ambiguous, run the read-only mode and say which you chose. If it mixes modes, do
 the assessment first and ask before the first write.
 
-## Four phases and one consent boundary
+## Five phases and one consent boundary
 
 **Phase 1 — Assessment (the default).** Inspect, run read-only analysis, identify findings and
 limits, classify the repository, and propose boundaries. The commands are read-only:
@@ -80,12 +80,19 @@ exact paths, what each file contains, required/conditional/optional status, arch
 tradeoffs and maintenance. Do not write the files yet. A request to “see the files” is not approval
 to create them.
 
-**Phase 3 — Approved adoption.** Only after an explicit affirmative response to that proposal,
-create the named files and make the named changes. Approval covers the listed scope only; a new
-requirement stops work and needs a new decision. Permission to adopt is not permission to merge,
-publish or release.
+**Phase 3 — Explicit authorization.** Wait for an explicit affirmative response to that proposal.
+Approval covers the listed scope only — the named paths, level and changes. Partial approval is
+supported: implement exactly what was approved and say what capability is unavailable without the
+rest. A request to “see
+the files”, a general expression of interest, continued conversation or silence is not approval.
 
-**Phase 4 — Verification and handoff.** Verify what was actually created and run, then report
+**Phase 4 — Approved implementation.** Implement only the approved changes. Do not create optional
+artifacts — an adoption plan, a communication plan, a status dashboard or a summary — unless they
+were in the approved scope or the owner asks for them. Routine choices inside the scope are allowed;
+a new requirement, path, level or enforcement mechanism stops work and needs a new decision.
+Permission to adopt is not permission to merge, publish or release.
+
+**Phase 5 — Verification and handoff.** Verify what was actually created and run, then report
 capabilities and limits. A config, baseline, passing gate or configured CI is not conformance.
 
 | Action | Approval required? |
@@ -98,8 +105,10 @@ capabilities and limits. A config, baseline, passing gate or configured CI is no
 [references/15-consent-and-scope.md](references/15-consent-and-scope.md) has the full boundary, the
 artifact matrix, partial approval, module-map confidence and conversation rules.
 
-Adoption adds a unit map, a measured baseline, owned waivers and a gate. It is a governance change,
-not a refactor, and `preflight --write-*` is a write even when the path is relative.
+An approved technical adoption adds a unit map and, when the approved scope includes them, a measured
+baseline, owned waivers and a gate. It is a governance change, not a refactor, and
+`preflight --write-*` is a write even when the path is relative. Plans and communication documents
+are optional unless the owner asks for them or coordination genuinely requires them.
 
 ## Outcomes (definition of done)
 
@@ -110,22 +119,25 @@ not a refactor, and `preflight --write-*` is a write even when the path is relat
 | Consented | The user explicitly approves a named scope, level and file list |
 | Baselined | Only if approved: a run artefact exists; every pre-existing finding is owned and expiring |
 | Gated | Only if approved: CI fails on new `error` findings at the declared level |
-| First slice | Only if separately approved: one boundary change is merged |
+| First slice | Only if separately approved: one boundary change is green; the owner performs the merge |
 | Handed off | The team can run what was approved; outcomes and limits are reported in their terms |
-| Navigable | Any adopted repository has `docs/acima/STATUS.md` naming the next step |
+| Navigable (optional) | When the approved adoption produced state to resume, `docs/acima/STATUS.md` names the next step |
 
 A repository is **fully conformant** at a level only when the run artefact shows **zero unwaived
-errors** at that level on the current commit **and every rule required by that level was executed**,
-with a recorded manual/native evidence artifact where no automated rule exists. If any required rule
-is `executed: false`, the result is a **PARTIAL ASSESSMENT**, not conformance. Anything less is a
-plan, and you must call it a plan.
+errors** at that level on the current commit **and every rule required by that level is accounted
+for**: each automated rule executed through its designated enforcement mechanism, and each manual
+rule covered by accepted, current, repository-scoped evidence in `.acima/manual-evidence.json`. A
+catalog-manual rule reported as `executed: true` does not count. Missing or expired evidence, an
+unsupported check reported as passing, or an incomplete execution map makes the result a **PARTIAL
+ASSESSMENT** (or an invalid assessment), not conformance. Anything less is a plan, and you must call
+it a plan.
 
 ## Reporting: the summary is the product
 
-Every adoption ends with `docs/acima/adoption-summary.md`, generated by
-[scripts/summarize.py](scripts/summarize.py) from the run artefact. An assessment ends with the
-same summary in the response, or at a path outside the target; writing it into the repository is a
-change and needs approval. It answers, in order: what was found, what it means, the key problems,
+When the approved scope includes a repository summary, write `docs/acima/adoption-summary.md` from
+[scripts/summarize.py](scripts/summarize.py) using the run artefact. Otherwise report the same seven
+sections in the response, or at a path outside the target; writing it into the repository is a change
+and needs approval. An assessment always ends with those sections in the response. It answers, in order: what was found, what it means, the key problems,
 the next action, what is complete, what is unverified, and where the evidence is. Keep the run and
 `acima.py report` as linked technical records, not pasted content.
 
@@ -184,6 +196,9 @@ message that is the summary.
 12. **Never write before consent.** Analysis, a good finding, an inferred need, or a request to
     adopt is not approval to create files. Present the exact paths, contents and consequences, and
     act only on an explicit affirmative response to that proposal.
+13. **Never require an organizational artifact.** An adoption plan, communication plan, status
+    dashboard or summary is optional unless the owner asked for it or coordination genuinely requires
+    it. Do not treat a technical adoption as incomplete because no programme document exists.
 
 ### Reviewing an effect boundary
 
@@ -242,11 +257,11 @@ when the thing they record changes; never reconstruct state from the conversatio
 | `acima.config.json` | units, roles, paths, architecture mode | Step 0 and every resume | only after approval, with human review |
 | `.acima/baseline.json` | the fingerprints measured at adoption | before the gate | only after approval; generated from a run |
 | `.acima/waivers.json` | one owned, fingerprinted, expiring exception per finding | before claiming, before editing | only after approval, when an owner accepts an exception |
-| `.acima/manual-evidence.json` | recorded evidence for the twelve judgement rules (`C003`, `C007`, `C008`, `L004`, `A002`, `A004`, `A010`–`A013`, `G004`, `N003`) | before any level claim | after approval, when a required rule is manual |
-| `docs/acima/adoption-plan.md` | boundaries, architecture family, phases, metrics | Step 2 and every resume | only if approved; when scope, owner or dates change |
+| `.acima/manual-evidence.json` | recorded evidence for the fourteen judgement rules (`C003`, `C007`, `C008`, `L004`, `A002`, `A004`, `A010`–`A015`, `G004`, `N003`) | before any level claim | after approval, when a required rule is manual |
+| `docs/acima/adoption-plan.md` | boundaries, architecture family, phases, metrics | only if the approved scope includes it | when scope, owner or dates change |
 | `docs/acima/STATUS.md` | phase, findings, next step, blockers | every resume | at the end of every session that changes map, baseline or gate |
 | `docs/acima/gate-*.json` | the run artefacts a claim rests on | claim and status | each measured run |
-| `docs/acima/adoption-summary.md` | the reader-facing report, generated from the run | every resume | after every assess, adopt or re-measure |
+| `docs/acima/adoption-summary.md` | the reader-facing report, generated from the run | only if the approved scope includes it | after an approved assess, adopt or re-measure |
 | `.acima/triage.json` | which matches are defects, review items or detector artefacts | before summarising | when triage changes; never to hide a finding |
 | `.github/workflows/*` | the gate CI runs | before claiming it is gated | when the level or command changes |
 
@@ -266,7 +281,7 @@ Report the blocker to the user in its own words, with the remedy the preflight p
 
 The preflight asserts the skill is calibrated to the catalog in this repository *at this commit*:
 `SKL-002` compares `rules.json` against the pinned SHA-256 in `manifest.json`, and `SKL-003`
-checks that all 41 automated rule IDs and the 12 manual IDs still exist. If either fails, the standard changed after
+checks that all 41 automated rule IDs and the 14 manual IDs still exist. If either fails, the standard changed after
 this skill was written. Re-read the changed rules, update the skill deliberately, and only then
 continue. Never silence the check.
 
@@ -313,9 +328,10 @@ build-blocking architecture gate, and who owns the exceptions?"* Do not proceed 
 Fill [`assets/adoption-proposal.md`](assets/adoption-proposal.md) in the conversation. Do not copy
 any plan, template or config into the target yet. The proposal names the exact paths, what each
 contains, why it is needed, whether it is required/conditional/optional, the decisions only the
-owner can make, and the maintenance it creates. If approval is later given for plans, use
-[`assets/adoption-plan.md`](assets/adoption-plan.md) and
-[`assets/communication-plan.md`](assets/communication-plan.md) then.
+owner can make, and the maintenance it creates. Plans and communication documents are optional. Create
+[`assets/adoption-plan.md`](assets/adoption-plan.md) or
+[`assets/communication-plan.md`](assets/communication-plan.md) only when the approved scope includes
+them or the owner asks for them.
 
 For every proposed module, show the evidence and confidence: discovered project, proposed role,
 why, and what remains unconfirmed. A heuristic draft is not an authoritative map. Ask about shared
@@ -530,8 +546,8 @@ state; and the phases that remain. Write [`docs/acima/STATUS.md`](assets/status-
 when adoption was approved and the map, baseline or gate changed.
 
 - Fill the conformance self-certification in `docs/standard/08-conformance.md` §8.5.
-- Deliver the [communication plan](references/40-communication.md) — kickoff, first finding,
-  first waiver negotiation, and the recurring update.
+- Offer the [communication guidance](references/40-communication.md) when the owner wants to
+  coordinate a multi-team programme. Do not create a communication plan by default.
 - Run the [newcomer onboarding](references/30-adoption-for-newcomers.md) for anyone who has never
   seen contract-based modular architecture. Assume zero background; do not assume they will read
   the spec.
@@ -539,7 +555,8 @@ when adoption was approved and the map, baseline or gate changed.
 - State the architecture family you detected and what ACIMA adds to it, in the team's vocabulary:
   the gate enforces the chosen boundaries, it does not choose them. Name it in `docs/acima/STATUS.md`
   and in the final message.
-- Write `docs/acima/STATUS.md` from the dashboard template and put the human-first summary at
+- If the approved scope included them and the map, baseline or gate changed, write
+  `docs/acima/STATUS.md` from the dashboard template and the human-first summary at
   `docs/acima/adoption-summary.md`; state the next command verbatim, not the whole programme.
 - In the final message use the summary's seven sections, not a chronological account of commands.
   Rule ids appear in parentheses; the evidence stays in the linked run and triage files.

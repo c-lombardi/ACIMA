@@ -3,6 +3,10 @@
 ACIMA is designed to be adopted while a system is running, by teams that cannot stop to rewrite it.
 This chapter is the practical path.
 
+Adoption is a consent-based sequence, not an instruction to implement. §9.9 defines the five phases
+and the approval boundary; the authoritative agent workflow is the
+[adoption skill](../../skills/acima-adoption/SKILL.md).
+
 ## 9.1 Greenfield
 
 Adopt the full shape from the first commit. It costs almost nothing when there is no legacy:
@@ -187,3 +191,31 @@ semantic changes, and makes review impossible. Rename the project you are alread
   in parity.
 
 A profile adopted without the product shape it assumes becomes ceremony. Base ACIMA still applies.
+
+## 9.9 Consent, authorization and artifacts
+
+A repository's owner decides whether, how much and when to adopt. Analysis is never authorization.
+The workflow has five phases; the skill implements them and this section defines the boundary.
+
+| Phase | Purpose | May write to the target? | Ends with |
+|---|---|---|---|
+| 1. Assessment | establish fit, boundaries, findings and limits | no | a verdict and named gaps |
+| 2. Proposal | make the change reviewable | no | exact paths, statuses, decisions and risks |
+| 3. Explicit authorization | the owner accepts a named scope | no | an affirmative answer to the approval question |
+| 4. Approved implementation | implement only the approved scope | approved paths only | the approved artifacts and slices |
+| 5. Verification and handoff | prove what exists and state what does not | no new scope | a report of changes, checks and gaps |
+
+Approval is **scope-specific**. A proposal lists every path, what it contains, why it is needed and
+whether it is required, conditional or optional. An approval covers that list and nothing else; a
+new requirement discovered during implementation stops work until the owner approves the addition.
+Partial approval is normal: a repository may adopt a unit map and a local check without a CI gate, a
+baseline or any programme document.
+
+Organizational artifacts are **optional unless the owner asks for them or coordination genuinely
+requires them**. An adoption plan, a communication plan and a status dashboard are useful for a
+multi-team programme; they are not conditions of technical adoption and MUST NOT be created by
+default. A summary is an interpretation of a run, not evidence, and may live outside the target.
+
+Merging, releasing, publishing and organizational decisions always remain with the human owner. No
+agent approval, tool result or passing gate substitutes for them. A limited adoption is legitimate;
+calling it complete is not.

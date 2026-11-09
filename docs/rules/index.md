@@ -1,10 +1,10 @@
 # Rule catalog
 
-53 rules. Six categories. Every rule has a permanent id, a severity, a conformance level and a
+55 rules. Six categories. Every rule has a permanent id, a severity, a conformance level and a
 detection strategy. Python, TypeScript, Go and .NET each have a reference enforcer; Java is a
 documented profile only and has no reference enforcer in this revision. The five third-party tier
 rules (`L005`–`L007`, `D010`, `G006`) are implemented by the Python and TypeScript enforcers in this
-revision and reported `executed: false` by Go and .NET. The explicit-input rules (`D011`, `D012`), the value rules (`A005`, `A006`), the composition rules (`D013`, `D014`), the functional-capture rules (`D015`, `D016`), the lifecycle rules (`A007`–`A009`) and the naming rules (`N001`–`N002`) follow the same split. `C008`, `A010`–`A013` and `N003` are manual in every profile: no portable analyzer can decide them reliably.
+revision and reported `executed: false` by Go and .NET. The explicit-input rules (`D011`, `D012`), the value rules (`A005`, `A006`), the composition rules (`D013`, `D014`), the functional-capture rules (`D015`, `D016`), the lifecycle rules (`A007`–`A009`) and the naming rules (`N001`–`N002`) follow the same split. `C008`, `A010`–`A015` and `N003` are manual in every profile: no portable analyzer can decide them reliably.
 
 The machine-readable source of truth is [`tools/acima-spec/rules.json`](../../tools/acima-spec/rules.json).
 This catalog is its human-readable form; if they disagree, the JSON is authoritative.
@@ -85,6 +85,8 @@ This catalog is its human-readable form; if they disagree, the JSON is authorita
 | `A011` | Effect semantics are hidden | error | L3 |
 | `A012` | Effect outcome is untruthful | error | L3 |
 | `A013` | Critical effect has no evidence | warning | L3 |
+| `A014` | Telemetry conceals or alters business behaviour | error | L3 |
+| `A015` | Unowned consistency boundary | error | L3 |
 
 ### Naming
 
@@ -135,7 +137,7 @@ things nobody fixes.
 
 ## Rules that need judgement
 
-Twelve normative rules cannot be decided by the portable reference enforcers. The machine-readable
+Fourteen normative rules cannot be decided by the portable reference enforcers. The machine-readable
 catalog marks them `automation: "manual"`; the other 41 are `automation: "automated"`. They remain
 in the catalogue because a native analyzer, package metadata or a human review can decide them, but
 a clean portable run is not evidence that they pass. A full conformance claim records one
@@ -154,13 +156,15 @@ claim is `PARTIAL ASSESSMENT`. See [Conformance §8.9](../standard/08-conformanc
 | `A011` | error | reports `executed: false` | decides whether retry, duplicate, consistency, partial-completion and cancellation semantics are explicit where applicable |
 | `A012` | error | reports `executed: false` | checks that success, failure, unknown and partial outcomes are reported truthfully |
 | `A013` | warning | reports `executed: false` | decides whether a critical effect has evidence proportional to its failure impact |
+| `A014` | error | reports `executed: false` | decides whether telemetry observes behaviour or replaces a business decision, and whether diagnostics, business events and audit records are distinguishable |
+| `A015` | error | reports `executed: false` | names the owner and the guarantee of each consistency boundary, and checks recovery, compensation or reconciliation |
 | `N003` | warning | reports `executed: false` | decides responsibility, side-effect, unit, abbreviation, boolean and domain-consistency clarity |
 | `G004` | error | reports `executed: false` | compares a reviewed per-language API baseline and classifies the change as additive or breaking |
 
 `G003` is executed, but a human still writes and reviews the documentation it looks for. The other
 41 rules execute in at least one reference enforcer and have gallery fixtures; the third-party tier,
 explicit-input, value, composition, functional-capture, lifecycle and naming rules are scoped to
-Python and TypeScript in this revision, so a Go or .NET run reports those eighteen plus the twelve
+Python and TypeScript in this revision, so a Go or .NET run reports those eighteen plus the fourteen
 manual rules `executed: false` and a full claim needs manual evidence for all of them.
 
 A rule that mixes machine and human judgement must say which part is which — otherwise the tool gets

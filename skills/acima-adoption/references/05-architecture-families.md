@@ -54,5 +54,5 @@ first slice changes.
   `../vendor/docs/guides/architecture-families.md` §"The qualification". If the team disagrees, the
   options are an owned waiver or a standard amendment — never a silent exception.
 - **A clean run is not an architecture review.** Say what the enforcer decided, what it did not, and
-  that the twelve manual rules are unevaluated unless evidence exists, including effect ownership
+  that the fourteen manual rules are unevaluated unless evidence exists, including effect ownership
   (`A010`–`A013`) and business-behaviour visibility (`C008`).

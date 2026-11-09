@@ -1,7 +1,7 @@
 {
   "$schema": "./rules.schema.json",
   "standard": "ACIMA",
-  "version": "1.8.0-draft.1",
+  "version": "1.9.0-draft.1",
   "findingSchema": {
     "rule": "ACIMA-<CATEGORY><NNN>",
     "severity": "error | warning | info",
@@ -624,6 +624,26 @@
       "fix": "Emit an owned audit or operational record with actor, subject, operation or correlation identity, outcome and timestamp; define retention, access and a tested failure case.",
       "automation": "manual",
       "manualEvidence": "List critical effects and show the owned audit or operational record: actor, subject, operation or correlation id, outcome, timestamp, retention and access."
+    },
+    {
+      "id": "ACIMA-A014",
+      "severity": "error",
+      "level": "L3",
+      "title": "Telemetry conceals or alters business behaviour",
+      "summary": "Logging, metrics and telemetry must observe application behaviour without concealing it, replacing a business decision or materially changing the outcome, and must distinguish operational diagnostics, business events and required audit records by owner and purpose.",
+      "fix": "Keep logging and telemetry at the observation boundary: log the outcome the business decision produced instead of computing it in the logger, never let a diagnostic write decide or suppress a business result, and record business events and required audit records as owned outputs rather than incidental log lines.",
+      "automation": "manual",
+      "manualEvidence": "Review every logging, metric, trace and telemetry call adjacent to a business decision: record what it observes, what it could conceal or replace, whether failing to emit changes behaviour, and whether a business event or required audit record is being served by a diagnostic log."
+    },
+    {
+      "id": "ACIMA-A015",
+      "severity": "error",
+      "level": "L3",
+      "title": "Unowned consistency boundary",
+      "summary": "A multi-step state change or transaction must have exactly one identifiable owner and a declared consistency guarantee on return; atomicity is one strategy, not a universal requirement.",
+      "fix": "Name the component that owns the consistency boundary, state whether the operation is atomic, recoverable, compensating or reconciled, and document the intermediate states and the recovery, compensation or reconciliation path; do not let callers or the host own a boundary that belongs to the module.",
+      "automation": "manual",
+      "manualEvidence": "For every multi-step state change and transaction, record the owning component, the guarantee on return, the intermediate states a caller can observe, and the recovery, compensation or reconciliation path with its owner."
     }
   ],
   "claimModel": {
@@ -632,7 +652,7 @@
       "PARTIAL ASSESSMENT"
     ],
     "fullRequires": [
-      "every rule required by the declared level executed or covered by repository-scoped manual evidence",
+      "every rule required by the declared level executed by its designated enforcement mechanism or covered by accepted, current, repository-scoped manual evidence",
       "zero unwaived error findings"
     ],
     "manualEvidencePath": ".acima/manual-evidence.json",

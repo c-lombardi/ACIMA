@@ -122,6 +122,8 @@ internal sealed class Enforcer
     private const string A011 = "ACIMA-A011";
     private const string A012 = "ACIMA-A012";
     private const string A013 = "ACIMA-A013";
+    private const string A014 = "ACIMA-A014";
+    private const string A015 = "ACIMA-A015";
     private const string N001 = "ACIMA-N001";
     private const string N002 = "ACIMA-N002";
     private const string N003 = "ACIMA-N003";
@@ -151,6 +153,7 @@ internal sealed class Enforcer
         [A007] = ("warning", "L3"), [A008] = ("warning", "L3"), [A009] = ("warning", "L3"),
         [A010] = ("error", "L3"), [A011] = ("error", "L3"),
         [A012] = ("error", "L3"), [A013] = ("warning", "L3"),
+        [A014] = ("error", "L3"), [A015] = ("error", "L3"),
         [N001] = ("warning", "L3"), [N002] = ("warning", "L3"), [N003] = ("warning", "L3"),
     };
 
@@ -186,6 +189,8 @@ internal sealed class Enforcer
         [A011] = "effect semantics require contract and API review",
         [A012] = "outcome truthfulness requires failure, retry and cancellation evidence",
         [A013] = "critical-effect evidence requires audit and telemetry inspection",
+        [A014] = "whether telemetry observes or alters business behaviour needs review",
+        [A015] = "consistency ownership and guarantees need design review",
     };
 
     private static readonly Dictionary<string, int> Rank = new() { ["L1"] = 1, ["L2"] = 2, ["L3"] = 3 };

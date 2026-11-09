@@ -18,14 +18,14 @@ P14 is numbered after the profile so that the existing profile identifiers keep 
 | P5 | [Strict Dependency Boundaries](#p5-strict-dependency-boundaries) | `D001` `D005` `D008` `L001` |
 | P6 | [Immutable by Default](#p6-immutable-by-default) | `C001`–`C007` |
 | P7 | [Independent Evolution](#p7-independent-evolution) | `A001`–`A006` `G004` |
-| P8 | [Executable Governance](#p8-executable-governance) | `G001`–`G005` and the harness contract |
+| P8 | [Executable Governance](#p8-executable-governance) | `G001`–`G005`, the harness contract and the claim model |
 | P9 | [Explicit Exceptions](#p9-explicit-exceptions) | `G001` `G002` |
 | P10 | [Service-Aligned Topology](#p10-service-aligned-topology) | `ST-1`–`ST-3` `ST-7` (profile, automated) |
 | P11 | [Layer Contract Independence](#p11-layer-contract-independence) | `ST-4` `ST-6` (profile, automated) |
 | P12 | [Absolute Contract Isolation](#p12-absolute-contract-isolation) | `ST-5` (profile, automated) |
 | P13 | [Product-Oriented Services](#p13-product-oriented-services) | `ST-11` `ST-12` (profile, automated) |
 | P14 | [Intent-Revealing Naming](#p14-intent-revealing-naming) | `N001` `N002`, `N003` review |
-| P15 | [Owned Effects](#p15-owned-effects) | `A010`–`A013` review |
+| P15 | [Owned Effects](#p15-owned-effects) | `A010`–`A015` review |
 
 ---
 
@@ -206,8 +206,15 @@ ACIMA distinguishes two kinds of abstraction at a boundary:
 - **P4.15** Shared mutable state MUST have an explicit owner, mutation authority, isolation
   boundary and concurrency policy, and a resource-owning component MUST have an explicit
   initialisation, lifetime and cleanup story. Transient construction is not a substitute for state
-  ownership (`A009`; chapter 17). Thread safety, tenant isolation, resource cleanup and distributed
+  ownership  (`A009`; chapter 17). Thread safety, tenant isolation, resource cleanup and distributed
   consistency remain review obligations, not static-analysis claims.
+- **P4.16** A factory, higher-order function or returned component MUST NOT conceal an
+  application-owned dependency or its lifecycle ownership. A dependency is declared as a parameter
+  or field whether the component is a class, a closure or a factory product, and a factory that
+  resolves a dependency from a global container at invocation is a service locator (`D015`, `D016`,
+  `L004`; chapters 16 and 17). Framework-managed activation remains legitimate when the required
+  dependencies and activation path are inspectable (`P4.10`). Pure currying, partial application and
+  higher-order composition over values remain permitted.
 
 ### The test
 
@@ -330,8 +337,13 @@ spanning modules (saga/policy). There is no fourth answer, and the fourth answer
 
 ### Obligations
 
-- **P8.1** Every rule required by the declared conformance level MUST be executed in CI on every
-  change.
+- **P8.1** Every rule required by the declared conformance level MUST be accounted for in the
+  conformance assessment on every change. An automated rule MUST execute through its designated
+  enforcement mechanism (`P8.2`); a rule that cannot execute MUST be covered by accepted, current,
+  repository-scoped manual evidence. A catalog-manual rule MUST NOT be counted as executed, because
+  no portable enforcer decides it. Missing or expired evidence, an unsupported check reported as
+  passing, or an incomplete execution map makes the result a **PARTIAL ASSESSMENT**; none of them
+  can support a full conformance claim (chapter 8 §8.4, §8.6, §8.9).
 - **P8.2** Architecture tests MUST produce findings in the standard finding format, so one CI gate
   and one report work for every language.
 - **P8.3** A failing architecture test MUST NOT be silenced by disabling the rule; it is fixed or
@@ -350,6 +362,14 @@ is the one the compiler or the test suite refuses to let you break.
 
 P8 is also what makes P9 meaningful. Waivers matter *because* the rules are otherwise absolute: an
 explicit exception to an enforced rule is a decision; a comment saying "we know, it's fine" is not.
+
+Manual evidence does not soften P8; it completes it. Some obligations — whether a contract hides
+business behaviour, whether an effect owner reports an unknown outcome truthfully, whether recovery
+evidence is adequate — cannot be decided from source text. Pretending otherwise would let a clean
+automated run stand in for a review nobody performed. P8 therefore requires every required rule to
+be *accounted for*, not every rule to be machine-decided: automated rules execute, manual rules carry
+named, current, repository-scoped evidence, and the claim layer refuses to call the result full
+conformance while either is missing.
 
 ---
 
@@ -549,6 +569,20 @@ P7, and it does not prescribe a framework, a messaging product or a distributed 
   leave an operation unrecoverable MUST have evidence proportionate to that risk: a test, a
   reconciliation check, an operational signal or a recorded review. A clean static scan alone is not
   evidence that the effect is correct (`A013`; chapter 6 §6.5.2).
+- **P15.5** A meaningful state mutation MUST occur through an identifiable ownership boundary. A
+  persistent or shared architectural state mutation belongs to the module or component that owns
+  that state, under the persistence and shared-state obligations (`A001`, `A009`; chapter 17).
+  Ordinary local mutation inside an owned aggregate, value or operation is normal design and needs
+  no separate state-ownership mechanism; this obligation is about state that crosses or outlives the
+  operation.
+- **P15.6** A multi-step state change or transaction MUST have exactly one identifiable owner and a
+  declared consistency guarantee on return. Atomicity is one valid strategy; a recoverable
+  intermediate state, an owned compensation or reconciliation are equally valid where the domain
+  requires them (`A015`; chapter 6 §6.5.1–§6.5.3).
+- **P15.7** Logging, metrics and telemetry MUST observe application behaviour without concealing it,
+  replacing a business decision or materially changing the outcome. Operational diagnostics, business
+  events and required audit records MUST be distinguishable by owner and purpose (`A014`;
+  chapter 6 §6.10).
 
 ### What this does not require
 
@@ -563,6 +597,10 @@ P7, and it does not prescribe a framework, a messaging product or a distributed 
 - A local mutation inside an aggregate does not need a separate state-ownership mechanism. P15 is about
   observable effects and the consistency contract around them; ordinary in-memory mutation remains
   governed by the module's internal design (chapter 17).
+- Every log line does not need a business-event schema or a tracing abstraction. Operational
+  diagnostics remain operational; the obligation is that telemetry is not the place where a business
+  decision is made, a failure is swallowed or a required audit record is replaced by a best-effort
+  message.
 
 ### Why a thin principle rather than nine rules
 
@@ -576,8 +614,9 @@ by the design, not imposed on every operation.
 
 ### Enforcement boundary
 
-The four P15 obligations are assessed through `A010`–`A013`, all manual-evidence rules. No portable
+The P15 obligations are assessed through `A010`–`A015`, all manual-evidence rules. No portable
 static analysis can prove that an effect owner is correct, that an unknown outcome is represented,
-or that recovery evidence is adequate. The enforcers report those rules as `executed: false`; a full
-claim needs repository-scoped manual evidence. A source scan that merely finds a retry library, a
-transaction API, a cancellation token or a logging call proves none of the obligations.
+that a consistency boundary has one owner, or that telemetry does not alter behaviour. The enforcers
+report those rules as `executed: false`; a full claim needs repository-scoped manual evidence. A
+source scan that merely finds a retry library, a transaction API, a cancellation token or a logging
+call proves none of the obligations.

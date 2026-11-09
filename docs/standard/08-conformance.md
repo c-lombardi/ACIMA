@@ -8,7 +8,7 @@ Conformance is a claim a repository makes about itself, and it is only credible 
 |---|---|---|---|
 | **L1** | Structural | `D001`–`D016`, `L001`–`L007`, `G001`, `G002`, `G005`, `G006` | you have modules and want the graph to stay acyclic |
 | **L2** | Immutable | L1 + `C001`–`C008`, `G003`, `G004` | contracts are consumed by another team |
-| **L3** | Autonomous | L2 + `A001`–`A013` | modules have their own data and effects, and could be extracted |
+| **L3** | Autonomous | L2 + `A001`–`A015` | modules have their own data and effects, and could be extracted |
 
 `warning`-severity rules must be *reported* at their level, and a repository at that level must show
 zero unwaived `error` findings. Warnings are expected to trend down; they are not a pass/fail gate.
@@ -96,6 +96,10 @@ Everything in L2, plus:
       the operation's design makes them applicable (`A011`).
 - [ ] Effect outcomes distinguish success, failure, unknown and partial completion truthfully
       (`A012`).
+- [ ] Logging, metrics and telemetry observe behaviour without concealing or altering it, and the
+      diagnostic, business-event and audit-record purposes are distinguishable (`A014`).
+- [ ] Every multi-step state change and transaction names one owner and a declared consistency
+      guarantee, with recovery, compensation or reconciliation where they apply (`A015`).
 - [ ] Critical effects have evidence proportionate to their failure impact (`A013`, warning).
 - [ ] Dependency budgets in `acima.config.json` are respected.
 
@@ -146,14 +150,14 @@ enforcers in this repository fail when a suite finds zero files.
 The count is derived from `rules.json`; never copy a fixed number. At L2 the catalog requires 37
 rules. The reference portable enforcers execute 32 of those and report `L004`, `C003`, `C007`,
 `C008` and `G004` as not executed; without manual evidence for those five, the correct claim is
-`PARTIAL ASSESSMENT`, not `FULL CONFORMANCE`. At L3 the catalog requires 53 rules; 41 execute and
-the twelve manual rules are `L004`, `C003`, `C007`, `C008`, `A002`, `A004`, `A010`–`A013`, `N003` and
-`G004`. The five
+`PARTIAL ASSESSMENT`, not `FULL CONFORMANCE`. At L3 the catalog requires 55 rules; 41 execute and
+the fourteen manual rules are `L004`, `C003`, `C007`, `C008`, `A002`, `A004`, `A010`–`A015`, `N003`
+and `G004`. The five
 third-party tier rules, the two explicit-input rules, the two value rules, the two composition
 rules, the two functional-capture rules, the three lifecycle rules and the two naming rules
 (`N001`–`N002`) execute in the Python and TypeScript enforcers; a Go or .NET run reports those
 eighteen `executed: false`, so that repository needs manual evidence for them or the scoped statement
-in §8.10. `N003` is one of the twelve manual rules, not an automated gap.
+in §8.10. `N003` is one of the fourteen manual rules, not an automated gap.
 
 The claim class is computed, not chosen by the author:
 
@@ -186,6 +190,14 @@ The claim classes are exclusive:
 |---|---|---|
 | `FULL CONFORMANCE` | every required rule executed or covered by accepted manual evidence; zero unwaived error findings | yes |
 | `PARTIAL ASSESSMENT` | a complete, valid run, but at least one required rule has no execution or accepted manual evidence | no |
+
+A catalog-manual rule reported as `executed: true` does not count as executed. The catalog is
+authoritative about how a rule is decided, so a run that claims to execute a manual rule has
+misstated its execution map; the rule still needs repository-scoped manual evidence. This is what
+prevents an unsupported check from passing silently, and it is why a clean automated run cannot
+establish full conformance on its own when required evidence is missing. An execution map that omits
+a required rule is not partial — it is `INVALID ASSESSMENT` and exits `2`, because the run did not
+account for every obligation the declared level requires.
 | `INVALID ASSESSMENT` | missing execution map, missing level, malformed output or unreadable evidence | no; exit `2` |
 
 ## 8.7 Conformance and reality
@@ -251,7 +263,8 @@ review that replaces an automated rule, not a promise to review later:
 A full claim requires one accepted entry for every required rule that did not execute. An entry is
 accepted only when:
 
-- `rule` is a catalog id required by the declared level;
+- `rule` is a catalog id required by the declared level and marked `automation: manual` in the
+  catalog (or reported `executed: false` by the run);
 - `scope` is `repository` — unit- or path-scoped evidence cannot certify the whole repository;
 - `owner`, `reviewer`, `method` and `artifact` are non-empty;
 - `reviewedOn` is an ISO date not in the future and `expires` is an ISO date not in the past;
@@ -260,7 +273,7 @@ accepted only when:
 
 Expired, missing or malformed evidence makes the claim `PARTIAL ASSESSMENT`; it does not make the run
 invalid. A missing execution map, an unknown level or malformed JSON is `INVALID ASSESSMENT` and exits
-`2`. The reference enforcers continue to report the twelve manual rules as `executed: false`; the evidence file
+`2`. The reference enforcers continue to report the fourteen manual rules as `executed: false`; the evidence file
 is how a repository records the review the portable tool cannot perform.
 
 ## 8.10 Third-party governance and the swap drill

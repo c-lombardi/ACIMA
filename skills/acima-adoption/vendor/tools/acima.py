@@ -44,7 +44,8 @@ CATEGORY = {
 NON_PORTABLE = {
     "ACIMA-C003", "ACIMA-C007", "ACIMA-C008", "ACIMA-L004",
     "ACIMA-A002", "ACIMA-A004", "ACIMA-A010", "ACIMA-A011",
-    "ACIMA-A012", "ACIMA-A013", "ACIMA-G004", "ACIMA-N003",
+    "ACIMA-A012", "ACIMA-A013", "ACIMA-A014", "ACIMA-A015",
+    "ACIMA-G004", "ACIMA-N003",
 }
 # Five tier rules are implemented by the Python and TypeScript enforcers in this revision; the Go
 # and .NET enforcers report them executed:false, so a report must never imply they were decided.
