@@ -72,6 +72,9 @@ var catalog = map[string][2]string{
 	"ACIMA-G001": {"error", "L1"}, "ACIMA-G002": {"error", "L1"},
 	"ACIMA-G003": {"warning", "L2"}, "ACIMA-G004": {"error", "L2"},
 	"ACIMA-G005": {"error", "L1"},
+	"ACIMA-D010": {"error", "L1"},
+	"ACIMA-L005": {"warning", "L1"}, "ACIMA-L006": {"error", "L1"}, "ACIMA-L007": {"warning", "L1"},
+	"ACIMA-G006": {"warning", "L1"},
 }
 
 var notExecuted = map[string]string{
@@ -81,6 +84,11 @@ var notExecuted = map[string]string{
 	"ACIMA-A002": "configuration APIs differ per ecosystem",
 	"ACIMA-A004": "version-lock coupling is visible only across published packages",
 	"ACIMA-G004": "an API baseline needs a per-language surface format",
+	"ACIMA-D010": "third-party tier rules are implemented by the python and typescript enforcers in this revision",
+	"ACIMA-L005": "third-party tier rules are implemented by the python and typescript enforcers in this revision",
+	"ACIMA-L006": "third-party tier rules are implemented by the python and typescript enforcers in this revision",
+	"ACIMA-L007": "third-party tier rules are implemented by the python and typescript enforcers in this revision",
+	"ACIMA-G006": "manifest package governance is implemented by the python and typescript enforcers in this revision",
 }
 
 var rank = map[string]int{"L1": 1, "L2": 2, "L3": 3}

@@ -156,5 +156,88 @@ class AdoptionPreflightTests(unittest.TestCase):
                          {"sha256:one", "sha256:two"})
 
 
+PROJECT_FIXTURE = ROOT / "conformance/fixtures/dotnet-project-waiver"
+
+
+class ProjectFileWaiverTests(unittest.TestCase):
+    """Project-file findings belong to the unit that declares their path.
+
+    The enforcer classified source files only, so a finding on `*.csproj` resolved to no
+    unit and no `unit:` or `module:` waiver could ever match it.  That made project-level
+    debt permanently unwaivable, which is why it was carried in a baseline instead.
+    """
+
+    def setUp(self) -> None:
+        if shutil.which("dotnet") is None:
+            self.skipTest("dotnet SDK is not installed")
+        self.temporary = tempfile.TemporaryDirectory()
+        self.target = Path(self.temporary.name) / "repo"
+        shutil.copytree(PROJECT_FIXTURE, self.target,
+                        ignore=shutil.ignore_patterns("bin", "obj"))
+
+    def tearDown(self) -> None:
+        self.temporary.cleanup()
+
+    def run_fixture(self) -> tuple[subprocess.CompletedProcess, dict]:
+        result = subprocess.run(
+            ["dotnet", "run", "--project", str(ROOT / "examples/dotnet/tools/Acima.ArchTests"),
+             "--no-build", "--", "--root", str(self.target),
+             "--config", "acima.config.json", "--format", "json"],
+            cwd=ROOT, capture_output=True, text=True,
+        )
+        self.assertTrue(result.stdout.strip(), result.stderr)
+        return result, json.loads(result.stdout)
+
+    def write_waiver(self, finding: dict, scope: str, fingerprint: str | None = None) -> None:
+        document = {
+            "standard": "1.0.0",
+            "waivers": [{
+                "rule": finding["rule"],
+                "scope": scope,
+                "owner": "regression-test",
+                "reason": "prove a project-file finding resolves to its unit",
+                "expires": "2099-01-01",
+                "reviewedOn": "2026-11-08",
+                "fingerprint": fingerprint or finding["fingerprint"],
+            }],
+        }
+        (self.target / "waivers.json").write_text(json.dumps(document, indent=2) + "\n",
+                                                  encoding="utf-8")
+
+    def project_finding(self, payload: dict) -> dict:
+        findings = [finding for finding in payload["findings"]
+                    if finding["rule"] == "ACIMA-D001"
+                    and finding["path"].endswith(".csproj")]
+        self.assertTrue(findings, payload)
+        return findings[0]
+
+    def test_unit_scoped_waiver_suppresses_a_project_file_finding(self) -> None:
+        before, payload = self.run_fixture()
+        self.assertEqual(before.returncode, 1, payload)
+        finding = self.project_finding(payload)
+
+        self.write_waiver(finding, "unit:alpha")
+        after, payload = self.run_fixture()
+        self.assertEqual(payload["findings"], [], payload)
+        self.assertEqual(after.returncode, 0, payload)
+
+    def test_a_wrong_fingerprint_leaves_the_project_finding_visible(self) -> None:
+        _, payload = self.run_fixture()
+        finding = self.project_finding(payload)
+
+        self.write_waiver(finding, "unit:alpha", "sha256:0000000000000000")
+        after, payload = self.run_fixture()
+        self.assertIn(finding["path"], {item["path"] for item in payload["findings"]})
+        self.assertEqual(after.returncode, 1, payload)
+
+    def test_the_owning_unit_is_required(self) -> None:
+        _, payload = self.run_fixture()
+        finding = self.project_finding(payload)
+
+        self.write_waiver(finding, "unit:beta")
+        _, payload = self.run_fixture()
+        self.assertIn(finding["path"], {item["path"] for item in payload["findings"]})
+
+
 if __name__ == "__main__":
     unittest.main()

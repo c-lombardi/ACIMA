@@ -1,0 +1,27 @@
+{
+  "_comment": "Triage for the eShop validation scenario. These are recorded decisions from the adoption run: the detector matched these paths, but they are not boundary violations. They stay in the gate; this file only changes how the adoption summary describes them.",
+  "standard": "1.0.0-draft.1",
+  "reviewedOn": "2026-11-09",
+  "reviewer": "c-lombardi",
+  "triage": [
+    {
+      "rule": "ACIMA-D009",
+      "classification": "detector-artifact",
+      "owner": "c-lombardi",
+      "cluster": "bare-identifier-match",
+      "reason": "The detector matches a bare identifier, so each module's own internal Extensions (and Program) class is read as another module's internal type.",
+      "evidence": "docs/acima/STATUS.md section 2 row 4; reproduce with a module that declares internal static class Extensions and another that declares its own.",
+      "note": "Fix exact-type resolution in the detector and add this as a fixture. Do not rename working code to satisfy the match."
+    },
+    {
+      "rule": "ACIMA-L001",
+      "classification": "detector-artifact",
+      "owner": "c-lombardi",
+      "cluster": "infrastructure-case-sensitivity",
+      "reason": "The detector skips infrastructure/ case-sensitively, so Infrastructure/ and Ordering.Infrastructure/ are not recognised as infrastructure; all 74 matches are persistence code in infrastructure folders.",
+      "evidence": "docs/acima/STATUS.md section 2 row 5; the matched paths are all under migrations or Infrastructure folders.",
+      "note": "Compare paths ordinal-ignore-case and accept *.Infrastructure. Nothing in the code needs to change."
+    }
+  ],
+  "findings": []
+}

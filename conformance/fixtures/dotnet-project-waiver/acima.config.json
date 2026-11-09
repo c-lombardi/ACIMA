@@ -1,0 +1,23 @@
+{
+  "standard": "1.0.0",
+  "mode": "base",
+  "language": "dotnet",
+  "level": "L1",
+  "root": ".",
+  "units": [
+    {
+      "id": "alpha",
+      "module": "alpha",
+      "role": "implementation",
+      "paths": ["src/Alpha"]
+    },
+    {
+      "id": "beta",
+      "module": "beta",
+      "role": "implementation",
+      "paths": ["src/Beta"]
+    }
+  ],
+  "exclude": ["bin", "obj"],
+  "waivers": "waivers.json"
+}

@@ -1,0 +1,97 @@
+{
+  "ACIMA-A001": [
+    "violations/a001_shared_table.py"
+  ],
+  "ACIMA-A003": [
+    "violations/a003_static_catalog.py"
+  ],
+  "ACIMA-C001": [
+    "violations/c001_mutable_contract.py"
+  ],
+  "ACIMA-C002": [
+    "violations/c002_mutable_collection.py",
+    "violations/c006_untyped_payload.py"
+  ],
+  "ACIMA-C004": [
+    "violations/c004_ambient_clock.py"
+  ],
+  "ACIMA-C005": [
+    "violations/c005_persistence_leak.py"
+  ],
+  "ACIMA-C006": [
+    "violations/c006_untyped_payload.py"
+  ],
+  "ACIMA-D001": [
+    "violations/a003_static_orders.py",
+    "violations/d001_orders_imports_catalog_impl.py",
+    "violations/d005_cycle_orders.py",
+    "violations/d005_cycle_payments.py",
+    "violations/d009_private_import.py",
+    "violations/l003_orders_reads.py"
+  ],
+  "ACIMA-D002": [
+    "violations/d002_contracts_import_impl.py"
+  ],
+  "ACIMA-D003": [
+    "violations/d003_contracts_import_contracts.py"
+  ],
+  "ACIMA-D004": [
+    "violations/d004_contracts_third_party.py"
+  ],
+  "ACIMA-D005": [
+    "violations/d005_cycle_payments.py"
+  ],
+  "ACIMA-D006": [
+    "violations/d006_contracts_import_host.py"
+  ],
+  "ACIMA-D007": [
+    "violations/d007_kernel_imports_contracts.py"
+  ],
+  "ACIMA-D008": [
+    "violations/d005_cycle_payments.py"
+  ],
+  "ACIMA-D009": [
+    "violations/d009_private_import.py"
+  ],
+  "ACIMA-G001": [
+    "violations/waivers.json"
+  ],
+  "ACIMA-G002": [
+    "violations/waivers.json"
+  ],
+  "ACIMA-G003": [
+    "violations/g003_undocumented_contract.py"
+  ],
+  "ACIMA-G005": [
+    "violations/g005_unclassified.py"
+  ],
+  "ACIMA-L001": [
+    "violations/l001_domain_imports_db.py"
+  ],
+  "ACIMA-L002": [
+    "violations/l002_contracts_framework.py"
+  ],
+  "ACIMA-L003": [
+    "src/acima/catalog/impl/module.py",
+    "src/acima/catalog/impl/repository.py",
+    "src/acima/orders/impl/module.py",
+    "src/acima/payments/impl/gateway.py",
+    "violations/l003_catalog_public.py"
+  ],
+  "ACIMA-D010": [
+    "violations/d010_port_vendor.py"
+  ],
+  "ACIMA-G006": [
+    "acima.gallery.config.json",
+    "violations/requirements.gallery.txt"
+  ],
+  "ACIMA-L005": [
+    "violations/l005_application_imports_vendor.py"
+  ],
+  "ACIMA-L006": [
+    "violations/l006_adapter_without_port.py"
+  ],
+  "ACIMA-L007": [
+    "violations/l007_vendor_type_outside.py"
+  ]
+}

@@ -191,3 +191,59 @@ contract to avoid a copy.
 
 The layer matrix is not a second source of truth: it is the module matrix applied to the layer
 projects, with the transform at each boundary making the edge explicit.
+
+## 4.10 Third-party tiers and adapter edges
+
+A package is not a module, and the base matrix above says nothing about it: `D004` keeps third-party
+code out of contracts and `D007` keeps it out of the kernel, but an implementation may import
+anything. That gap is closed by **declared tiers**, configured in `acima.config.json` and never
+inferred (`externals`, chapter 7 §7.4).
+
+### The three tiers
+
+| Tier | What it is | Where it may appear | Adapter and port |
+|---|---|---|---|
+| `platform` | Runtime, framework, hosting surface | implementations and host; **never** contracts | not required; `D004`/`L002` already ban it from contracts |
+| `integration` | IO, state, a wire format, or a UI/third-party surface | **only** the declared adapter | exactly one adapter unit and one port unit per vendor |
+| `utility` | Pure and stateless at its API surface | anywhere in an implementation | none; but no utility type may cross a contract or a port |
+
+The tier is a reviewable decision, not a property of the package. `zod` is a `utility` if it only
+validates values, a `platform` surface if every handler takes its types, and an `integration` if it
+owns a schema registry you cannot replace. The point of writing it down is that the next reader can
+disagree in review instead of discovering it in an incident.
+
+### The two roles
+
+| Role | Owns | May reference | Must not reference |
+|---|---|---|---|
+| `adapter` | one declared vendor package; the port implementation; vendor-to-port mapping | its port unit, its declared vendor, the language core | any other module's implementation; its consumers |
+| `port` | the capability in the system's vocabulary | the language core only | any third-party package, any vendor type, any module |
+
+### The matrix rows these add
+
+`→` means "may reference". Anything not listed is forbidden.
+
+| From ↓ / To → | its port | its declared vendor | another module's port | any other vendor | implementation |
+|---|---|---|---|---|---|
+| **adapter** | ✅ | ✅ (only this one) | ❌ `D001`-adjacent | ❌ `L005` | ❌ |
+| **port** | — | ❌ `D010` | ❌ (`D003` for contracts) | ❌ `D010` | ❌ `D002` |
+| **implementation** | ✅ | ❌ `L005` | ✅ | ❌ `L005` | own only (`D001`) |
+| **contracts** | ❌ (`D003`) | ❌ `D004` | ❌ `D003` | ❌ `D004` | ❌ `D002` |
+| **host** | ✅ | ❌ `L005` (it names the adapter, not the vendor) | ✅ | ❌ `L005` | ✅ |
+
+The host row is the one that surprises people: composition roots are allowed to know *which adapter*
+implements a port, and are not allowed to know *which vendor* it wraps. That is what keeps the vendor
+choice a one-line change in one file.
+
+### What the rules add to the existing ones
+
+- `L005` — an integration library imported outside its adapter.
+- `L006` — an adapter with no port (or an integration entry missing one of the pair).
+- `L007` — a vendor type in a signature, field or export outside the adapter.
+- `D010` — a port that imports a third-party package or names a vendor type.
+- `G006` — a manifest package with no `externals` entry, or an entry past its review date.
+
+They do not weaken `D004`, `L001`, `L002` or `D007`: contracts and the kernel remain third-party-free,
+and `L001` keeps its database semantics. An `integration` entry **supersedes the `L001` token list for
+that package only**, because `L005` and `L007` are the sharper rules for a package with a declared
+seam. Everything else about `L001` is unchanged.

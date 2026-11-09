@@ -6,7 +6,7 @@ Conformance is a claim a repository makes about itself, and it is only credible 
 
 | Level | Name | Requires | Typical adoption moment |
 |---|---|---|---|
-| **L1** | Structural | `D001`–`D009`, `L001`–`L004`, `G001`, `G002`, `G005` | you have modules and want the graph to stay acyclic |
+| **L1** | Structural | `D001`–`D010`, `L001`–`L007`, `G001`, `G002`, `G005`, `G006` | you have modules and want the graph to stay acyclic |
 | **L2** | Immutable | L1 + `C001`–`C007`, `G003`, `G004` | contracts are consumed by another team |
 | **L3** | Autonomous | L2 + `A001`–`A004` | modules have their own data and could be extracted |
 
@@ -45,6 +45,11 @@ is reported.
 - [ ] Domain and application code do not reference infrastructure (`L001`).
 - [ ] Contracts expose no framework or transport types (`L002`).
 - [ ] Modules receive peers through construction, not through a locator (`L004`).
+- [ ] Every integration library is declared in `externals` with one adapter and one port, and only
+      that adapter imports it (`L005`, `L006`).
+- [ ] No vendor type appears outside its adapter and no port carries a vendor shape (`L007`, `D010`).
+- [ ] Every manifest package has a reviewed `externals` entry, and none is past its review date
+      (`G006`).
 - [ ] Every waiver has owner, reason, expiry and review date (`G001`); none are expired (`G002`).
 
 ### L2 — Immutable
@@ -115,11 +120,14 @@ enforcers in this repository fail when a suite finds zero files.
 | Last verified commit | `abc1234` |
 ```
 
-The count is derived from `rules.json`; never copy a fixed number. At L2 the catalog requires 25
-rules. The reference portable enforcers execute 21 of those and report `L004`, `C003`, `C007` and
+The count is derived from `rules.json`; never copy a fixed number. At L2 the catalog requires 30
+rules. The reference portable enforcers execute 26 of those and report `L004`, `C003`, `C007` and
 `G004` as not executed; without manual evidence for those four, the correct claim is
-`PARTIAL ASSESSMENT`, not `FULL CONFORMANCE`. At L3 the catalog requires 29 rules; 23 execute and
-the six manual rules are `L004`, `C003`, `C007`, `A002`, `A004` and `G004`.
+`PARTIAL ASSESSMENT`, not `FULL CONFORMANCE`. At L3 the catalog requires 34 rules; 28 execute and
+the six manual rules are `L004`, `C003`, `C007`, `A002`, `A004` and `G004`. The five third-party
+tier rules execute in the Python and TypeScript enforcers; a Go or .NET run reports them
+`executed: false`, so that repository needs manual evidence for them or the scoped statement in
+§8.10.
 
 The claim class is computed, not chosen by the author:
 
@@ -228,3 +236,51 @@ Expired, missing or malformed evidence makes the claim `PARTIAL ASSESSMENT`; it 
 invalid. A missing execution map, an unknown level or malformed JSON is `INVALID ASSESSMENT` and exits
 `2`. The reference enforcers continue to report the six rules as `executed: false`; the evidence file
 is how a repository records the review the portable tool cannot perform.
+
+## 8.10 Third-party governance and the swap drill
+
+The third-party gate is two artefacts and one experiment:
+
+1. **The declaration** — an `externals` entry for every manifest package, each with a tier, an owner,
+   a reason, a review date and an expiry. Chapters 4 §4.10 and 7 §7.4 define the shape; `G006` fails
+   the run when a package is missing or an entry has expired.
+2. **The seam** — for `tier: integration`, exactly one adapter unit and one port unit (`L006`). Only
+   the adapter imports the vendor (`L005`); no vendor type appears outside it (`L007`); the port names
+   nothing but its own types (`D010`).
+3. **The swap drill** — the only evidence that the seam is real rather than declared.
+
+### The swap drill
+
+The drill answers one question: *if the vendor disappeared, what would have to change?* The answer
+must be "the adapter and the composition root", never "the application".
+
+```bash
+python3 conformance/swap_drill.py --project conformance/fixtures/third-party/python
+```
+
+It copies the fixture to a disposable directory and then:
+
+1. deletes every directory owned by a declared adapter unit;
+2. writes a stub adapter that implements the port with no vendor;
+3. resolves every import of every **application** unit (`implementation`, `contracts`, `port`)
+   against the remaining tree and the language core;
+4. fails when an application file imports a declared vendor, a removed adapter, or an unresolvable
+   third-party package, and fails when it never references the port at all.
+
+The last check is the one people skip: an application that compiles without the adapter because it
+never used the port has no seam, it has an unused declaration.
+
+### What a passing drill proves, and what it does not
+
+It proves the application units compile against the port with the vendor removed. It does **not**
+prove the adapter is correct, that the port's vocabulary is good, or that the vendor is replaceable in
+practice (data migration, wire formats and behaviour differences are not architectural). Record the
+drill in the conformance claim next to the run artefact:
+
+```markdown
+- Third-party tiers: <n> declared, <m> integration, `G006` clean
+- Swap drill: `conformance/swap_drill.py --project <fixture>` passed on <date>
+```
+
+The drill is implemented for Python fixtures in this revision. TypeScript fixtures are covered by
+the same enforcer rules but not yet by an executable drill; say so rather than claiming both.

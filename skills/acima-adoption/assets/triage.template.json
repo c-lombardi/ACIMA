@@ -1,0 +1,24 @@
+{
+  "_comment": "Triage is a recorded human decision, not a suppression. A detector-artefact entry stays visible in the report and the gate; it only changes how the summary describes it. Never use triage to hide a finding, and never classify a match you have not inspected.",
+  "standard": "1.0.0-draft.1",
+  "reviewedOn": "<date>",
+  "reviewer": "<name>",
+  "triage": [
+    {
+      "rule": "<ACIMA-D009>",
+      "classification": "detector-artifact",
+      "owner": "<name>",
+      "reason": "<why the detector match is not a boundary violation, in one sentence>",
+      "evidence": "<the fixture, issue or code fact that proves it>",
+      "note": "<what a reader should do instead of changing the flagged code>"
+    }
+  ],
+  "findings": [
+    {
+      "fingerprint": "<sha256:...>",
+      "classification": "review",
+      "owner": "<name>",
+      "reason": "<why this individual match needs a person>"
+    }
+  ]
+}

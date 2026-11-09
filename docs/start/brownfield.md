@@ -7,6 +7,15 @@ boundary at a time**.
 The goal of the first phase is not a clean architecture. It is an honest baseline that the
 team can keep discussing.
 
+**Assessment is read-only.** Nothing below that creates a file happens until the owner approves a
+proposal naming the paths and scope. “Adopt ACIMA” starts the assessment and proposal; it does not
+pre-approve unseen configuration, baseline, waivers or CI.
+
+Adoption does not replace the architecture the team already chose. Clean Architecture, Hexagonal,
+DDD, a modular monolith and microservices all remain valid shapes; ACIMA measures and enforces the
+boundaries inside the chosen shape. Read [Your architecture, enforced](../guides/architecture-families.md)
+before proposing units, and do not present ACIMA as a reason to restructure.
+
 ## Phase 1 — Discovery
 
 Run only read-only commands:
@@ -25,9 +34,42 @@ If the target has no `acima.config.json`, do not run `analyze` yet. The enforcer
 claim a pass without declared units; it will return a tool failure, not an architecture
 finding.
 
-## Phase 2 — Assessment
+## Phase 2 — Proposal and consent
 
-Once a unit map exists, measure the current state and keep the artefact:
+Before creating a unit map, present the proposed modules, exact paths, status of each artifact,
+owners and tradeoffs. The proposal template and approval question are in
+[the adoption skill](../../skills/acima-adoption/assets/adoption-proposal.md).
+
+## Phase 3 — Approved adoption
+
+Only after approval for these paths, generate a first draft when the target has no config:
+
+```bash
+python3 skills/acima-adoption/scripts/preflight.py --project "$TARGET" \
+  --write-draft acima.config.json --format text
+```
+
+Review it before committing. The draft is heuristic: it proposes units from directories
+or projects, not from domain ownership. Rename units to domain concepts, merge accidental
+splits, and decide who owns every module. Do not measure or gate against an unreviewed map.
+
+If baseline and waivers are in the approved scope, write them:
+
+```bash
+python3 skills/acima-adoption/scripts/preflight.py --project "$TARGET" \
+  --write-waivers .acima/waivers.json --format text
+```
+
+The generated owners are `unassigned`. Replace every one with a person or team, and give
+each waiver a real reason and review date. Do not bulk-renew waivers.
+
+Do not invent a delivery estimate. Scope is expressed by evidence: modules touched, files
+involved, finding counts, schema migrations and the number of consumers of a boundary.
+Time estimates remain an engineering judgement made by the team.
+
+## Phase 4 — Measure after the approved map
+
+With a reviewed config in place, measure the current state and keep the artefact:
 
 ```bash
 python3 tools/acima.py analyze --root "$TARGET" --format json > acima-baseline.json
@@ -59,36 +101,9 @@ the repository still has to review configuration ownership manually.
 | Existing architecture tests | `inspect` plus a source review. |
 | Existing exceptions | The waiver file; `G001`, `G002`. |
 
-## Phase 3 — Adoption plan
+## Phase 5 — Incremental enforcement
 
-Generate a first draft only when the target has no config:
-
-```bash
-python3 skills/acima-adoption/scripts/preflight.py --project "$TARGET" \
-  --write-draft acima.config.json --format text
-```
-
-Review it before committing. The draft is heuristic: it proposes units from directories
-or projects, not from domain ownership. Rename units to domain concepts, merge accidental
-splits, and decide who owns every module.
-
-Then write the baseline waivers:
-
-```bash
-python3 skills/acima-adoption/scripts/preflight.py --project "$TARGET" \
-  --write-waivers .acima/waivers.json --format text
-```
-
-The generated owners are `unassigned`. Replace every one with a person or team, and give
-each waiver a real reason and review date. Do not bulk-renew waivers.
-
-Do not invent a delivery estimate. Scope is expressed by evidence: modules touched, files
-involved, finding counts, schema migrations and the number of consumers of a boundary.
-Time estimates remain an engineering judgement made by the team.
-
-## Phase 4 — Incremental enforcement
-
-Start at L1 unless the repository already has a stronger baseline. The order matters:
+CI and source changes are separate approvals. Start at L1 unless the repository already has a stronger baseline. The order matters:
 
 | Order | First slice | Why |
 |---|---|---|
@@ -106,7 +121,7 @@ For the target repository, wire the reference enforcer for its language into the
 CI. Do not use `acima verify` as the target gate: that command verifies this ACIMA
 repository and its examples.
 
-## Phase 5 — Continuous governance
+## Phase 6 — Continuous governance
 
 Every pull request should produce:
 
@@ -128,7 +143,9 @@ expired waiver is a finding (`G002`); renewal is an individual decision.
 - Do not rename every project in one PR. Rename the project you are already changing.
 - Do not treat a skipped or unevaluated rule as compliant.
 
-## Exit criteria for the first adoption slice
+## Exit criteria for an approved first adoption slice
+
+A partial adoption uses only its approved subset and is not described as full adoption.
 
 - [ ] the target has a reviewed `acima.config.json` and an owned waiver file;
 - [ ] the enforcer runs in the target's CI on every pull request;

@@ -84,5 +84,65 @@ class CliTests(unittest.TestCase):
         self.assertIn("no productivity", report["limitation"])
 
 
+    def test_repository_under_a_hidden_directory_still_has_sources(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / ".hidden" / "project"
+            (root / "src").mkdir(parents=True)
+            (root / "src" / "app.py").write_text("VALUE = 1\n", encoding="utf-8")
+            code, report = acima.assess_project(root)
+            self.assertEqual(code, 0)
+            self.assertEqual(report["sourceFiles"], 1)
+            self.assertEqual(report["verdict"], "NEEDS_UNIT_MAP")
+
+
+    def test_status_reports_pending_steps_on_an_unadopted_repository(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "app.py").write_text("VALUE = 1\n", encoding="utf-8")
+            report = acima.status_project(root)
+            self.assertFalse(report["config"]["present"])
+            self.assertEqual(len(report["steps"]), 11)
+            self.assertEqual(report["steps"][0]["state"], "ready")
+            self.assertIn("assess", report["next"]["command"])
+            self.assertIn("preflight.py", report["next"]["command"])
+
+    def test_status_marks_the_declared_example(self) -> None:
+        report = acima.status_project(ROOT / "examples/python")
+        self.assertTrue(report["config"]["present"])
+        self.assertEqual(report["config"]["units"], 11)
+        states = {step["name"]: step["state"] for step in report["steps"]}
+        self.assertEqual(states["declare"], "done")
+        self.assertIn("waiver", report["steps"][6]["evidence"])
+        self.assertTrue(report["next"]["action"])
+
+
+    def test_fix_names_the_remedy_for_one_selector(self) -> None:
+        _code, payload, error, _language = acima.analyze_project(
+            ROOT / "examples/python", config_name="acima.gallery.config.json")
+        self.assertIsNotNone(payload, error)
+        rule = payload["findings"][0]["rule"]
+        plan = acima.fix_plan(payload, [rule])
+        self.assertEqual(plan["unmatched"], [])
+        self.assertEqual(plan["code"], 0)
+        self.assertTrue(plan["findings"])
+        for entry in plan["findings"]:
+            self.assertEqual(entry["rule"], rule)
+            self.assertTrue(entry["fix"])
+            self.assertIn(entry["shape"], acima.CORRECTION_SHAPES)
+
+    def test_fix_fails_on_a_selector_that_matches_nothing(self) -> None:
+        plan = acima.fix_plan({"findings": []}, ["ACIMA-D001"])
+        self.assertEqual(plan["selected"], 0)
+        self.assertEqual(plan["unmatched"], ["ACIMA-D001"])
+        self.assertEqual(plan["code"], 1)
+
+    def test_fix_all_covers_every_finding(self) -> None:
+        _code, payload, error, _language = acima.analyze_project(
+            ROOT / "examples/python", config_name="acima.gallery.config.json")
+        self.assertIsNotNone(payload, error)
+        plan = acima.fix_plan(payload, [], all_findings=True)
+        self.assertEqual(plan["selected"], len(payload["findings"]))
+        self.assertEqual(plan["unmatched"], [])
+
 if __name__ == "__main__":
     unittest.main()

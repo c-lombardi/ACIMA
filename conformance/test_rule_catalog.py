@@ -16,5 +16,14 @@ class RuleCatalogTests(unittest.TestCase):
         self.assertIn("declared unit", rule["summary"])
 
 
+    def test_every_rule_carries_a_remedy(self) -> None:
+        catalog = json.loads((ROOT / "tools/acima-spec/rules.json").read_text(encoding="utf-8"))
+        rules = catalog["rules"]
+        self.assertEqual(len(rules), 34)
+        for rule in rules:
+            fix = rule.get("fix", "").strip()
+            self.assertGreaterEqual(len(fix), 40, rule["id"])
+            self.assertNotEqual(fix.lower(), rule["summary"].strip().lower(), rule["id"])
+
 if __name__ == "__main__":
     unittest.main()

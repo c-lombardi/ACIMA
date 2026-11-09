@@ -25,8 +25,10 @@ CATALOG: dict[str, tuple[str, str]] = {
     "ACIMA-D001": ("error", "L1"), "ACIMA-D002": ("error", "L1"), "ACIMA-D003": ("error", "L1"),
     "ACIMA-D004": ("error", "L1"), "ACIMA-D005": ("error", "L1"), "ACIMA-D006": ("error", "L1"),
     "ACIMA-D007": ("error", "L1"), "ACIMA-D008": ("error", "L1"), "ACIMA-D009": ("error", "L1"),
+    "ACIMA-D010": ("error", "L1"),
     "ACIMA-L001": ("error", "L1"), "ACIMA-L002": ("error", "L1"), "ACIMA-L003": ("error", "L1"),
-    "ACIMA-L004": ("warning", "L1"),
+    "ACIMA-L004": ("warning", "L1"), "ACIMA-L005": ("warning", "L1"), "ACIMA-L006": ("error", "L1"),
+    "ACIMA-L007": ("warning", "L1"),
     "ACIMA-C001": ("error", "L2"), "ACIMA-C002": ("error", "L2"), "ACIMA-C003": ("error", "L2"),
     "ACIMA-C004": ("error", "L2"), "ACIMA-C005": ("error", "L2"), "ACIMA-C006": ("error", "L2"),
     "ACIMA-C007": ("warning", "L2"),
@@ -34,7 +36,7 @@ CATALOG: dict[str, tuple[str, str]] = {
     "ACIMA-A003": ("error", "L3"), "ACIMA-A004": ("warning", "L3"),
     "ACIMA-G001": ("error", "L1"), "ACIMA-G002": ("error", "L1"),
     "ACIMA-G003": ("warning", "L2"), "ACIMA-G004": ("error", "L2"),
-    "ACIMA-G005": ("error", "L1"),
+    "ACIMA-G005": ("error", "L1"), "ACIMA-G006": ("warning", "L1"),
 }
 NOT_EXECUTED = {
     "ACIMA-C003": "behaviour versus validation is a semantic judgement",
@@ -44,6 +46,10 @@ NOT_EXECUTED = {
     "ACIMA-A004": "version-lock coupling is visible only across published packages",
     "ACIMA-G004": "an API baseline needs a per-language surface format",
 }
+# Third-party governance: the tier rules only execute when externals is declared.
+TIER_RULES = ("ACIMA-L005", "ACIMA-L006", "ACIMA-L007", "ACIMA-D010", "ACIMA-G006")
+TIERS = ("platform", "integration", "utility")
+ENTRY_FIELDS = ("tier", "owner", "reason", "reviewedOn", "expires")
 RANK = {"L1": 1, "L2": 2, "L3": 3}
 
 PERSISTENCE = ("sqlalchemy", "QuerySet", "psycopg", "sqlite3", "db.execute", "IQueryable",
@@ -105,6 +111,10 @@ class Enforcer:
         self.source_files = 0
         self.edges: list[tuple[str, str, int, str]] = []
         self.module_names = {u.module for u in self.units if u.module}
+        raw_externals = config.get("externals")
+        self.externals = raw_externals if isinstance(raw_externals, dict) else None
+        self.manifests = [str(path) for path in config.get("manifests", [])]
+        self.config_name = "acima.config.json"
 
     # -- discovery ---------------------------------------------------------
     def rel(self, path: Path) -> str:
@@ -269,7 +279,7 @@ class Enforcer:
                                  f"shared kernel references {u_to.id}; the kernel must be a leaf.",
                                  rel, line, evidence)
                     continue
-                if u_from.role == "contracts":
+                if u_from.role in ("contracts", "port"):
                     if u_to.role == "implementation":
                         self.add("ACIMA-D002",
                                  f"{u_from.id} references the implementation unit {u_to.id}.",
@@ -366,7 +376,7 @@ class Enforcer:
                         reachable.add(nxt)
                         frontier.append(nxt)
             for module in sorted(reachable):
-                forbidden = (module != a.module and a.role in ("contracts", "implementation")
+                forbidden = (module != a.module and a.role in ("contracts", "port", "implementation")
                              and not (a.role == "implementation" and module == a.module))
                 if forbidden and (a.id, module) not in seen:
                     seen.add((a.id, module))
@@ -377,7 +387,7 @@ class Enforcer:
     def check_contracts(self) -> None:
         for rel, tree in self.files.items():
             unit = self.units_of[rel]
-            if unit.role != "contracts":
+            if unit.role not in ("contracts", "port"):
                 continue
             source = (self.root / rel).read_text(encoding="utf-8", errors="replace")
             for token in AMBIENT:
@@ -496,6 +506,9 @@ class Enforcer:
             for module, line, evidence, _names, level in self.imports(rel):
                 if level:
                     continue
+                # A declared integration library is governed by L005/L007, not the L001 token list.
+                if self.tier_of(module) == "integration":
+                    continue
                 if not any(module == root or module.startswith(root + ".")
                            for root in PERSISTENCE_MODULES):
                     continue
@@ -604,6 +617,226 @@ class Enforcer:
                 kept.append(finding)
         self.findings = kept
 
+    # -- third-party tiers -------------------------------------------------
+    def external_entry(self, spec: str) -> tuple[str, dict] | None:
+        """Resolve a specifier to its externals entry, by package name and declared specifiers."""
+        if not isinstance(self.externals, dict) or not spec:
+            return None
+        candidates = {value.replace("-", "_") for value in
+                      (spec, spec.split("/")[0], spec.split(".")[0]) if value}
+        best: tuple[str, dict] | None = None
+        for name, raw in self.externals.items():
+            entry = raw if isinstance(raw, dict) else {}
+            extra = entry.get("specifiers") if isinstance(entry.get("specifiers"), list) else []
+            known = {str(value).replace("-", "_") for value in (name, *extra)}
+            if not candidates & known:
+                continue
+            if best is None or len(name) > len(best[0]):
+                best = (name, entry)
+        return best
+
+    def tier_of(self, spec: str) -> str | None:
+        found = self.external_entry(spec)
+        return str(found[1].get("tier", "")).strip() if found else None
+
+    @staticmethod
+    def vendor_tokens(name: str, entry: dict) -> set[str]:
+        """The vendor type names to look for: the declared list, or a derivation from the name.
+
+        A declared list is authoritative. Deriving from the package name is a fallback, and it is
+        deliberately not combined with the declaration: a package called `monaco-editor` yields
+        `MonacoEditor`, which is the adapter's own class name far more often than a vendor type.
+        """
+        declared = entry.get("types") if isinstance(entry.get("types"), list) else []
+        tokens = {str(token) for token in declared if str(token).strip()}
+        if not tokens:
+            leaf = name.split("/")[-1].split(".")[-1]
+            tokens = {name, leaf,
+                      "".join(part.capitalize() for part in re.split(r"[^A-Za-z0-9]+", leaf) if part)}
+        return {token for token in tokens if len(token) >= 3}
+
+    def manifest_dependencies(self) -> list[tuple[str, int, str]]:
+        out: list[tuple[str, int, str]] = []
+        candidates = self.manifests or [
+            name for name in ("package.json", "pyproject.toml", "requirements.txt")
+            if (self.root / name).is_file()]
+        for rel in candidates:
+            path = self.root / rel
+            if not path.is_file():
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace")
+            if rel.endswith("package.json"):
+                try:
+                    data = json.loads(text)
+                except json.JSONDecodeError:
+                    continue
+                for name in (data.get("dependencies") or {}):
+                    out.append((rel, self.line_of(text, f'"{name}"'), str(name)))
+            elif rel.endswith(".txt"):
+                for number, line in enumerate(text.splitlines(), 1):
+                    value = line.strip()
+                    if not value or value.startswith(("#", "-")):
+                        continue
+                    name = re.split(r"[<>=!~\[\]; ]", value)[0]
+                    if name:
+                        out.append((rel, number, name))
+            elif rel.endswith("pyproject.toml"):
+                inside = False
+                for number, line in enumerate(text.splitlines(), 1):
+                    if re.match(r"\s*dependencies\s*=\s*\[", line):
+                        inside = True
+                    if inside:
+                        for match in re.finditer(r"[\"']([A-Za-z0-9_.-]+)", line):
+                            out.append((rel, number, match.group(1)))
+                        if "]" in line.split("dependencies", 1)[-1]:
+                            inside = False
+        return out
+
+    def check_externals(self) -> None:
+        """L005, L006, L007, D010 and G006: the declared third-party tiers."""
+        if not isinstance(self.externals, dict):
+            return
+        config_rel = self.config_name
+        config_file = self.root / self.config_name
+        config_text = (config_file.read_text(encoding="utf-8", errors="replace")
+                       if config_file.is_file() else "")
+        entry_line = lambda name: self.line_of(config_text, f'"{name}"') if config_text else 1
+        adapter_units = {u.id: u for u in self.units if u.role == "adapter"}
+        port_units = {u.id: u for u in self.units if u.role == "port"}
+        declared_adapters: set[str] = set()
+
+        for name, raw in self.externals.items():
+            entry = raw if isinstance(raw, dict) else {}
+            missing = [field for field in ENTRY_FIELDS
+                       if not str(entry.get(field, "")).strip()]
+            if missing:
+                self.add("ACIMA-G001",
+                         f"externals entry {name} is missing: {', '.join(missing)}.",
+                         config_rel, entry_line(name), name)
+                continue
+            tier = str(entry.get("tier", "")).strip()
+            if tier not in TIERS:
+                self.add("ACIMA-G001",
+                         f"externals entry {name} has unknown tier {tier!r}; expected "
+                         f"{', '.join(TIERS)}.", config_rel, entry_line(name), name)
+                continue
+            if tier != "integration":
+                continue
+            adapter = str(entry.get("adapter", "")).strip()
+            port = str(entry.get("port", "")).strip()
+            if not adapter or not port:
+                gap = "adapter" if not adapter else "port"
+                self.add("ACIMA-L006",
+                         f"integration entry {name} declares no {gap}; an adapter without a port "
+                         "is an unguarded vendor import.", config_rel, entry_line(name), name)
+                continue
+            if adapter not in adapter_units:
+                self.add("ACIMA-G001",
+                         f"externals entry {name} names adapter {adapter}, which is not a "
+                         "declared adapter unit.", config_rel, entry_line(name), name)
+                continue
+            if port not in port_units:
+                self.add("ACIMA-G001",
+                         f"externals entry {name} names port {port}, which is not a declared "
+                         "port unit.", config_rel, entry_line(name), name)
+                continue
+            declared_adapters.add(adapter)
+
+        for unit_id in sorted(adapter_units):
+            if unit_id in declared_adapters:
+                continue
+            first = sorted(rel for rel, unit in self.units_of.items() if unit.id == unit_id)
+            self.add("ACIMA-L006",
+                     f"adapter unit {unit_id} is declared in no externals entry; it has no port "
+                     "and no reviewed vendor.", first[0] if first else config_rel, 1, unit_id)
+
+        for rel in sorted(self.files):
+            unit = self.units_of[rel]
+            for module, line, evidence, _names, _level in self.imports(rel):
+                found = self.external_entry(module)
+                if found is None:
+                    continue
+                name, entry = found
+                if unit.role == "port":
+                    self.add("ACIMA-D010",
+                             f"port unit {unit.id} imports the third-party package {module}; a "
+                             "port declares the capability, never the vendor.", rel, line, evidence)
+                    continue
+                if str(entry.get("tier", "")).strip() != "integration" or unit.role == "adapter":
+                    continue
+                declared = str(entry.get("adapter", "")).strip()
+                self.add("ACIMA-L005",
+                         f"{unit.id} imports the integration library {name}; only its adapter "
+                         f"({declared or 'undeclared'}) may import it, everyone else takes the "
+                         "port.", rel, line, evidence)
+
+        # One adapter may cover a vendor and its wrapper (`monaco-editor` and
+        # `@monaco-editor/react`), and both can declare the same worker type. Report one finding
+        # per line, named after the shortest declaring package: the vendor, not its wrapper.
+        claimed: set[tuple[str, int]] = set()
+        for name, raw in sorted(self.externals.items(),
+                                key=lambda item: (len(item[0]), item[0])):
+            entry = raw if isinstance(raw, dict) else {}
+            tier = str(entry.get("tier", "")).strip()
+            if tier not in ("integration", "utility"):
+                continue
+            tokens = self.vendor_tokens(name, entry)
+            for rel in sorted(self.files):
+                unit = self.units_of[rel]
+                if unit.role == "adapter":
+                    continue
+                source = (self.root / rel).read_text(encoding="utf-8", errors="replace")
+                for number, text in enumerate(source.splitlines(), 1):
+                    if (rel, number) in claimed:
+                        continue
+                    stripped = text.strip()
+                    if not stripped or stripped.startswith(("#", "//", "*")):
+                        continue
+                    if stripped.startswith(("import ", "from ")):
+                        continue
+                    # A vendor type is usually qualified (`monaco_editor.IEditor`), so only a
+                    # word character excludes a match; a dot must not.
+                    hit = next((token for token in sorted(tokens)
+                                if re.search(rf"(?<!\w){re.escape(token)}(?!\w)", text)),
+                               None)
+                    if hit is None:
+                        continue
+                    claimed.add((rel, number))
+                    if unit.role == "port":
+                        self.add("ACIMA-D010",
+                                 f"port unit {unit.id} names the vendor type {hit} from {name}.",
+                                 rel, number, hit)
+                    elif tier == "utility" and unit.role not in ("contracts",):
+                        continue
+                    else:
+                        self.add("ACIMA-L007",
+                                 f"{unit.id} names the vendor type {hit} from {name} outside its "
+                                 "adapter.", rel, number, hit)
+
+        declared = {name.replace("-", "_").lower() for name in self.externals}
+        for rel, line, package in self.manifest_dependencies():
+            if package.replace("-", "_").lower() in declared:
+                continue
+            self.add("ACIMA-G006",
+                     f"manifest dependency {package} has no externals entry: declare its tier, "
+                     "owner and review date.", rel, line, package)
+        for name, raw in self.externals.items():
+            entry = raw if isinstance(raw, dict) else {}
+            expires = str(entry.get("expires", "")).strip()
+            if not expires:
+                continue
+            try:
+                expired = date.fromisoformat(expires) < date.today()
+            except ValueError:
+                self.add("ACIMA-G001",
+                         f"externals entry {name} has a non-ISO expiry: {expires}.",
+                         config_rel, entry_line(name), name)
+                continue
+            if expired:
+                self.add("ACIMA-G006",
+                         f"externals entry {name} passed its review date on {expires}; renew or "
+                         "remove the dependency.", config_rel, entry_line(name), name)
+
     # -- run ---------------------------------------------------------------
     def run(self) -> list[Finding]:
         self.collect()
@@ -612,6 +845,7 @@ class Enforcer:
         self.check_layering()
         self.check_sql()
         self.check_statics()
+        self.check_externals()
         self.apply_waivers(self.check_waivers())
         unique: dict[tuple[str, str, int], Finding] = {}
         for f in sorted(self.findings, key=lambda f: (f.path, f.line, f.rule)):
@@ -640,13 +874,19 @@ def main() -> int:
         print(f"acima: unknown level {level!r}; expected L1, L2 or L3", file=sys.stderr)
         return 2
     enforcer = Enforcer(root, config, level)
+    enforcer.config_name = args.config
     findings = enforcer.run()
     errors = [f for f in findings if f.severity == "error"]
-    execution = {
-        rule: ({"executed": True} if rule not in NOT_EXECUTED else
-               {"executed": False, "reason": NOT_EXECUTED[rule]})
-        for rule in sorted(CATALOG)
-    }
+    disabled = ("externals map not declared in acima.config.json"
+                if enforcer.externals is None else None)
+    execution: dict[str, dict] = {}
+    for rule in sorted(CATALOG):
+        if rule in NOT_EXECUTED:
+            execution[rule] = {"executed": False, "reason": NOT_EXECUTED[rule]}
+        elif rule in TIER_RULES and disabled:
+            execution[rule] = {"executed": False, "reason": disabled}
+        else:
+            execution[rule] = {"executed": True}
 
     if args.format == "json":
         print(json.dumps({"standard": config.get("standard", "1.0.0"),

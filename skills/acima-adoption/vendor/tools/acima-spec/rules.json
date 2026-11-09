@@ -1,0 +1,403 @@
+{
+  "$schema": "./rules.schema.json",
+  "standard": "ACIMA",
+  "version": "1.1.0-draft.1",
+  "findingSchema": {
+    "rule": "ACIMA-<CATEGORY><NNN>",
+    "severity": "error | warning | info",
+    "message": "human readable, one sentence",
+    "path": "path relative to the analysis root",
+    "line": "1-based integer, 0 when the finding is file- or project-scoped",
+    "evidence": "the smallest source excerpt that proves the finding",
+    "fingerprint": "sha256 of the finding identity; required for waiver matching"
+  },
+  "categories": {
+    "D": "Dependency and structure: what may reference what",
+    "L": "Layering inside a module",
+    "C": "Contract shape and immutability",
+    "A": "Autonomy at runtime",
+    "G": "Governance and exception hygiene"
+  },
+  "thirdPartyTiers": {
+    "declaration": "externals map in acima.config.json; tiers are declared per package and never inferred",
+    "tiers": {
+      "platform": "Runtime, framework or hosting surface. Banned from contracts, no adapter required.",
+      "integration": "IO, state, wire format or a third-party surface. Exactly one adapter unit and one port unit per vendor.",
+      "utility": "Pure and dependency-free at the API surface. Free inside implementations; none of its types may cross a contract or port."
+    },
+    "roles": {
+      "adapter": "Holds one declared vendor package; implements the port; translates vendor types and failures.",
+      "port": "Dependency-free contracts unit declaring the capability in the service's own vocabulary."
+    },
+    "entryFields": ["tier", "owner", "reason", "adapter", "port", "reviewedOn", "expires", "types"],
+    "rules": {
+      "adapter": ["ACIMA-L005", "ACIMA-L006", "ACIMA-L007"],
+      "port": ["ACIMA-D010"],
+      "manifest": ["ACIMA-G006"]
+    }
+  },
+  "levels": {
+    "L1": {
+      "name": "Structural",
+      "requires": [
+        "D*",
+        "L*",
+        "G*"
+      ]
+    },
+    "L2": {
+      "name": "Immutable",
+      "requires": [
+        "L1",
+        "C*"
+      ]
+    },
+    "L3": {
+      "name": "Autonomous",
+      "requires": [
+        "L2",
+        "A*"
+      ]
+    }
+  },
+  "rules": [
+    {
+      "id": "ACIMA-D001",
+      "severity": "error",
+      "level": "L1",
+      "title": "Implementation references another implementation",
+      "summary": "A module implementation may never reference, import or link another module's implementation.",
+      "fix": "Import the provider's contracts port; if it lacks the operation you need, request an additive contract change from its owner instead of referencing the implementation.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-D002",
+      "severity": "error",
+      "level": "L1",
+      "title": "Contracts reference an implementation",
+      "summary": "A contracts unit must not depend on any implementation unit, including its own.",
+      "fix": "Define the contract shape independently and map to it inside the implementation, which already knows both types.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-D003",
+      "severity": "error",
+      "level": "L1",
+      "title": "Contracts reference another contracts unit",
+      "summary": "Contracts must be independently consumable. Declare local value types or carry identity instead of importing another contracts unit.",
+      "fix": "Declare a local value type in this contracts unit, carry identity (ids and primitives), or duplicate the shape; never reference another contracts unit.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-D004",
+      "severity": "error",
+      "level": "L1",
+      "title": "Contracts carry a third-party dependency",
+      "summary": "Contracts may depend only on the language's core library. Third-party packages and framework types belong in implementations or adapters.",
+      "fix": "Replace validation attributes with constructor checks and move serializer concerns to a transport type in the host; contracts keep only the language's core library.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-D005",
+      "severity": "error",
+      "level": "L1",
+      "title": "Circular module dependency",
+      "summary": "The module dependency graph must be acyclic.",
+      "fix": "Break the cycle in order of preference: a process manager that owns the workflow, an event replacing one direction, or a merge if both are one bounded context; never route the shared type through the kernel.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-D006",
+      "severity": "error",
+      "level": "L1",
+      "title": "Contracts reference the host or composition root",
+      "summary": "Contracts must not know how they are hosted, wired or deployed.",
+      "fix": "Remove the reference and pass what the handler needs as a contract member, or resolve it inside the implementation through a consumer-owned port.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-D007",
+      "severity": "error",
+      "level": "L1",
+      "title": "Shared kernel violation",
+      "summary": "The shared kernel may hold only dependency-free value types; it must not reference modules or carry behaviour.",
+      "fix": "Move the type to the owning module or to the contract project that needs it, and keep only dependency-free values in the kernel.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-D008",
+      "severity": "error",
+      "level": "L1",
+      "title": "Transitive implementation leak",
+      "summary": "A reference must not deliver another module's implementation transitively.",
+      "fix": "Remove the reference that creates the leak: PrivateAssets=\"all\" on implementation-internal references in .NET, no impl re-export from the contracts entry point in TypeScript, internal/ or JPMS exports elsewhere.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-D009",
+      "severity": "error",
+      "level": "L1",
+      "title": "Access to another module's internals",
+      "summary": "Non-contract types of a module must not be reachable from outside it.",
+      "fix": "Ask the owner for a view through a provided port; if none exists, declare your own port and adapt rather than importing the owner's model.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-L001",
+      "severity": "error",
+      "level": "L1",
+      "title": "Domain references infrastructure",
+      "summary": "A module's domain and application logic must not depend on its infrastructure or delivery mechanisms.",
+      "fix": "Declare the port in the application layer, implement it in infrastructure, and inject it so dependencies point inward.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-L002",
+      "severity": "error",
+      "level": "L1",
+      "title": "Contracts reference a framework type",
+      "summary": "Contracts must not expose hosting, transport, ORM or serialization framework types.",
+      "fix": "Keep the message about the business and move transport or hosting concerns into the handler, or into an explicit envelope type in the host.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-L003",
+      "severity": "error",
+      "level": "L1",
+      "title": "Implementation type published outside the module",
+      "summary": "Only contracts types may be public outside a module.",
+      "fix": "Make the type internal, unexported or package-private, and move anything that genuinely crosses the boundary into the contracts unit.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-L004",
+      "severity": "warning",
+      "level": "L1",
+      "title": "Module resolved through a service locator",
+      "summary": "Modules must declare their dependencies explicitly; resolving peers at runtime hides coupling.",
+      "fix": "Take the port as a constructor parameter; resolving a peer module at runtime hides a boundary crossing the dependency graph cannot see.",
+      "automation": "manual",
+      "manualEvidence": "Inspect construction and container resolution for service-locator or runtime peer resolution; record every composition path."
+    },
+    {
+      "id": "ACIMA-C001",
+      "severity": "error",
+      "level": "L2",
+      "title": "Mutable contract state",
+      "summary": "Contract members are set at construction and never mutated afterwards.",
+      "fix": "Make it immutable: C# sealed record with init members, TypeScript readonly members, Python frozen dataclass or NamedTuple, Go unexported fields with accessors, Java record.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-C002",
+      "severity": "error",
+      "level": "L2",
+      "title": "Mutable collection exposure",
+      "summary": "Contracts expose immutable or defensively copied collections, never shared mutable state.",
+      "fix": "Expose a read-only collection: IReadOnlyList<T> from ToArray(), readonly T[] or ReadonlyArray, tuple[T, ...] or MappingProxyType, an accessor returning a copy, or List.copyOf.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-C003",
+      "severity": "error",
+      "level": "L2",
+      "title": "Behaviour in contracts",
+      "summary": "Contracts carry data and validation only; no business logic, IO or orchestration.",
+      "fix": "Keep at most a pure fold in the contract; move anything that branches on business conditions, does IO or is async into the module, and compute what consumers need there.",
+      "automation": "manual",
+      "manualEvidence": "Review every contract type for business behaviour, IO, orchestration and lifecycle hooks; record the reviewed units."
+    },
+    {
+      "id": "ACIMA-C004",
+      "severity": "error",
+      "level": "L2",
+      "title": "Ambient or non-deterministic state in contracts",
+      "summary": "Contracts must not read clocks, generate identifiers, or touch static mutable state.",
+      "fix": "Take time and identity as constructor parameters supplied by the module that owns the fact; the clock belongs in the implementation.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-C005",
+      "severity": "error",
+      "level": "L2",
+      "title": "Persistence type leak",
+      "summary": "Contracts must not expose entities, sessions, queryables or database types.",
+      "fix": "Make a query a request with typed parameters and a view a flat immutable projection built by the module; never expose entities, sessions or queryables.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-C006",
+      "severity": "error",
+      "level": "L2",
+      "title": "Untyped payload",
+      "summary": "Contracts must be explicitly typed; object, dynamic, any or bare dictionaries are not contracts.",
+      "fix": "Declare one typed contract per event and keep any generic transport envelope in the host.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-C007",
+      "severity": "warning",
+      "level": "L2",
+      "title": "Contract cannot be constructed in one step",
+      "summary": "A contract type must make its required state obvious and constructible atomically.",
+      "fix": "Put required values in the constructor, make optional values explicit, and use a builder in the implementation only when construction is genuinely staged.",
+      "automation": "manual",
+      "manualEvidence": "Review every contract type for one-step construction and obvious required state; record builders and exceptions."
+    },
+    {
+      "id": "ACIMA-A001",
+      "severity": "error",
+      "level": "L3",
+      "title": "Shared database ownership",
+      "summary": "Each module owns its persistence; no other module reads or writes its schema.",
+      "fix": "Call the owner's port for reads and subscribe to its events for data you keep in your own schema; never read another module's tables, even read-only.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-A002",
+      "severity": "warning",
+      "level": "L3",
+      "title": "Cross-module configuration key",
+      "summary": "A module must not read another module's configuration keys.",
+      "fix": "Move the key under your own namespace, supplied by the host; if the value belongs to the provider, ask for it through a port.",
+      "automation": "manual",
+      "manualEvidence": "Review configuration keys and secrets for cross-module access; record each module namespace."
+    },
+    {
+      "id": "ACIMA-A003",
+      "severity": "error",
+      "level": "L3",
+      "title": "Cross-module mutable static state",
+      "summary": "Modules must not communicate through shared mutable statics.",
+      "fix": "Make the cache an instance owned by the module and inject it; if several modules need the same data, the host constructs one instance and passes it.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-A004",
+      "severity": "warning",
+      "level": "L3",
+      "title": "Version-lock coupling",
+      "summary": "Consumers depend on a contracts version range, never on an implementation version.",
+      "fix": "Depend on X.Contracts with a version range; needing the implementation's version means D001 is still present.",
+      "automation": "manual",
+      "manualEvidence": "Review published package and artifact version edges; record contracts ranges and implementation pins."
+    },
+    {
+      "id": "ACIMA-G001",
+      "severity": "error",
+      "level": "L1",
+      "title": "Undocumented exception",
+      "summary": "Every waiver carries an owner, a reason, a scope and an expiry date; every waiver carries the exact finding fingerprint.",
+      "fix": "Write owner, reason, scope, fingerprint, reviewedOn and expires; if you cannot name an owner or a date, the exception is not a decision yet.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-G002",
+      "severity": "error",
+      "level": "L1",
+      "title": "Expired waiver",
+      "summary": "An expired waiver is a violation until it is renewed or removed.",
+      "fix": "Fix the code, or renew the waiver individually with a fresh reason and expiry \u2014 never in bulk.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-G003",
+      "severity": "warning",
+      "level": "L2",
+      "title": "Undocumented contract surface",
+      "summary": "Every public contract type documents its meaning and its invariants.",
+      "fix": "Document what the type means and what must be true: units, invariants, idempotency and failure semantics; one or two sentences is enough.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-G004",
+      "severity": "error",
+      "level": "L2",
+      "title": "Unreviewed contract change",
+      "summary": "A change to a published contracts surface must be captured in the versioned API baseline.",
+      "fix": "Make the change additive, or regenerate .acima/api-surface.json in the same commit and mark the release as breaking.",
+      "automation": "manual",
+      "manualEvidence": "Compare the contracts surface with the reviewed API baseline; record additive and breaking changes."
+    },
+    {
+      "id": "ACIMA-G005",
+      "severity": "error",
+      "level": "L1",
+      "title": "Unclassified source",
+      "summary": "Every production source file belongs to a declared unit; a file outside every unit fails the run.",
+      "fix": "Declare the unit with a role and a module name, or add an exclusion with a reason; a repository that classifies nothing is a false pass.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-D010",
+      "severity": "error",
+      "level": "L1",
+      "title": "Port exposes a vendor shape",
+      "summary": "A port unit is dependency-free: it imports no third-party package and names no vendor type, so consumers never inherit the vendor.",
+      "fix": "Describe the capability in the port's own vocabulary (handles, requests, results) and move every vendor import and vendor type into the adapter that implements the port.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-L005",
+      "severity": "warning",
+      "severityRatchet": { "to": "error", "at": "2.0.0" },
+      "level": "L1",
+      "title": "Integration library used outside its declared adapter",
+      "summary": "A package declared with tier integration is imported only by its declared adapter unit; every other unit reaches the capability through the port.",
+      "fix": "Move the import into the adapter declared in externals, or declare the package with the tier it really has; the rest of the system takes the port and never the vendor.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-L006",
+      "severity": "error",
+      "level": "L1",
+      "title": "Adapter without a port",
+      "summary": "Every adapter unit is declared in externals with exactly one port unit, and every integration entry names both.",
+      "fix": "Declare the port unit and the externals entry (adapter and port), or delete the adapter: an adapter with no port is an unguarded vendor import with a new directory name.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-L007",
+      "severity": "warning",
+      "severityRatchet": { "to": "error", "at": "2.0.0" },
+      "level": "L1",
+      "title": "Vendor type outside the adapter",
+      "summary": "A vendor type appears in a signature, field or export outside the adapter unit.",
+      "fix": "Map the vendor type to the port's own type inside the adapter; application, domain, contracts and host code must never name a vendor type.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-G006",
+      "severity": "warning",
+      "severityRatchet": { "to": "error", "at": "2.0.0" },
+      "level": "L1",
+      "title": "Undeclared external dependency",
+      "summary": "Every package in a declared manifest has an externals entry with tier, owner, reason, review date and expiry, and no entry is past its review date.",
+      "fix": "Run acima.py externals --write-draft, then assign the tier, owner and reason for each package; renew or remove an entry whose review date has passed.",
+      "automation": "automated"
+    }
+  ],
+  "claimModel": {
+    "classes": [
+      "FULL CONFORMANCE",
+      "PARTIAL ASSESSMENT"
+    ],
+    "fullRequires": [
+      "every rule required by the declared level executed or covered by repository-scoped manual evidence",
+      "zero unwaived error findings"
+    ],
+    "manualEvidencePath": ".acima/manual-evidence.json",
+    "manualEvidenceFields": [
+      "rule",
+      "scope",
+      "owner",
+      "reviewer",
+      "method",
+      "artifact",
+      "reviewedOn",
+      "expires",
+      "result"
+    ],
+    "manualScope": "repository"
+  }
+}

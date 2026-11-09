@@ -1,13 +1,13 @@
 {
   "skill": "acima-adoption",
-  "skillVersion": "1.2.5",
-  "standard": "1.0.0-draft.1",
+  "skillVersion": "1.9.0",
+  "standard": "1.1.0-draft.1",
   "verifiedAt": "2026-11-08",
   "catalog": {
     "path": "tools/acima-spec/rules.json",
-    "sha256": "59586eb75f3f1c2f277e07ffbe847aaae8764eaf9572df7f515392306e7cb216",
-    "rules": 29,
-    "portable": 23,
+    "sha256": "a699510322ec5decdb6bc212c7d65b23df106d5f2e6fc027a53fa800af350eea",
+    "rules": 34,
+    "portable": 28,
     "portableIds": [
       "ACIMA-D001",
       "ACIMA-D002",
@@ -31,12 +31,17 @@
       "ACIMA-G001",
       "ACIMA-G002",
       "ACIMA-G003",
-      "ACIMA-G005"
+      "ACIMA-G005",
+      "ACIMA-D010",
+      "ACIMA-L005",
+      "ACIMA-L006",
+      "ACIMA-L007",
+      "ACIMA-G006"
     ],
     "notPortableIds": [
+      "ACIMA-L004",
       "ACIMA-C003",
       "ACIMA-C007",
-      "ACIMA-L004",
       "ACIMA-A002",
       "ACIMA-A004",
       "ACIMA-G004"
@@ -45,24 +50,41 @@
   "enforcers": {
     "python": {
       "path": "examples/python/tools/acima_arch.py",
-      "run": ["python3", "examples/python/tools/acima_arch.py"],
+      "run": [
+        "python3",
+        "examples/python/tools/acima_arch.py"
+      ],
       "example": "examples/python"
     },
     "typescript": {
       "path": "examples/typescript/tools/acima-arch.mjs",
-      "run": ["node", "examples/typescript/tools/acima-arch.mjs"],
+      "run": [
+        "node",
+        "examples/typescript/tools/acima-arch.mjs"
+      ],
       "example": "examples/typescript"
     },
     "go": {
       "path": "examples/go/tools/archtest/main.go",
-      "run": ["go", "run", "./tools/archtest"],
+      "run": [
+        "go",
+        "run",
+        "./tools/archtest"
+      ],
       "cwd": "examples/go",
       "example": "examples/go"
     },
     "dotnet": {
       "path": "examples/dotnet/tools/Acima.ArchTests/Program.cs",
       "buildProject": "examples/dotnet/tools/Acima.ArchTests",
-      "run": ["dotnet", "run", "--project", "examples/dotnet/tools/Acima.ArchTests", "--no-build", "--"],
+      "run": [
+        "dotnet",
+        "run",
+        "--project",
+        "examples/dotnet/tools/Acima.ArchTests",
+        "--no-build",
+        "--"
+      ],
       "example": "examples/dotnet"
     },
     "java": {
@@ -74,18 +96,25 @@
   "profiles": {
     "library": {
       "document": "docs/standard/12-library-profile.md",
-      "enforcers": ["typescript", "dotnet"],
+      "enforcers": [
+        "typescript",
+        "dotnet"
+      ],
       "semantics": "declared publicApi paths and intentional adapters are classified in the report, never removed; invalid declarations fail as ACIMA-G001"
     }
   },
   "references": [
     "references/00-preflight.md",
+    "references/05-architecture-families.md",
     "references/10-greenfield.md",
     "references/20-brownfield.md",
     "references/30-adoption-for-newcomers.md",
     "references/40-communication.md",
     "references/50-outcomes.md",
     "references/60-troubleshooting.md",
+    "references/70-corrections.md",
+    "references/80-reporting.md",
+    "references/15-consent-and-scope.md",
     "references/glossary.md"
   ],
   "assets": [
@@ -93,6 +122,10 @@
     "assets/waiver.template.json",
     "assets/manual-evidence.template.json",
     "assets/adoption-plan.md",
-    "assets/communication-plan.md"
+    "assets/communication-plan.md",
+    "assets/status-dashboard.md",
+    "assets/adoption-summary.md",
+    "assets/adoption-proposal.md",
+    "assets/triage.template.json"
   ]
 }

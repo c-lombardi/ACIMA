@@ -19,7 +19,7 @@ Exit codes: `0` every selected profile conformed, `1` drift or a missing toolcha
 |---|---|
 | clean tree | does the reference implementation produce zero findings? |
 | gallery | does every required rule fire, at the expected path? |
-| `coverage.json` | does each profile partition all 29 rules into executed / not-executed, with a reason? |
+| `coverage.json` | does each profile partition all 34 rules into executed / not-executed, with a reason? |
 | source count | did the enforcer actually see files? Zero files is a failure, not a pass |
 | execution map | does the run name every catalog rule, with `executed: false` where applicable? |
 | `tools` | do the CLI, claim model, waiver, exclusion, profile, topology and documentation contracts still hold? |
@@ -47,7 +47,7 @@ Positive fixtures (the clean reference implementations) and negative fixtures (t
 
 ## What a pass proves, and what it does not
 
-Passing means: for the four implemented languages, the reference enforcers detect the 23 portable rules on checked-in fixtures, agree on finding shape, and do not fire on a clean tree, and the claim model refuses to overstate.
+Passing means: for the four implemented languages, the reference enforcers detect the portable rules on checked-in fixtures (28 in Python and TypeScript, 23 in Go and .NET, where the five third-party tier rules report `executed: false`), agree on finding shape, and do not fire on a clean tree, and the claim model refuses to overstate.
 
 Passing does **not** mean:
 

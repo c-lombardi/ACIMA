@@ -1,0 +1,82 @@
+{
+  "ACIMA-A001": [
+    "violations/a001_sql.go"
+  ],
+  "ACIMA-A003": [
+    "violations/a003_static.go"
+  ],
+  "ACIMA-C001": [
+    "violations/c001_pointer_field.go",
+    "violations/c005_persistence.go",
+    "violations/d002_impl.go"
+  ],
+  "ACIMA-C002": [
+    "violations/c002_map_field.go"
+  ],
+  "ACIMA-C004": [
+    "violations/c004_ambient.go"
+  ],
+  "ACIMA-C005": [
+    "violations/c005_persistence.go"
+  ],
+  "ACIMA-C006": [
+    "violations/c006_any.go"
+  ],
+  "ACIMA-D001": [
+    "violations/a003_use.go",
+    "violations/d001_d009_impl.go",
+    "violations/d005_cycle_a.go",
+    "violations/d005_cycle_b.go"
+  ],
+  "ACIMA-D002": [
+    "violations/d002_impl.go"
+  ],
+  "ACIMA-D003": [
+    "violations/d003_contracts.go"
+  ],
+  "ACIMA-D004": [
+    "violations/d004_thirdparty.go"
+  ],
+  "ACIMA-D005": [
+    "internal/orders/impl/module.go"
+  ],
+  "ACIMA-D006": [
+    "violations/d006_host.go"
+  ],
+  "ACIMA-D007": [
+    "violations/d007_kernel.go"
+  ],
+  "ACIMA-D008": [
+    "internal/orders/impl/module.go",
+    "violations/a003_use.go",
+    "violations/d002_impl.go",
+    "violations/d006_host.go"
+  ],
+  "ACIMA-D009": [
+    "violations/a003_use.go",
+    "violations/d001_d009_impl.go",
+    "violations/d005_cycle_a.go",
+    "violations/d005_cycle_b.go"
+  ],
+  "ACIMA-G001": [
+    "violations/waivers.json"
+  ],
+  "ACIMA-G002": [
+    "violations/waivers.json"
+  ],
+  "ACIMA-G003": [
+    "violations/g003_undocumented.go"
+  ],
+  "ACIMA-G005": [
+    "violations/g005_orphan.go"
+  ],
+  "ACIMA-L001": [
+    "violations/l001_sql.go"
+  ],
+  "ACIMA-L002": [
+    "violations/l002_framework.go"
+  ],
+  "ACIMA-L003": [
+    "internal/catalog/impl/module.go"
+  ]
+}

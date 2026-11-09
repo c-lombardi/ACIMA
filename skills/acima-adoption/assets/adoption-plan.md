@@ -7,6 +7,7 @@ Owner: <name>            Sponsor: <name>            Start: <date>            Rev
 - Mode: <greenfield | brownfield | adopting>
 - Language profile: <dotnet | typescript | python | go | java>
 - Declared level today: <L1 | L2 | L3 | none>
+- Architecture family in use: <Clean | Hexagonal | DDD | modular monolith | microservices | mixed> — what ACIMA adds: <one sentence in the team's terms>
 - Why now: <the incident, coupling or reorg that made this worth doing>
 - What is explicitly out of scope: <e.g. persistence ownership this year>
 

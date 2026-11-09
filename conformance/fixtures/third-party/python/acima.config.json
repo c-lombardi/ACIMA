@@ -1,0 +1,28 @@
+{
+  "standard": "1.1.0",
+  "mode": "base",
+  "language": "python",
+  "level": "L3",
+  "root": ".",
+  "units": [
+    { "id": "notes", "module": "notes", "role": "implementation", "paths": ["src/notes/impl"] },
+    { "id": "editor.port", "role": "port", "paths": ["src/editor/port"] },
+    { "id": "editor.monaco", "module": "editor", "role": "adapter", "paths": ["src/editor/monaco"] },
+    { "id": "host", "role": "host", "paths": ["src/host"] }
+  ],
+  "exclude": ["tests", "**/__pycache__/**"],
+  "manifests": ["requirements.txt"],
+  "externals": {
+    "monaco-editor": {
+      "tier": "integration",
+      "owner": "team-editor",
+      "reason": "Browser code editor used for note authoring; only the adapter imports it.",
+      "adapter": "editor.monaco",
+      "port": "editor.port",
+      "reviewedOn": "2026-11-09",
+      "expires": "2027-11-09",
+      "specifiers": ["monaco_editor"],
+      "types": ["IEditor"]
+    }
+  }
+}

@@ -66,15 +66,15 @@ def evidence_document(rules: set[str], root: Path, *,
 
 class ClaimModelTests(unittest.TestCase):
     def test_required_rule_counts_and_manual_partition(self) -> None:
-        self.assertEqual(len(claim.required_rules(CATALOG, "L1")), 16)
-        self.assertEqual(len(claim.required_rules(CATALOG, "L2")), 25)
-        self.assertEqual(len(claim.required_rules(CATALOG, "L3")), 29)
+        self.assertEqual(len(claim.required_rules(CATALOG, "L1")), 21)
+        self.assertEqual(len(claim.required_rules(CATALOG, "L2")), 30)
+        self.assertEqual(len(claim.required_rules(CATALOG, "L3")), 34)
         self.assertEqual(
             {rule["id"] for rule in CATALOG["rules"] if rule["automation"] == "manual"},
             MANUAL,
         )
         self.assertEqual(sum(1 for rule in CATALOG["rules"]
-                             if rule["automation"] == "automated"), 23)
+                             if rule["automation"] == "automated"), 28)
         self.assertEqual(
             {rule["id"] for rule in claim.required_rules(CATALOG, "L2")
              if rule["automation"] == "manual"},
@@ -86,7 +86,7 @@ class ClaimModelTests(unittest.TestCase):
         self.assertEqual(result["claim"], claim.FULL)
         self.assertTrue(result["eligible"])
         self.assertEqual(result["missing"], [])
-        self.assertEqual(result["executed"], 29)
+        self.assertEqual(result["executed"], 34)
 
     def test_missing_manual_evidence_is_partial_and_named(self) -> None:
         result = claim.assess(payload("L3", MANUAL), CATALOG)

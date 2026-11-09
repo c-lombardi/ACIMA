@@ -84,6 +84,23 @@ suites and compare them against the same expected findings.
     { "id": "host", "role": "host", "paths": ["src/acima/host"] }
   ],
   "exclude": ["tests", "violations", "**/__pycache__/**"],
+  "externals": {
+    "monaco-editor": {
+      "tier": "integration",
+      "owner": "team-editor",
+      "reason": "Browser code editor for note authoring.",
+      "adapter": "editor.monaco",
+      "port": "editor.port",
+      "reviewedOn": "2026-11-09",
+      "expires": "2027-11-09",
+      "types": ["IEditor"]
+    },
+    "react": { "tier": "platform", "owner": "team-web", "reason": "UI runtime.",
+               "reviewedOn": "2026-11-09", "expires": "2027-11-09" },
+    "left-pad": { "tier": "utility", "owner": "team-platform", "reason": "Pure padding helper.",
+                  "reviewedOn": "2026-11-09", "expires": "2027-11-09" }
+  },
+  "manifests": ["package.json"],
   "budgets": { "catalog": 0, "payments": 1, "orders": 3 },
   "rules": { "ACIMA-L004": "warning" }
 }
@@ -102,6 +119,31 @@ Field notes:
 - `exclude` is applied before classification. Fixtures and tests are never part of the product graph.
 - `budgets` is optional; a breach is reported as `ACIMA-G005`-adjacent informational finding, not a
   catalog rule, because the threshold is local policy.
+- `externals` declares the third-party tiers (chapter 4 §4.10). It is **configuration, never
+  inference**: an undeclared package is `G006`, not a guess.
+  - `tier` is `platform`, `integration` or `utility`; it is required, with `owner`, `reason`,
+    `reviewedOn` and `expires`.
+  - `adapter` and `port` are **required for `integration`** and name declared unit ids. An adapter
+    unit that no entry names is `L006`.
+  - `specifiers` (optional) lists the import names a package is known by when they differ from the
+    manifest name — a PyPI distribution and its module, for example.
+  - `types` (optional) lists the vendor type names `L007` should look for. When absent, tokens are
+    derived from the package name.
+  - An entry whose `expires` date has passed is `G006`; an entry missing a required field, naming an
+    unknown unit or an unknown tier is `G001`.
+- `manifests` lists the files `G006` reads. When absent, `package.json`, `pyproject.toml` and
+  `requirements.txt` are read if present. `devDependencies` are not checked: they do not ship.
+- When `externals` is absent the five tier rules (`L005`–`L007`, `D010`, `G006`) report
+  `executed: false` with that reason. A repository with a manifest should declare it —
+  `acima.py externals --write-draft` produces the first version:
+
+```bash
+python3 tools/acima.py externals --root . --write-draft   # one entry per manifest package
+```
+
+The draft sets every package to `utility` with an `UNASSIGNED` owner: it is a starting point for
+review, not a decision. `--write-draft` never overwrites an existing entry, so re-running it after a
+new dependency appears adds only the new one.
 - `rules` may only **lower** severity, never raise it above the catalog, and never disable a rule at
   the declared level.
 

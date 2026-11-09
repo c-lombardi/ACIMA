@@ -25,7 +25,7 @@ skill can be trusted months later.
 |---|---|---|
 | `SKL-001` | the manifest is readable JSON | restore `manifest.json`; do not hand-edit around it |
 | `SKL-002` | `tools/acima-spec/rules.json` matches the pinned SHA-256 | the catalog changed. Read the diff, update the skill deliberately, then update the pin |
-| `SKL-003` | 29 rules and all 23 portable ids still exist | a rule was renamed or removed; update references that cite it |
+| `SKL-003` | 34 rules and all 28 portable ids still exist | a rule was renamed or removed; update references that cite it |
 | `SKL-004` | the catalog version equals `manifest.standard` | version-specific guidance is stale |
 | `SKL-005` | every reference and asset listed in the manifest exists | restore the file or remove it from the map |
 | `SKL-006` | every documented enforcer path exists | the layout moved; fix the commands in `SKILL.md` and the manifest together |
@@ -128,7 +128,7 @@ JSON output is stable and safe to attach to a ticket:
 
 ```json
 {
-  "skill": { "name": "acima-adoption", "version": "1.2.5", "standard": "1.0.0-draft.1" },
+  "skill": { "name": "acima-adoption", "version": "1.8.0", "standard": "1.0.0-draft.1" },
   "project": { "path": "/repo", "mode": "brownfield", "language": "python" },
   "checks": [{ "id": "SKL-002", "status": "pass", "detail": "...", "remedy": "" }],
   "blockers": [],

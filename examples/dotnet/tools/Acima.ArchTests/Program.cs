@@ -101,6 +101,11 @@ internal sealed class Enforcer
     private const string G003 = "ACIMA-G003";
     private const string G004 = "ACIMA-G004";
     private const string G005 = "ACIMA-G005";
+    private const string G006 = "ACIMA-G006";
+    private const string D010 = "ACIMA-D010";
+    private const string L005 = "ACIMA-L005";
+    private const string L006 = "ACIMA-L006";
+    private const string L007 = "ACIMA-L007";
 
     private static readonly Dictionary<string, (string Severity, string Level)> Catalog = new(StringComparer.Ordinal)
     {
@@ -117,6 +122,9 @@ internal sealed class Enforcer
         [G001] = ("error", "L1"), [G002] = ("error", "L1"),
         [G003] = ("warning", "L2"), [G004] = ("error", "L2"),
         [G005] = ("error", "L1"),
+        [D010] = ("error", "L1"),
+        [L005] = ("warning", "L1"), [L006] = ("error", "L1"), [L007] = ("warning", "L1"),
+        [G006] = ("warning", "L1"),
     };
 
     private static readonly Dictionary<string, string> NotExecuted = new(StringComparer.Ordinal)
@@ -127,6 +135,11 @@ internal sealed class Enforcer
         [A002] = "configuration APIs differ per ecosystem",
         [A004] = "version-lock coupling is visible only across published packages",
         [G004] = "an API baseline needs a per-language surface format",
+        [D010] = "third-party tier rules are implemented by the python and typescript enforcers in this revision",
+        [L005] = "third-party tier rules are implemented by the python and typescript enforcers in this revision",
+        [L006] = "third-party tier rules are implemented by the python and typescript enforcers in this revision",
+        [L007] = "third-party tier rules are implemented by the python and typescript enforcers in this revision",
+        [G006] = "manifest package governance is implemented by the python and typescript enforcers in this revision",
     };
 
     private static readonly Dictionary<string, int> Rank = new() { ["L1"] = 1, ["L2"] = 2, ["L3"] = 3 };
@@ -628,13 +641,17 @@ internal sealed class Enforcer
 
     private Unit? UnitForPackage(string package)
     {
-        var normalized = package.Replace(".", string.Empty).Replace("-", string.Empty).ToLowerInvariant();
-        var wantsContracts = normalized.Contains("contracts", StringComparison.Ordinal);
+        // Match the package identity, not a substring of it. A module named "tools" must not
+        // claim the third-party package "Grpc.Tools": that produced a phantom
+        // contracts -> implementation edge (D002) plus transitive D008 findings in a real
+        // 27-project solution. An in-repo package belongs to a module only when its id starts
+        // with that module id at a dot boundary.
+        var wantsContracts = package.Contains("contracts", StringComparison.OrdinalIgnoreCase);
         foreach (var unit in _cfg.Units)
         {
             if (string.IsNullOrWhiteSpace(unit.Module)) continue;
-            var module = unit.Module.Replace(".", string.Empty).Replace("-", string.Empty).ToLowerInvariant();
-            if (!normalized.Contains(module, StringComparison.Ordinal)) continue;
+            var module = unit.Module.Trim();
+            if (!package.StartsWith(module + ".", StringComparison.OrdinalIgnoreCase)) continue;
             if (wantsContracts && unit.Role == "contracts") return unit;
             if (!wantsContracts && unit.Role == "implementation") return unit;
         }
@@ -1078,11 +1095,18 @@ internal sealed class Enforcer
 
         _findings.RemoveAll(finding =>
         {
-            if (!_fileUnits.TryGetValue(finding.Path, out var unit)) return false;
+            // Source findings resolve through the classified file map. Findings on a project
+            // file (project-reference and package rules) have no entry there, so they resolve
+            // to their owning unit by its declared paths; otherwise a unit-scoped waiver could
+            // never cover them.
+            var unit = _fileUnits.TryGetValue(finding.Path, out var mapped)
+                ? mapped
+                : UnitForPath(finding.Path, string.Empty);
             return active.Any(waiver => waiver.Rule == finding.Rule
                 && waiver.Fingerprint == finding.Fingerprint
-                && (waiver.Scope == "unit:" + unit.Id
-                    || waiver.Scope == "module:" + unit.Module
+                && ((unit is not null
+                        && (waiver.Scope == "unit:" + unit.Id
+                            || waiver.Scope == "module:" + unit.Module))
                     || (waiver.Scope!.StartsWith("path:", StringComparison.Ordinal)
                         && GlobMatch(waiver.Scope[5..], finding.Path))));
         });
@@ -1199,6 +1223,7 @@ internal static class Program
         var format = "text";
         string? level = null;
         var verify = false;
+        string? baselinePath = null;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -1218,6 +1243,9 @@ internal static class Program
                     break;
                 case "--verify":
                     verify = true;
+                    break;
+                case "--baseline":
+                    baselinePath = args[++i];
                     break;
                 default:
                     Console.Error.WriteLine($"acima: unknown argument {args[i]}");
@@ -1239,14 +1267,50 @@ internal static class Program
             }
             var enforcer = new Enforcer(rootPath, cfg, effective);
             var findings = enforcer.Run();
-            Print(findings, format, cfg.Standard, effective, enforcer.SourceFiles, cfg, enforcer.ClassifiedFindings);
-            return findings.Any(f => f.Severity == "error") ? 1 : 0;
+            var baseline = baselinePath is null
+                ? null
+                : LoadBaseline(Path.IsPathRooted(baselinePath) ? baselinePath : Path.Combine(rootPath, baselinePath));
+            Print(findings, format, cfg.Standard, effective, enforcer.SourceFiles, cfg, enforcer.ClassifiedFindings, baseline);
+            return findings.Any(f => f.Severity == "error" && (baseline is null || !baseline.Contains(f.Fingerprint))) ? 1 : 0;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException)
         {
             Console.Error.WriteLine($"acima: cannot read config {config ?? "acima.config.json"}: {error.Message}");
             return 2;
         }
+    }
+
+    private static HashSet<string> LoadBaseline(string path)
+    {
+        var set = new HashSet<string>(StringComparer.Ordinal);
+        using var document = JsonDocument.Parse(File.ReadAllText(path));
+        foreach (var property in document.RootElement.EnumerateObject())
+        {
+            var name = property.Name.ToLowerInvariant();
+            if (name == "fingerprints")
+            {
+                foreach (var entry in property.Value.EnumerateArray())
+                {
+                    if (entry.GetString() is { Length: > 0 } value) set.Add(value);
+                }
+            }
+            else if (name == "findings")
+            {
+                foreach (var entry in property.Value.EnumerateArray())
+                {
+                    foreach (var field in entry.EnumerateObject())
+                    {
+                        if (field.Name.Equals("fingerprint", StringComparison.OrdinalIgnoreCase)
+                            && field.Value.GetString() is { Length: > 0 } value)
+                        {
+                            set.Add(value);
+                        }
+                    }
+                }
+            }
+        }
+
+        return set;
     }
 
     private static int Verify(string root)
@@ -1307,7 +1371,7 @@ internal static class Program
     }
 
     private static void Print(IReadOnlyList<Finding> findings, string format, string standard, string level,
-        int sourceFiles = 0, Config? cfg = null, IReadOnlyList<Classified>? classified = null)
+        int sourceFiles = 0, Config? cfg = null, IReadOnlyList<Classified>? classified = null, HashSet<string>? baseline = null)
     {
         if (format == "json")
         {
@@ -1330,6 +1394,8 @@ internal static class Program
                 standard,
                 level,
                 sourceFiles,
+                newFindings = baseline is null ? findings.Count : findings.Count(f => !baseline.Contains(f.Fingerprint)),
+                knownFindings = baseline is null ? 0 : findings.Count(f => baseline.Contains(f.Fingerprint)),
                 profile = profileSummary,
                 execution,
                 classified = (classified ?? Array.Empty<Classified>()).Select(c => new
@@ -1353,6 +1419,7 @@ internal static class Program
                     line = f.Line,
                     evidence = f.Evidence,
                     fingerprint = f.Fingerprint,
+                    status = baseline is null ? "unclassified" : (baseline.Contains(f.Fingerprint) ? "pre-existing" : "new"),
                 }),
             };
             Console.WriteLine(JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true }));
@@ -1361,7 +1428,8 @@ internal static class Program
 
         foreach (var finding in findings)
         {
-            Console.WriteLine($"{finding.Rule}  {finding.Severity,-7} {finding.Message}");
+            var prefix = baseline is null ? string.Empty : (baseline.Contains(finding.Fingerprint) ? "KNOWN " : "NEW   ");
+            Console.WriteLine($"{prefix}{finding.Rule}  {finding.Severity,-7} {finding.Message}");
             Console.WriteLine($"  {finding.Path}:{finding.Line}");
         }
 
@@ -1372,5 +1440,11 @@ internal static class Program
 
         var errors = findings.Count(f => f.Severity == "error");
         Console.WriteLine($"\n{findings.Count} finding(s), {errors} error(s) at level {level}");
+
+        if (baseline is not null)
+        {
+            var known = findings.Count(f => baseline.Contains(f.Fingerprint));
+            Console.WriteLine($"  {findings.Count - known} new, {known} pre-existing (baseline applied)");
+        }
     }
 }

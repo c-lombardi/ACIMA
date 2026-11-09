@@ -201,3 +201,47 @@ Consequences for a contract review:
 
 Immutability, typed failures and documented invariants do not change. The profile narrows what a
 contract may reference; it does not loosen what it may contain.
+
+## 5.12 Ports for integration libraries
+
+A **port** is a contracts unit declaring a capability the system needs, in the system's vocabulary.
+It is the consumer-facing half of an integration seam; the adapter is the other half (chapter 4
+§4.10, chapter 11 §11.7).
+
+```ts
+/** The capability the application needs from a code editor. */
+export interface EditorPort {
+  open(note: string): EditorHandle;
+  read(handle: EditorHandle): string;
+}
+```
+
+Three things about that shape are deliberate:
+
+- **It carries no vendor type.** `EditorHandle` is the port's own value type. The adapter converts
+  to and from `monaco.editor.IStandaloneCodeEditor`; the application never sees the conversion.
+  A port that imports the vendor is `D010`.
+- **It may be behavioural.** A port is a capability, so a method signature is the normal case. No DTO
+  is required: do not invent a `OpenNoteRequest`/`OpenNoteResponse` pair to satisfy a shape nobody
+  asked for. Messages are required for *events and commands that cross a module boundary*
+  (chapter 5 §5.1), not for a port.
+- **`C007` does not apply.** One-step construction is a rule about contract *types* whose required
+  state must be obvious; an interface has no construction. `C007`'s catalogue entry marks it
+  `automation: manual`, and its review question is answered by "not applicable" for an interface.
+
+What a port *does* inherit from contracts: it is immutable in shape, it documents its invariants
+(`G003`), it names nothing another module owns (`D003`), it exposes no persistence or framework type
+(`C005`, `L002`), and it is dependency-free (`D010`, the port counterpart of `D004`).
+
+### Port or provided port?
+
+Both exist in ACIMA and they are not the same decision:
+
+- A **provided port** is a capability a module promises to fulfil for its consumers; it lives in that
+  module's contracts unit (`catalog.contracts.CatalogReader`).
+- A **port for an integration library** declares what the system needs *from a vendor*. Its owner is
+  the consuming module or a dedicated `editor.port` unit, and its implementation is an adapter that
+  nobody else may reference.
+
+The test is who changes when the port changes. A provided port changes when the provider's capability
+changes. An integration port changes when the consumer's need changes — not when the vendor ships.

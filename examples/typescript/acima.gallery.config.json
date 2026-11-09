@@ -73,11 +73,56 @@
       "paths": [
         "violations/d007_kernel.ts"
       ]
+    },
+    {
+      "id": "editor.port",
+      "role": "port",
+      "paths": [
+        "violations/d010_port_vendor.ts"
+      ]
+    },
+    {
+      "id": "editor.monaco",
+      "module": "editor",
+      "role": "adapter",
+      "paths": [
+        "violations/adapter-monaco.ts"
+      ]
+    },
+    {
+      "id": "legacy.pdf",
+      "module": "legacy",
+      "role": "adapter",
+      "paths": [
+        "violations/l006_adapter_without_port.ts"
+      ]
     }
   ],
   "exclude": [
     "node_modules",
     "tests"
   ],
+  "manifests": [
+    "violations/package.gallery.json"
+  ],
+  "externals": {
+    "monaco-editor": {
+      "tier": "integration",
+      "owner": "team-editor",
+      "reason": "Browser code editor for note authoring; the adapter is the only importer.",
+      "adapter": "editor.monaco",
+      "port": "editor.port",
+      "reviewedOn": "2026-11-09",
+      "expires": "2027-11-09",
+      "types": ["IStandaloneCodeEditor"]
+    },
+    "left-pad": {
+      "tier": "utility",
+      "owner": "team-platform",
+      "reason": "String padding kept for the legacy report; scheduled for removal.",
+      "reviewedOn": "2025-01-01",
+      "expires": "2025-12-31"
+    }
+  },
   "waivers": "violations/waivers.json"
 }

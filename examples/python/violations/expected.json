@@ -77,5 +77,21 @@
     "src/acima/orders/impl/module.py",
     "src/acima/payments/impl/gateway.py",
     "violations/l003_catalog_public.py"
+  ],
+  "ACIMA-D010": [
+    "violations/d010_port_vendor.py"
+  ],
+  "ACIMA-G006": [
+    "acima.gallery.config.json",
+    "violations/requirements.gallery.txt"
+  ],
+  "ACIMA-L005": [
+    "violations/l005_application_imports_vendor.py"
+  ],
+  "ACIMA-L006": [
+    "violations/l006_adapter_without_port.py"
+  ],
+  "ACIMA-L007": [
+    "violations/l007_vendor_type_outside.py"
   ]
 }

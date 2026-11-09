@@ -1,0 +1,97 @@
+{
+  "ACIMA-A001": [
+    "violations/a001_cross_sql.ts"
+  ],
+  "ACIMA-A003": [
+    "violations/a003_static.ts"
+  ],
+  "ACIMA-C001": [
+    "violations/c001_c006_mutable.ts"
+  ],
+  "ACIMA-C002": [
+    "violations/c001_c006_mutable.ts",
+    "violations/c002_collection.ts"
+  ],
+  "ACIMA-C004": [
+    "violations/c004_ambient.ts"
+  ],
+  "ACIMA-C005": [
+    "violations/c005_persistence.ts"
+  ],
+  "ACIMA-C006": [
+    "violations/c001_c006_mutable.ts"
+  ],
+  "ACIMA-D001": [
+    "violations/a003_use.ts",
+    "violations/d001_d009_impl_impl.ts",
+    "violations/d005_cycle_a.ts",
+    "violations/d005_cycle_b.ts"
+  ],
+  "ACIMA-D002": [
+    "violations/d002_contracts_impl.ts"
+  ],
+  "ACIMA-D003": [
+    "violations/d003_contracts_contracts.ts"
+  ],
+  "ACIMA-D004": [
+    "violations/c005_persistence.ts",
+    "violations/d004_third_party.ts",
+    "violations/l002_framework.ts"
+  ],
+  "ACIMA-D005": [
+    "src/orders/impl/module.ts"
+  ],
+  "ACIMA-D006": [
+    "violations/d006_contracts_host.ts"
+  ],
+  "ACIMA-D007": [
+    "violations/d007_kernel.ts"
+  ],
+  "ACIMA-D008": [
+    "src/orders/impl/module.ts",
+    "violations/a003_use.ts",
+    "violations/d002_contracts_impl.ts",
+    "violations/d003_contracts_contracts.ts",
+    "violations/d006_contracts_host.ts"
+  ],
+  "ACIMA-D009": [
+    "violations/d001_d009_impl_impl.ts"
+  ],
+  "ACIMA-G001": [
+    "violations/waivers.json"
+  ],
+  "ACIMA-G002": [
+    "violations/waivers.json"
+  ],
+  "ACIMA-G003": [
+    "violations/g003_undocumented.ts"
+  ],
+  "ACIMA-G005": [
+    "violations/g005_orphan.ts"
+  ],
+  "ACIMA-L001": [
+    "violations/l001_domain_sql.ts"
+  ],
+  "ACIMA-L002": [
+    "violations/l002_framework.ts"
+  ],
+  "ACIMA-L003": [
+    "src/orders/impl/module.ts"
+  ],
+  "ACIMA-D010": [
+    "violations/d010_port_vendor.ts"
+  ],
+  "ACIMA-G006": [
+    "acima.gallery.config.json",
+    "violations/package.gallery.json"
+  ],
+  "ACIMA-L005": [
+    "violations/l005_application_imports_vendor.ts"
+  ],
+  "ACIMA-L006": [
+    "violations/l006_adapter_without_port.ts"
+  ],
+  "ACIMA-L007": [
+    "violations/l007_vendor_type_outside.ts"
+  ]
+}

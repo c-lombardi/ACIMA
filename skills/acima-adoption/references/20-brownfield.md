@@ -1,5 +1,11 @@
 # Brownfield playbook
 
+> **Consent gate.** Phase 1 measures read-only. Phase 2 presents the exact config, baseline, waiver,
+> gate and CI paths, with their status and dependencies. Phase 3 creates only what the owner
+> approved. A request to assess is not a request to write `acima.config.json`, and a config is not
+> permission to add a baseline gate or CI.
+
+
 Brownfield adoption is a **measurement programme with a code-change habit attached**, not a
 rewrite. The goal of the first month is a number that cannot go up. The goal of the first quarter
 is that the number goes down without anyone heroically carving out a module.
@@ -18,9 +24,9 @@ Step 6  At zero, delete the waivers, raise the level, repeat.
 The question changes from *"is our architecture good?"* — unanswerable, therefore ignored — to
 *"did this pull request add a violation?"* — answerable, therefore enforced.
 
-## Step 1 — inventory before config
+## Step 1 — inventory before config (only if approved)
 
-You cannot declare units from the directory tree alone. Spend one session with someone who knows
+After the owner approves the configuration path and the proposed unit map, you cannot declare units from the directory tree alone. Spend one session with someone who knows
 the domain and answer:
 
 1. What are the business capabilities? (Orders, Catalog, Payments, Billing, Identity…)
@@ -32,7 +38,7 @@ the domain and answer:
 
 Write the answers as ADR-0001 in the adoption plan. The config follows the ADR, not the folders.
 
-Then draft:
+Then draft, if that path is approved:
 
 ```bash
 python3 skills/acima-adoption/scripts/preflight.py --project . --write-draft acima.config.json
@@ -41,7 +47,11 @@ python3 skills/acima-adoption/scripts/preflight.py --project . --write-draft aci
 Review the draft. Rename units to domain words (`orders`, not `orders-service-v2`). Merge units
 that are not real boundaries. Delete units that are folders rather than capabilities.
 
-## Step 2 — baseline honestly
+## Step 2 — baseline honestly (only if approved)
+
+Baseline and waivers are conditional. A local-only trial can use the measured run without
+committing a baseline; a gate without owned waivers is not ready to merge. Create only the approved
+subset.
 
 ```bash
 python3 skills/acima-adoption/scripts/preflight.py --project . --format json > acima-baseline.json
@@ -62,9 +72,10 @@ Rules for the baseline:
 Commit the baseline artefact next to the plan. It is the "before" photograph; without it nobody
 can tell whether the programme is working.
 
-## Step 3 — the gate
+## Step 3 — the gate (only if approved)
 
-CI runs the enforcer at the declared level and fails when a **new** finding appears. Two
+CI is a separate commitment; configuration and local enforcement do not authorize a workflow
+change. When approved, CI runs the enforcer at the declared level and fails when a **new** finding appears. Two
 implementation details decide whether this survives contact with a team:
 
 1. **Compare against the committed baseline**, not against zero. A gate that fails on day one is
@@ -149,7 +160,10 @@ Stop the programme and escalate when:
 - the first slice has been "almost done" for three sprints — the slice was too big;
 - leadership asks for a conformance percentage before a baseline exists — there is no denominator.
 
-## Definition of done (first 90 days)
+## Definition of done for an approved full adoption (first 90 days)
+
+A partial adoption uses the subset the owner approved; do not mark these boxes for capabilities that
+were not approved and do not call the result conformant.
 
 - [ ] ADR-0001 records the unit map and who owns each unit
 - [ ] `acima.config.json` committed, L1 declared, units cover every source file

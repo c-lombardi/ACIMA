@@ -1,8 +1,10 @@
 # Rule catalog
 
-29 rules. Five categories. Every rule has a permanent id, a severity, a conformance level and a
-detection strategy. Each of the four implemented language profiles has a reference enforcer; Java
-is a documented profile only and has no reference enforcer in this revision.
+34 rules. Five categories. Every rule has a permanent id, a severity, a conformance level and a
+detection strategy. Python, TypeScript, Go and .NET each have a reference enforcer; Java is a
+documented profile only and has no reference enforcer in this revision. The five third-party tier
+rules (`L005`–`L007`, `D010`, `G006`) are implemented by the Python and TypeScript enforcers in this
+revision and reported `executed: false` by Go and .NET.
 
 The machine-readable source of truth is [`tools/acima-spec/rules.json`](../../tools/acima-spec/rules.json).
 This catalog is its human-readable form; if they disagree, the JSON is authoritative.
@@ -32,6 +34,7 @@ This catalog is its human-readable form; if they disagree, the JSON is authorita
 | `D007` | Shared kernel violation | error | L1 |
 | `D008` | Transitive implementation leak | error | L1 |
 | `D009` | Access to another module's internals | error | L1 |
+| `D010` | Port exposes a vendor shape | error | L1 |
 
 ### Layering
 
@@ -41,6 +44,9 @@ This catalog is its human-readable form; if they disagree, the JSON is authorita
 | `L002` | Contracts reference a framework type | error | L1 |
 | `L003` | Implementation type published outside the module | error | L1 |
 | `L004` | Module resolved through a service locator | warning | L1 |
+| `L005` | Integration library used outside its declared adapter | warning | L1 |
+| `L006` | Adapter without a port | error | L1 |
+| `L007` | Vendor type outside the adapter | warning | L1 |
 
 ### Contract shape
 
@@ -72,6 +78,7 @@ This catalog is its human-readable form; if they disagree, the JSON is authorita
 | `G003` | Undocumented contract surface | warning | L2 |
 | `G004` | Unreviewed contract change | error | L2 |
 | `G005` | Unclassified source | error | L1 |
+| `G006` | Undeclared external dependency | warning | L1 |
 
 ## How to read a rule
 
@@ -93,13 +100,18 @@ Every rule entry has the same six parts:
 | `warning` | A strong default that was departed from. Reported, tracked, not blocking. | reported only |
 | `info` | Something the reviewer should know (an additive API change, an unparsed file). | reported only |
 
-Only `L004`, `C007`, `A002`, `A004` and `G003` are warnings. Every other rule is an error. This ratio
-is deliberate: a catalogue of warnings is a catalogue of things nobody fixes.
+Only `L004`, `C007`, `A002`, `A004`, `G003` and the three ratcheting third-party rules (`L005`,
+`L007`, `G006`) are warnings; every other rule is an error. The three ratcheting rules become `error`
+at the next major release — the ratchet is recorded in `rules.json` as
+`severityRatchet: { "to": "error", "at": "2.0.0" }` and explained in
+[§8.10](../standard/08-conformance.md#810-third-party-governance-and-the-swap-drill) and the
+[changelog](../../CHANGELOG.md). This ratio is deliberate: a catalogue of warnings is a catalogue of
+things nobody fixes.
 
 ## Rules that need judgement
 
 Six normative rules cannot be decided by the portable reference enforcers. The machine-readable
-catalog marks them `automation: "manual"`; the other 23 are `automation: "automated"`. They remain
+catalog marks them `automation: "manual"`; the other 28 are `automation: "automated"`. They remain
 in the catalogue because a native analyzer, package metadata or a human review can decide them, but
 a clean portable run is not evidence that they pass. A full conformance claim records one
 repository-scoped entry per manual rule in `.acima/manual-evidence.json`; without that file the
@@ -115,7 +127,9 @@ claim is `PARTIAL ASSESSMENT`. See [Conformance §8.9](../standard/08-conformanc
 | `G004` | error | reports `executed: false` | compares a reviewed per-language API baseline and classifies the change as additive or breaking |
 
 `G003` is executed, but a human still writes and reviews the documentation it looks for. The other
-23 rules are executed by all four reference enforcers and have gallery fixtures.
+28 rules execute in at least one reference enforcer and have gallery fixtures; the third-party tier
+rules are scoped to Python and TypeScript in this revision, so a Go or .NET run reports them
+`executed: false` and a full claim needs manual evidence for them.
 
 A rule that mixes machine and human judgement must say which part is which — otherwise the tool gets
 blamed for the human's decision, and the rule gets disabled.

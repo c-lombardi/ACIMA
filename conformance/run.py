@@ -128,7 +128,11 @@ def check_tools() -> bool:
                  "conformance/test_mode_precedence.py",
                  "conformance/test_claim_model.py",
                  "conformance/test_documentation_contract.py",
-                 "conformance/test_documentation_integrity.py"):
+                 "conformance/test_documentation_integrity.py",
+                 "conformance/test_package_matching.py",
+                 "conformance/test_consent_workflow.py",
+                 "conformance/test_reporting.py",
+                 "conformance/test_third_party_governance.py"):
         result = subprocess.run([sys.executable, test], cwd=ROOT, capture_output=True, text=True)
         if result.returncode != 0:
             fail(f"tools: {test} failed")

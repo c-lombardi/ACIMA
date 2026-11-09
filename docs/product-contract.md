@@ -21,16 +21,18 @@ ACIMA makes declared architectural boundaries executable:
 - the **agent skill** preflights, proposes units, measures a baseline and helps an
   agent work within the boundaries;
 - a **claim gate** computes `FULL CONFORMANCE` or `PARTIAL ASSESSMENT` from the run and
-  `.acima/manual-evidence.json`; authors do not choose the label.
+  `.acima/manual-evidence.json`; authors do not choose the label;
+- a **read-only assessment** (`acima assess`) inventories a repository, names the applicable
+  requirements and the rules it could not decide, and never modifies the target.
 
 ## Supported today
 
 | Area | Supported | Evidence / limit |
 |---|---|---|
-| Python | 23 portable rules; reference enforcer | Source and AST analysis, not type-checking |
-| TypeScript | 23 portable rules; reference enforcer | Source-text analysis, not type-checking |
-| Go | 23 portable rules; reference enforcer | Source and import analysis, not `go/parser` |
-| C#/.NET | 23 portable rules; reference enforcer; library profile | Source and MSBuild-evaluated project metadata, not assembly loading |
+| Python | 28 portable rules; reference enforcer | Source and AST analysis, not type-checking |
+| TypeScript | 28 portable rules; reference enforcer | Source-text analysis, not type-checking |
+| Go | 23 of 28 portable rules; reference enforcer | Source and import analysis, not `go/parser`; the five tier rules report `executed: false` |
+| C#/.NET | 23 of 28 portable rules; reference enforcer; library profile | Source and MSBuild-evaluated project metadata, not assembly loading; the five tier rules report `executed: false` |
 | Java | Profile only | No reference enforcer; a selected Java assessment fails closed |
 | Six manual-evidence rules | Normative, not executable by the portable enforcers | `C003`, `C007`, `L004`, `A002`, `A004`, `G004` are `automation: "manual"` and require repository-scoped evidence for a full claim |
 | Brownfield adoption | Preflight, draft units, baseline waivers, ratchet guidance | Unit names and owners require human confirmation |
@@ -99,7 +101,9 @@ A gate is not marked PASS because code exists. Its required evidence must be pre
 
 ## Versioning and change control
 
-- The standard version is `1.0.0-draft.1`; the skill version is `1.2.5`.
+- The standard version is `1.0.0-draft.1`; the skill version is `1.8.0`.
+- Assessment is read-only. Adoption artifacts require explicit owner approval of a proposal naming
+  the paths, scope and level; partial approval is supported and must be described honestly.
 - Rule IDs are never renumbered. A meaning change requires a catalog version change,
   a skill re-pin, conformance updates and a migration note.
 - Exclusion and glob semantics are consumer contracts. Changes require positive,

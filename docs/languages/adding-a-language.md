@@ -9,7 +9,7 @@ the standard — only how it is expressed and enforced. This chapter is the chec
 |---|---|---|
 | **Profile** | `docs/languages/<language>.md` | the five sections every profile has (layout, toolchain, arch tests, analyzers, pitfalls) |
 | **Reference implementation** | `examples/<language>/` | three modules (catalog, orders, payments), a host, behaviour tests. Python additionally carries a fourth Customers module. |
-| **Architecture enforcer** | `examples/<language>/tools/` | implements the 23 portable rules, emits [the finding format](../standard/07-executable-governance.md#72-the-finding-format) |
+| **Architecture enforcer** | `examples/<language>/tools/` | implements the 28 portable rules, emits [the finding format](../standard/07-executable-governance.md#72-the-finding-format) |
 | **`acima.config.json`** | `examples/<language>/` | declares units, level, excludes |
 | **Violation gallery** | `examples/<language>/violations/` | one fixture per rule, plus `expected.json` |
 | **Conformance entry** | `conformance/run.py` | one line adding the language to the run |

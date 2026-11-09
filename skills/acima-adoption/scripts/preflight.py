@@ -26,7 +26,11 @@ from datetime import date, timedelta
 from pathlib import Path
 
 SKILL_DIR = Path(__file__).resolve().parents[1]
-STANDARD_ROOT = SKILL_DIR.parents[1]
+# Inside the standard repository the authority is the tree itself. Copied into ~/.agents or similar
+# there is no repository root, so the skill falls back to the snapshot tools/bundle_skill.py writes.
+_REPOSITORY = SKILL_DIR.parents[1]
+STANDARD_ROOT = (_REPOSITORY if (_REPOSITORY / "tools/acima-spec/rules.json").is_file()
+                 else SKILL_DIR / "vendor")
 
 PRUNE = {
     ".git", "node_modules", "bin", "obj", "dist", "build", "target", "out",
@@ -733,6 +737,10 @@ def check_deep(manifest: dict, report: Report) -> None:
         example = enforcer.get("example")
         if not example:
             continue
+        if not (STANDARD_ROOT / example / "acima.config.json").is_file():
+            report.add(f"ENF-{language}", "warn",
+                       f"{language}: example tree is not bundled; run --deep from a checkout")
+            continue
         command, cwd = enforcer_invocation(manifest, language, STANDARD_ROOT / example)
         if language == "dotnet":
             prepare_dotnet(manifest)
@@ -773,24 +781,24 @@ def build_next_steps(report: Report, project: Path, manifest: dict,
 
     if report.mode == "greenfield":
         steps = [
-            "Create the first two contracts with their own value types, then their implementations.",
-            "Write acima.config.json and an empty waiver file in the same commit.",
-            "Wire the enforcer into CI before the second module exists.",
-            "Declare L3 and keep it: nothing is fighting you yet.",
+            "Review the proposed units and present the adoption proposal; do not scaffold until approved.",
+            "If approved, create the first two contracts with their own value types, then implementations.",
+            "If approved, write acima.config.json and an empty waiver file in the same commit.",
+            "If CI is approved, wire the enforcer in before the second module exists; declare the approved level.",
             "Read references/10-greenfield.md for the exact skeleton.",
         ]
     elif report.mode == "brownfield":
         if draft_path and (project / draft_path).is_file():
             steps.append(f"Review the draft at {draft_path}: rename units to domain concepts, then commit it.")
-            steps.append("Run the preflight again with the config in place to measure the baseline.")
-            steps.append("Write scoped waivers for the baseline, replacing 'unassigned' with owners.")
+            steps.append("If baseline and gate are approved, measure the run and write scoped waivers with owners.")
         elif not (project / "acima.config.json").is_file():
-            steps.append("Generate a draft unit map: --write-draft acima.config.json, then review it.")
+            steps.append("Review the proposed units and present the adoption proposal; no files were written.")
+            steps.append("If configuration is approved: --write-draft acima.config.json, then review it.")
         if waiver_path and (project / waiver_path).is_file():
             steps.append(f"Replace every 'unassigned' owner in {waiver_path} before merging the gate.")
         steps.extend([
-            "Gate CI on 'no new findings' at L1; do not fix the architecture first.",
-            "Pick the first slice from references/20-brownfield.md (contracts, not persistence).",
+            "If integration blocking is approved, gate CI on 'no new findings' at the declared level.",
+            "Pick the first approved slice from references/20-brownfield.md (contracts, not persistence).",
         ])
     elif report.mode == "adopting":
         if report.findings.get("errors", 0) > 0:

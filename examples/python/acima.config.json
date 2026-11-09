@@ -102,5 +102,6 @@
     "orders": 4,
     "customers": 0
   },
+  "externals": {},
   "waivers": ".acima/waivers.json"
 }

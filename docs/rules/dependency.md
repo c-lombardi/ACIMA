@@ -403,6 +403,57 @@ it compile.
 
 ---
 
+## ACIMA-D010 · Port exposes a vendor shape
+
+**Severity** `error` · **Level** L1 · **Principle** P3
+
+> A port unit is dependency-free: it imports no third-party package and names no vendor type.
+
+### Violation
+
+```python
+# src/editor/port/__init__.py
+from monaco_editor import IEditor                              # ❌ the port carries the vendor
+
+class EditorPort(Protocol):
+    """Open a note in an editor."""
+    def open(self, note: str) -> IEditor: ...
+```
+
+### Finding
+
+```
+ACIMA-D010  error  port unit editor.port imports the third-party package monaco_editor; a port
+                   declares the capability, never the vendor.
+  src/editor/port/__init__.py:2
+  from monaco_editor import IEditor
+```
+
+### Why
+
+A port is the contract a consumer compiles against. If it names a vendor type, the consumer inherits
+the vendor through the seam: the swap the port was supposed to make cheap now changes every caller,
+and the dependency the adapter was isolating is back in the build. This is `D004` for ports, and it
+is a separate rule because a port is not a contracts unit in the base matrix — it has its own role
+and its own edge.
+
+### Fix
+
+Declare the capability in the port's own vocabulary — handles, requests and results it owns — and
+convert to the vendor type inside the adapter. Constructor and method bodies are not required in a
+port; a behavioural signature (a method that takes and returns port-owned types) is exactly right.
+`C007` does **not** apply to interfaces, and no DTO is required: a port is allowed to be behaviour
+rather than a message.
+
+### Detection
+
+Every import in a port unit is a finding, plus every vendor type token in its signatures, fields and
+exports (`L007`'s token set). Declared vendors and undeclared third-party packages are treated the
+same way: a port has no third-party dependencies at all. **Implemented for Python and TypeScript**;
+Go and .NET report the rule `executed: false` in this revision.
+
+---
+
 ## ACIMA-L001 · Domain references infrastructure
 
 **Severity** `error` · **Level** L1 · **Principle** P5
@@ -560,3 +611,163 @@ container is a lesser sin and is why this rule is a warning; resolving a *module
 Look for calls that take a container or registry and return a type from another module:
 `GetRequiredService<T>`, `resolve(T)`, `inject(T)`, `container.Lookup`, `app.get(...)`,
 `SpringContext.getBean(...)`.
+
+---
+
+## ACIMA-L005 · Integration library used outside its declared adapter
+
+**Severity** `warning` → `error` at 2.0.0 · **Level** L1 · **Principle** P3
+
+> A package declared with tier `integration` is imported only by its declared adapter unit. Every
+> other unit reaches the capability through the port.
+
+### Violation
+
+```python
+# src/notes/impl/service.py — an application unit importing the editor library directly
+import monaco_editor                                    # ❌ declared tier: integration
+
+def render(note: str) -> str:
+    return monaco_editor.render(note)
+```
+
+### Finding
+
+```
+ACIMA-L005  warning  orders imports the integration library monaco-editor; only its adapter
+                      (editor.monaco) may import it, everyone else takes the port.
+  src/notes/impl/service.py:1
+  import monaco_editor
+```
+
+### Why
+
+A library whose tier is `integration` owns IO, state, a wire format or a UI surface you cannot
+replace without touching every caller. Importing it from application code means the port is
+decorative: the moment the library ships a breaking change, or the vendor changes, the whole module
+changes with it. The adapter is the one place allowed to know the vendor, and the port is what the
+rest of the system compiles against.
+
+### Fix
+
+Move the import into the adapter named by the entry's `adapter` unit and call the port from
+application code. If the package is genuinely pure and stateless, declare it `utility` instead — the
+tier is a reviewable decision, not an inference. If it is a runtime or framework surface, declare it
+`platform`; it then stays banned from contracts (`D004`, `L002`) and needs no adapter.
+
+### Detection
+
+For every `externals` entry with `tier: integration`, every import specifier outside the entry's
+adapter unit is a finding. Specifiers are matched against the entry key and its `specifiers` list, so
+a PyPI distribution name and its import name can differ. Host code is not exempt: the host names the
+adapter, never the vendor. **Implemented for Python and TypeScript**; Go and .NET report the rule
+`executed: false` in this revision.
+
+---
+
+## ACIMA-L006 · Adapter without a port
+
+**Severity** `error` · **Level** L1 · **Principle** P3
+
+> Every adapter unit is declared in `externals` with exactly one port unit, and every integration
+> entry names both.
+
+### Violation
+
+```jsonc
+// acima.config.json — an adapter unit with no port and no entry
+{ "id": "legacy.pdf", "module": "legacy", "role": "adapter", "paths": ["src/legacy/pdf"] }
+```
+
+### Finding
+
+```
+ACIMA-L006  error  adapter unit legacy.pdf is declared in no externals entry; it has no port and
+                    no reviewed vendor.
+  src/legacy/pdf/__init__.py:1
+```
+
+### Why
+
+An adapter with no port is an unguarded vendor import with a directory name. It reads as isolation in
+a diagram — the vendor is in one place — while every consumer still depends on the adapter's own
+signatures, which are the vendor's signatures wearing a local name. `L006` is what makes "isolated
+behind a contract" a checkable sentence rather than a layout convention.
+
+### Fix
+
+Declare the port unit and complete the entry:
+
+```jsonc
+"externals": {
+  "monaco-editor": {
+    "tier": "integration",
+    "owner": "team-editor",
+    "reason": "Browser code editor for note authoring.",
+    "adapter": "editor.monaco",
+    "port": "editor.port",
+    "reviewedOn": "2026-11-09",
+    "expires": "2027-11-09"
+  }
+}
+```
+
+If the adapter has no consumer that needs a capability, delete the adapter rather than inventing a
+port: an unused adapter is a dependency you are paying for without a user.
+
+### Detection
+
+Two halves, both a finding: an `integration` entry that omits `adapter` or `port`, and an
+`adapter`-role unit that no entry names. An entry naming an unknown unit id is `G001`, because a
+dangling seam is a configuration error, not an architecture decision. **Implemented for Python and
+TypeScript**; Go and .NET report the rule `executed: false` in this revision.
+
+---
+
+## ACIMA-L007 · Vendor type outside the adapter
+
+**Severity** `warning` → `error` at 2.0.0 · **Level** L1 · **Principle** P3
+
+> A vendor type appears in a signature, field or export outside the adapter unit.
+
+### Violation
+
+```python
+# src/notes/impl/service.py
+def open_note(editor: monaco_editor.IEditor) -> str:      # ❌ vendor type in an application signature
+    return editor.text()
+```
+
+### Finding
+
+```
+ACIMA-L007  warning  notes names the vendor type IEditor from monaco-editor outside its adapter.
+  src/notes/impl/service.py:2
+  monaco_editor
+```
+
+### Why
+
+`L005` catches the import; `L007` catches the leak that survives a local wrapper. A function that
+takes `IEditor` is not portable, a test for it needs the vendor, and a swap has to change the
+signature even though the import disappeared. The port exists so the signature is the system's, not
+the vendor's.
+
+### Fix
+
+Name the port's own type (`EditorHandle`) and map it to the vendor type inside the adapter, where the
+conversion is visible and testable. For a `utility` package the rule is narrower on purpose: its
+types may not cross a **contract or port**, and it is otherwise free inside implementations.
+
+### Detection
+
+Type-name tokens come from the entry's `types` list, or — only when that list is absent — from the
+package name and its PascalCase and flattened variants. The declaration wins because a derived token
+such as `MonacoEditor` is more often the adapter's own class name than a vendor type. Lines that are
+imports are excluded (they are `L005`/`D010`). Port units are excluded here and judged by `D010`, so
+one leak is one finding. A token shorter than three characters is ignored to avoid matching unrelated
+code. When one adapter covers a vendor and a wrapper around it (`monaco-editor` and
+`@monaco-editor/react`) and both entries declare the same type, a line is reported once and named
+after the shorter package, so the finding points at the vendor rather than its wrapper.
+**Implemented for Python and TypeScript**; Go and .NET report the rule `executed: false` in this
+revision.

@@ -24,13 +24,14 @@ If two documents disagree, the order above wins: `rules.json` over `rules/index.
 | `rules/` | the human rule catalog with violation/fix examples ([README](rules/README.md)) |
 | `languages/` | per-language expression of the rules: .NET, TypeScript, Python, Go, Java ([index](languages/index.md)) |
 | `start/` | [quickstart](start/quickstart.md) and [brownfield adoption](start/brownfield.md) |
-| `guides/` | explanatory material: leaders, reviewers, AI agents, before/after, architecture tests, analyzers, walkthrough |
+| `guides/` | explanatory material: leaders, reviewers, AI agents, before/after, architecture tests, analyzers, walkthrough, architecture families |
+| `commands.md` | every command, its flags and exit codes, mapped to the adoption step that uses it |
 | `status.md` | verified vs proposed capability, with limits |
 | `product-contract.md` | consumer guarantees, known gaps, release gates |
 
 ## Reading order
 
-1. [`../README.md`](../README.md) — what ACIMA is for
+1. [`../README.md`](../README.md) — what ACIMA is for, and how it relates to Clean Architecture, Hexagonal, DDD, modular monoliths and microservices ([guide](guides/architecture-families.md))
 2. [`start/quickstart.md`](start/quickstart.md) — see it work
 3. `standard/00` → `standard/05` — the obligations
 4. [`rules/index.md`](rules/index.md) — the rules that fail a build
@@ -56,5 +57,5 @@ Rule ids are never renumbered or reused. `../conformance/run.py` and `conformanc
 
 - Adoption workflow instructions — see `../skills/acima-adoption/SKILL.md`.
 - Analyzer implementations — see `../examples/<language>/tools/`.
-- Verification results — see `../conformance/` and `../audit/`.
+- Verification results — see `../conformance/`.
 - Dated release reports. History belongs in git, and current claims belong in `status.md`.

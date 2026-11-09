@@ -5,14 +5,14 @@ Two different things live one level up, and confusing them is the most common re
 - A **principle** states an obligation and its rationale: *"Every module owns its implementation."* Principles are prose, in [`../standard/01-principles.md`](../standard/01-principles.md).
 - A **rule** is the smallest independently checkable consequence of a principle: *`ACIMA-D001` — an implementation references another implementation.* A rule has an id, a severity, a conformance level and an automation status.
 
-One principle maps to several rules; one rule always traces back to exactly one requirement (R1–R5 in [`../../audit/CORE-ARCHITECTURE.md`](../../audit/CORE-ARCHITECTURE.md)).
+One principle maps to several rules; one rule always traces back to exactly one requirement.
 
 ## Where a rule is defined
 
 | Artifact | Role | Authority |
 |---|---|---|
 | [`../../tools/acima-spec/rules.json`](../../tools/acima-spec/rules.json) | id, severity, level, `automation`, manual evidence hint | **authoritative** |
-| [`index.md`](index.md) | the same 29 rules as tables, plus severity policy | generated-equivalent; a test fails if it drifts |
+| [`index.md`](index.md) | the same 34 rules as tables, plus severity policy | generated-equivalent; a test fails if it drifts |
 | [`dependency.md`](dependency.md) | `D` and `L` rules with violation/fix examples per language | explanatory |
 | [`contracts.md`](contracts.md) | `C` rules | explanatory |
 | [`autonomy.md`](autonomy.md) | `A` and `G` rules | explanatory |
@@ -21,7 +21,7 @@ There is exactly one catalog. Do not create a second one in a report, spreadshee
 
 ## Automated versus human judgement
 
-23 of 29 rules are decided by the reference enforcers. Six are normative but require judgement or native analyzers, and are reported as `executed: false`:
+28 of 34 rules are decided by the reference enforcers. Six are normative but require judgement or native analyzers, and are reported as `executed: false`. Five of the 28 (`L005`–`L007`, `D010`, `G006`) are implemented for Python and TypeScript in this revision; the Go and .NET enforcers report them as `executed: false` with that reason:
 
 | Rule | Who decides |
 |---|---|
@@ -40,6 +40,7 @@ A clean portable run is therefore **not** full conformance. A full claim needs a
 |---|---|
 | mapping rule → profile | [`../../conformance/coverage.json`](../../conformance/coverage.json) |
 | implementations | `../../examples/{python,typescript,go,dotnet}/tools/` |
+| third-party tiers | `docs/standard/04-dependency-model.md` §4.10 and the `externals` map in chapter 7 |
 | proof a rule can fire | `../../examples/<lang>/violations/` + `expected.json` |
 | runner | [`../../conformance/run.py`](../../conformance/run.py) |
 

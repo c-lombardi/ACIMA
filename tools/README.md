@@ -4,7 +4,7 @@ Two things live here: the developer CLI, and the rule catalog that everything el
 
 ## `acima-spec/rules.json` — the single source of truth
 
-Defines the 29 rules (id, severity, level, `automation`, manual-evidence hint), the five categories, the three conformance levels, the finding schema and the claim model.
+Defines the 34 rules (id, severity, level, `automation`, manual-evidence hint), the five categories, the three conformance levels, the finding schema and the claim model.
 
 Consumers: every reference enforcer, `conformance/coverage.json`, `conformance/run.py`, `acima.py`, and the adoption skill (which pins its SHA-256 in `manifest.json`). Changing it is a standard change — see [`../docs/README.md`](../docs/README.md#changing-the-standard).
 
@@ -24,8 +24,13 @@ python3 tools/acima.py verify  [profiles...]                   # delegates to co
 | `analyze` | runs the real enforcer for the detected language; exit `1` findings, `2` tool/config error |
 | `report` | evidence only — lists the rules the run did **not** evaluate; no health score |
 | `claim` | `FULL CONFORMANCE` only when every required rule executed or has accepted manual evidence, and there are zero unwaived errors |
+| `status` | which adoption steps the artefacts on disk evidence, and the one command to run next; read-only, exit `0` whenever a status is produced |
+| `fix` | 1..many findings (rule, `rule@path`, path, fingerprint and/or `--all`) → the catalog remedy and shape per entry; read-only, exit `1` when a selector matches nothing |
 
 `acima.py` is a thin wrapper: it does not implement a second rule engine, and it must not gain one.
+
+The whole surface — these subcommands, both adoption-skill scripts, the four language enforcers
+and the conformance runner — is listed with flags and exit codes in [`../docs/commands.md`](../docs/commands.md).
 
 ## `acima_walkthrough.py`
 

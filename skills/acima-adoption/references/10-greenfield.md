@@ -6,6 +6,11 @@ other's internals and the cheap version of this work is gone.
 
 Rule: the gate exists before the second module does.
 
+> **Consent gate.** This playbook is Phase 3. Phase 1 may inspect and plan; Phase 2 must present
+> the exact files, level and maintenance in the proposal. Do not scaffold source, config, waivers
+> or CI until the owner approves that list. If the approved scope is assessment only, stop after
+> the proposal.
+
 ## Day 0 — the order is fixed
 
 ```
@@ -171,9 +176,10 @@ the contract shape. `internal/` gives you the boundary for free; the enforcer ch
 
 ## acima.config.json
 
-Start from [`../assets/acima.config.template.json`](../assets/acima.config.template.json).
-Every unit needs `id`, `role`, `paths`, and `module` for contracts and implementations. Put the
-file at the repository root and commit it with the skeleton, not later.
+Start from [`../assets/acima.config.template.json`](../assets/acima.config.template.json) **only if
+configuration is in the approved scope**. Every unit needs `id`, `role`, `paths`, and `module` for
+contracts and implementations. Put the file at the repository root and commit it with the skeleton,
+not later — but do not create it before consent.
 
 ```json
 {
@@ -190,13 +196,14 @@ file at the repository root and commit it with the skeleton, not later.
 }
 ```
 
-Declare L3 immediately. There is no legacy, so there is no reason to start at L1; starting low
-signals that the rules are optional, and they never become mandatory later.
+Propose L3 immediately: there is no legacy, so there is no technical reason to start at L1. The
+owner still approves the level explicitly; if they choose L1 or L2, record that decision and do not
+claim L3.
 
 ## CI gate
 
 The gate is one command plus an exit-code check. Examples per language are in
-[../../../docs/guides/architecture-tests.md](../../../docs/guides/architecture-tests.md).
+[../vendor/docs/guides/architecture-tests.md](../vendor/docs/guides/architecture-tests.md).
 
 For greenfield the gate should also prove it is alive: assert that the enforcer discovered the
 expected number of units. A run that finds nothing exits 0 and proves nothing.
@@ -205,7 +212,7 @@ expected number of units. A run that finds nothing exits 0 and proves nothing.
 
 | Day | Outcome |
 |---|---|
-| 1 | skeleton, two contracts, config, empty waivers — one commit |
+| 1 | approved skeleton, two contracts, config, empty waivers — one commit |
 | 2 | first implementations, host wiring, end-to-end test |
 | 3 | enforcer in CI, deliberately broken branch to prove the gate fails, then reverted |
 | 4–5 | second module's contract reviewed by the first module's owner |

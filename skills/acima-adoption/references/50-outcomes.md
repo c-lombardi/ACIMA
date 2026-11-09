@@ -48,7 +48,7 @@ a metric, and an architecture programme that overclaims loses the next budget cy
 
 | Anti-metric | Why it is harmful |
 |---|---|
-| Rules executed | 29 rules executed over zero discovered files is a false pass |
+| Rules executed | 34 rules executed over zero discovered files is a false pass |
 | Lines of architecture documentation | documentation is not enforcement |
 | Percentage of "compliant" modules before a baseline exists | there is no denominator; the number is invented |
 | Waivers closed | closing a waiver by deleting the code that needed it is good; by bulk-renewal is not |

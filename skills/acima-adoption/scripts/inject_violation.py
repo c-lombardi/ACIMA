@@ -35,7 +35,10 @@ import time
 from pathlib import Path
 
 SKILL_DIR = Path(__file__).resolve().parents[1]
-STANDARD_ROOT = SKILL_DIR.parents[1]
+# Same resolution as preflight: the repository when present, the bundled snapshot when copied.
+_REPOSITORY = SKILL_DIR.parents[1]
+STANDARD_ROOT = (_REPOSITORY if (_REPOSITORY / "tools/acima-spec/rules.json").is_file()
+                 else SKILL_DIR / "vendor")
 L001 = "ACIMA-L001"
 D001 = "ACIMA-D001"
 RULES = {L001: "L001", D001: "D001"}

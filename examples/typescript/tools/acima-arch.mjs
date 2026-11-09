@@ -20,6 +20,8 @@ const CATALOG = {
   'ACIMA-D007': ['error', 'L1'], 'ACIMA-D008': ['error', 'L1'], 'ACIMA-D009': ['error', 'L1'],
   'ACIMA-L001': ['error', 'L1'], 'ACIMA-L002': ['error', 'L1'], 'ACIMA-L003': ['error', 'L1'],
   'ACIMA-L004': ['warning', 'L1'],
+  'ACIMA-D010': ['error', 'L1'],
+  'ACIMA-L005': ['warning', 'L1'], 'ACIMA-L006': ['error', 'L1'], 'ACIMA-L007': ['warning', 'L1'],
   'ACIMA-C001': ['error', 'L2'], 'ACIMA-C002': ['error', 'L2'], 'ACIMA-C003': ['error', 'L2'],
   'ACIMA-C004': ['error', 'L2'], 'ACIMA-C005': ['error', 'L2'], 'ACIMA-C006': ['error', 'L2'],
   'ACIMA-C007': ['warning', 'L2'],
@@ -27,7 +29,7 @@ const CATALOG = {
   'ACIMA-A003': ['error', 'L3'], 'ACIMA-A004': ['warning', 'L3'],
   'ACIMA-G001': ['error', 'L1'], 'ACIMA-G002': ['error', 'L1'],
   'ACIMA-G003': ['warning', 'L2'], 'ACIMA-G004': ['error', 'L2'],
-  'ACIMA-G005': ['error', 'L1'],
+  'ACIMA-G005': ['error', 'L1'], 'ACIMA-G006': ['warning', 'L1'],
 };
 const NOT_EXECUTED = {
   'ACIMA-C003': 'behaviour versus validation is a semantic judgement',
@@ -38,6 +40,10 @@ const NOT_EXECUTED = {
   'ACIMA-G004': 'an API baseline needs a per-language surface format',
 };
 const RANK = { L1: 1, L2: 2, L3: 3 };
+// Third-party governance: the tier rules only execute when externals is declared.
+const TIER_RULES = ['ACIMA-L005', 'ACIMA-L006', 'ACIMA-L007', 'ACIMA-D010', 'ACIMA-G006'];
+const TIERS = ['platform', 'integration', 'utility'];
+const ENTRY_FIELDS = ['tier', 'owner', 'reason', 'reviewedOn', 'expires'];
 
 const PERSISTENCE = ['@prisma/client', 'typeorm', 'sequelize', 'knex', 'pg', 'mysql2', 'mongodb', 'ioredis', 'DbContext', 'PrismaClient', 'EntityManager', 'IQueryable', 'MongoClient'];
 const FRAMEWORK = ['express', 'fastify', 'koa', '@nestjs/core', 'hono', 'next', 'react', 'node:http'];
@@ -79,6 +85,12 @@ const profileKind = profile ? String(profile.kind || '') : '';
 const profilePublicApi = Array.isArray(profile?.publicApi) ? profile.publicApi : [];
 const profileAdapters = Array.isArray(profile?.intentionalAdapters) ? profile.intentionalAdapters : [];
 const workspacePackages = config.packages && typeof config.packages === 'object' ? config.packages : {};
+const externals = config.externals && typeof config.externals === 'object' && !Array.isArray(config.externals)
+  ? config.externals
+  : null;
+const manifests = Array.isArray(config.manifests) ? config.manifests.map(String) : [];
+let configText = '';
+try { configText = readFileSync(join(ROOT, CONFIG), 'utf8'); } catch { configText = ''; }
 const classified = [];
 
 const findings = [];
@@ -614,6 +626,8 @@ function checkLayering() {
     if (unit.role !== 'implementation' || r.includes('/infrastructure/')) continue;
     if (r.includes('/tests/') || /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(r)) continue;
     for (const imported of importsOf(source)) {
+      // A declared integration library is governed by L005/L007, not the L001 token list.
+      if (tierOf(imported.spec) === 'integration') continue;
       const token = PERSISTENCE.find((candidate) =>
         imported.spec === candidate || imported.spec.startsWith(`${candidate}/`));
       if (!token) continue;
@@ -622,6 +636,184 @@ function checkLayering() {
           `${unit.id} imports infrastructure (${imported.spec}) outside infrastructure/.`,
           r, imported.line, imported.evidence);
       }
+    }
+  }
+}
+
+function externalEntry(spec) {
+  if (!externals || !spec) return null;
+  const candidates = [spec, spec.split('/')[0], spec.split('.')[0]]
+    .filter(Boolean).map((value) => value.replace(/-/g, '_'));
+  let best = null;
+  for (const [name, raw] of Object.entries(externals)) {
+    const entry = raw && typeof raw === 'object' ? raw : {};
+    const extra = Array.isArray(entry.specifiers) ? entry.specifiers.map(String) : [];
+    const known = [name, ...extra].map((value) => String(value).replace(/-/g, '_'));
+    if (!candidates.some((value) => known.includes(value))) continue;
+    if (!best || name.length > best.name.length) best = { name, entry };
+  }
+  return best;
+}
+
+function tierOf(spec) {
+  const found = externalEntry(spec);
+  return found ? String(found.entry.tier || '').trim() : null;
+}
+
+function vendorTokens(name, entry) {
+  // A declared list is authoritative. Deriving from the package name is a fallback, and it is
+  // deliberately not combined with the declaration: `monaco-editor` yields `MonacoEditor`, which
+  // is the adapter's own class name far more often than a vendor type.
+  const declared = (Array.isArray(entry.types) ? entry.types : [])
+    .map(String).filter((token) => token.trim());
+  if (declared.length > 0) return declared.filter((token) => token.length >= 3);
+  const leaf = name.split('/').pop().split('.').pop();
+  const tokens = new Set([name, leaf,
+    leaf.split(/[^A-Za-z0-9]+/).filter(Boolean)
+      .map((part) => part[0].toUpperCase() + part.slice(1)).join('')]);
+  return [...tokens].filter((token) => token.length >= 3);
+}
+
+function manifestDependencies() {
+  const out = [];
+  const candidates = manifests.length > 0 ? manifests
+    : ['package.json', 'pyproject.toml', 'requirements.txt']
+      .filter((name) => existsSync(join(ROOT, name)));
+  for (const relative of candidates) {
+    const full = join(ROOT, relative);
+    if (!existsSync(full)) continue;
+    const text = readFileSync(full, 'utf8');
+    if (relative.endsWith('.json')) {
+      let data;
+      try { data = JSON.parse(text); } catch { continue; }
+      for (const name of Object.keys(data.dependencies || {})) {
+        out.push({ path: relative, line: lineOf(text, text.indexOf(`"${name}"`)), package: name });
+      }
+    } else if (relative.endsWith('.txt')) {
+      text.split(/\r?\n/).forEach((line, index) => {
+        const value = line.trim();
+        if (!value || value.startsWith('#') || value.startsWith('-')) return;
+        const name = value.split(/[<>=!~\[\]; ]/)[0];
+        if (name) out.push({ path: relative, line: index + 1, package: name });
+      });
+    }
+  }
+  return out;
+}
+
+function checkExternals() {
+  if (!externals) return;
+  const configRel = CONFIG;
+  const entryLine = (name) => {
+    const index = configText.indexOf(`"${name}"`);
+    return index < 0 ? 1 : lineOf(configText, index);
+  };
+  const adapterUnits = new Map(units.filter((unit) => unit.role === 'adapter').map((unit) => [unit.id, unit]));
+  const portUnits = new Map(units.filter((unit) => unit.role === 'port').map((unit) => [unit.id, unit]));
+  const declaredAdapters = new Set();
+
+  for (const [name, raw] of Object.entries(externals)) {
+    const entry = raw && typeof raw === 'object' ? raw : {};
+    const missing = ENTRY_FIELDS.filter((field) => !String(entry[field] || '').trim());
+    if (missing.length > 0) {
+      add('ACIMA-G001', `externals entry ${name} is missing: ${missing.join(', ')}.`, configRel, entryLine(name), name);
+      continue;
+    }
+    const tier = String(entry.tier || '').trim();
+    if (!TIERS.includes(tier)) {
+      add('ACIMA-G001', `externals entry ${name} has unknown tier ${tier || '(empty)'}; expected ${TIERS.join(', ')}.`, configRel, entryLine(name), name);
+      continue;
+    }
+    if (tier !== 'integration') continue;
+    const adapter = String(entry.adapter || '').trim();
+    const port = String(entry.port || '').trim();
+    if (!adapter || !port) {
+      add('ACIMA-L006', `integration entry ${name} declares no ${adapter ? 'port' : 'adapter'}; an adapter without a port is an unguarded vendor import.`, configRel, entryLine(name), name);
+      continue;
+    }
+    if (!adapterUnits.has(adapter)) {
+      add('ACIMA-G001', `externals entry ${name} names adapter ${adapter}, which is not a declared adapter unit.`, configRel, entryLine(name), name);
+      continue;
+    }
+    if (!portUnits.has(port)) {
+      add('ACIMA-G001', `externals entry ${name} names port ${port}, which is not a declared port unit.`, configRel, entryLine(name), name);
+      continue;
+    }
+    declaredAdapters.add(adapter);
+  }
+
+  for (const unitId of [...adapterUnits.keys()].sort()) {
+    if (declaredAdapters.has(unitId)) continue;
+    const first = [...unitsOf.entries()].filter(([, unit]) => unit.id === unitId).map(([path]) => path).sort()[0];
+    add('ACIMA-L006', `adapter unit ${unitId} is declared in no externals entry; it has no port and no reviewed vendor.`, first || configRel, 1, unitId);
+  }
+
+  for (const [r, source] of files) {
+    const unit = unitsOf.get(r);
+    for (const imported of importsOf(source)) {
+      const found = externalEntry(imported.spec);
+      if (!found) continue;
+      const { name, entry } = found;
+      if (unit.role === 'port') {
+        add('ACIMA-D010', `port unit ${unit.id} imports the third-party package ${imported.spec}; a port declares the capability, never the vendor.`, r, imported.line, imported.evidence);
+        continue;
+      }
+      if (String(entry.tier || '').trim() !== 'integration' || unit.role === 'adapter') continue;
+      const declared = String(entry.adapter || '').trim();
+      add('ACIMA-L005', `${unit.id} imports the integration library ${name}; only its adapter (${declared || 'undeclared'}) may import it, everyone else takes the port.`, r, imported.line, imported.evidence);
+    }
+  }
+
+  // One adapter may cover a vendor and its wrapper (`monaco-editor` and `@monaco-editor/react`),
+  // and both can declare the same worker type. Report one finding per line, named after the
+  // shortest declaring package — the underlying vendor rather than the wrapper around it.
+  const claimed = new Set();
+  const entries = Object.entries(externals)
+    .sort((a, b) => a[0].length - b[0].length || a[0].localeCompare(b[0]));
+  for (const [name, raw] of entries) {
+    const entry = raw && typeof raw === 'object' ? raw : {};
+    const tier = String(entry.tier || '').trim();
+    if (tier !== 'integration' && tier !== 'utility') continue;
+    const tokens = vendorTokens(name, entry);
+    for (const [r, source] of files) {
+      const unit = unitsOf.get(r);
+      if (unit.role === 'adapter') continue;
+      source.split(/\r?\n/).forEach((text, index) => {
+        const key = `${r}:${index + 1}`;
+        if (claimed.has(key)) return;
+        const stripped = text.trim();
+        if (!stripped || stripped.startsWith('//') || stripped.startsWith('*')) return;
+        if (stripped.startsWith('import ') || stripped.startsWith('from ')) return;
+        // A vendor type is usually qualified (`monaco.editor.IStandaloneCodeEditor`), so only a
+        // word character excludes a match; a dot must not.
+        const hit = tokens.find((token) => new RegExp(`(?<![\\w])${token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w])`).test(text));
+        if (!hit) return;
+        claimed.add(key);
+        if (unit.role === 'port') {
+          add('ACIMA-D010', `port unit ${unit.id} names the vendor type ${hit} from ${name}.`, r, index + 1, hit);
+        } else if (tier === 'utility' && unit.role !== 'contracts') {
+          return;
+        } else {
+          add('ACIMA-L007', `${unit.id} names the vendor type ${hit} from ${name} outside its adapter.`, r, index + 1, hit);
+        }
+      });
+    }
+  }
+
+  const declared = new Set(Object.keys(externals).map((name) => name.replace(/-/g, '_').toLowerCase()));
+  for (const dependency of manifestDependencies()) {
+    if (declared.has(dependency.package.replace(/-/g, '_').toLowerCase())) continue;
+    add('ACIMA-G006', `manifest dependency ${dependency.package} has no externals entry: declare its tier, owner and review date.`, dependency.path, dependency.line, dependency.package);
+  }
+  for (const [name, raw] of Object.entries(externals)) {
+    const entry = raw && typeof raw === 'object' ? raw : {};
+    const expires = String(entry.expires || '').trim();
+    if (!expires) continue;
+    const parsed = new Date(expires);
+    if (Number.isNaN(parsed.getTime())) {
+      add('ACIMA-G001', `externals entry ${name} has a non-ISO expiry: ${expires}.`, configRel, entryLine(name), name);
+    } else if (parsed < new Date()) {
+      add('ACIMA-G006', `externals entry ${name} passed its review date on ${expires}; renew or remove the dependency.`, configRel, entryLine(name), name);
     }
   }
 }
@@ -768,6 +960,7 @@ checkContracts();
 checkLayering();
 checkSql();
 checkStatics();
+checkExternals();
 applyWaivers(checkWaivers());
 
 const unique = new Map();
@@ -777,11 +970,14 @@ for (const finding of findings.sort((a, b) => (a.path + a.line + a.rule).localeC
 const ordered = [...unique.values()].sort((a, b) => a.path.localeCompare(b.path) || a.line - b.line || a.rule.localeCompare(b.rule));
 const errors = ordered.filter((f) => f.severity === 'error');
 
+const disabled = externals ? null : 'externals map not declared in acima.config.json';
 const execution = Object.fromEntries(Object.keys(CATALOG).sort().map((rule) => [
   rule,
   NOT_EXECUTED[rule]
     ? { executed: false, reason: NOT_EXECUTED[rule] }
-    : { executed: true },
+    : TIER_RULES.includes(rule) && disabled
+      ? { executed: false, reason: disabled }
+      : { executed: true },
 ]));
 
 const profileSummary = profile

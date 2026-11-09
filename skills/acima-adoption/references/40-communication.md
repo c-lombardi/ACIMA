@@ -130,7 +130,7 @@ Three sentences that land with reviewers:
   the catalog hash; the agent proposes, the owner decides, and no agent can author a waiver.
 
 For the full reviewer checklist, AI review protocol and anti-patterns, link
-[Review and decisions](../../../docs/guides/review-and-decisions.md).
+[Review and decisions](../vendor/docs/guides/review-and-decisions.md).
 
 ## Cadence
 

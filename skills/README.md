@@ -4,7 +4,7 @@ Portable instructions for coding agents (Claude Code, Codex, Cursor, and anythin
 
 | Skill | Use it for |
 |---|---|
-| [`acima-adoption`](acima-adoption/README.md) | assessing, adopting, and maintaining ACIMA in a greenfield or brownfield repository |
+| [`acima-adoption`](acima-adoption/SKILL.md) | assessing, adopting, and maintaining ACIMA in a greenfield or brownfield repository |
 
 ## Install
 

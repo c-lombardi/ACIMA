@@ -2,240 +2,152 @@
 
 **Architecture that enforces itself.**
 
-AI is making it faster than ever to generate, modify, and ship software. But generating code faster does not automatically produce systems that are easier to maintain.
+AI is making it faster to generate, modify and ship software. It is not making it easier to keep that software internally consistent. Code generated at speed inherits the same failure mode as code written by hand, only faster: a module reaches into another module's implementation, and the boundary stops meaning anything.
 
-Without clear architectural boundaries, AI-generated code can introduce the same problems that affect traditionally developed software: unnecessary dependencies, tightly coupled modules, duplicated logic, unclear ownership, and changes that have unintended consequences elsewhere in the system.
+Documentation does not stop this. Review does not scale to it. ACIMA does, because an ACIMA boundary is **executable** — a rule a build can fail on.
 
-**ACIMA helps engineering teams move faster without losing control of their architecture.**
+ACIMA (Autonomous, Contract-Isolated, Immutable Modular Architecture) is an architectural standard for systems built and changed by people and AI agents together. It defines how modules are structured, what they may depend on, and how those limits are checked automatically.
 
-ACIMA (Autonomous, Contract-Isolated, Immutable Modular Architecture) is an architectural standard that defines how software modules should be structured, how they may interact, and how their boundaries are enforced through executable checks.
+> A module owns its implementation, exposes an explicit contract, and prevents anything outside from depending on its internals.
 
-It also includes an integrated AI agent skill that helps developers assess, adopt, and maintain the architecture in real-world codebases.
+## The problem
 
-## Why ACIMA?
+Architectural intent usually lives in three places that all decay: a diagram, a conventions document, and the memory of whoever reviewed the last pull request. None of them fail loudly. The system does not break when a boundary is crossed; it just becomes harder to change, and the cost arrives months later as "we can't touch that module without touching five others."
 
-AI coding tools increase the amount of code teams can produce. They also increase the importance of having consistent architectural rules that developers and agents can understand and follow.
+AI agents accelerate exactly this. An agent optimising for a passing test will import the concrete class that works, not the contract it should have used. It has no reason to prefer the interface unless something tells it to — and unless something checks.
 
-ACIMA provides a common architectural standard that can be applied to both human-written and AI-generated code.
+## What ACIMA is, and is not
 
-The goal is to make systems easier to:
-
-- **Change independently.** Modify one module without unnecessarily affecting others.
-- **Understand.** Make ownership, responsibilities, and public interfaces explicit.
-- **Test.** Isolate module behavior behind well-defined contracts.
-- **Extend.** Add capabilities without creating uncontrolled dependencies.
-- **Maintain.** Prevent architectural erosion as teams and codebases grow.
-- **Govern.** Make architectural violations and approved exceptions visible.
-- **Develop with AI.** Give coding agents explicit architectural constraints they can follow and verify.
-
-Rather than relying exclusively on documentation, conventions, or code review, ACIMA makes supported architectural requirements executable.
-
-## How ACIMA works
-
-ACIMA brings together three complementary capabilities.
-
-### 1. An architectural standard
-
-ACIMA defines the rules governing module ownership, contracts, dependencies, immutability, and independent evolution.
-
-Modules own their implementations and expose explicit contracts. Other modules depend on those contracts rather than reaching into implementation details.
-
-The result is a system with clearer boundaries and fewer opportunities for unintended coupling.
-
-### 2. Automated architectural enforcement
-
-ACIMA provides language-specific architecture tests and enforcement tools that inspect a codebase for violations of the standard.
-
-These checks can be incorporated into development workflows and CI pipelines so that supported architectural violations are identified before they become established patterns.
-
-The enforcement model includes:
-
-- Explicit architectural rules with consistent identifiers.
-- Machine-readable findings with evidence and remediation guidance.
-- Configurable conformance levels.
-- Documented exceptions with ownership and expiration.
-- Positive and negative test fixtures for verifying enforcement behavior.
-
-Not every architectural decision can be automated. ACIMA distinguishes between requirements that can be mechanically verified and those that require human review.
-
-### 3. An integrated AI adoption skill
-
-**ACIMA includes an agent skill designed to help developers and AI coding agents apply the standard to real software projects.**
-
-The `acima-adoption` skill provides a structured process for understanding an existing codebase, planning architectural changes, introducing enforcement, and maintaining the architecture over time.
-
-It supports workflows for:
-
-- **Greenfield projects:** Establish architectural boundaries from the beginning.
-- **Brownfield projects:** Assess existing architecture, establish a baseline, and introduce improvements incrementally.
-- **Ongoing development:** Evaluate changes against ACIMA and maintain architectural compliance.
-
-The skill guides the agent through:
-
-1. Inspecting the repository and verifying its compatibility with the ACIMA standard.
-2. Identifying the existing architecture and module boundaries.
-3. Developing an adoption plan appropriate to the codebase.
-4. Establishing an initial architectural baseline.
-5. Introducing changes incrementally rather than requiring a rewrite.
-6. Integrating architectural checks into the development workflow.
-7. Verifying results and documenting outstanding exceptions.
-
-The skill is designed to work with Claude Code, Codex, Cursor, and other coding agents that support the `SKILL.md` convention.
-
-**The agent helps apply the architecture. The enforcement tools verify supported requirements. Human owners remain responsible for architectural decisions and exceptions.**
-
-See the [ACIMA adoption skill](skills/acima-adoption/README.md) and its agent instructions, [`SKILL.md`](skills/acima-adoption/SKILL.md).
-
-## Related architectures, methodologies, and tools
-
-ACIMA builds on established software architecture principles and engineering practices. It brings them together into a consistent standard with explicit module boundaries, enforceable contracts, cross-language rules, and an AI-assisted adoption workflow.
-
-It is complementary to these approaches, not a replacement for them.
-
-| Architecture or practice | Relationship to ACIMA |
+| ACIMA is | ACIMA is not |
 |---|---|
-| **Clean Architecture** | Reinforces separation of concerns and controlled dependency direction. ACIMA extends the focus to ownership and isolation between modules. |
-| **Hexagonal Architecture (Ports and Adapters)** | Aligns with explicit interfaces and controlled communication across boundaries, keeping implementations separate from the contracts consumers depend on. |
-| **Domain-Driven Design (DDD)** | Supports clear domain ownership and bounded contexts, helping prevent unrelated business capabilities from becoming tightly coupled. |
-| **Modular Monolith Architecture** | Provides a natural deployment model for ACIMA. Modules maintain explicit boundaries while sharing an application and deployment environment. |
-| **Explicit Contract Projects** | Builds on the practice of separating public contracts from private implementations, making module dependencies intentional and easier to govern. |
-| **Architecture as Code and Fitness Functions** | Applies executable architectural rules to continuously evaluate whether a codebase conforms to its intended design. |
-| **ArchUnit, NetArchTest, and similar tools** | Follows the established practice of testing architecture through code. ACIMA adds a portable rule catalog, consistent findings, conformance expectations, and cross-language reference implementations. |
+| A small set of architectural obligations about ownership, contracts and dependency direction | A folder-layout convention or a project template |
+| Executable: reference enforcers produce findings with rule IDs, evidence and remediation | A linter for style; it does not care about formatting or naming taste |
+| Incrementally adoptable in an existing codebase, starting with a measurement | A rewrite, a migration programme, or a mandate to restructure |
+| Explicit about which rules are automated and which need human judgement | A promise that a clean run means the architecture is correct |
+| Independent of framework, deployment model and domain methodology | A replacement for your architecture — it enforces the boundaries Clean Architecture, Hexagonal Architecture, DDD, modular monoliths or microservices define |
 
-### What makes ACIMA different?
+## Your architecture, enforced
 
-These approaches address important aspects of software design, modularity, and architecture enforcement. ACIMA brings them together under one standard that can be applied consistently across supported languages and repositories.
+ACIMA is not a competing architecture. Your team still chooses Clean Architecture, Hexagonal
+Architecture, domain-driven design, a modular monolith or microservices; ACIMA makes the boundaries
+that choice declares executable.
 
-Its emphasis is on:
+```
+Your team chooses                    Clean Architecture · Hexagonal Architecture
+                                     Domain-Driven Design · Modular monolith
+                                     Microservices
 
-- **Contract isolation:** Modules expose explicit contracts rather than implementation details.
-- **Independent ownership:** Modules own their implementations, data boundaries, and configuration.
-- **Controlled dependencies:** Cross-module dependencies follow defined architectural rules.
-- **Immutable contracts:** Contract changes are explicit and subject to compatibility expectations.
-- **Consistent enforcement:** Architectural findings use shared rule identifiers and reporting conventions across language implementations.
-- **AI-assisted adoption:** An integrated agent skill helps developers and coding agents understand, assess, adopt, and maintain the architecture.
+ACIMA defines and enforces           the boundaries that choice declares:
+                                     ownership, contracts, dependency direction
 
-ACIMA does not require Clean Architecture, microservices, a particular domain-modeling methodology, or a specific technology stack. It provides architectural constraints that can complement the design approach an engineering team already uses.
+Language-specific enforcement        analyzers · architecture tests · CI gate
+                                     · AI adoption guidance
+```
 
-## Adopting ACIMA
+Each family contributes something ACIMA does not replace: Clean's dependency direction, Hexagonal's
+ports and adapters, DDD's bounded contexts and aggregates, the modular monolith's deployment
+simplicity, microservices' independent deployability. ACIMA adds the same thing to all of them: a
+build that fails when a module crosses its declared boundary, with findings, owned waivers and a
+CI gate. They are pillars in their own right: mature practices a team may adopt for reasons that have
+nothing to do with ACIMA, and ACIMA does not rank them.
 
-ACIMA is intended to work with both new and existing systems. Adopting it does not require an organization to rewrite its applications or change its technology stack.
+Where ACIMA is stricter — contracts that cannot reference other contracts, no cross-module
+in-process transaction, zero-dependency contracts — the requirement is stated, justified
+independently, and scoped to boundaries rather than internal design. A departure is an owned
+waiver, never a silent exception. The full mapping, including what ACIMA does not decide, is in
+[Your architecture, enforced](docs/guides/architecture-families.md).
 
-A typical adoption follows this progression:
+Five obligations carry the standard: **module ownership**, **explicit contracts**, **dependency isolation**, **data and configuration ownership**, and **controlled composition**. They are expressed as nine principles and a 34-rule catalog — 28 of which the reference enforcers decide from source (five of those in Python and TypeScript only, in this revision), and six of which require recorded human evidence.
 
-| Step | Activity | Outcome |
-|---|---|---|
-| 1. Assess | Inspect the existing repository and architecture. | Understand the current state and compatibility. |
-| 2. Plan | Identify module boundaries and prioritize improvements. | Establish an incremental adoption plan. |
-| 3. Baseline | Run the applicable architectural checks. | Record existing violations and exceptions. |
-| 4. Introduce | Improve one architectural boundary at a time. | Reduce existing coupling without a wholesale rewrite. |
-| 5. Enforce | Integrate supported checks into CI. | Prevent new violations from being introduced unnoticed. |
-| 6. Maintain | Review findings, exceptions, and architectural changes. | Keep the architecture aligned with the system as it evolves. |
+## How it works
 
-### Get started with the adoption skill
+1. **Declare the units.** A small `acima.config.json` names each module, its units, their roles (`contracts`, `implementation`, `host`, …) and their paths. This is the only thing ACIMA asks you to write.
+2. **Run an enforcer.** The reference enforcer for your language reads that map and the source, then reports violations of the portable rules: an implementation importing another implementation, a contract that has grown dependencies, a module reaching around a contract.
+3. **Read an honest report.** Every rule the run did not decide is listed as *not evaluated*. There is no health score, because a number that hides which rules were skipped is worse than no number.
+4. **Freeze, then ratchet.** In an existing codebase, existing findings become owned, expiring, fingerprinted waivers. The gate then fails on **new** violations only — so the count can only go down.
 
-Clone the repository:
+The claim layer computes `FULL CONFORMANCE` or `PARTIAL ASSESSMENT` from the run and the manual evidence. Authors do not choose the label.
+
+## Five-minute quickstart
+
+You need Python 3.9+ and, for the language you enforce, that language's toolchain.
 
 ```bash
 git clone https://github.com/c-lombardi/ACIMA.git
+cd ACIMA
+
+# 1. See the reference implementations enforce their own rules
+python3 conformance/run.py python dotnet
+
+# 2. Assess any repository, read-only, before deciding anything
+python3 tools/acima.py assess --root /path/to/your/repo
 ```
 
-Install the skill in a Claude Code project:
+The second command changes nothing. It reports the repository's languages, whether an ACIMA unit map exists, which requirements are applicable, what the enforcer found, what needs human review, and whether ACIMA is a fit — or why it is not.
+
+If a repository has no unit map yet, the assessment says `NEEDS_UNIT_MAP` rather than pretending the code is clean. Creating that map is a conversation about ownership, not an automated step.
+
+### Watch a violation appear and get fixed
 
 ```bash
-mkdir -p .claude/skills
-cp -R ACIMA/skills/acima-adoption .claude/skills/
+python3 tools/acima_walkthrough.py
 ```
 
-For other coding agents, provide access to `skills/acima-adoption/SKILL.md` and its supporting directory.
+One real `D001` violation — an implementation importing another implementation — is introduced, detected with its evidence, and repaired.
 
-With the target repository open in your coding agent, start with:
+## Assessing an existing application
 
-```text
-Use the ACIMA adoption skill to assess this repository.
+The default workflow is deliberately small:
 
-Start with the required preflight and compatibility checks.
-Identify the current architecture, determine whether this
-repository is supported, and produce an adoption assessment.
-
-Do not modify the codebase until I have reviewed and approved
-the proposed adoption plan.
-```
-
-The skill includes additional instructions, scripts, references, and templates for carrying out the adoption process.
-
-For manual preflight, run the following from the cloned ACIMA repository:
-
-```bash
-python3 skills/acima-adoption/scripts/preflight.py \
-  --project /path/to/your/project \
-  --format text
-```
-
-### Verify the reference implementations
-
-ACIMA includes reference implementations and conformance tests for its implemented language profiles.
-
-From the ACIMA repository:
-
-```bash
-python3 conformance/run.py
-```
-
-This runs the available conformance suites and checks their results against the documented violation fixtures.
-
-See the [language profiles](docs/languages/index.md) and [conformance implementation](conformance/README.md) for language-specific instructions.
-
-## Language support and project status
-
-ACIMA is currently published as a draft standard. Its reference implementations and adoption capabilities are evolving.
-
-| Language | Architecture enforcement | Reference implementation |
+| Step | Command | What you get |
 |---|---|---|
-| C# / .NET | Available | Available |
-| TypeScript | Available | Available |
-| Python | Available | Available |
-| Go | Available | Available |
-| Java | Profile documented | Not yet implemented |
+| Inventory | `acima inspect --root .` | languages, declared units, enforcer availability |
+| Assess | `acima assess --root .` | read-only compatibility assessment with findings and gaps |
+| Report | `acima report --root .` | evidence report, including unevaluated rules |
 
-Enforcement coverage varies by language and architectural rule. Some requirements require manual evidence or human review rather than automated checks.
+Adoption is a separate, explicit decision. It adds a unit map, a measured baseline, owned waivers, a CI gate and a ratchet — the full process is in the [adoption skill](skills/acima-adoption/SKILL.md). Nothing in the assessment phase modifies your code, your build or your CI.
 
-The current adoption skill also has documented compatibility limitations. In particular, the service-topology workflow and Java enforcement are not yet supported by the skill. Review the documentation before adopting ACIMA in those environments.
+Assessment requires no authorization to modify anything. Adoption does, and merging and releasing always remain yours.
 
-A successful test run against a reference implementation should not be interpreted as proof that every architectural requirement is automatically enforceable in every target repository.
+## Language support
 
-## Who is ACIMA for?
+| Language | Enforcement | Status |
+|---|---|---|
+| C# / .NET | reference enforcer, 23 of 28 portable rules | implemented; the five third-party tier rules report `executed: false` in this revision |
+| TypeScript | reference enforcer, 28 portable rules | implemented and verified against its own fixtures |
+| Python | reference enforcer, 28 portable rules | implemented and verified against its own fixtures |
+| Go | reference enforcer, 23 of 28 portable rules | implemented; **not verified in this environment** (no Go toolchain) |
+| Java | profile documented, no enforcer | not supported: an assessment fails closed rather than reporting clean |
 
-**CTOs and engineering leaders**
+Two limits matter more than the table:
 
-Establish consistent architectural expectations across teams, improve visibility into architectural risk, and reduce reliance on informal conventions that are difficult to maintain as organizations grow.
+- The enforcers analyse **source and project metadata**, not runtime behaviour. They do not prove isolation, type correctness or framework behaviour.
+- Six rules always require human evidence: `C003`, `C007`, `L004`, `A002`, `A004`, `G004`. A run that reports zero findings has not evaluated them.
 
-**Engineering directors and managers**
+Independent validation is **incomplete**. The standard has been exercised against its own examples and a small number of external repositories, not against independent evaluators. [`docs/status.md`](docs/status.md) separates verified from proposed capability, and [`docs/product-contract.md`](docs/product-contract.md) lists the release gates and what is still missing.
 
-Give teams a shared standard for designing and evolving software while introducing measurable architectural controls into the development lifecycle.
+## Who it is for
 
-**Software developers and architects**
+- **Engineering leaders** who need architectural expectations that survive growth and turnover, not another document.
+- **Staff engineers and architects** who want boundaries checked in CI instead of argued about in review.
+- **Teams using AI coding agents** who need constraints an agent can read, follow and be verified against.
 
-Work with clearer module boundaries, explicit contracts, and actionable architectural feedback instead of discovering structural problems late in development.
+## Documentation
 
-**AI-assisted engineering teams**
-
-Give coding agents a documented architectural standard and an adoption workflow that helps keep generated code aligned with the intended system design.
-
-## Documentation and resources
-
-- [Architectural standard](docs/README.md)
-- [Principles and rules](docs/rules/README.md)
-- [ACIMA adoption skill](skills/acima-adoption/)
-- [Skill installation and usage](skills/README.md)
-- [Reference implementations](examples/README.md)
-- [Conformance tests](conformance/README.md)
+| Start here | For |
+|---|---|
+| [`docs/README.md`](docs/README.md) | where the standard lives, reading order, how a normative change is made |
+| [`docs/start/quickstart.md`](docs/start/quickstart.md) | a guided first hour |
+| [`docs/rules/index.md`](docs/rules/index.md) | every rule, with violation and fix examples |
+| [`docs/languages/index.md`](docs/languages/index.md) | how the rules appear in your language |
+| [`skills/acima-adoption/SKILL.md`](skills/acima-adoption/SKILL.md) | the agent workflow for assessing and adopting |
+| [`conformance/README.md`](conformance/README.md) | how enforcement is verified |
 
 ## Contributing
 
-ACIMA is an evolving architectural standard. Contributions, implementation feedback, additional language support, and real-world adoption experience are valuable.
+Counterexamples are the most valuable contribution. If ACIMA's requirements exclude a legitimate architecture, or an enforcer reports a violation that is not one, that is a defect in the standard or its enforcement — [open an issue](https://github.com/c-lombardi/ACIMA/issues) with the repository shape and the finding.
 
-The objective is not to impose unnecessary structure on every codebase. It is to establish architectural boundaries that make software easier to change, understand, and maintain as systems and engineering teams grow.
+Rule IDs are never renumbered. A meaning change requires a catalog version change, a skill re-pin and a migration note.
 
 ## License
 

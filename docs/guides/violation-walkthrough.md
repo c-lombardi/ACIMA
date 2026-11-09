@@ -17,9 +17,10 @@ cd examples/go         && go run ./tools/archtest --root . --config acima.galler
 cd examples/dotnet     && dotnet run --project tools/Acima.ArchTests -- --root . --config acima.gallery.config.json
 ```
 
-Not every language fires every rule. Python and C#/.NET cover all 23 portable rules; TypeScript
-covers 19 and Go 20, and each profile documents the constructs it cannot see. The gaps are listed in
-[the language profiles](../languages/index.md).
+Not every language fires every rule. Python and TypeScript cover all 28 portable rules; Go and .NET
+cover 23 of them, because the five third-party tier rules (`L005`–`L007`, `D010`, `G006`) report
+`executed: false` there in this revision. Each profile documents the other constructs it cannot see;
+the gaps are listed in [the language profiles](../languages/index.md).
 
 ---
 

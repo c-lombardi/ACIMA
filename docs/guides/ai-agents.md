@@ -9,10 +9,13 @@ human runs.
 
 An ACIMA-aware agent **must**:
 
-1. Read the applicable specification and the target's `acima.config.json`.
+0. Treat assessment as read-only. Before creating configuration, baselines, waivers, plans, CI or
+   tooling, present the exact proposed paths and obtain the owner's explicit approval. “Adopt
+   ACIMA” is intent, not approval of unseen files.
+1. Read the applicable specification and the target's `acima.config.json` when one exists.
 2. Verify the rule catalog version and hash with the adoption preflight.
 3. Inspect the target repository before editing.
-4. Identify the authorized module boundaries and allowed dependency directions.
+4. Identify the authorized module boundaries and allowed dependency directions, and name the team's architecture family (Clean, Hexagonal, DDD, modular monolith, microservices) — ACIMA enforces it, it does not replace it.
 5. Plan the change and name any published contract it will alter.
 6. Implement the smallest change that fits the declared boundaries.
 7. Run the enforcer and read the structured findings.
@@ -23,9 +26,12 @@ An ACIMA-aware agent **must**:
 
 An agent **must not**:
 
+- create or modify `acima.config.json`, `.acima/`, CI, build files, plans or source during an
+  assessment, or beyond an approved adoption scope;
 - edit `acima.config.json`, `expected.json` or the waiver file just to make a check pass;
 - suppress a finding without an owner, reason and expiry;
 - invent a rule id or a finding;
+- use ACIMA to argue for a different architecture; it enforces the chosen boundaries, it does not choose them;
 - import another module's implementation;
 - change a published contract without identifying the compatibility impact;
 - claim conformance when a rule was skipped or not evaluated;
@@ -42,7 +48,8 @@ python3 tools/acima.py analyze  --root /path/to/target --format json
 python3 tools/acima.py report   --root /path/to/target --format markdown
 ```
 
-The preflight is read-only unless `--write-draft` or `--write-waivers` is requested. The
+The preflight is read-only unless `--write-draft` or `--write-waivers` is requested. Those flags
+are adoption acts and require explicit approval of the named paths, as does every other write. The
 CLI's `inspect` and `analyze` commands do not modify the target.
 
 The agent should run the target's own wired enforcer as the final gate. `tools/acima.py
@@ -73,7 +80,7 @@ After editing:
 - Do not say "conformant"; say "0 unwaived errors at level X, with these unevaluated rules".
 ```
 
-The full portable skill, including the preflight, adoption plan and brownfield playbook,
+The full portable skill, including the consent gate, preflight, proposal template and playbooks,
 is in [`skills/acima-adoption`](../../skills/acima-adoption/SKILL.md).
 
 ## Example: what the agent sees
@@ -90,6 +97,24 @@ ACIMA-D001  error  Module orders imports the implementation unit catalog (expect
 
 The correction is a contract import and an explicit boundary map, as shown in
 [Before and after](before-after.md).
+
+## Reporting to a human
+
+An agent's final message is a report, not a work log. Use the two-level model in
+[the reporting reference](../../skills/acima-adoption/references/80-reporting.md): generate
+the summary with `skills/acima-adoption/scripts/summarize.py`, and keep the JSON run as the evidence
+it links to. For an assessment, deliver it in the response or outside the target; writing into
+`docs/acima/` needs approval.
+
+- Name the consequence before the rule id; put the id in parentheses.
+- Group repeated findings by problem and remedy, never one row per file.
+- Separate real defects from detector artefacts and review items; never present a tooling defect
+  as architecture debt.
+- Say which status the evidence supports, using the six-term vocabulary. Only a supplied full
+  claim makes `Verified`; a green baseline is not conformance.
+- Name one next action with its location, done-state and verification, then a short ordered list.
+- List what was completed and what was not verified. Never narrate each command, and never paste
+  the run JSON into the summary.
 
 ## Limits
 

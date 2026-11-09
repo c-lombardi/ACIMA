@@ -77,5 +77,21 @@
   ],
   "ACIMA-L003": [
     "src/orders/impl/module.ts"
+  ],
+  "ACIMA-D010": [
+    "violations/d010_port_vendor.ts"
+  ],
+  "ACIMA-G006": [
+    "acima.gallery.config.json",
+    "violations/package.gallery.json"
+  ],
+  "ACIMA-L005": [
+    "violations/l005_application_imports_vendor.ts"
+  ],
+  "ACIMA-L006": [
+    "violations/l006_adapter_without_port.ts"
+  ],
+  "ACIMA-L007": [
+    "violations/l007_vendor_type_outside.ts"
   ]
 }

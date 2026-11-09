@@ -69,7 +69,7 @@ review.
 The reason ACIMA is written as obligations rather than advice is that **architecture decays one
 permitted exception at a time**. A rule that cannot fail a build is a preference. Preferences lose.
 
-## 0.6 Relationship to prior art
+## 0.6 Relationship to prior art and established architectures
 
 ACIMA deliberately does not invent a new structural metaphor. It takes the Explicit Contract
 Projects pattern as its core, and constrains the surrounding practice until the whole thing is
@@ -83,6 +83,19 @@ checkable:
 | Immutable messages | DDD value objects, functional core practice | Promoted from style to a build-blocking rule (`C001`–`C007`) |
 | Module autonomy | Microservice / bounded-context thinking | Extended to persistence, configuration and static state (`A001`–`A003`) |
 | Layering | Clean / Hexagonal architecture | Reduced to four checkable edges (`L001`–`L004`) |
+
+ACIMA is an **enforcement standard, not an architecture**. Clean Architecture, Hexagonal
+Architecture, domain-driven design, a modular monolith and a microservices architecture each define
+how a system is shaped; ACIMA defines which boundary properties a build can verify. A team keeps its
+chosen shape, declares its units and contracts, and ACIMA enforces the edges between them. The scope
+in §0.3 is deliberate: boundaries, not technology and not domain methodology.
+
+Where a requirement here is more prescriptive than a chosen family — contracts that cannot reference
+other contracts (P3), no cross-module in-process transaction (P7), zero-dependency contracts (P3) —
+the obligation is stated and justified in the chapter that introduces it, and its scope is limited to
+boundaries between units and the four edges inside a unit. A departure is an owned waiver (P9), never
+a silent exception. [Your architecture, enforced](../guides/architecture-families.md) maps each
+family to the rules that enforce it.
 
 ## 0.7 How this specification is versioned
 

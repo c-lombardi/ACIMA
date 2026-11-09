@@ -233,7 +233,34 @@ A **transform** is the explicit mapping at a boundary from the caller's DTO to t
 It is pure, testable, owned by the calling layer, and carries no business rules. A transform is what
 makes layer contract independence real rather than aspirational.
 
-## 2.18 Words ACIMA avoids
+## 2.18 Adapter
+
+An **adapter** is an implementation unit that holds exactly one declared third-party package. It
+implements a port, maps vendor types to the port's types, and translates vendor failures into the
+contract's typed failures. Nothing else may import the vendor (`L005`), and no vendor type may leave
+the adapter (`L007`).
+
+> **Not to be confused with:** a wrapper class that merely renames vendor methods. An adapter converts
+> vocabulary; a wrapper forwards it.
+
+## 2.19 Integration port
+
+An **integration port** is a contracts unit declaring a capability the system needs from a vendor, in
+that system's own types. It is dependency-free (`D010`); its implementation is one adapter. It is not
+required to be a DTO, and `C007` does not apply to it (chapter 5 §5.12).
+
+> **Not to be confused with:** a *provided port*, which is a capability a module promises to its
+> consumers. The test is who changes when it changes: the provider's capability, or the consumer's
+> need.
+
+## 2.20 Third-party tier
+
+A **tier** is the declared role of a package: `platform` (runtime or framework surface, banned from
+contracts, no adapter), `integration` (IO, state, wire format or third-party surface; one adapter and
+one port), or `utility` (pure, free inside implementations, but its types may not cross a contract or
+port). Tiers live in `externals` in `acima.config.json` and are reviewed, never inferred (`G006`).
+
+## 2.21 Words ACIMA avoids
 
 | Avoided | Why |
 |---------|-----|

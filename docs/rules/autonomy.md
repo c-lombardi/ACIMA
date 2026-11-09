@@ -374,3 +374,50 @@ Declare the unit, with a role and a module name. If it is a new module, follow t
 
 After classification, any production source file with no unit is a finding. `exclude` patterns are
 applied first, so fixtures and tests never fire this.
+
+---
+
+## ACIMA-G006 · Undeclared external dependency
+
+**Severity** `warning` → `error` at 2.0.0 · **Level** L1 · **Principle** P8
+
+> Every package in a declared manifest has an `externals` entry with tier, owner, reason, review date
+> and expiry, and no entry is past its review date.
+
+### Violation
+
+`package.json` declares `left-pad`, and `externals` in `acima.config.json` does not mention it; or an
+entry's `expires` date has passed.
+
+### Finding
+
+```
+ACIMA-G006  warning  manifest dependency left-pad has no externals entry: declare its tier, owner
+                      and review date.
+  package.json:7
+  "left-pad"
+```
+
+### Why
+
+`G005` says a source file outside every unit is checked by no rule. `G006` is that sentence for
+packages: a dependency nobody declared has no tier, so no rule knows whether it is a platform
+surface, an integration needing a seam, or a utility — and the gate cannot tell a reviewed choice
+from an accident. The review date is the second half: a dependency that was a reasonable utility
+three years ago is often an abandoned one now.
+
+### Fix
+
+Run `python3 tools/acima.py externals --write-draft --root .` to generate the declaration from the
+manifest, then set the tier, owner and reason for each package and complete `adapter`/`port` for the
+integration ones. Renew an expired entry individually; an entry that is renewed in bulk has stopped
+being a review.
+
+### Detection
+
+Read every manifest named by the config's `manifests` list, or `package.json`, `pyproject.toml` and
+`requirements.txt` when the list is absent. `dependencies` and requirements entries are checked;
+`devDependencies` are not, because they do not ship. An entry with an unknown tier, a missing field
+or a non-ISO date is `G001`. When `externals` is absent the rule reports `executed: false` — package
+governance was not declared, and a silent pass would be a false one. **Implemented for Python and
+TypeScript**; Go and .NET report the rule `executed: false` in this revision.
