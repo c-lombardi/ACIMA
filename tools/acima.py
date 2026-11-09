@@ -37,19 +37,27 @@ CATEGORY = {
     "L": "Layering inside a module",
     "C": "Contract shape and immutability",
     "A": "Autonomy at runtime",
+    "N": "Intent-revealing naming",
     "G": "Governance and exceptions",
 }
 # Rules the portable reference enforcers deliberately do not decide from source text.
 NON_PORTABLE = {
-    "ACIMA-C003", "ACIMA-C007", "ACIMA-L004",
-    "ACIMA-A002", "ACIMA-A004", "ACIMA-G004",
+    "ACIMA-C003", "ACIMA-C007", "ACIMA-C008", "ACIMA-L004",
+    "ACIMA-A002", "ACIMA-A004", "ACIMA-A010", "ACIMA-A011",
+    "ACIMA-A012", "ACIMA-A013", "ACIMA-G004", "ACIMA-N003",
 }
 # Five tier rules are implemented by the Python and TypeScript enforcers in this revision; the Go
 # and .NET enforcers report them executed:false, so a report must never imply they were decided.
 TIER_RULES = {"ACIMA-L005", "ACIMA-L006", "ACIMA-L007", "ACIMA-D010", "ACIMA-G006"}
+EXPLICIT_RULES = {"ACIMA-D011", "ACIMA-D012"}
+VALUES_RULES = {"ACIMA-A005", "ACIMA-A006"}
+COMPOSITION_RULES = {"ACIMA-D013", "ACIMA-D014"}
+FUNCTIONAL_RULES = {"ACIMA-D015", "ACIMA-D016"}
+LIFECYCLE_RULES = {"ACIMA-A007", "ACIMA-A008", "ACIMA-A009"}
+NAMING_RULES = {"ACIMA-N001", "ACIMA-N002", "ACIMA-N003"}
 LANGUAGE_GAPS: dict[str, set[str]] = {
-    "go": set(TIER_RULES),
-    "dotnet": set(TIER_RULES),
+    "go": set(TIER_RULES) | EXPLICIT_RULES | VALUES_RULES | COMPOSITION_RULES | FUNCTIONAL_RULES | LIFECYCLE_RULES | NAMING_RULES,
+    "dotnet": set(TIER_RULES) | EXPLICIT_RULES | VALUES_RULES | COMPOSITION_RULES | FUNCTIONAL_RULES | LIFECYCLE_RULES | NAMING_RULES,
 }
 LANGUAGE_MARKERS = {
     "dotnet": (".csproj", ".sln", "global.json"),

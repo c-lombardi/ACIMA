@@ -1,6 +1,6 @@
 # ACIMA product contract
 
-Status: **technical preview, version `1.0.0-draft.1`** (2026-11-08).
+Status: **technical preview, version `1.8.0-draft.1`** (2026-11-09).
 
 This document states what ACIMA promises consumers today, what it does not promise,
 and what evidence supports the release disposition. It is subordinate to the
@@ -29,12 +29,13 @@ ACIMA makes declared architectural boundaries executable:
 
 | Area | Supported | Evidence / limit |
 |---|---|---|
-| Python | 28 portable rules; reference enforcer | Source and AST analysis, not type-checking |
-| TypeScript | 28 portable rules; reference enforcer | Source-text analysis, not type-checking |
-| Go | 23 of 28 portable rules; reference enforcer | Source and import analysis, not `go/parser`; the five tier rules report `executed: false` |
-| C#/.NET | 23 of 28 portable rules; reference enforcer; library profile | Source and MSBuild-evaluated project metadata, not assembly loading; the five tier rules report `executed: false` |
+| Python | 41 automated rules; reference enforcer | Source and AST analysis, not type-checking; the twelve manual rules remain unevaluated |
+| TypeScript | 41 automated rules; reference enforcer | Source-text analysis, not type-checking; the twelve manual rules remain unevaluated |
+| Go | 23 of 41 automated rules; reference enforcer | Source and import analysis, not `go/parser`; the five tier rules, two explicit-input rules, two value rules, two composition rules, two functional-capture rules, three lifecycle rules, two naming rules (`N001`–`N002`) and the twelve manual rules report `executed: false` |
+| C#/.NET | 23 of 41 automated rules; reference enforcer; library profile | Source and MSBuild-evaluated project metadata, not assembly loading; the five tier rules, two explicit-input rules, two value rules, two composition rules, two functional-capture rules, three lifecycle rules, two naming rules (`N001`–`N002`) and the twelve manual rules report `executed: false` |
 | Java | Profile only | No reference enforcer; a selected Java assessment fails closed |
-| Six manual-evidence rules | Normative, not executable by the portable enforcers | `C003`, `C007`, `L004`, `A002`, `A004`, `G004` are `automation: "manual"` and require repository-scoped evidence for a full claim |
+| Twelve manual-evidence rules | Normative, not executable by the portable enforcers | `C003`, `C007`, `C008`, `L004`, `A002`, `A004`, `A010`–`A013`, `G004`, `N003` are `automation: "manual"` and require repository-scoped evidence for a full claim |
+| Owned effects and business visibility | P1.7 and P15 are normative; manual evidence required | Ownership, retry/duplicate/consistency/cancellation semantics, truthful outcomes, recovery evidence and boundary visibility have no reliable portable detector |
 | Brownfield adoption | Preflight, draft units, baseline waivers, ratchet guidance | Unit names and owners require human confirmation |
 | AI agent skill | Pinned catalog, preflight, assessment validation, playbooks | No independent adversarial evaluation yet |
 
@@ -81,7 +82,7 @@ A consumer may rely on the following for the four implemented enforcers:
 ## What ACIMA does not promise
 
 - Support for Java, or for any language without a reference enforcer.
-- Detection of the six semantic/non-portable rules listed above.
+- Detection of the twelve semantic/non-portable rules listed above.
 - Automatic discovery of the correct architecture, module ownership or exceptions.
 - Replacement for architecture review, engineering judgement or design authority.
 - Proof that a zero-finding assessment is correct; zero findings require a complete
@@ -101,7 +102,7 @@ A gate is not marked PASS because code exists. Its required evidence must be pre
 
 ## Versioning and change control
 
-- The standard version is `1.0.0-draft.1`; the skill version is `1.8.0`.
+- The standard version is `1.8.0-draft.1`; the skill version is `1.16.0`.
 - Assessment is read-only. Adoption artifacts require explicit owner approval of a proposal naming
   the paths, scope and level; partial approval is supported and must be described honestly.
 - Rule IDs are never renumbered. A meaning change requires a catalog version change,

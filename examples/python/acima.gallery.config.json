@@ -119,6 +119,62 @@
       "paths": [
         "violations/l006_adapter_without_port.py"
       ]
+    },
+    {
+      "id": "explicit.inputs",
+      "module": "notes",
+      "role": "implementation",
+      "paths": [
+        "violations/d011_optional_constructor_dependency.py",
+        "violations/d012_hidden_default.py"
+      ]
+    },
+    {
+      "id": "values.config",
+      "module": "notes",
+      "role": "implementation",
+      "paths": [
+        "violations/a005_ambient_config.py",
+        "violations/a006_inline_operational.py"
+      ]
+    },
+    {
+      "id": "composition.host",
+      "role": "host",
+      "paths": [
+        "violations/d013_dynamic_registration.py"
+      ]
+    },
+    {
+      "id": "composition.injection",
+      "module": "notes",
+      "role": "implementation",
+      "paths": [
+        "violations/d014_property_injection.py"
+      ]
+    },
+    {
+      "id": "functional.capture",
+      "module": "notes",
+      "role": "implementation",
+      "paths": [
+        "violations/d015_closure_capture.py",
+        "violations/d016_partial_dependency.py"
+      ]
+    },
+    {
+      "id": "lifecycle.host",
+      "role": "host",
+      "paths": [
+        "violations/lifecycle_registration.py"
+      ]
+    },
+    {
+      "id": "naming.host",
+      "role": "host",
+      "paths": [
+        "violations/naming_conventions.py"
+      ]
     }
   ],
   "exclude": [
@@ -136,8 +192,12 @@
       "port": "editor.port",
       "reviewedOn": "2026-11-09",
       "expires": "2027-11-09",
-      "specifiers": ["monaco_editor"],
-      "types": ["IEditor"]
+      "specifiers": [
+        "monaco_editor"
+      ],
+      "types": [
+        "IEditor"
+      ]
     },
     "left-pad": {
       "tier": "utility",

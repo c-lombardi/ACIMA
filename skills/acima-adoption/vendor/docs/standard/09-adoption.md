@@ -41,10 +41,35 @@ ignored) to "did this pull request add a violation?" (answerable, therefore enfo
 | 2 | **Cycle breaking** (`D005`) | cycles make every other migration harder |
 | 3 | **Contract immutability** (`C001`, `C002`) | the cheapest high-value rule; it is mechanical |
 | 4 | **Persistence ownership** (`A001`) | the expensive one: it needs schema work and a migration |
-| 5 | **Configuration and statics** (`A002`, `A003`) | small, usually a handful of hot spots |
+| 5 | **Configuration, values and statics** (`A002`, `A005`, `A006`, `A003`) | small, usually a handful of hot spots |
 
 Do not start with `A001`. Teams try, discover it needs a data migration, and abandon the programme.
 Start with the rules where the fix is a code change within one pull request.
+
+Once the host exists, add explicit composition as the next slice. Replace scans and convention
+registration that choose application components (`D013`), then move application dependencies out of
+properties and fields into constructors (`D014`). Do not force a container-free style on framework
+infrastructure: the test is whether the application-owned graph and its registrations are visible,
+not whether every object is written with `new`. Then review closures, callbacks and partial
+application: a dependency captured from a module or enclosing local is `D015`, and a dependency
+pre-bound inside a component is `D016`. Pure HOFs and explicit currying stay legal (chapter 16).
+
+Then review lifetimes and state ownership before changing registrations in bulk. Identify which
+application components are stateless, which carry request or tenant state, which own resources and
+which depend on a scoped component. A stateless service registered transient is `A007`; a shared
+component directly capturing a scoped dependency is `A008`; a shared component owning a mutable
+container without a stated owner, isolation key and concurrency policy is `A009` (chapter 17).Do not convert transient registrations to singletons as a migration shortcut: decide the state
+owner first, then choose the lifetime. Go, .NET and Java report these rules `executed: false` in
+this revision, so their lifecycle decisions need recorded manual evidence.
+
+Then review effects before adding retries, transactions or background consumers. For each effect,
+name the owning module, the execution boundary and the truthful outcome; say whether a retry is
+possible, whether a duplicate can harm, what partial completion looks like and who recovers it. This
+is a design review, not a code scan (`A010`–`A013`, `C008`). Do not add an idempotency key, a
+transaction or a cancellation parameter merely to make a checklist look complete. Start with the
+effects that can lose money, duplicate a commitment, corrupt data or lose a required audit record,
+and record the evidence that covers their failure paths. The P15 rules are manual in every profile,
+so a clean portable run says nothing about them.
 
 ## 9.3 The extraction recipe
 
@@ -83,6 +108,7 @@ organisation, then the code.
 | Cycle breaking | days, sometimes a redesign | low |
 | Immutability | hours per contract type | near zero; it is the default shape afterwards |
 | Persistence ownership | weeks per module, includes a data migration | low, but schema changes get harder at first |
+| Effect review | hours per critical workflow | low; retries and recovery have a named owner before they are added |
 | Waiver discipline | minutes every PR | minutes monthly; the expiry does the nagging |
 | Enforcer maintenance | days | low if it stays a rule runner, high if it becomes a framework |
 

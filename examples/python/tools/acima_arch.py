@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ACIMA reference enforcer for Python.
 
-Implements the portable rule set (23 rules) against the units declared in acima.config.json.
+Implements the 41 automated rules and reports the 12 manual review requirements against the units declared in acima.config.json.
 Reads source with `ast`; never imports the product code.
 
     python3 tools/acima_arch.py --root . --config acima.config.json --format json
@@ -26,14 +26,24 @@ CATALOG: dict[str, tuple[str, str]] = {
     "ACIMA-D004": ("error", "L1"), "ACIMA-D005": ("error", "L1"), "ACIMA-D006": ("error", "L1"),
     "ACIMA-D007": ("error", "L1"), "ACIMA-D008": ("error", "L1"), "ACIMA-D009": ("error", "L1"),
     "ACIMA-D010": ("error", "L1"),
+    "ACIMA-D011": ("warning", "L1"), "ACIMA-D012": ("warning", "L1"),
+    "ACIMA-D013": ("warning", "L1"), "ACIMA-D014": ("warning", "L1"),
+    "ACIMA-D015": ("warning", "L1"), "ACIMA-D016": ("warning", "L1"),
     "ACIMA-L001": ("error", "L1"), "ACIMA-L002": ("error", "L1"), "ACIMA-L003": ("error", "L1"),
     "ACIMA-L004": ("warning", "L1"), "ACIMA-L005": ("warning", "L1"), "ACIMA-L006": ("error", "L1"),
     "ACIMA-L007": ("warning", "L1"),
     "ACIMA-C001": ("error", "L2"), "ACIMA-C002": ("error", "L2"), "ACIMA-C003": ("error", "L2"),
     "ACIMA-C004": ("error", "L2"), "ACIMA-C005": ("error", "L2"), "ACIMA-C006": ("error", "L2"),
-    "ACIMA-C007": ("warning", "L2"),
+    "ACIMA-C007": ("warning", "L2"), "ACIMA-C008": ("error", "L2"),
     "ACIMA-A001": ("error", "L3"), "ACIMA-A002": ("warning", "L3"),
     "ACIMA-A003": ("error", "L3"), "ACIMA-A004": ("warning", "L3"),
+    "ACIMA-A005": ("warning", "L3"), "ACIMA-A006": ("warning", "L3"),
+    "ACIMA-A007": ("warning", "L3"), "ACIMA-A008": ("warning", "L3"),
+    "ACIMA-A009": ("warning", "L3"),
+    "ACIMA-A010": ("error", "L3"), "ACIMA-A011": ("error", "L3"),
+    "ACIMA-A012": ("error", "L3"), "ACIMA-A013": ("warning", "L3"),
+    "ACIMA-N001": ("warning", "L3"), "ACIMA-N002": ("warning", "L3"),
+    "ACIMA-N003": ("warning", "L3"),
     "ACIMA-G001": ("error", "L1"), "ACIMA-G002": ("error", "L1"),
     "ACIMA-G003": ("warning", "L2"), "ACIMA-G004": ("error", "L2"),
     "ACIMA-G005": ("error", "L1"), "ACIMA-G006": ("warning", "L1"),
@@ -45,12 +55,23 @@ NOT_EXECUTED = {
     "ACIMA-A002": "configuration APIs differ per ecosystem",
     "ACIMA-A004": "version-lock coupling is visible only across published packages",
     "ACIMA-G004": "an API baseline needs a per-language surface format",
+    "ACIMA-N003": "semantic naming quality needs human review",
+    "ACIMA-C008": "business behavior visibility is a semantic contract review",
+    "ACIMA-A010": "effect ownership and commit boundaries require application and operational review",
+    "ACIMA-A011": "effect semantics require contract and API review",
+    "ACIMA-A012": "outcome truthfulness requires failure, retry and cancellation evidence",
+    "ACIMA-A013": "critical-effect evidence requires audit and telemetry inspection",
 }
 # Third-party governance: the tier rules only execute when externals is declared.
 TIER_RULES = ("ACIMA-L005", "ACIMA-L006", "ACIMA-L007", "ACIMA-D010", "ACIMA-G006")
 TIERS = ("platform", "integration", "utility")
 ENTRY_FIELDS = ("tier", "owner", "reason", "reviewedOn", "expires")
 RANK = {"L1": 1, "L2": 2, "L3": 3}
+NAMING_ROLES = {"contracts", "implementation", "adapter", "host", "port", "shared-kernel"}
+GENERIC_TYPE_NAMES = {"Helper", "Manager", "Handler", "Processor", "Utility", "Service",
+                      "Provider", "Factory", "Common", "Base", "Default", "Generic"}
+GENERIC_TYPE_SUFFIXES = ("Helper", "Manager", "Processor", "Utility", "Common", "Default",
+                         "Generic")
 
 PERSISTENCE = ("sqlalchemy", "QuerySet", "psycopg", "sqlite3", "db.execute", "IQueryable",
                "DbContext", "EntityManager", "django.db", "asyncpg", "pymongo")
@@ -837,6 +858,548 @@ class Enforcer:
                          f"externals entry {name} passed its review date on {expires}; renew or "
                          "remove the dependency.", config_rel, entry_line(name), name)
 
+    # -- explicit inputs ---------------------------------------------------
+    EXPLICIT_ROLES = ("implementation", "host", "adapter", "port")
+
+    @staticmethod
+    def _decorator_name(node: ast.expr) -> str:
+        if isinstance(node, ast.Name):
+            return node.id
+        if isinstance(node, ast.Attribute):
+            return node.attr
+        if isinstance(node, ast.Call):
+            return Enforcer._decorator_name(node.func)
+        return ""
+
+    @staticmethod
+    def _optional_parameters(node: ast.FunctionDef | ast.AsyncFunctionDef) -> list[ast.arg]:
+        """Parameters a caller may omit: a positional default or a keyword-only default."""
+        args = node.args
+        positional = [*args.posonlyargs, *args.args]
+        defaults = [None] * (len(positional) - len(args.defaults)) + list(args.defaults)
+        optional = [arg for arg, default in zip(positional, defaults) if default is not None]
+        optional += [arg for arg, default in zip(args.kwonlyargs, args.kw_defaults)
+                     if default is not None]
+        return optional
+
+    def check_explicit_inputs(self) -> None:
+        """D011 and D012: required inputs must not hide behind optional parameters.
+
+        Scope is the declared behaviour units. Contracts are data with compatibility semantics
+        (C007 and the additive-evolution rules); a default there is a versioning decision, not a
+        concealed dependency. A nullable parameter without a default is *required* and is not a
+        finding: the caller must pass null explicitly, which is the distinction the chapter draws.
+        """
+        for rel in sorted(self.files):
+            unit = self.units_of[rel]
+            if unit.role not in self.EXPLICIT_ROLES:
+                continue
+            tree = self.files[rel]
+            parents = {child: parent for parent in ast.walk(tree)
+                       for child in ast.iter_child_nodes(parent)}
+            lines = (self.root / rel).read_text(encoding="utf-8", errors="replace").splitlines()
+            for node in ast.walk(tree):
+                if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    continue
+                if any(self._decorator_name(item) == "overload" for item in node.decorator_list):
+                    continue
+                is_constructor = node.name == "__init__"
+                if not is_constructor and node.name.startswith("__") and node.name.endswith("__"):
+                    continue
+                optional = self._optional_parameters(node)
+                if not optional:
+                    continue
+                in_class = isinstance(parents.get(node), ast.ClassDef)
+                for arg in optional:
+                    evidence = (lines[arg.lineno - 1].strip()
+                                if 0 < arg.lineno <= len(lines) else "")
+                    if in_class and is_constructor:
+                        self.add("ACIMA-D011",
+                                 f"{unit.id} constructs with the optional input {arg.arg}; a "
+                                 "dependency the component needs must be required at construction.",
+                                 rel, arg.lineno, evidence)
+                    else:
+                        self.add("ACIMA-D012",
+                                 f"{unit.id} lets a caller omit {arg.arg} in {node.name}(); if "
+                                 "that omission changes behaviour, require the decision at the "
+                                 "call site.", rel, arg.lineno, evidence)
+
+    # -- composition and injection -----------------------------------------
+    COMPOSITION_ROLES = ("implementation", "host", "adapter")
+    DYNAMIC_DISCOVERY = frozenset({
+        "pkgutil.walk_packages", "pkgutil.iter_modules", "importlib.import_module",
+        "__import__", "autodiscover", "auto_register", "scan_packages", "register_all",
+    })
+    INJECTED_ANNOTATIONS = frozenset({"Provide", "Inject", "Autowired"})
+
+    @staticmethod
+    def _annotation_name(node: ast.expr) -> str:
+        if isinstance(node, ast.Subscript):
+            node = node.value
+        if isinstance(node, ast.Attribute):
+            return node.attr
+        if isinstance(node, ast.Name):
+            return node.id
+        return ""
+
+    def check_composition(self) -> None:
+        """D013/D014: construction is explicit; dependencies arrive at construction.
+
+        D013 is deliberately limited to the host: that is where registration and discovery
+        belong, so a dynamic scan there is the mechanism that hides the graph. D014 applies to
+        application components (implementation and adapter) and to host-defined entry points;
+        a framework may activate them, but their required dependencies must still be declared.
+        Service-locator calls remain L004's review concern, not a duplicate D014 finding.
+        """
+        for rel in sorted(self.files):
+            unit = self.units_of[rel]
+            lines = (self.root / rel).read_text(encoding="utf-8", errors="replace").splitlines()
+            seen: set[int] = set()
+            if unit.role == "host":
+                for node in ast.walk(self.files[rel]):
+                    if not isinstance(node, ast.Call):
+                        continue
+                    name = self._call_name(node.func)
+                    if name not in self.DYNAMIC_DISCOVERY:
+                        continue
+                    line = getattr(node, "lineno", 1)
+                    if line in seen:
+                        continue
+                    seen.add(line)
+                    evidence = lines[line - 1].strip() if 0 < line <= len(lines) else ""
+                    self.add("ACIMA-D013",
+                             f"composition host {unit.id} discovers components with {name}; "
+                             "register and construct each application component explicitly.",
+                             rel, line, evidence)
+            if unit.role not in self.COMPOSITION_ROLES:
+                continue
+            for node in ast.walk(self.files[rel]):
+                if not isinstance(node, ast.ClassDef):
+                    continue
+                for member in node.body:
+                    if not isinstance(member, ast.AnnAssign):
+                        continue
+                    name = self._annotation_name(member.annotation)
+                    if name not in self.INJECTED_ANNOTATIONS:
+                        continue
+                    line = member.lineno
+                    if line in seen:
+                        continue
+                    seen.add(line)
+                    evidence = lines[line - 1].strip() if 0 < line <= len(lines) else ""
+                    self.add("ACIMA-D014",
+                             f"{unit.id} receives a dependency through the injected field "
+                             f"{getattr(member.target, 'id', 'field')}; declare it in the "
+                             "constructor and supply it from the composition boundary.",
+                             rel, line, evidence)
+
+    # -- functional capture ------------------------------------------------
+    FUNCTIONAL_ROLES = ("implementation", "adapter")
+    FUNCTIONAL_TOKENS = frozenset({
+        "repository", "repositories", "repo", "service", "services", "client",
+        "clients", "gateway", "gateways", "adapter", "adapters", "logger",
+        "logging", "config", "configuration", "settings", "store", "stores",
+        "database", "db", "connection", "connections", "session", "provider",
+        "providers", "bus", "queue", "publisher", "producer", "consumer",
+        "auth", "authorization", "security", "clock", "cache", "registry",
+        "locator", "container", "resource", "resources",
+    })
+    PARTIAL_FUNCTIONS = frozenset({"partial", "functools.partial"})
+
+    @staticmethod
+    def _functional_name(name: str) -> bool:
+        snake = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", name).lower()
+        return any(token in Enforcer.FUNCTIONAL_TOKENS
+                   for token in re.split(r"[^a-z0-9]+", snake))
+
+    @staticmethod
+    def _scope_parts(node: ast.AST) -> tuple[set[str], set[str], list[ast.Name]]:
+        """Return parameters, local bindings and direct loads for one lexical scope."""
+        params: set[str] = set()
+        locals_: set[str] = set()
+        loads: list[ast.Name] = []
+        args = getattr(node, "args", None)
+        if args is not None:
+            for arg in [*args.posonlyargs, *args.args, *args.kwonlyargs]:
+                params.add(arg.arg)
+            if args.vararg:
+                params.add(args.vararg.arg)
+            if args.kwarg:
+                params.add(args.kwarg.arg)
+
+        def walk(child: ast.AST) -> None:
+            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda,
+                                  ast.ClassDef)):
+                if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                    locals_.add(child.name)
+                return
+            if isinstance(child, ast.Name):
+                if isinstance(child.ctx, ast.Store):
+                    locals_.add(child.id)
+                elif isinstance(child.ctx, ast.Load):
+                    loads.append(child)
+                return
+            if isinstance(child, ast.arg):
+                params.add(child.arg)
+                return
+            if isinstance(child, (ast.Import, ast.ImportFrom)):
+                for alias in child.names:
+                    locals_.add(alias.asname or alias.name.split(".")[0])
+                return
+            for grandchild in ast.iter_child_nodes(child):
+                walk(grandchild)
+
+        body = getattr(node, "body", [])
+        if isinstance(body, list):
+            for statement in body:
+                walk(statement)
+        elif isinstance(body, ast.AST):
+            walk(body)
+        return params, locals_, loads
+
+    @staticmethod
+    def _dependency_exprs(node: ast.AST) -> list[str]:
+        names: list[str] = []
+        for child in ast.walk(node):
+            if isinstance(child, ast.Name) and Enforcer._functional_name(child.id):
+                names.append(child.id)
+            elif isinstance(child, ast.Attribute) and Enforcer._functional_name(child.attr):
+                names.append(child.attr)
+        return names
+
+    def _outer_binding(self, node: ast.AST, name: str, parents: dict[ast.AST, ast.AST],
+                       module_bindings: set[str]) -> str:
+        parent = parents.get(node)
+        while parent is not None:
+            if isinstance(parent, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+                params, locals_, _ = self._scope_parts(parent)
+                if name in params:
+                    return "parameter"
+                if name in locals_:
+                    return "local"
+            elif isinstance(parent, ast.Module):
+                if name in module_bindings:
+                    return "module"
+            parent = parents.get(parent)
+        return "unbound"
+
+    def check_functional_capture(self) -> None:
+        """D015: a closure must not silently capture an application dependency.
+
+        A dependency declared by an enclosing *parameter* is visible: that is the curried form.
+        A module binding or an enclosing local is a capture. Pure closures over constants and
+        transformations are untouched, and inline callbacks are analysed as their own scope.
+        """
+        for rel in sorted(self.files):
+            unit = self.units_of[rel]
+            if unit.role not in self.FUNCTIONAL_ROLES:
+                continue
+            tree = self.files[rel]
+            parents = {child: parent for parent in ast.walk(tree)
+                       for child in ast.iter_child_nodes(parent)}
+            module_bindings = self._scope_parts(tree)[1]
+            lines = (self.root / rel).read_text(encoding="utf-8", errors="replace").splitlines()
+            seen: set[tuple[str, int]] = set()
+            for node in ast.walk(tree):
+                if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+                    continue
+                params, locals_, loads = self._scope_parts(node)
+                for load in loads:
+                    name = load.id
+                    if name in params or name in locals_ or not self._functional_name(name):
+                        continue
+                    binding = self._outer_binding(node, name, parents, module_bindings)
+                    if binding not in ("local", "module"):
+                        continue
+                    key = (name, load.lineno)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    evidence = lines[load.lineno - 1].strip() if 0 < load.lineno <= len(lines) else ""
+                    self.add("ACIMA-D015",
+                             f"{unit.id} captures the application dependency {name} from an "
+                             "enclosing scope; pass it as a parameter or supply it at the "
+                             "composition boundary.", rel, load.lineno, evidence)
+
+    def check_partial_application(self) -> None:
+        """D016: pre-binding a dependency belongs at the composition boundary."""
+        for rel in sorted(self.files):
+            unit = self.units_of[rel]
+            if unit.role not in self.FUNCTIONAL_ROLES:
+                continue
+            lines = (self.root / rel).read_text(encoding="utf-8", errors="replace").splitlines()
+            for node in ast.walk(self.files[rel]):
+                if not isinstance(node, ast.Call) or self._call_name(node.func) not in self.PARTIAL_FUNCTIONS:
+                    continue
+                for argument in node.args[1:]:
+                    names = self._dependency_exprs(argument)
+                    if not names:
+                        continue
+                    evidence = lines[node.lineno - 1].strip() if 0 < node.lineno <= len(lines) else ""
+                    self.add("ACIMA-D016",
+                             f"{unit.id} partially applies the application dependency "
+                             f"{names[0]} inside a component; bind it at the composition "
+                             "boundary or keep it as a parameter.", rel, node.lineno, evidence)
+                    break
+
+    # -- lifecycle and state ownership --------------------------------------
+    LIFECYCLE_ROLES = ("host",)
+    LIFETIME_ADDERS = {"add_singleton": "shared", "add_scoped": "scoped",
+                       "add_transient": "transient"}
+    LIFETIME_ALIASES = {
+        "singleton": "shared", "shared": "shared", "application": "shared",
+        "process": "shared", "scoped": "scoped", "request": "scoped",
+        "operation": "transient", "transient": "transient", "prototype": "transient",
+    }
+    MUTABLE_CONSTRUCTORS = frozenset({"list", "dict", "set", "defaultdict", "OrderedDict"})
+
+    @staticmethod
+    def _class_stateless(node: ast.ClassDef) -> bool:
+        """No instance fields at all: the conservative shared-service shape."""
+        for child in ast.walk(node):
+            if isinstance(child, ast.Attribute) and isinstance(child.ctx, ast.Store) \
+                    and isinstance(child.value, ast.Name) and child.value.id == "self":
+                return False
+        return True
+
+    @staticmethod
+    def _class_mutable(node: ast.ClassDef) -> bool:
+        """A class-level or instance-level mutable container is a state signal."""
+        for child in ast.walk(node):
+            value = None
+            targets: list[ast.expr] = []
+            if isinstance(child, ast.Assign):
+                value = child.value
+                targets = list(child.targets)
+            elif isinstance(child, ast.AnnAssign) and child.value is not None:
+                value = child.value
+                targets = [child.target]
+            if value is None:
+                continue
+            if isinstance(value, ast.Call):
+                name = Enforcer._call_name(value.func).split(".")[-1]
+                if name not in Enforcer.MUTABLE_CONSTRUCTORS:
+                    continue
+            elif not isinstance(value, (ast.List, ast.Dict, ast.Set)):
+                continue
+            for target in targets:
+                if isinstance(target, ast.Attribute):
+                    if isinstance(target.value, ast.Name) and target.value.id == "self":
+                        return True
+                elif isinstance(target, ast.Name):
+                    return True
+        return False
+
+    def _class_index(self) -> dict[str, tuple[str, ast.ClassDef]]:
+        found: dict[str, list[tuple[str, ast.ClassDef]]] = {}
+        for rel, tree in self.files.items():
+            for node in tree.body:
+                if isinstance(node, ast.ClassDef):
+                    found.setdefault(node.name, []).append((rel, node))
+        return {name: items[0] for name, items in found.items() if len(items) == 1}
+
+    @staticmethod
+    def _constructor_dependencies(node: ast.ClassDef) -> set[str]:
+        deps: set[str] = set()
+        for member in node.body:
+            if not isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)) \
+                    or member.name != "__init__":
+                continue
+            for arg in [*member.args.posonlyargs, *member.args.args]:
+                if arg.arg == "self" or arg.annotation is None:
+                    continue
+                name = Enforcer._annotation_name(arg.annotation)
+                if name:
+                    deps.add(name)
+        return deps
+
+    def _registration(self, node: ast.Call) -> tuple[str, str] | None:
+        name = self._call_name(node.func).split(".")[-1]
+        target = ""
+        lifetime = self.LIFETIME_ADDERS.get(name, "")
+        if name == "register" and node.args and isinstance(node.args[0], ast.Name):
+            target = node.args[0].id
+            for keyword in node.keywords:
+                if keyword.arg in ("lifetime", "scope", "lifecycle") \
+                        and isinstance(keyword.value, ast.Constant) \
+                        and isinstance(keyword.value.value, str):
+                    lifetime = self.LIFETIME_ALIASES.get(keyword.value.value.lower(), "")
+        elif name in self.LIFETIME_ADDERS and node.args \
+                and isinstance(node.args[0], ast.Name):
+            target = node.args[0].id
+        if not target or lifetime not in ("shared", "scoped", "transient"):
+            return None
+        return target, lifetime
+
+    def check_lifecycle(self) -> None:
+        """A007/A008/A009: lifecycle and shared state are deliberate.
+
+        This reads explicit host registrations. It does not infer a container graph, and it does
+        not treat a mutable field as proof of a race: A009 identifies an ownership question for a
+        shared component. Resource cleanup, thread safety and tenant isolation remain review items.
+        """
+        classes = self._class_index()
+        for rel in sorted(self.files):
+            unit = self.units_of[rel]
+            if unit.role not in self.LIFECYCLE_ROLES:
+                continue
+            lines = (self.root / rel).read_text(encoding="utf-8", errors="replace").splitlines()
+            registrations: list[tuple[str, str, int]] = []
+            for node in ast.walk(self.files[rel]):
+                if isinstance(node, ast.Call):
+                    registration = self._registration(node)
+                    if registration:
+                        registrations.append((*registration, node.lineno))
+            lifetimes = {target: lifetime for target, lifetime, _line in registrations}
+            for target, lifetime, line in registrations:
+                entry = classes.get(target)
+                if entry is None:
+                    continue
+                cls_rel, cls = entry
+                evidence = lines[line - 1].strip() if 0 < line <= len(lines) else ""
+                if lifetime == "transient" and self._class_stateless(cls):
+                    self.add("ACIMA-A007",
+                             f"{unit.id} registers the stateless service {target} as transient; "
+                             "share it at the longest appropriate lifetime.", rel, line, evidence)
+                if lifetime != "shared":
+                    continue
+                if self._class_mutable(cls):
+                    self.add("ACIMA-A009",
+                             f"{unit.id} shares {target}, which owns mutable state; give that "
+                             "state an explicit owner, isolation boundary and concurrency policy.",
+                             rel, line, evidence)
+                for dependency in sorted(self._constructor_dependencies(cls)):
+                    if lifetimes.get(dependency) == "scoped":
+                        self.add("ACIMA-A008",
+                                 f"{unit.id} shares {target}, which captures the scoped dependency "
+                                 f"{dependency}; shorten the lifetime or resolve it at the "
+                                 "correct scope boundary.", rel, line, evidence)
+
+    # -- values and configuration ------------------------------------------
+    CONFIG_READ_ROLES = ("implementation", "adapter")
+    OPERATIONAL_ROLES = ("implementation", "adapter")
+    OPERATIONAL_TOKENS = frozenset({
+        "timeout", "timeouts", "retry", "retries", "limit", "limits",
+        "threshold", "thresholds", "ttl", "interval", "intervals", "batch",
+        "rate", "rates", "retention", "capacity", "delay", "quota",
+        "backoff", "concurrency", "attempts", "workers", "pagesize",
+        "endpoint", "endpoints", "url", "urls", "uri", "host", "hostname",
+        "port", "queue", "topic", "bucket",
+    })
+
+    @staticmethod
+    def _call_name(node: ast.expr) -> str:
+        if isinstance(node, ast.Name):
+            return node.id
+        if isinstance(node, ast.Attribute):
+            owner = Enforcer._call_name(node.value)
+            return f"{owner}.{node.attr}" if owner else node.attr
+        return ""
+
+    @staticmethod
+    def _operational_name(name: str) -> bool:
+        snake = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", name).lower()
+        return any(token in Enforcer.OPERATIONAL_TOKENS
+                   for token in re.split(r"[^a-z0-9]+", snake))
+
+    @staticmethod
+    def _literal(node: ast.AST) -> str | None:
+        if isinstance(node, ast.Constant) and not isinstance(node.value, bool) \
+                and isinstance(node.value, (int, float, str)):
+            return repr(node.value)[:80]
+        return None
+
+    def check_configuration(self) -> None:
+        """A005: configuration is resolved at the composition root, not discovered."""
+        for rel in sorted(self.files):
+            unit = self.units_of[rel]
+            if unit.role not in self.CONFIG_READ_ROLES:
+                continue
+            lines = (self.root / rel).read_text(encoding="utf-8", errors="replace").splitlines()
+            for node in ast.walk(self.files[rel]):
+                line = getattr(node, "lineno", 1)
+                access = ""
+                if isinstance(node, ast.Attribute) and node.attr == "environ":
+                    access = "the process environment"
+                elif isinstance(node, ast.Call) and self._call_name(node.func) in (
+                        "getenv", "os.getenv"):
+                    key = ""
+                    if node.args and isinstance(node.args[0], ast.Constant) \
+                            and isinstance(node.args[0].value, str):
+                        key = f" {node.args[0].value}"
+                    access = f"the environment key{key}"
+                if not access:
+                    continue
+                evidence = lines[line - 1].strip() if 0 < line <= len(lines) else ""
+                self.add("ACIMA-A005",
+                         f"{unit.id} reads {access} directly; resolve it at the composition "
+                         "root and pass the value into the component.",
+                         rel, line, evidence)
+
+    def check_operational_values(self) -> None:
+        """A006: values that define operational policy must have a named owner."""
+        for rel in sorted(self.files):
+            unit = self.units_of[rel]
+            if unit.role not in self.OPERATIONAL_ROLES:
+                continue
+            lines = (self.root / rel).read_text(encoding="utf-8", errors="replace").splitlines()
+            for node in ast.walk(self.files[rel]):
+                candidates: list[tuple[str, int]] = []
+                if isinstance(node, ast.Assign):
+                    if self._literal(node.value) is not None:
+                        for target in node.targets:
+                            name = (target.id if isinstance(target, ast.Name)
+                                    else target.attr if isinstance(target, ast.Attribute) else "")
+                            if name and not name.isupper() and self._operational_name(name):
+                                candidates.append((name, node.lineno))
+                elif isinstance(node, ast.AnnAssign) and node.value is not None:
+                    target = node.target
+                    name = (target.id if isinstance(target, ast.Name)
+                            else target.attr if isinstance(target, ast.Attribute) else "")
+                    if name and not name.isupper() and self._operational_name(name):
+                        candidates.append((name, node.lineno))
+                elif isinstance(node, ast.Call):
+                    for keyword in node.keywords:
+                        if not keyword.arg or not self._operational_name(keyword.arg):
+                            continue
+                        if self._literal(keyword.value) is not None:
+                            candidates.append((keyword.arg, keyword.lineno))
+                elif isinstance(node, ast.Compare):
+                    left = node.left
+                    name = (left.id if isinstance(left, ast.Name)
+                            else left.attr if isinstance(left, ast.Attribute) else "")
+                    if name and not name.isupper() and self._operational_name(name) \
+                            and any(self._literal(item) is not None for item in node.comparators):
+                        candidates.append((name, node.lineno))
+                for name, line in candidates:
+                    evidence = lines[line - 1].strip() if 0 < line <= len(lines) else ""
+                    self.add("ACIMA-A006",
+                             f"{unit.id} embeds an operational value in {name}; name it in its "
+                             "owner or supply it as configuration at the composition root.",
+                             rel, line, evidence)
+
+    def check_naming(self) -> None:
+        """N001/N002: language convention and generic responsibility names."""
+        for rel in sorted(self.files):
+            unit = self.units_of[rel]
+            if unit.role not in NAMING_ROLES:
+                continue
+            lines = (self.root / rel).read_text(encoding="utf-8", errors="replace").splitlines()
+            for node in ast.walk(self.files[rel]):
+                if not isinstance(node, ast.ClassDef):
+                    continue
+                line = getattr(node, "lineno", 1)
+                evidence = lines[line - 1].strip() if 0 < line <= len(lines) else ""
+                name = node.name
+                if not re.fullmatch(r"_?[A-Z][A-Za-z0-9]*", name):
+                    self.add("ACIMA-N001",
+                             f"{unit.id} declares the type {name} without the Python "
+                             "PascalCase type-name convention.", rel, line, evidence)
+                if name in GENERIC_TYPE_NAMES or name.endswith(GENERIC_TYPE_SUFFIXES):
+                    self.add("ACIMA-N002",
+                             f"{unit.id} names the type {name} after a generic role; name the "
+                             "responsibility or domain concept instead.", rel, line, evidence)
+
     # -- run ---------------------------------------------------------------
     def run(self) -> list[Finding]:
         self.collect()
@@ -845,6 +1408,14 @@ class Enforcer:
         self.check_layering()
         self.check_sql()
         self.check_statics()
+        self.check_explicit_inputs()
+        self.check_composition()
+        self.check_functional_capture()
+        self.check_partial_application()
+        self.check_lifecycle()
+        self.check_naming()
+        self.check_configuration()
+        self.check_operational_values()
         self.check_externals()
         self.apply_waivers(self.check_waivers())
         unique: dict[tuple[str, str, int], Finding] = {}

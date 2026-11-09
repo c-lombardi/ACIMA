@@ -1,0 +1,10 @@
+{
+  "standard": "1.4.0-draft.1",
+  "mode": "base",
+  "language": "typescript",
+  "level": "L1",
+  "units": [
+    { "id": "host", "role": "host", "paths": ["src/host"] },
+    { "id": "orders", "module": "orders", "role": "implementation", "paths": ["src/orders"] }
+  ]
+}

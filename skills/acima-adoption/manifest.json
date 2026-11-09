@@ -1,13 +1,13 @@
 {
   "skill": "acima-adoption",
-  "skillVersion": "1.9.0",
-  "standard": "1.1.0-draft.1",
-  "verifiedAt": "2026-11-08",
+  "skillVersion": "1.16.0",
+  "standard": "1.8.0-draft.1",
+  "verifiedAt": "2026-11-09",
   "catalog": {
     "path": "tools/acima-spec/rules.json",
-    "sha256": "a699510322ec5decdb6bc212c7d65b23df106d5f2e6fc027a53fa800af350eea",
-    "rules": 34,
-    "portable": 28,
+    "sha256": "b908a5f739b80c323778f47bfe574036294f268a6e1f905522a654970aef2578",
+    "rules": 53,
+    "portable": 41,
     "portableIds": [
       "ACIMA-D001",
       "ACIMA-D002",
@@ -33,18 +33,37 @@
       "ACIMA-G003",
       "ACIMA-G005",
       "ACIMA-D010",
+      "ACIMA-D011",
+      "ACIMA-D012",
       "ACIMA-L005",
       "ACIMA-L006",
       "ACIMA-L007",
-      "ACIMA-G006"
+      "ACIMA-G006",
+      "ACIMA-A005",
+      "ACIMA-A006",
+      "ACIMA-D013",
+      "ACIMA-D014",
+      "ACIMA-D015",
+      "ACIMA-D016",
+      "ACIMA-A007",
+      "ACIMA-A008",
+      "ACIMA-A009",
+      "ACIMA-N001",
+      "ACIMA-N002"
     ],
     "notPortableIds": [
       "ACIMA-L004",
       "ACIMA-C003",
       "ACIMA-C007",
+      "ACIMA-C008",
       "ACIMA-A002",
       "ACIMA-A004",
-      "ACIMA-G004"
+      "ACIMA-A010",
+      "ACIMA-A011",
+      "ACIMA-A012",
+      "ACIMA-A013",
+      "ACIMA-G004",
+      "ACIMA-N003"
     ]
   },
   "enforcers": {

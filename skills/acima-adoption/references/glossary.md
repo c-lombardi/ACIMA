@@ -15,7 +15,7 @@ boundaries it declares; it does not replace it.
 one: it decides whether the declared boundaries are crossed, not which architecture to choose.
 
 **Architecture mode** — `base` or `service-topology`, selected by `acima.config.json.mode`.
-Base applies P1–P9. Service topology applies P1–P9 plus P10–P13 and supersedes exactly P2.1
+Base applies P1–P9 and P14. Service topology applies P1–P9, P10–P13 and P14 and supersedes exactly P2.1
 (one contracts unit per module) and P3.5 (shared-kernel allowance). The topology manifest is
 evidence, not a selector.
 

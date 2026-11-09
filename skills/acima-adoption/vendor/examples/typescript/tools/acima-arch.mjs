@@ -21,12 +21,20 @@ const CATALOG = {
   'ACIMA-L001': ['error', 'L1'], 'ACIMA-L002': ['error', 'L1'], 'ACIMA-L003': ['error', 'L1'],
   'ACIMA-L004': ['warning', 'L1'],
   'ACIMA-D010': ['error', 'L1'],
+  'ACIMA-D011': ['warning', 'L1'], 'ACIMA-D012': ['warning', 'L1'],
+  'ACIMA-D013': ['warning', 'L1'], 'ACIMA-D014': ['warning', 'L1'],
+  'ACIMA-D015': ['warning', 'L1'], 'ACIMA-D016': ['warning', 'L1'],
+  'ACIMA-A007': ['warning', 'L3'], 'ACIMA-A008': ['warning', 'L3'], 'ACIMA-A009': ['warning', 'L3'],
+  'ACIMA-A010': ['error', 'L3'], 'ACIMA-A011': ['error', 'L3'],
+  'ACIMA-A012': ['error', 'L3'], 'ACIMA-A013': ['warning', 'L3'],
+  'ACIMA-N001': ['warning', 'L3'], 'ACIMA-N002': ['warning', 'L3'], 'ACIMA-N003': ['warning', 'L3'],
   'ACIMA-L005': ['warning', 'L1'], 'ACIMA-L006': ['error', 'L1'], 'ACIMA-L007': ['warning', 'L1'],
   'ACIMA-C001': ['error', 'L2'], 'ACIMA-C002': ['error', 'L2'], 'ACIMA-C003': ['error', 'L2'],
   'ACIMA-C004': ['error', 'L2'], 'ACIMA-C005': ['error', 'L2'], 'ACIMA-C006': ['error', 'L2'],
-  'ACIMA-C007': ['warning', 'L2'],
+  'ACIMA-C007': ['warning', 'L2'], 'ACIMA-C008': ['error', 'L2'],
   'ACIMA-A001': ['error', 'L3'], 'ACIMA-A002': ['warning', 'L3'],
   'ACIMA-A003': ['error', 'L3'], 'ACIMA-A004': ['warning', 'L3'],
+  'ACIMA-A005': ['warning', 'L3'], 'ACIMA-A006': ['warning', 'L3'],
   'ACIMA-G001': ['error', 'L1'], 'ACIMA-G002': ['error', 'L1'],
   'ACIMA-G003': ['warning', 'L2'], 'ACIMA-G004': ['error', 'L2'],
   'ACIMA-G005': ['error', 'L1'], 'ACIMA-G006': ['warning', 'L1'],
@@ -38,6 +46,12 @@ const NOT_EXECUTED = {
   'ACIMA-A002': 'configuration APIs differ per ecosystem',
   'ACIMA-A004': 'version-lock coupling is visible only across published packages',
   'ACIMA-G004': 'an API baseline needs a per-language surface format',
+  'ACIMA-N003': 'semantic naming quality needs human review',
+  'ACIMA-C008': 'business behavior visibility is a semantic contract review',
+  'ACIMA-A010': 'effect ownership and commit boundaries require application and operational review',
+  'ACIMA-A011': 'effect semantics require contract and API review',
+  'ACIMA-A012': 'outcome truthfulness requires failure, retry and cancellation evidence',
+  'ACIMA-A013': 'critical-effect evidence requires audit and telemetry inspection',
 };
 const RANK = { L1: 1, L2: 2, L3: 3 };
 // Third-party governance: the tier rules only execute when externals is declared.
@@ -674,6 +688,615 @@ function vendorTokens(name, entry) {
   return [...tokens].filter((token) => token.length >= 3);
 }
 
+// -- explicit inputs -----------------------------------------------------------
+// D011/D012: a required input must not be concealed by an optional parameter or a default.
+// Scope is the declared behaviour units. Contracts are data with compatibility semantics
+// (C007 and the additive-evolution rules); a default there is a versioning decision, not a
+// concealed dependency. A nullable parameter without a default is required and is not a finding.
+const EXPLICIT_ROLES = new Set(['implementation', 'host', 'adapter', 'port']);
+// Values and configuration: a component receives resolved values; it does not discover them.
+const CONFIG_ROLES = new Set(['implementation', 'adapter']);
+const OPERATIONAL_ROLES = new Set(['implementation', 'adapter']);
+const OPERATIONAL_TOKENS = new Set([
+  'timeout', 'timeouts', 'retry', 'retries', 'limit', 'limits',
+  'threshold', 'thresholds', 'ttl', 'interval', 'intervals', 'batch',
+  'rate', 'rates', 'retention', 'capacity', 'delay', 'quota',
+  'backoff', 'concurrency', 'attempts', 'workers', 'pagesize',
+  'endpoint', 'endpoints', 'url', 'urls', 'uri', 'host', 'hostname',
+  'port', 'queue', 'topic', 'bucket',
+]);
+
+function operationalName(name) {
+  const snake = name.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+  return snake.split(/[^a-z0-9]+/).some((token) => OPERATIONAL_TOKENS.has(token));
+}
+
+function literalAt(source, index) {
+  const rest = source.slice(index);
+  const match = /^(?:\d+(?:\.\d+)?|'[^']*'|"[^"]*"|`[^`]*`)/.exec(rest);
+  if (!match) return null;
+  const after = rest[match[0].length] || '';
+  if (/[A-Za-z0-9_$]/.test(after)) return null;
+  return match[0].slice(0, 80);
+}
+
+// -- composition and injection -------------------------------------------------
+// D013: registration and discovery belong at the composition boundary, but a dynamic scan
+// there hides the graph. D014: constructor/composition-function injection only; a framework
+// may activate a component, but property and field injection still conceal its dependencies.
+// Service-locator calls remain L004's review concern, not a duplicate D014 finding.
+const COMPOSITION_ROLES = new Set(['implementation', 'host', 'adapter']);
+const DYNAMIC_DISCOVERY = [
+  /\bimport\.meta\.glob\s*\(/g,
+  /\brequire\.context\s*\(/g,
+  /\b(?:autodiscover|autoRegister|scanPackages|registerAll)\s*\(/g,
+];
+const PROPERTY_DECORATOR = /^\s*@(?:Inject|inject|Autowired|autowire)\b/;
+const PROPERTY_DECLARATION = /^\s*(?:(?:public|private|protected|readonly|static|declare)\s+)*[A-Za-z_$][\w$]*\s*[!?]?\s*[:(]/;
+
+function checkComposition() {
+  for (const [r, source] of files) {
+    const unit = unitsOf.get(r);
+    const masked = maskSource(source);
+    const lines = source.split('\n');
+    const seen = new Set();
+    if (unit.role === 'host') {
+      for (const pattern of DYNAMIC_DISCOVERY) {
+        pattern.lastIndex = 0;
+        let match;
+        while ((match = pattern.exec(masked)) !== null) {
+          const line = lineOf(masked, match.index);
+          if (seen.has(line)) continue;
+          seen.add(line);
+          add('ACIMA-D013', `${unit.id} discovers components with ${match[0].replace(/\s*\($/, '')}; register and construct each application component explicitly.`,
+            r, line, (lines[line - 1] || '').trim());
+        }
+      }
+    }
+    if (!COMPOSITION_ROLES.has(unit.role)) continue;
+    for (let index = 0; index < lines.length; index++) {
+      if (!PROPERTY_DECORATOR.test(masked.split('\n')[index] || '')) continue;
+      let next = index + 1;
+      while (next < lines.length && (!lines[next].trim() || /^\s*@/.test(lines[next]))) next++;
+      if (next >= lines.length || !PROPERTY_DECLARATION.test(lines[next])) continue;
+      const line = index + 1;
+      if (seen.has(line)) continue;
+      seen.add(line);
+      add('ACIMA-D014', `${unit.id} receives a dependency through property or field injection; declare it in the constructor and supply it from the composition boundary.`,
+        r, line, `${lines[index].trim()} ${lines[next].trim()}`.trim());
+    }
+  }
+}
+
+// -- functional capture ---------------------------------------------------------
+// D015: a closure must not capture an application dependency from a module or enclosing
+// local. A dependency declared by an enclosing *parameter* is the explicit curried form and
+// is allowed. D016: partial application/binding of a dependency belongs at the boundary.
+const FUNCTIONAL_ROLES = new Set(['implementation', 'adapter']);
+const FUNCTIONAL_TOKENS = new Set([
+  'repository', 'repositories', 'repo', 'service', 'services', 'client', 'clients',
+  'gateway', 'gateways', 'adapter', 'adapters', 'logger', 'logging', 'config',
+  'configuration', 'settings', 'store', 'stores', 'database', 'db', 'connection',
+  'connections', 'session', 'provider', 'providers', 'bus', 'queue', 'publisher',
+  'producer', 'consumer', 'auth', 'authorization', 'security', 'clock', 'cache',
+  'registry', 'locator', 'container', 'resource', 'resources',
+]);
+
+function functionalName(name) {
+  const snake = name.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+  return snake.split(/[^a-z0-9]+/).some((token) => FUNCTIONAL_TOKENS.has(token));
+}
+
+function parameterNames(text) {
+  return text.split(',').map((part) => {
+    const cleaned = part.trim().replace(/^\.\.\./, '');
+    const match = /^([A-Za-z_$][\w$]*)/.exec(cleaned);
+    return match ? match[1] : null;
+  }).filter(Boolean);
+}
+
+function localNames(text) {
+  const names = new Set();
+  const pattern = /\b(?:const|let|var|function|class)\s+([A-Za-z_$][\w$]*)/g;
+  let match;
+  while ((match = pattern.exec(text)) !== null) names.add(match[1]);
+  return names;
+}
+
+function expressionEnd(masked, start) {
+  let depth = 0;
+  for (let i = start; i < masked.length; i++) {
+    const ch = masked[i];
+    if ('([{'.includes(ch)) depth++;
+    else if (')]}'.includes(ch)) depth = Math.max(0, depth - 1);
+    else if (depth === 0 && (ch === ';' || ch === '\n')) return i;
+  }
+  return masked.length;
+}
+
+function collectScopes(source) {
+  const masked = maskSource(source);
+  const scopes = [];
+  const arrowPattern = /=>/g;
+  let match;
+  while ((match = arrowPattern.exec(masked)) !== null) {
+    let before = match.index - 1;
+    while (before >= 0 && /\s/.test(masked[before])) before--;
+    let start = before;
+    let params = '';
+    if (masked[before] === ')') {
+      let depth = 0;
+      for (let i = before; i >= 0; i--) {
+        if (masked[i] === ')') depth++;
+        else if (masked[i] === '(') {
+          depth--;
+          if (depth === 0) { start = i; break; }
+        }
+      }
+      params = masked.slice(start + 1, before);
+    } else {
+      const name = /([A-Za-z_$][\w$]*)$/.exec(masked.slice(0, before + 1));
+      if (!name) continue;
+      params = name[1];
+      start = before - params.length + 1;
+    }
+    let bodyStart = match.index + 2;
+    while (bodyStart < masked.length && /\s/.test(masked[bodyStart])) bodyStart++;
+    let bodyEnd = masked[bodyStart] === '{'
+      ? matchingIndex(masked, bodyStart, '{', '}') + 1
+      : expressionEnd(masked, bodyStart);
+    if (bodyEnd <= bodyStart) continue;
+    scopes.push({ start, end: bodyEnd, bodyStart, bodyEnd, params: parameterNames(params) });
+  }
+  const fnPattern = /\bfunction\s+[A-Za-z_$][\w$]*\s*\(([^)]*)\)\s*\{/g;
+  while ((match = fnPattern.exec(masked)) !== null) {
+    const bodyStart = match.index + match[0].length - 1;
+    const bodyEnd = matchingIndex(masked, bodyStart, '{', '}') + 1;
+    if (bodyEnd <= bodyStart) continue;
+    scopes.push({ start: match.index, end: bodyEnd, bodyStart, bodyEnd,
+      params: parameterNames(match[1]) });
+  }
+  return scopes.sort((a, b) => a.start - b.start || a.end - b.end);
+}
+
+function moduleBindingNames(source) {
+  const masked = maskSource(source);
+  const names = new Set();
+  const decl = /\b(?:const|let|var|function|class)\s+([A-Za-z_$][\w$]*)/g;
+  let match;
+  while ((match = decl.exec(masked)) !== null) {
+    if (braceDepth(masked, match.index) === 0) names.add(match[1]);
+  }
+  const imported = /\bimport\s+(?!type\b)([^;]+?)\s+from\s+['"]/g;
+  while ((match = imported.exec(masked)) !== null) {
+    for (const token of match[1].match(/[A-Za-z_$][\w$]*/g) || []) {
+      if (!['import', 'from', 'as'].includes(token)) names.add(token);
+    }
+  }
+  return names;
+}
+
+function checkFunctionalCapture() {
+  for (const [r, source] of files) {
+    const unit = unitsOf.get(r);
+    if (!FUNCTIONAL_ROLES.has(unit.role)) continue;
+    const masked = maskSource(source);
+    const scopes = collectScopes(source);
+    const moduleNames = moduleBindingNames(source);
+    const seen = new Set();
+    for (const scope of scopes) {
+      const body = masked.slice(scope.bodyStart, scope.bodyEnd);
+      const own = new Set([...scope.params, ...localNames(body)]);
+      const ancestors = scopes.filter((candidate) => candidate !== scope
+        && candidate.start < scope.start && candidate.end >= scope.end);
+      const ancestorParams = new Set(ancestors.flatMap((candidate) => candidate.params));
+      const ancestorLocals = new Set(ancestors.flatMap((candidate) =>
+        [...localNames(masked.slice(candidate.bodyStart, candidate.bodyEnd))]));
+      const idPattern = /[A-Za-z_$][\w$]*/g;
+      let match;
+      while ((match = idPattern.exec(body)) !== null) {
+        const name = match[0];
+        if (own.has(name) || !functionalName(name) || ancestorParams.has(name)) continue;
+        const absolute = scope.bodyStart + match.index;
+        const previous = absolute > 0 ? masked[absolute - 1] : '';
+        if (previous === '.') continue;
+        let next = absolute + name.length;
+        while (next < masked.length && /\s/.test(masked[next])) next++;
+        if (masked[next] === ':') continue;
+        if (!ancestorLocals.has(name) && !moduleNames.has(name)) continue;
+        const line = lineOf(masked, absolute);
+        const key = `${line}:${name}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        add('ACIMA-D015', `${unit.id} captures the application dependency ${name} from an enclosing scope; pass it as a parameter or supply it at the composition boundary.`,
+          r, line, (source.split('\n')[line - 1] || '').trim());
+      }
+    }
+  }
+}
+
+function checkPartialApplication() {
+  for (const [r, source] of files) {
+    const unit = unitsOf.get(r);
+    if (!FUNCTIONAL_ROLES.has(unit.role)) continue;
+    const masked = maskSource(source);
+    for (const pattern of [/\bpartial\s*\(/g, /\.bind\s*\(/g]) {
+      pattern.lastIndex = 0;
+      let match;
+      while ((match = pattern.exec(masked)) !== null) {
+        const open = masked.indexOf('(', match.index);
+        const close = matchingIndex(masked, open, '(', ')');
+        if (close < 0) continue;
+        const args = splitTopLevel(source.slice(open + 1, close));
+        const dependency = args.flatMap((arg) => arg.match(/[A-Za-z_$][\w$]*/g) || [])
+          .find((name) => functionalName(name));
+        if (!dependency) continue;
+        const line = lineOf(masked, match.index);
+        add('ACIMA-D016', `${unit.id} partially applies the application dependency ${dependency} inside a component; bind it at the composition boundary or keep it as a parameter.`,
+          r, line, (source.split('\n')[line - 1] || '').trim());
+      }
+    }
+  }
+}
+
+// -- lifecycle and state ownership ---------------------------------------------
+// A007/A008/A009 read explicit host registrations. A mutable field is an ownership question,
+// not proof of a race; resource cleanup and tenant/concurrency policy remain review items.
+const LIFECYCLE_ROLES = new Set(['host']);
+const LIFETIME_ALIASES = new Map([
+  ['singleton', 'shared'], ['shared', 'shared'], ['application', 'shared'],
+  ['process', 'shared'], ['scoped', 'scoped'], ['request', 'scoped'],
+  ['operation', 'transient'], ['transient', 'transient'], ['prototype', 'transient'],
+]);
+const ADD_LIFETIMES = new Map([
+  ['addSingleton', 'shared'], ['addScoped', 'scoped'], ['addTransient', 'transient'],
+]);
+const NAMING_ROLES = new Set(['contracts', 'implementation', 'adapter', 'host', 'port', 'shared-kernel']);
+const GENERIC_TYPE_NAMES = new Set(['Helper', 'Manager', 'Handler', 'Processor', 'Utility',
+  'Service', 'Provider', 'Factory', 'Common', 'Base', 'Default', 'Generic']);
+const GENERIC_TYPE_SUFFIXES = ['Helper', 'Manager', 'Processor', 'Utility', 'Common', 'Default', 'Generic'];
+
+function classBodies() {
+  const result = new Map();
+  for (const [r, source] of files) {
+    const masked = maskSource(source);
+    const pattern = /\bclass\s+([A-Za-z_$][\w$]*)[^{]*\{/g;
+    let match;
+    while ((match = pattern.exec(masked)) !== null) {
+      const open = match.index + match[0].length - 1;
+      const close = matchingIndex(masked, open, '{', '}');
+      if (close < 0) continue;
+      result.set(match[1], { path: r, body: source.slice(open + 1, close), index: match.index });
+    }
+  }
+  return result;
+}
+
+function classStateless(body) {
+  if (/\bthis\./.test(body)) return false;
+  return !/(?:^|\n)\s*(?:(?:private|public|protected|readonly|static|declare|abstract)\s+)*[A-Za-z_$][\w$]*\s*[!?]?\s*[:=]/.test(body);
+}
+
+function classMutable(body) {
+  return /(?:^|\n)\s*(?:(?:private|public|protected|readonly|static|declare|abstract)\s+)*[A-Za-z_$][\w$]*\s*[!?]?\s*=\s*(?:\[|\{|new\s+(?:Map|Set|Array)\b)/.test(body)
+    || /this\.[A-Za-z_$][\w$]*\s*=\s*(?:\[|\{|new\s+(?:Map|Set|Array)\b)/.test(body);
+}
+
+function constructorDependencies(body) {
+  const constructor = /constructor\s*\(([^)]*)\)/.exec(body);
+  if (!constructor) return [];
+  return splitTopLevel(constructor[1]).map((parameter) => {
+    const type = /:\s*([A-Za-z_$][\w$]*)/.exec(parameter);
+    return type ? type[1] : null;
+  }).filter(Boolean);
+}
+
+function lifecycleRegistrations(source) {
+  // Read lifetimes from the original source: maskSource blanks the string literal that names
+  // the lifetime. The masked companion still rejects matches inside comments or strings.
+  const masked = maskSource(source);
+  const found = [];
+  const register = /\bregister\s*\(\s*([A-Za-z_$][\w$]*)\s*,\s*\{[^}]*\blifetime\s*:\s*['"]([\w-]+)['"]/g;
+  let match;
+  while ((match = register.exec(source)) !== null) {
+    if (masked[match.index] !== 'r') continue;
+    const lifetime = LIFETIME_ALIASES.get(match[2].toLowerCase());
+    if (lifetime) found.push({ target: match[1], lifetime, index: match.index });
+  }
+  const add = /\b(addSingleton|addScoped|addTransient)\s*\(\s*([A-Za-z_$][\w$]*)/g;
+  while ((match = add.exec(source)) !== null) {
+    if (masked[match.index] !== 'a') continue;
+    found.push({ target: match[2], lifetime: ADD_LIFETIMES.get(match[1]), index: match.index });
+  }
+  return found;
+}
+
+function checkLifecycle() {
+  const classes = classBodies();
+  for (const [r, source] of files) {
+    const unit = unitsOf.get(r);
+    if (!LIFECYCLE_ROLES.has(unit.role)) continue;
+    const masked = maskSource(source);
+    const lines = source.split('\n');
+    const registrations = lifecycleRegistrations(source);
+    const lifetimes = new Map(registrations.map((item) => [item.target, item.lifetime]));
+    for (const registration of registrations) {
+      const info = classes.get(registration.target);
+      if (!info) continue;
+      const line = lineOf(masked, registration.index);
+      const evidence = (lines[line - 1] || '').trim();
+      if (registration.lifetime === 'transient' && classStateless(info.body)) {
+        add('ACIMA-A007', `${unit.id} registers the stateless service ${registration.target} as transient; share it at the longest appropriate lifetime.`,
+          r, line, evidence);
+      }
+      if (registration.lifetime !== 'shared') continue;
+      if (classMutable(info.body)) {
+        add('ACIMA-A009', `${unit.id} shares ${registration.target}, which owns mutable state; give that state an explicit owner, isolation boundary and concurrency policy.`,
+          r, line, evidence);
+      }
+      for (const dependency of constructorDependencies(info.body)) {
+        if (lifetimes.get(dependency) === 'scoped') {
+          add('ACIMA-A008', `${unit.id} shares ${registration.target}, which captures the scoped dependency ${dependency}; shorten the lifetime or resolve it at the correct scope boundary.`,
+            r, line, evidence);
+        }
+      }
+    }
+  }
+}
+
+function checkNaming() {
+  for (const [r, source] of files) {
+    const unit = unitsOf.get(r);
+    if (!NAMING_ROLES.has(unit.role)) continue;
+    const masked = maskSource(source);
+    const lines = source.split('\n');
+    const pattern = /\b(?:class|interface|type|enum)\s+([A-Za-z_$][\w$]*)/g;
+    let match;
+    while ((match = pattern.exec(masked)) !== null) {
+      const name = match[1];
+      const line = lineOf(masked, match.index);
+      const evidence = (lines[line - 1] || '').trim();
+      if (!/^_?[A-Z][A-Za-z0-9]*$/.test(name)) {
+        add('ACIMA-N001', `${unit.id} declares the type ${name} without the TypeScript PascalCase type-name convention.`,
+          r, line, evidence);
+      }
+      if (GENERIC_TYPE_NAMES.has(name) || GENERIC_TYPE_SUFFIXES.some((suffix) => name.endsWith(suffix))) {
+        add('ACIMA-N002', `${unit.id} names the type ${name} after a generic role; name the responsibility or domain concept instead.`,
+          r, line, evidence);
+      }
+    }
+  }
+}
+
+function checkConfiguration() {
+  for (const [r, source] of files) {
+    const unit = unitsOf.get(r);
+    if (!CONFIG_ROLES.has(unit.role)) continue;
+    const masked = maskSource(source);
+    const pattern = /\b(?:process\.env|import\.meta\.env)\b/g;
+    const seen = new Set();
+    let match;
+    while ((match = pattern.exec(masked)) !== null) {
+      const line = lineOf(masked, match.index);
+      if (seen.has(line)) continue;
+      seen.add(line);
+      const originalLine = source.split('\n')[line - 1] || '';
+      const keyMatch = /(?:process\.env|import\.meta\.env)(?:\.([A-Za-z_$][\w$]*)|\[\s*['"]([^'"]+)['"]\s*\])/.exec(originalLine);
+      const key = keyMatch ? (keyMatch[1] || keyMatch[2]) : '';
+      add('ACIMA-A005', `${unit.id} reads ${key ? `configuration key ${key}` : 'ambient configuration'} from the environment; resolve it at the composition root and pass the value into the component.`,
+        r, line, originalLine.trim());
+    }
+  }
+}
+
+function checkOperationalValues() {
+  const patterns = [
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=\n;]+)?=\s*/g,
+    /\bthis\.([A-Za-z_$][\w$]*)\s*=\s*/g,
+    /\b([A-Za-z_$][\w$]*)\s*:\s*/g,
+    /\b([A-Za-z_$][\w$]*)\s*(?:>=|<=|>|<|===|!==|==|!=)\s*/g,
+  ];
+  for (const [r, source] of files) {
+    const unit = unitsOf.get(r);
+    if (!OPERATIONAL_ROLES.has(unit.role)) continue;
+    const masked = maskSource(source);
+    const lines = source.split('\n');
+    const seen = new Set();
+    for (const pattern of patterns) {
+      pattern.lastIndex = 0;
+      let match;
+      while ((match = pattern.exec(masked)) !== null) {
+        const name = match[1];
+        if (name === name.toUpperCase()) continue;
+        if (!operationalName(name)) continue;
+        const value = literalAt(source, match.index + match[0].length);
+        if (value === null) continue;
+        const line = lineOf(masked, match.index);
+        if (seen.has(line)) continue;
+        seen.add(line);
+        add('ACIMA-A006', `${unit.id} embeds the operational value ${value} in ${name}; name it in its owner or supply it as configuration at the composition root.`,
+          r, line, (lines[line - 1] || '').trim());
+      }
+    }
+  }
+}
+
+function maskSource(source) {
+  let out = '';
+  let quote = null;
+  for (let i = 0; i < source.length; i++) {
+    const ch = source[i];
+    if (quote) {
+      if (ch === '\\') { out += '  '; i++; continue; }
+      if (ch === quote) { quote = null; out += ' '; continue; }
+      out += ch === '\n' ? '\n' : ' ';
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === '`') { quote = ch; out += ' '; continue; }
+    if (ch === '/' && source[i + 1] === '/') {
+      while (i < source.length && source[i] !== '\n') { out += ' '; i++; }
+      out += '\n';
+      continue;
+    }
+    if (ch === '/' && source[i + 1] === '*') {
+      out += '  ';
+      i += 2;
+      while (i < source.length && !(source[i] === '*' && source[i + 1] === '/')) {
+        out += source[i] === '\n' ? '\n' : ' ';
+        i++;
+      }
+      out += '  ';
+      i++;
+      continue;
+    }
+    out += ch;
+  }
+  return out;
+}
+
+function matchingIndex(text, start, open, close) {
+  let depth = 0;
+  for (let i = start; i < text.length; i++) {
+    if (text[i] === open) depth++;
+    else if (text[i] === close) {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+function braceDepth(text, index) {
+  let depth = 0;
+  for (let i = 0; i < index; i++) {
+    if (text[i] === '{') depth++;
+    else if (text[i] === '}') depth = Math.max(0, depth - 1);
+  }
+  return depth;
+}
+
+function splitTopLevel(text) {
+  const parts = [];
+  let current = '';
+  let depth = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '(' || ch === '[' || ch === '{' || (ch === '<' && text[i + 1] !== '=')) depth++;
+    else if (ch === ')' || ch === ']' || ch === '}' || (ch === '>' && text[i - 1] !== '=')) {
+      depth = Math.max(0, depth - 1);
+    }
+    if (ch === ',' && depth === 0) { parts.push(current); current = ''; continue; }
+    current += ch;
+  }
+  if (current.trim()) parts.push(current);
+  return parts.map((part) => part.trim()).filter(Boolean);
+}
+
+function topLevelIndex(text, needle) {
+  let depth = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '(' || ch === '[' || ch === '{' || (ch === '<' && text[i + 1] !== '=')) depth++;
+    else if (ch === ')' || ch === ']' || ch === '}' || (ch === '>' && text[i - 1] !== '=')) {
+      depth = Math.max(0, depth - 1);
+    } else if (ch === needle && depth === 0) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+function topLevelAssignIndex(text) {
+  let depth = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '(' || ch === '[' || ch === '{' || (ch === '<' && text[i + 1] !== '=')) depth++;
+    else if (ch === ')' || ch === ']' || ch === '}' || (ch === '>' && text[i - 1] !== '=')) {
+      depth = Math.max(0, depth - 1);
+    } else if (ch === '=' && depth === 0 && text[i + 1] !== '>'
+      && text[i - 1] !== '=' && text[i - 1] !== '!' && text[i - 1] !== '<' && text[i - 1] !== '>') {
+      return i;
+    }
+  }
+  return -1;
+}
+
+function optionalParameter(param) {
+  const colon = topLevelIndex(param, ':');
+  const question = topLevelIndex(param, '?');
+  const equals = topLevelAssignIndex(param);
+  const optional = equals >= 0 || (question >= 0 && (colon < 0 || question < colon));
+  if (!optional) return null;
+  const cuts = [colon, equals].filter((index) => index >= 0).sort((a, b) => a - b);
+  const head = (cuts.length ? param.slice(0, cuts[0]) : param).trim();
+  const match = /([A-Za-z_$][\w$]*)\s*\??\s*$/.exec(head);
+  return match ? match[1] : null;
+}
+
+function reportOptionalInput(masked, source, rel, unit, kind, label, openIndex) {
+  const close = matchingIndex(masked, openIndex, '(', ')');
+  if (close < 0) return;
+  for (const param of splitTopLevel(masked.slice(openIndex + 1, close))) {
+    const name = optionalParameter(param);
+    if (!name) continue;
+    const offset = masked.indexOf(param, openIndex + 1);
+    const line = lineOf(masked, offset < 0 ? openIndex : offset);
+    const evidence = (source.split(/\r?\n/)[line - 1] || '').trim();
+    if (kind === 'constructor') {
+      add('ACIMA-D011',
+        `${unit.id} constructs with the optional input ${name}; a dependency the component needs must be required at construction.`,
+        rel, line, evidence);
+    } else {
+      add('ACIMA-D012',
+        `${unit.id} lets a caller omit ${name} in ${label}(); if that omission changes behaviour, require the decision at the call site.`,
+        rel, line, evidence);
+    }
+  }
+}
+
+function checkExplicitInputs() {
+  for (const [rel, source] of files) {
+    const unit = unitsOf.get(rel);
+    if (!EXPLICIT_ROLES.has(unit.role)) continue;
+    const masked = maskSource(source);
+    const classPattern = /\bclass\s+[A-Za-z_$][\w$]*[^{]*\{/g;
+    let classMatch;
+    while ((classMatch = classPattern.exec(masked)) !== null) {
+      const bodyStart = classMatch.index + classMatch[0].length - 1;
+      const bodyEnd = matchingIndex(masked, bodyStart, '{', '}');
+      if (bodyEnd < 0) break;
+      const body = masked.slice(bodyStart + 1, bodyEnd);
+      const base = bodyStart + 1;
+      const ctor = /\bconstructor\s*\(/g;
+      let ctorMatch;
+      while ((ctorMatch = ctor.exec(body)) !== null) {
+        if (braceDepth(body, ctorMatch.index) !== 0) continue;
+        reportOptionalInput(masked, source, rel, unit, 'constructor', 'constructor',
+          base + ctorMatch.index + 'constructor'.length);
+      }
+      const method = /(?:^|\n)[ \t]+(?:(?:public|private|protected|static|async|readonly|override|get|set|abstract)\s+)*([A-Za-z_$][\w$]*)\s*\(/g;
+      let methodMatch;
+      while ((methodMatch = method.exec(body)) !== null) {
+        if (methodMatch[1] === 'constructor') continue;
+        if (braceDepth(body, methodMatch.index) !== 0) continue;
+        const open = base + methodMatch.index + methodMatch[0].length - 1;
+        const close = matchingIndex(masked, open, '(', ')');
+        if (close < 0) continue;
+        const after = masked.slice(close + 1, close + 80).trimStart();
+        if (!after.startsWith('{') && !after.startsWith(':')) continue;
+        reportOptionalInput(masked, source, rel, unit, 'method', methodMatch[1], open);
+      }
+      classPattern.lastIndex = bodyEnd;
+    }
+    const fn = /\bfunction\s+([A-Za-z_$][\w$]*)\s*\(/g;
+    let fnMatch;
+    while ((fnMatch = fn.exec(masked)) !== null) {
+      reportOptionalInput(masked, source, rel, unit, 'function', fnMatch[1],
+        fnMatch.index + fnMatch[0].length - 1);
+    }
+  }
+}
+
 function manifestDependencies() {
   const out = [];
   const candidates = manifests.length > 0 ? manifests
@@ -960,6 +1583,14 @@ checkContracts();
 checkLayering();
 checkSql();
 checkStatics();
+checkExplicitInputs();
+checkComposition();
+checkFunctionalCapture();
+checkPartialApplication();
+checkLifecycle();
+checkNaming();
+checkConfiguration();
+checkOperationalValues();
 checkExternals();
 applyWaivers(checkWaivers());
 

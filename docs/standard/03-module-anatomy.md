@@ -30,6 +30,7 @@ Plus, shared by the whole system:
 | Consumer-owned ports (what this module needs) | implementation | contracts |
 | Repositories over infrastructure, clocks, buses | implementation | any shared unit |
 | Cross-boundary value types (Money, ids) | the contract project that needs them, duplicated, or primitives (default); legacy shared kernel | another module's contracts |
+| External effects, transactions, retries, idempotency and recovery | the implementation that owns the affected state and effect | host, contracts, or another module |
 
 The right-hand column is the important one. **Every rule in ACIMA is ultimately a test of this
 table.**
@@ -95,7 +96,7 @@ Python is the honest case: there is no mechanism, only the test. That is precise
 
 A host does four things and nothing else:
 
-1. reads configuration and constructs the modules;
+1. reads and validates configuration, then constructs the modules;
 2. satisfies provided ports with implementations (the object graph);
 3. adapts the outside world to commands/queries (HTTP, messages, CLI, jobs);
 4. starts and stops.
@@ -114,6 +115,23 @@ Rules for hosts:
   invisible to its contracts — which is the same mistake as putting them in a controller.
 - A module MUST NOT reference a host (`D006`). This is what allows one module to be hosted by many
   applications (an API, a worker, a test harness) unchanged.
+- Configuration values are resolved once here and passed in as typed settings. A module MUST NOT read
+  ambient configuration itself (`A005`); operational literals belong to a named owner (`A006`;
+  chapter 14).
+- The host MUST name the application components it registers and construct them explicitly. A scan
+  or convention that selects application-owned components is `D013` unless it is a reviewed,
+  proven exception. Constructor dependencies MUST be supplied, not injected into properties after
+  construction (`D014`; chapter 15).
+- A closure, callback or curried function the module returns MUST declare its application
+  dependencies as parameters or fields; it MUST NOT capture them from module or enclosing-local
+  state (`D015`). Partial application of a dependency belongs at the host (`D016`; chapter 16).
+- The host MUST make each application component's lifetime visible: stateless services shared,
+  scoped dependencies never captured by a shared component, and shared mutable state explicitly
+  owned (`A007`–`A009`; chapter 17). A transient registration is valid only when identity, isolated
+  state, a short-lived resource or an operation boundary requires it.
+- The host MUST NOT open a transaction across modules, perform a module's external effect on its
+  behalf, or decide that a failed effect is safe to retry. It may own a declared delivery policy;
+  otherwise the effect owner is the module that owns the affected state (`A010`–`A012`; chapter 6).
 
 ## 3.6 Adding a module: the checklist
 
@@ -122,6 +140,8 @@ Adding a module is the moment to get all of this right, because afterwards it is
 - [ ] Choose a name that is a **noun in the business's language** (`catalog`, `orders`, `payments`),
       not a technical grouping (`core`, `shared`, `data`, `services`).
 - [ ] Create `<module>.contracts` with zero dependencies.
+- [ ] Name the effects the module owns, and state where retries, duplicate handling, transactions and
+      partial completion are decided (`P15`; chapter 6). Do not defer these decisions to the host.
 - [ ] Create `<module>` implementation, referencing its own contracts **only as a private
       dependency** so it is not transitively exported.
 - [ ] Create `<module>.tests` (behaviour) and add the module to the architecture configuration.

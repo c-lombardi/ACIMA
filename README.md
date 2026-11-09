@@ -57,7 +57,9 @@ independently, and scoped to boundaries rather than internal design. A departure
 waiver, never a silent exception. The full mapping, including what ACIMA does not decide, is in
 [Your architecture, enforced](docs/guides/architecture-families.md).
 
-Five obligations carry the standard: **module ownership**, **explicit contracts**, **dependency isolation**, **data and configuration ownership**, and **controlled composition**. They are expressed as nine principles and a 34-rule catalog — 28 of which the reference enforcers decide from source (five of those in Python and TypeScript only, in this revision), and six of which require recorded human evidence.
+Five obligations carry the standard: **module ownership**, **explicit contracts**, **dependency isolation**, **data and configuration ownership**, and **controlled composition**. They are expressed as eleven base principles and a 53-rule catalog — 41 of which the reference enforcers decide from source (eighteen of those in Python and TypeScript only, in this revision), and twelve of which require recorded human evidence. P15 adds **owned effects**: every externally visible effect has an owner, visible semantics, a truthful outcome and evidence proportionate to its criticality. The obligations are conditional on the design: retries, transactions, idempotency keys and cancellation are required only where the operation's contract makes them applicable.
+
+The catalog also makes **instance lifetime and state ownership** explicit: share stateless services, keep request- and tenant-bound state inside its boundary, never let a longer-lived component retain a shorter-lived one, and give shared mutable state an owner and a concurrency policy. It is not a requirement to register everything as a singleton.
 
 ## How it works
 
@@ -113,16 +115,16 @@ Assessment requires no authorization to modify anything. Adoption does, and merg
 
 | Language | Enforcement | Status |
 |---|---|---|
-| C# / .NET | reference enforcer, 23 of 28 portable rules | implemented; the five third-party tier rules report `executed: false` in this revision |
-| TypeScript | reference enforcer, 28 portable rules | implemented and verified against its own fixtures |
-| Python | reference enforcer, 28 portable rules | implemented and verified against its own fixtures |
-| Go | reference enforcer, 23 of 28 portable rules | implemented; **not verified in this environment** (no Go toolchain) |
+| C# / .NET | reference enforcer, 23 of 41 automated rules | implemented and verified on the clean example and 23-rule gallery; eighteen automated rules (the five tier rules, two explicit-input, two value, two composition, two functional-capture, three lifecycle, and `N001`–`N002`) and the twelve manual rules report `executed: false` |
+| TypeScript | reference enforcer, 41 automated rules | implemented and verified against its own fixtures; twelve manual rules remain unevaluated |
+| Python | reference enforcer, 41 automated rules | implemented and verified against its own fixtures; twelve manual rules remain unevaluated |
+| Go | reference enforcer, 23 of 41 automated rules | implemented and verified on the clean example and 23-rule gallery; eighteen automated and twelve manual rules report `executed: false` |
 | Java | profile documented, no enforcer | not supported: an assessment fails closed rather than reporting clean |
 
 Two limits matter more than the table:
 
 - The enforcers analyse **source and project metadata**, not runtime behaviour. They do not prove isolation, type correctness or framework behaviour.
-- Six rules always require human evidence: `C003`, `C007`, `L004`, `A002`, `A004`, `G004`. A run that reports zero findings has not evaluated them.
+- Twelve rules always require human evidence: `C003`, `C007`, `C008`, `L004`, `A002`, `A004`, `A010`–`A013`, `G004` and `N003`. A run that reports zero findings has not evaluated them.
 
 Independent validation is **incomplete**. The standard has been exercised against its own examples and a small number of external repositories, not against independent evaluators. [`docs/status.md`](docs/status.md) separates verified from proposed capability, and [`docs/product-contract.md`](docs/product-contract.md) lists the release gates and what is still missing.
 
@@ -140,6 +142,7 @@ Independent validation is **incomplete**. The standard has been exercised agains
 | [`docs/start/quickstart.md`](docs/start/quickstart.md) | a guided first hour |
 | [`docs/rules/index.md`](docs/rules/index.md) | every rule, with violation and fix examples |
 | [`docs/languages/index.md`](docs/languages/index.md) | how the rules appear in your language |
+| [`docs/guides/effects-and-atomicity.md`](docs/guides/effects-and-atomicity.md) | who owns an effect, and when retry, duplicate, transaction and cancellation rules apply |
 | [`skills/acima-adoption/SKILL.md`](skills/acima-adoption/SKILL.md) | the agent workflow for assessing and adopting |
 | [`conformance/README.md`](conformance/README.md) | how enforcement is verified |
 

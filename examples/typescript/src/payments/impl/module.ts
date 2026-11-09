@@ -31,7 +31,7 @@ export class FakeGateway implements PaymentGateway {
 export class PaymentsModule {
   private readonly gateway: PaymentGateway;
 
-  constructor(gateway: PaymentGateway = new FakeGateway(1000)) {
+  constructor(gateway: PaymentGateway) {
     this.gateway = gateway;
   }
 

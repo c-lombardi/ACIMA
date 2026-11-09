@@ -1,6 +1,6 @@
 # Dependency rules (`D`) and layering rules (`L`)
 
-Thirteen rules about what may reference what. Full context: [Dependency model](../standard/04-dependency-model.md).
+Fifteen rules about what may reference what, and what a signature may hide. Full context: [Dependency model](../standard/04-dependency-model.md).
 
 ---
 
@@ -454,6 +454,101 @@ Go and .NET report the rule `executed: false` in this revision.
 
 ---
 
+## ACIMA-D011 · Optional construction dependency
+
+**Severity** `warning` → `error` at 2.0.0 · **Level** L1 · **Principle** P4
+
+> An application-owned constructor requires every input the component needs. A parameter a caller
+> may omit is a second construction path with hidden behaviour.
+
+### Violation
+
+```python
+class OrdersModule:
+    def __init__(self, catalog: CatalogReader, clock: Callable[[], datetime] | None = None) -> None:
+        self._catalog = catalog
+        self._clock = clock or (lambda: datetime.now(timezone.utc))   # ❌ two objects in one
+```
+
+### Finding
+
+```
+ACIMA-D011  warning  orders constructs with the optional input clock; a dependency the component
+                     needs must be required at construction.
+  src/orders/impl/module.py:48
+  clock: Callable[[], datetime] | None = None,
+```
+
+### Why
+
+A default in a constructor is a second signature. `OrdersModule(catalog)` and
+`OrdersModule(catalog, clock)` produce objects with different behaviour, and the type, the call site
+and most tests show only one of them. The fallback also invents a value nobody owned: the clock
+policy lives inside the class instead of the composition root, which is exactly what `L004` forbids
+for peers and `A002` forbids for configuration.
+
+### Fix
+
+Require the input and supply it from the composition root. If the behaviour is genuinely optional,
+model the absence: a documented no-op implementation of the port, a policy object, or a required
+value whose type says "none". A nullable parameter **without** a default is allowed — the caller must
+pass `null` explicitly, which is the decision this rule is asking for.
+
+### Detection
+
+Python reads `__init__` with `ast` and flags positional and keyword-only parameters that carry a
+default. TypeScript scans class constructors and flags `?` parameters and initialisers. Contracts are
+out of scope (their optional members are additive evolution, chapter 5 §5.7, and `C007` covers
+one-step construction), as are test, tooling and end-to-end units. Framework-managed construction and
+reflection are not analysed and remain manual review. **Implemented for Python and TypeScript**;
+Go and .NET report the rule `executed: false` in this revision.
+
+---
+
+## ACIMA-D012 · Optional argument hides an operational decision
+
+**Severity** `warning` → `error` at 2.0.0 · **Level** L1 · **Principle** P4
+
+> An application-owned method or function does not use an optional or defaulted parameter to hide a
+> decision its caller should make.
+
+### Violation
+
+```typescript
+createOrder(request: CreateOrderRequest, sendNotification = true) {   // ❌ who decided this?
+```
+
+### Finding
+
+```
+ACIMA-D012  warning  orders lets a caller omit sendNotification in createOrder(); if that omission
+                     changes behaviour, require the decision at the call site.
+  src/orders/impl/module.ts:41
+  createOrder(request: CreateOrderRequest, sendNotification = true) {
+```
+
+### Why
+
+A defaulted flag is a decision the caller did not make and the callee silently made for them. It is
+invisible in review when it is introduced and invisible again at every call site that relies on it.
+When the default is wrong for one caller, the bug is in a signature nobody was looking at.
+
+### Fix
+
+Require the argument; or split the operation into distinct methods; or take an explicit options value
+whose fields are required; or make the decision a policy dependency. Do not build a hierarchy of
+abstractions to avoid one boolean — the requirement is visibility, not ceremony.
+
+### Detection
+
+Python flags defaults on module-level functions and methods (dunders and `@overload` stubs excluded).
+TypeScript flags `function` declarations, class methods and `?`/initialised parameters. Contracts,
+tests and tooling are out of scope; overload resolution and dynamic dispatch are not analysed, so a
+clean run does not prove every call site is explicit. **Implemented for Python and TypeScript**;
+Go and .NET report the rule `executed: false` in this revision.
+
+---
+
 ## ACIMA-L001 · Domain references infrastructure
 
 **Severity** `error` · **Level** L1 · **Principle** P5
@@ -771,3 +866,203 @@ code. When one adapter covers a vendor and a wrapper around it (`monaco-editor` 
 after the shorter package, so the finding points at the vendor rather than its wrapper.
 **Implemented for Python and TypeScript**; Go and .NET report the rule `executed: false` in this
 revision.
+
+---
+
+## ACIMA-D013 · Implicit component registration
+
+**Severity** `warning` → `error` at 2.0.0 · **Level** L1 · **Principle** P4
+
+> Application-owned components MUST be registered and constructed explicitly at the composition
+> boundary. Automatic assembly scanning, convention-based registration and dynamic discovery MUST
+> NOT hide which components exist or which implementation each one uses.
+
+### Violation
+
+```python
+# host/main.py
+import importlib
+import pkgutil
+
+
+def build():
+    for module in pkgutil.walk_packages(["acima"]):
+        importlib.import_module(module.name)
+```
+
+### Finding
+
+```text
+ACIMA-D013  warning  composition host discovers components with pkgutil.walk_packages; register and construct each application component explicitly.
+  host/main.py:7
+```
+
+### Why
+
+The host no longer states which application components exist. A missing package, a renamed module,
+an accidental second implementation or a constructor ambiguity becomes a startup discovery problem
+instead of a reviewable construction expression. The graph exists only in the scanner's runtime
+result, so neither a reader nor a build can answer what the application is made of.
+
+### Fix
+
+Register and construct the component by name. For a framework whose registration syntax is
+constructor-based, name the interface and implementation (`AddScoped<IOrderRepository,
+SqlOrderRepository>()`). If discovery is genuinely required for plugins, declare the loader and its
+input, check in or reproduce the discovered set, and record the reviewed exception.
+
+### Detection
+
+`D013` scans the host unit for dynamic discovery calls: `pkgutil.walk_packages`,
+`pkgutil.iter_modules`, `importlib.import_module`, `__import__`, and explicit
+`autodiscover`/`auto_register`/`scan_packages`/`register_all` calls in Python; `import.meta.glob`,
+`require.context`, `autodiscover`, `autoRegister`, `scanPackages` and `registerAll` in TypeScript.
+It does not flag a framework's own router or infrastructure registration. **Implemented for Python
+and TypeScript**; Go and .NET report `executed: false` in this revision, and Java is manual-review
+only. A framework scan that the detector cannot see is a manual-review item, not a pass.
+
+---
+
+## ACIMA-D014 · Property or field injection
+
+**Severity** `warning` → `error` at 2.0.0 · **Level** L1 · **Principle** P4
+
+> An application-owned component MUST receive its dependencies through its constructor or composition
+> function, not through property/field injection or post-construction assignment.
+
+### Violation
+
+```typescript
+class OrdersService {
+  @Inject('repository')
+  private repository!: OrderRepository; // ❌ the required dependency is not in the constructor
+}
+```
+
+```python
+class OrdersService:
+    repository: Provide[OrderRepository]  # ❌ injected after construction
+```
+
+### Finding
+
+```text
+ACIMA-D014  warning  orders receives a dependency through property or field injection; declare it in the constructor and supply it from the composition boundary.
+  orders/service.ts:2
+```
+
+### Why
+
+A property-injected object is constructible before its required state exists. The type may claim the
+field is present while the framework has not supplied it, tests must reproduce the framework's
+activation, and the dependency is invisible at the construction site. This is `D011`'s problem in a
+different syntax: the object has more than one valid construction path, and one of them is incomplete.
+
+### Fix
+
+Move the dependency to the constructor and let the host supply it. If the framework owns activation,
+keep the application dependency in the declared constructor; framework infrastructure may use its own
+mechanism. Do not replace the injected field with a global lookup — that is `L004`, not a fix.
+
+### Detection
+
+The Python detector reports class-field annotations whose outer name is `Provide`, `Inject` or
+`Autowired`. The TypeScript detector reports `@Inject`/`@inject`/`@Autowired`/`@autowire` decorators
+immediately above a field declaration; constructor parameter decorators are not findings. Both are
+syntax-level candidates: framework-specific field injection, unqualified wrappers and post-construction
+assignment through arbitrary methods remain manual review. **Implemented for Python and TypeScript**;
+Go and .NET report `executed: false` in this revision, and Java is manual-review only.
+
+---
+
+## ACIMA-D015 · Closed-over application dependency
+
+**Severity** `warning` → `error` at 2.0.0 · **Level** L1 · **Principle** P4
+
+> An application component MUST receive an application-owned collaborator through a declared
+> parameter or field. It MUST NOT capture one from a module binding or enclosing local through a
+> closure, returned function or callback.
+
+### Violation
+
+```typescript
+const orderRepository = new SqlOrderRepository(connection);
+
+export const createOrder = (request: CreateOrderRequest) =>
+  orderRepository.save(request);
+```
+
+### Finding
+
+```text
+ACIMA-D015  warning  orders captures the application dependency orderRepository from an enclosing scope; pass it as a parameter or supply it at the composition boundary.
+  orders/service.ts:4
+```
+
+### Why
+
+The signature advertises one input while the function also depends on module state. Tests must
+reconstruct the module, the dependency's lifetime is invisible to the caller, and replacing the
+repository requires editing the file rather than supplying a different value at the boundary.
+Currying is not the problem: a function that captures an explicit outer parameter is allowed.
+
+### Fix
+
+Take the collaborator as a parameter, or move the closure's construction to the composition
+boundary. If the closure is genuinely a pure transformation, remove the application dependency
+from it instead of hiding it.
+
+### Detection
+
+Python compares direct loads in each function/lambda with its parameters and locals, then walks
+enclosing scopes. Module bindings and enclosing locals are captures; enclosing parameters are the
+explicit curried form. TypeScript uses a lightweight function-scope model over arrows and function
+declarations. Both are syntax-level candidates; `getattr`/`globals`, framework callbacks and full
+type resolution remain manual review. **Implemented for Python and TypeScript**; Go and .NET report
+`executed: false`; Java is manual-review only.
+
+---
+
+## ACIMA-D016 · Partial application of an application dependency
+
+**Severity** `warning` → `error` at 2.0.0 · **Level** L1 · **Principle** P4
+
+> Partial application or method binding of an application-owned dependency MUST occur at the
+> composition boundary. A component MUST NOT pre-bind a collaborator into a function it returns.
+
+### Violation
+
+```python
+def make_handler(order_repository):
+    return functools.partial(save_order, order_repository)
+```
+
+```typescript
+export const makeHandler = (repository: IOrderRepository) =>
+  saveOrder.bind(null, repository);
+```
+
+### Finding
+
+```text
+ACIMA-D016  warning  orders partially applies the application dependency repository inside a component; bind it at the composition boundary or keep it as a parameter.
+  orders/service.ts:2
+```
+
+### Why
+
+The returned function looks like it takes only a request, but it also depends on a repository that
+was fixed inside the component. The binding site is a hidden part of the component's contract. At the
+host, the same `partial`/`bind` is visible application wiring and is allowed.
+
+### Fix
+
+Move the partial application to the composition boundary, or return a function that keeps the
+dependency as a parameter. Pure partially applied values (`partial(multiply, 2)`) are not findings.
+
+### Detection
+
+Python reports `partial`/`functools.partial` in implementation or adapter units when an argument
+names a dependency. TypeScript reports `partial(...)` and `.bind(...)` in those units under the same
+condition. Host composition is excluded. **Implemented for Python and TypeScript**; Go and .NET
+report `executed: false`; Java is manual-review only.

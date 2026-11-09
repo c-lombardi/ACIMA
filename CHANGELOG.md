@@ -4,6 +4,505 @@ All normative changes to the ACIMA standard. The machine-readable catalog is
 [`tools/acima-spec/rules.json`](tools/acima-spec/rules.json); this file explains *why* it changed and
 what an adopting repository has to do about it.
 
+## 1.8.0-draft.1 — owned effects, retries, transactions and truthful outcomes
+
+**Version change:** MINOR. `1.7.0-draft.1` → `1.8.0-draft.1`. Five manual rules added; no rule removed,
+renumbered or weakened. The catalog total goes from 48 to 53. Automated rules stay at 41; manual
+rules go from 7 to 12. There is no new automated rule, profile or conformance level.
+
+### Why
+
+ACIMA could describe who owned data, configuration, contracts and dependencies, but not who owned a
+side effect. A host could open a transaction across two modules, a read-shaped method could write an
+audit record, a retry could duplicate a charge, and a timeout could be reported as a clean failure —
+and every structural rule could still pass. Adding nine universal rules would have made the standard
+more prescriptive without making it more correct. This release instead adds a thin principle, one
+extension to P1, five manual rules and a conditional applicability model.
+
+### Added normative requirements
+
+| Requirement | Rule | Level | Automation |
+|---|---|---|---|
+| Business behaviour must be visible at a boundary operation | `ACIMA-C008` | L2 | manual |
+| Every externally visible effect has an owner and execution boundary | `ACIMA-A010` | L3 | manual |
+| The effect owner must state retry, duplicate, consistency, partial-completion and cancellation semantics where they apply | `ACIMA-A011` | L3 | manual |
+| The effect owner must report success, failure, unknown and partial outcomes truthfully | `ACIMA-A012` | L3 | manual |
+| A critical effect must have evidence proportionate to its failure impact | `ACIMA-A013` | L3, warning | manual |
+
+P1.7 covers business-behaviour visibility. P15 Owned Effects covers the effect obligations, extending
+P1, P7 and P8 without replacing them. Chapter 6 adds §6.2.1 retry ownership, §6.3.1 idempotency and
+duplicate execution, §6.5.1 transaction ownership, §6.5.2 atomicity and recovery, and §6.9
+cancellation and partial completion. Chapter 5 adds effect and outcome semantics to contract review.
+
+### Deliberately conditional
+
+This release does **not** require universal retries, idempotency keys, transactions, atomicity,
+cancellation parameters or recovery evidence. Each obligation is triggered by the design:
+
+- retry rules apply when retry behaviour exists or is part of the operation's execution contract;
+- duplicate handling applies when duplicate execution is possible and could affect correctness;
+- transaction and atomicity rules apply when the consistency contract needs them;
+- cancellation applies where the environment supports it and the operation is long-running or
+  externally cancellable;
+- evidence applies in proportion to the effect's criticality.
+
+"Not applicable" is a reviewable outcome; it is not a violation, and it is not silently treated as
+a pass. ACIMA still does not mandate pure functional programming, universal immutability, a
+particular application-service pattern, a logging or transaction framework, distributed locks or
+global transactions.
+
+### Enforcement classification
+
+All five rules are `automation: "manual"` in every profile. The portable enforcers report them
+`executed: false` with a reason and emit no fabricated findings. There are no gallery fixtures,
+because a fixture would only prove that a heuristic fires, not that ownership or outcome
+correctness was established. A full claim needs a repository-scoped entry in
+`.acima/manual-evidence.json`; a waiver cannot substitute for the evidence.
+
+The Python and TypeScript execution maps now contain all 53 rules, with 12 `executed: false`. The
+Go and .NET maps carry the same catalog entries and coverage adds the five IDs to their 30
+not-executed rules. Java remains profile-only, with no enforcer.
+
+### Documentation and adoption
+
+The normative chapters, vocabulary, conformance checklist, catalog pages, language index, status and
+product contract are updated. A new guide, `docs/guides/effects-and-atomicity.md`, explains the
+ownership question, the conditional matrix, retry/duplicate behaviour, transaction and recovery
+choices, truthful outcomes, cancellation and evidence. The adoption skill is **1.16.0**, pins the new
+catalog hash and teaches the reviewer to separate confirmed defects, suspected defects and
+insufficient evidence. Its manual-evidence template now names all twelve rules.
+
+### Verification
+
+Executed in this change:
+
+- `python examples/python/tools/acima_arch.py --root examples/python --config acima.config.json
+  --format json` — exit `0`, zero findings, 53 execution entries, 12 `executed: false`, 27 source files.
+- `node examples/typescript/tools/acima-arch.mjs --root examples/typescript --config
+  acima.config.json --format json` — exit `0`, zero findings, 53 execution entries, 12
+  `executed: false`, 12 source files.
+- `py -3 conformance/run.py` — topology, Python, TypeScript, Go, .NET and the tools tests all
+  pass. Gallery results: Python 41 rules / 54 findings, TypeScript 41 / 53, Go 23 / 34,
+  .NET 23 / 37. Each clean example reports 53 execution entries with 30 `executed: false`
+  (18 automated gaps plus 12 manual rules).
+- Go and .NET were executed against this host's installed toolchains (`go1.27.3`, .NET SDK
+  11.0.100-rc.3). The Go gallery exposed a Windows-only path-separator defect: `byDir` used
+  `filepath.Dir` (backslashes) while import resolution produced slash paths, hiding every
+  cross-unit edge. The key is now normalized with `filepath.ToSlash`; the gallery matches all
+  23 expected rules.
+- The Windows runner also exposed a test bug in `test_package_matching.py`: it asserted that
+  no finding could mention `Grpc.Tools`, although the expected `D004` finding names that
+  package. The assertion is now scoped to the package-derived `D002`/`D008` edges it was
+  meant to protect.
+- All 26 directly executable conformance test files pass; the catalog, claim, documentation,
+  skill bundle, composition, explicit inputs, functional capture, lifecycle, naming, values
+  and adoption-safety tests were exercised individually.
+- `py -3 tools/bundle_skill.py --check` — 43 vendored files match their sources.
+- `py -3 skills/acima-adoption/scripts/preflight.py --project . --deep --format text` —
+  `READY`; all four language examples are clean, the catalog hash and counts match the skill
+  pin, and the manual IDs are checked against the catalog.
+
+Java remains profile-only, with no reference enforcer. The twelve manual rules are not executed
+by any reference enforcer; they require repository-scoped evidence. Source-level analysis still
+does not prove runtime isolation, framework behavior or semantic correctness. These limitations
+are reported in `docs/status.md` and the final implementation report.
+
+## 1.7.0-draft.1 — intent-revealing naming and semantic clarity
+
+**Version change:** MINOR. `1.6.0-draft.1` → `1.7.0-draft.1`. Three rules added; no rule removed,
+renumbered or weakened. The catalog total goes from 45 to 48 and the portable set from 39 to 41.
+
+### Why
+
+A dependency graph and contract surface can be correct while the names on it conceal the design.
+`OrderHelper`, `ProcessOrderData` and `timeout` satisfy casing rules and still force a reader into
+the implementation to learn what owns a responsibility, what a method changes, and what a number
+measures. Formatting consistency is not semantic clarity.
+
+This release makes naming intent a first-class architectural obligation. It does **not** define a
+universal casing guide, and it does **not** claim that static analysis can prove a name is good.
+Names must communicate responsibility, operation and outcome, meaningful values and units,
+side effects, domain terms and architectural ownership in the conventions of the target language.
+
+### Added rules
+
+- **`ACIMA-N001` — Non-idiomatic type identifier.** L3, `warning`. Python class names use
+  `PascalCase`; TypeScript `class`, `interface`, `type` and `enum` names use `PascalCase`. The finding
+  is a convention candidate, not proof that the name communicates intent.
+- **`ACIMA-N002` — Generic responsibility name.** L3, `warning`. A type declaration whose name is an
+  exact placeholder (`Helper`, `Manager`, `Processor`, `Utility`, `Common`, `Base`, `Default`,
+  `Generic`, `Handler`, `Service`, `Provider`, `Factory`) or carries a generic suffix is a candidate
+  for review. A precise name inside a narrow abstraction is not automatically a defect.
+- **`ACIMA-N003` — Semantic naming clarity review.** L3, `warning`, **manual**. Responsibility,
+  side-effect transparency, boolean polarity, units, unexplained abbreviations, domain terminology,
+  contextual clarity and lifecycle/version names that encode incidental history.
+
+All three are `warning`; there is no severity ratchet. A rename is not a mechanical fix, and a
+subjective preference must never be reported as a proven violation.
+
+### Decision model and scope
+
+Chapter 18 separates naming **syntax** from naming **quality**. Construct-specific expectations cover
+types, interfaces, operations, booleans, constants, variables, parameters, collections, enums,
+events, commands, queries and exceptions. The chapter also defines responsibility and side-effect
+transparency, positive boolean naming, units, abbreviations, domain consistency, contextual
+redundancy, boundary names, generated/legacy exceptions, implementation identity versus lifecycle
+history, and the language-specific profiles.
+
+Existing requirements are reused rather than duplicated: `A006` remains the explicit values and
+configuration rule, `C002` the collection shape rule, `D009` visibility, and `A007`–`A009` lifecycle
+and state ownership. Naming must not add a second, conflicting owner for those concerns.
+
+### Scope and enforcement
+
+- **Python** checks class declarations for `PascalCase` and generic class names.
+- **TypeScript** checks `class`, `interface`, `type` and `enum` declarations for `PascalCase` and
+  generic type names.
+- Both are syntax-level **candidates**. They do not evaluate method behavior, variable meaning,
+  domain terminology, units, boolean polarity or side effects.
+- **Go, .NET and Java** carry the catalog entries and report the naming rules `executed: false`;
+  Java has no reference enforcer. Those profiles require recorded manual evidence.
+- `N003` is manual everywhere. A clean run does not establish semantic naming quality.
+
+### Documentation and fixtures
+
+Chapter 18 and P14 define the normative principle and requirements. `docs/rules/naming.md` defines
+the three rules; chapters 1, 8, 9 and all five language profiles were updated. Controlled violations
+live in `examples/{python,typescript}/violations/naming_conventions.*`; positive fixtures live in
+`conformance/fixtures/naming/` and cover idiomatic types, a focused responsibility, a positive
+boolean and unit-bearing names. `conformance/test_naming.py` exercises both galleries and both
+fixtures. The skill is **1.15.0** with the new hash and 48/41 counts.
+
+### Verification
+
+`conformance/run.py python typescript topology tools` and `conformance/test_naming.py` pass; the
+Python and TypeScript galleries fire all 41 portable rules. Go and .NET remain unverified because
+their toolchains are absent. No static evidence establishes semantic naming quality, side-effect
+clarity or domain consistency; those remain manual-review obligations.
+
+## 1.6.0-draft.1 — lifecycle and state ownership
+
+**Version change:** MINOR. `1.5.0-draft.1` → `1.6.0-draft.1`. Three rules added; no rule removed,
+renumbered or weakened. The catalog total goes from 42 to 45 and the portable set from 36 to 39.
+
+### Why
+
+A repository could satisfy import, contract, configuration and even composition rules while leaving
+instance lifetime implicit. A stateless service was rebuilt for every request because transient was
+the container default; a singleton kept the first request's context; a shared cache had no owner,
+key space or eviction policy. The dependency graph looked correct while the runtime graph was not.
+
+This release makes lifetime and state ownership architectural obligations. It does **not** require
+singleton registration. The governing rule is the longest appropriate lifecycle that preserves
+correctness, isolation, concurrency safety and resource ownership. Transient remains valid for
+independent identity, isolated mutable state, short-lived resources and operation scope.
+
+### Added rules
+
+- **`ACIMA-A007` — Unnecessary transient lifetime.** L3, `warning`, ratcheting to `error` at
+  `2.0.0`. A stateless application service registered transient should be shared at the longest
+  appropriate lifetime. Domain objects, value objects and unregistered classes are not evaluated.
+- **`ACIMA-A008` — Captive scoped dependency.** L3, `warning`, ratcheting to `error` at `2.0.0`. A
+  shared/singleton component must not directly capture a scoped dependency. The correction is a
+  shorter consumer lifetime, an operation parameter or an explicit factory — not a service locator.
+- **`ACIMA-A009` — Shared mutable state without ownership.** L3, `warning`, ratcheting to `error` at
+  `2.0.0`. A shared component must not own a mutable container without an explicit owner, isolation
+  boundary, concurrency policy and disposal or expiration rule.
+
+### Decision model and scope
+
+Chapter 17 defines a framework-independent model: stateless and thread-safe → shared; request- or
+transaction-bound → scoped; tenant-bound → explicit tenant-owned lifecycle; independent identity →
+transient; resource-owning → lifecycle appropriate to the resource; shared mutable state → explicit
+ownership. R1–R7 cover sharing, justification, behaviour/state separation, ownership, cross-scope
+leakage, lifetime compatibility and resource ownership.
+
+A singleton is process-local. The release does not introduce distributed locking, cluster-wide
+coordination or a central state store, and does not treat in-memory sharing as globally consistent.
+
+### Scope and enforcement
+
+- **Python** reads explicit host registrations (`register(... lifetime=...)`,
+  `add_singleton`/`add_scoped`/`add_transient`). `A007` detects a transient class with no instance
+  state; `A008` detects a shared class whose constructor annotation names a scoped registration;
+  `A009` detects a shared class initialising a list/dict/set or container field.
+- **TypeScript** reads `register(Class, { lifetime })` and `addSingleton`/`addScoped`/`addTransient`,
+  using the same class-body and constructor-dependency checks.
+- Both are syntax-level **candidates**. They do not resolve a container, decorators, module-level
+  singletons, factory closures, framework proxies or runtime graphs, and they do **not** prove thread
+  safety, tenant isolation or resource cleanup.
+- **Go and .NET** carry the catalog entries and report `executed: false`; **Java** has no reference
+  enforcer. Those profiles require recorded manual evidence.
+- Legitimate transient domain objects, immutable objects, framework-required lifetimes, correctly
+  scoped services, synchronised shared state and properly managed resources remain permitted.
+
+### Documentation and fixtures
+
+Chapter 17 defines the model, the captive-dependency and tenant-isolation analysis, resource
+ownership, distributed limits, language profiles, exceptions and enforcement limits. P4.13–P4.15
+were added; chapters 3, 6, 8, 9, all five language profiles and the rule pages were updated.
+
+Controlled violations live in `examples/{python,typescript}/violations/lifecycle_registration.*`;
+positive fixtures live in `conformance/fixtures/lifecycle/` and cover a shared stateless service, a
+legitimate transient value, correctly scoped context and an explicitly owned cache. The gallery and
+positive fixtures are exercised by `conformance/test_lifecycle_ownership.py`. The skill is
+**1.14.0** with the new hash and 45/39 counts.
+
+### Verification
+
+`conformance/run.py python typescript topology tools` and the lifecycle test pass; the Python and
+TypeScript galleries fire all 39 portable rules. Go and .NET remain unverified because their
+toolchains are absent. No static evidence establishes thread safety, tenant isolation, resource
+cleanup or the runtime container graph; those remain manual-review obligations.
+
+## 1.5.0-draft.1 — functional composition and dependency visibility
+
+**Version change:** MINOR. `1.4.0-draft.1` → `1.5.0-draft.1`. Two rules added; no rule removed,
+renumbered or weakened. The catalog total goes from 40 to 42 and the portable set from 34 to 36.
+
+### Why
+
+A function could satisfy constructor injection and still capture a repository from module scope, or
+return a handler with a dependency pre-bound inside the component. The signature looked complete;
+the dependency graph was not. This release extends Total Visibility through closures, callbacks,
+currying, partial application and higher-order functions without banning functional programming.
+
+### Added rules
+
+- **`ACIMA-D015` — Closed-over application dependency.** L1, `warning`, ratcheting to `error` at
+  `2.0.0`. A closure, lambda or returned function must not capture an application dependency from a
+  module binding or enclosing local. An enclosing parameter is the explicit curried form and is
+  allowed; pure closures are untouched.
+- **`ACIMA-D016` — Partial application of an application dependency.** L1, `warning`, ratcheting to
+  `error` at `2.0.0`. Pre-binding a collaborator with `partial`/`bind` inside a component is
+  forbidden; the binding belongs at the composition boundary. Pure partial application is allowed.
+
+### Scope and enforcement
+
+- **Python** uses AST scope comparison: direct loads versus parameters/locals, then enclosing scopes.
+  Module bindings and enclosing locals are `D015`; `functools.partial` in an implementation/adapter
+  is `D016` when an argument names a dependency.
+- **TypeScript** builds a lightweight function-scope model over arrows and function declarations;
+  module/enclosing-local captures are `D015`; `partial(...)`/`.bind(...)` in an implementation or
+  adapter with a dependency argument is `D016`.
+- Both are candidates, not a type checker or runtime graph proof. Dynamic dispatch, generated
+  closures, framework callbacks and unsupported profiles remain manual evidence.
+- **Go and .NET** carry the catalog entries and report `executed: false`; **Java** has no enforcer.
+- Currying with every dependency as a parameter is compliant. A framework-managed callback may close
+  over a dependency only when the registration site is the composition boundary and the dependency
+  is named there.
+
+### Documentation and fixtures
+
+Chapter 16 defines the lifecycle, closure/callback rules, legal currying, partial application at the
+host, pure HOFs, language profiles, exceptions and limits. P4.11/P4.12 were added; chapters 3, 6, 8,
+9 and all five language profiles were updated. Positive fixtures cover explicit currying and pure
+HOFs; controlled violations cover closure capture and component-internal binding. The skill is
+**1.13.0** with the new hash and 42/36 counts.
+
+### Verification
+
+`conformance/run.py python typescript topology tools` passes; Python and TypeScript galleries fire
+all 36 portable rules. Go and .NET remain unverified because their toolchains are absent.
+
+## 1.4.0-draft.1 — explicit composition and injection
+
+**Version change:** MINOR. `1.3.0-draft.1` → `1.4.0-draft.1`. Two rules added; no rule removed,
+renumbered or weakened. The catalog total goes from 38 to 40 and the portable set from 32 to 34.
+
+### Why
+
+A repository could satisfy every import, contract and configuration rule and still leave its object
+graph to assembly scanning, convention registration or property injection. The code looked modular,
+but no one could inspect the composition boundary and answer which components existed, which
+implementation was selected, or what each component received. This release makes construction part
+of the architecture standard.
+
+### Added rules
+
+- **`ACIMA-D013` — Implicit component registration.** L1, `warning`, ratcheting to `error` at
+  `2.0.0`. An application-owned component must be registered and constructed explicitly at the
+  composition boundary. Assembly scans, convention registration and dynamic discovery must not hide
+  the graph.
+- **`ACIMA-D014` — Property or field injection.** L1, `warning`, ratcheting to `error` at `2.0.0`.
+  Dependencies must arrive through the constructor or composition function, not through property or
+  field injection or post-construction assignment.
+
+`L004` remains the rule for service-locator/global-provider resolution. The new rules do not replace
+it or duplicate its findings: `D013` is about who chooses the components, `D014` is about how a chosen
+component receives its dependencies, and `L004` is about resolving a peer from a locator at all.
+
+### Scope and enforcement
+
+- **Python** detects host scans (`pkgutil.walk_packages`, `pkgutil.iter_modules`,
+  `importlib.import_module`, `__import__`, explicit autodiscovery calls) as `D013`, and class-field
+  `Provide[...]`/`Inject[...]`/`Autowired[...]` annotations as `D014`.
+- **TypeScript** detects `import.meta.glob`, `require.context` and explicit discovery calls as
+  `D013`, and field decorators such as `@Inject` as `D014`. Constructor parameter decorators are not
+  findings; the dependency is still declared at construction.
+- Both detectors are candidates, not proof of the runtime graph. Missing registrations, a framework's
+  activation contract, generated components and container behaviour remain manual-review items.
+- **Go and .NET** carry both catalog entries and report `executed: false` with reasons. **Java** has no
+  enforcer; both rules are manual-review requirements.
+- Framework-managed controllers and handlers are explicitly legitimate. ACIMA requires their
+  application-owned dependencies to be declared in the constructor and their implementations to be
+  registered; it does not require manual instantiation of framework objects.
+
+### Documentation and fixtures
+
+Chapter 15 defines the composition boundary, explicit registration, explicit construction, entry
+points, forbidden acquisition paths, language profiles, generality, exceptions and enforcement
+limits. P4.9/P4.10 were added, chapter 3, 6 and 8 were updated, and all five language profiles now
+describe their composition convention. `docs/rules/dependency.md` has the rule pages. Positive
+fixtures and controlled violations cover both languages, and the skill is updated to **1.12.0** with
+the new catalog hash and 40-rule/34-portable counts.
+
+### Migration
+
+Start at the host: replace scans and conventions that select application components with explicit
+registrations. Then move application dependencies from properties/fields to constructors. Keep
+framework infrastructure registration as it is. If discovery is genuinely required, record an owned,
+scoped, expiring exception and a reproducible discovered set; do not call a container a composition
+boundary merely because it starts successfully.
+
+### Verification
+
+`python3 conformance/run.py python typescript topology tools` passes; the galleries fire both rules
+at the checked-in paths, and the positive fixtures are clean. Go and .NET remain unverified here
+because their toolchains are unavailable.
+
+## 1.3.0-draft.1 — values, constants and configuration ownership
+
+**Version change:** MINOR. `1.2.0-draft.1` → `1.3.0-draft.1`. Two rules added; no rule removed,
+renumbered or weakened. The catalog total goes from 36 to 38 and the portable set from 30 to 32.
+
+### Why
+
+ACIMA already said a module owns its configuration namespace (`A002`, `P7.2`) and that a module must
+receive its dependencies rather than discover them (`P4.1`, `L004`). It did not say where a meaningful
+value comes from. A timeout could be `30` inside a method, a retry count could be three different
+literals in three modules, and an implementation could read `os.environ` directly while still passing
+the dependency and contract rules. The architecture was explicit at the boundary and silent inside
+the operation.
+
+1.3 makes the value itself reviewable: who owns it, what it means, whether it is fixed, configurable,
+per-deployment or secret, and whether a change needs a deployment. It does not require every literal
+to become a constant, and it does not require every value to become runtime-adjustable.
+
+### Added
+
+| Rule | Title | Severity now | Severity at 2.0.0 | Level |
+|---|---|---|---|---|
+| `A005` | Configuration read outside the composition boundary | `warning` | `error` | L3 |
+| `A006` | Operational value without a declared owner | `warning` | `error` | L3 |
+
+Both ship as `warning` with `severityRatchet: { "to": "error", "at": "2.0.0" }`, following the same
+release pattern as the 1.1 tier rules and the 1.2 explicit-input rules.
+
+### Scope, deliberately
+
+- **Meaningful, not every literal.** `A006` reports numeric and string literals bound to operational
+  names — timeouts, retries, limits, rates, batches, retention, endpoints and similar. Loop indices,
+  trivial operands and obvious structural values remain local.
+- **Named constants are allowed.** An uppercase module constant is an owner, not a finding. The rule
+  asks for a name and a classification; it does not demand configuration injection for fixed policy.
+- **The host is the composition boundary.** `A005` scans `implementation` and `adapter` units. A host
+  may read the environment, validate it and pass typed settings in; a module may not.
+- **Text is not meaning.** Two identical literals with different policies remain two values. Static
+  analysis cannot infer semantic equivalence, so `A006` reports candidates and requires review.
+- **Contracts are data.** Optional contract members remain governed by `C007` and the additive
+  evolution rules. A public library may retain a documented optional parameter for compatibility;
+  application-owned required inputs remain governed by `D011`/`D012`.
+- **Runtime configurability is not free.** When a value is runtime-adjustable, chapter 14 §14.5
+  requires validation, audit, propagation, refresh, rollback and failure behaviour. A global file
+  edit does not change a running process by itself.
+
+### Language support
+
+- **Python** detects `os.environ`/`os.getenv` in components (`A005`) and operational literal
+  assignments, keyword arguments and comparisons (`A006`) with the AST.
+- **TypeScript** scans `process.env`/`import.meta.env` and operational assignments/properties
+  (`A005`, `A006`). Defaults remain `D012`'s concern; destructuring defaults and string contents are
+  review items.
+- **Go and .NET** carry the catalog entries and report both rules `executed: false` with a reason;
+  they require manual evidence. Their toolchains were not available in this environment.
+- **Java** is a documented profile with no enforcer; the rules are manual-review requirements.
+
+### Added elsewhere
+
+- Chapter 14 (values, constants and configuration) and P4.7/P4.8.
+- Rule pages for `A005` and `A006`, vocabulary for configuration category and operational value.
+- Python/TypeScript positive and violation fixtures, a conformance contract test, and gallery
+  coverage for both rules.
+- Adoption-skill guidance that reports candidates instead of externalizing every literal.
+
+## 1.2.0-draft.1 — explicit required inputs
+
+**Version change:** MINOR. `1.1.0-draft.1` → `1.2.0-draft.1`. Two rules added; no rule removed,
+renumbered or weakened. The catalog total goes from 34 to 36 and the portable set from 28 to 30.
+
+### Why
+
+ACIMA already said a module must declare its dependencies (`P4.1`, `L004`) and that contracts must be
+constructible with obvious state (`C007`). It did not say that the declaration has to be complete. A
+constructor could take `payments = null`, build a fallback inside the class, and pass every rule:
+the dependency existed, the object worked, and no call site showed which of two objects the system
+was running. The same hole existed on the invocation side: `sendOrderEmail(request, true)` and
+`sendOrderEmail(request)` are different operations with the same name.
+
+Defaults are not the problem; ownership is. A literal in a signature is a decision nobody owns, and
+an omitted argument is a decision nobody made. 1.2 makes both visible.
+
+### Added
+
+| Rule | Title | Severity now | Severity at 2.0.0 | Level |
+|---|---|---|---|---|
+| `D011` | Optional construction dependency | `warning` | `error` | L1 |
+| `D012` | Optional argument hides an operational decision | `warning` | `error` | L1 |
+
+Both ship as `warning` with `severityRatchet: { "to": "error", "at": "2.0.0" }`, for the same reason
+as the 1.1 tier rules: existing repositories need a release to make the inputs required before the
+gate blocks. The obligations themselves are normative now (chapter 13, `P4.6`).
+
+### Scope, deliberately
+
+- **Constructors** (`D011`): every application-owned constructor requires its dependencies, and the
+  composition root supplies them. A nullable dependency **without** a default is required and legal;
+  the caller must choose `null` explicitly. That distinction is the centre of the chapter.
+- **Invocation** (`D012`): methods and functions must not hide a caller decision behind a default.
+  Require the argument, split the operation, take an explicit options value, or take a policy.
+- **Contracts are out of scope.** An optional contract member is additive evolution under §5.7 and
+  is already governed by `C007`; treating it as a hidden dependency would punish compatible change.
+  Test, tooling and end-to-end units are excluded because a fixture's convenience is not production
+  behaviour. Both exclusions are documented in §13.7 and in the rules' detection notes.
+
+### Migration
+
+1. **Read the findings.** `D011`/`D012` name the parameter and the file. They are `warning`s at 1.x,
+   so the gate does not block yet.
+2. **Decide per parameter.** Required → make it required and pass it from the composition root. Genuinely
+   optional → model it (policy, documented no-op port implementation) or record an owned waiver.
+3. **Update the tests.** The test graph must construct the same objects production does; a test that
+   relied on the fallback was testing the wrong object.
+4. **Keep the composition root explicit.** A default that moved into the host as a literal is not fixed;
+   give it a named owner (configuration, constant or policy).
+
+### Language scope
+
+`D011` and `D012` are implemented by the **Python** (AST) and **TypeScript** (signature scan)
+reference enforcers, with gallery fixtures in `examples/*/violations/` and positive fixtures under
+`conformance/fixtures/explicit-inputs/`. The **Go** and **.NET** enforcers name both rules and report
+them `executed: false`; a full claim needs manual evidence for them. As with 1.1, this is scoped
+honesty, not universal enforcement.
+
+### Artefacts updated in this change
+
+`tools/acima-spec/rules.json` (two rules, version), chapter 13 (new), chapter 5 §5.4 and chapter 8
+§8.3, `docs/rules/{index,dependency,README}.md`, `docs/standard/{01,02}.md`, the Python and TypeScript
+enforcers and their galleries, `conformance/{coverage.json,test_explicit_inputs.py}`, the new positive
+fixtures, `tools/acima.py` (`LANGUAGE_GAPS`), `docs/status.md`, `docs/product-contract.md`, and the
+regenerated adoption skill bundle.
+
 ## 1.1.0-draft.1 — third-party library governance
 
 **Version change:** MINOR. `1.0.0-draft.1` → `1.1.0-draft.1`. Five rules added; no rule removed,

@@ -1,8 +1,9 @@
 # Architecture tests
 
 An architecture test is the mechanism that turns ACIMA from prose into a build step. It has
-one job: read the source tree, classify every file into a unit, evaluate the portable rules,
-and fail the build when a rule is broken and not waived.
+one job: read the source tree, classify every file into a unit, evaluate the automated rules,
+and fail the build when a rule is broken and not waived. Automated success does not decide the
+twelve manual rules; the report must say so.
 
 This guide covers the contract every enforcer implements, how to wire it into CI, and how to
 keep the violation gallery trustworthy.
@@ -132,9 +133,13 @@ regenerate blindly: the diff is the review.
 
 | Level | Name | Rules evaluated |
 | --- | --- | --- |
-| `L1` | Structural | Dependency, layering and governance rules (`D`, `L`, `G001`, `G002`, `G005`) |
-| `L2` | Immutable | `L1` plus contract-shape rules (`C001`, `C002`, `C004`, `C005`, `C006`, `G003`) |
-| `L3` | Autonomous | `L2` plus autonomy rules (`A001`, `A003`) |
+| `L1` | Structural | Dependency, layering and governance rules (`D001`–`D016`, `L001`–`L007`, `G001`, `G002`, `G005`, `G006`) |
+| `L2` | Immutable | `L1` plus contract-shape rules (`C001`–`C008`, `G003`, `G004`) |
+| `L3` | Autonomous | `L2` plus autonomy, lifecycle, naming and effect rules (`A001`–`A013`, `N001`–`N003`) |
+
+`C003`, `C007`, `C008`, `L004`, `A002`, `A004`, `A010`–`A013`, `G004` and `N003` are manual. They
+have no gallery fixture because there is no reliable automated decision. The enforcer reports them
+`executed: false` with a reason; do not add a fixture that merely pretends to detect them.
 
 A team adopting ACIMA starts at `L1`, fixes the dependency graph, then raises the level. The
 config records the level that is actually enforced; the README records the level that is
@@ -206,3 +211,7 @@ See [analyzers-and-linters.md](analyzers-and-linters.md) for the rule-by-rule ma
 A governance system nobody has seen fail is a governance system nobody trusts. Keep the
 gallery in the repository, keep it running in CI, and keep its diff visible in code review.
 The gallery is the executable definition of what ACIMA prohibits.
+
+It is not the whole definition. A clean gallery run does not review effect ownership, duplicate
+behaviour, outcome truthfulness or recovery evidence. Those are recorded in manual evidence, and
+the report must name them as unevaluated until that review exists.

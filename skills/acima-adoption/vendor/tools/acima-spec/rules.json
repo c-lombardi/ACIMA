@@ -1,7 +1,7 @@
 {
   "$schema": "./rules.schema.json",
   "standard": "ACIMA",
-  "version": "1.1.0-draft.1",
+  "version": "1.8.0-draft.1",
   "findingSchema": {
     "rule": "ACIMA-<CATEGORY><NNN>",
     "severity": "error | warning | info",
@@ -16,6 +16,7 @@
     "L": "Layering inside a module",
     "C": "Contract shape and immutability",
     "A": "Autonomy at runtime",
+    "N": "Intent-revealing naming and semantic clarity",
     "G": "Governance and exception hygiene"
   },
   "thirdPartyTiers": {
@@ -29,11 +30,28 @@
       "adapter": "Holds one declared vendor package; implements the port; translates vendor types and failures.",
       "port": "Dependency-free contracts unit declaring the capability in the service's own vocabulary."
     },
-    "entryFields": ["tier", "owner", "reason", "adapter", "port", "reviewedOn", "expires", "types"],
+    "entryFields": [
+      "tier",
+      "owner",
+      "reason",
+      "adapter",
+      "port",
+      "reviewedOn",
+      "expires",
+      "types"
+    ],
     "rules": {
-      "adapter": ["ACIMA-L005", "ACIMA-L006", "ACIMA-L007"],
-      "port": ["ACIMA-D010"],
-      "manifest": ["ACIMA-G006"]
+      "adapter": [
+        "ACIMA-L005",
+        "ACIMA-L006",
+        "ACIMA-L007"
+      ],
+      "port": [
+        "ACIMA-D010"
+      ],
+      "manifest": [
+        "ACIMA-G006"
+      ]
     }
   },
   "levels": {
@@ -56,7 +74,8 @@
       "name": "Autonomous",
       "requires": [
         "L2",
-        "A*"
+        "A*",
+        "N*"
       ]
     }
   },
@@ -245,6 +264,16 @@
       "manualEvidence": "Review every contract type for one-step construction and obvious required state; record builders and exceptions."
     },
     {
+      "id": "ACIMA-C008",
+      "severity": "error",
+      "level": "L2",
+      "title": "Opaque business behavior",
+      "summary": "A published contract or operation must make the business outcome it serves visible: its preconditions, failure semantics and observable effects.",
+      "fix": "Document the business decision, required preconditions, failure modes and visible effects on the contract or API; keep implementation logic out of the contract.",
+      "automation": "manual",
+      "manualEvidence": "Review every published contract and operation for the business outcome, preconditions, failure semantics and visible effects; record the reviewed surfaces and the answer."
+    },
+    {
       "id": "ACIMA-A001",
       "severity": "error",
       "level": "L3",
@@ -281,6 +310,32 @@
       "fix": "Depend on X.Contracts with a version range; needing the implementation's version means D001 is still present.",
       "automation": "manual",
       "manualEvidence": "Review published package and artifact version edges; record contracts ranges and implementation pins."
+    },
+    {
+      "id": "ACIMA-A005",
+      "severity": "warning",
+      "level": "L3",
+      "title": "Configuration read outside the composition boundary",
+      "summary": "An application component must not read deployment, operational or secret configuration from ambient environment variables or a global configuration object.",
+      "fix": "Resolve the value once at the composition root and pass it into the component constructor or composition function; the component should receive a value, not discover one.",
+      "automation": "automated",
+      "severityRatchet": {
+        "to": "error",
+        "at": "2.0.0"
+      }
+    },
+    {
+      "id": "ACIMA-A006",
+      "severity": "warning",
+      "level": "L3",
+      "title": "Operational value without a declared owner",
+      "summary": "A timeout, retry count, limit, rate, batch size, retention period or similar operational policy must have a named owner: a named constant, a typed configuration value supplied by the host, or a reviewed local literal.",
+      "fix": "Name the value as a constant in its owner, or resolve it from configuration at the composition root and inject it; keep only incidental literals inline.",
+      "automation": "automated",
+      "severityRatchet": {
+        "to": "error",
+        "at": "2.0.0"
+      }
     },
     {
       "id": "ACIMA-G001",
@@ -340,7 +395,10 @@
     {
       "id": "ACIMA-L005",
       "severity": "warning",
-      "severityRatchet": { "to": "error", "at": "2.0.0" },
+      "severityRatchet": {
+        "to": "error",
+        "at": "2.0.0"
+      },
       "level": "L1",
       "title": "Integration library used outside its declared adapter",
       "summary": "A package declared with tier integration is imported only by its declared adapter unit; every other unit reaches the capability through the port.",
@@ -359,7 +417,10 @@
     {
       "id": "ACIMA-L007",
       "severity": "warning",
-      "severityRatchet": { "to": "error", "at": "2.0.0" },
+      "severityRatchet": {
+        "to": "error",
+        "at": "2.0.0"
+      },
       "level": "L1",
       "title": "Vendor type outside the adapter",
       "summary": "A vendor type appears in a signature, field or export outside the adapter unit.",
@@ -369,12 +430,200 @@
     {
       "id": "ACIMA-G006",
       "severity": "warning",
-      "severityRatchet": { "to": "error", "at": "2.0.0" },
+      "severityRatchet": {
+        "to": "error",
+        "at": "2.0.0"
+      },
       "level": "L1",
       "title": "Undeclared external dependency",
       "summary": "Every package in a declared manifest has an externals entry with tier, owner, reason, review date and expiry, and no entry is past its review date.",
       "fix": "Run acima.py externals --write-draft, then assign the tier, owner and reason for each package; renew or remove an entry whose review date has passed.",
       "automation": "automated"
+    },
+    {
+      "id": "ACIMA-D011",
+      "severity": "warning",
+      "severityRatchet": {
+        "to": "error",
+        "at": "2.0.0"
+      },
+      "level": "L1",
+      "title": "Optional construction dependency",
+      "summary": "An application-owned constructor requires every input the component needs; an optional or defaulted parameter is a second construction path with hidden behaviour.",
+      "fix": "Require the parameter at every construction site and pass it from the composition root; if the behaviour is genuinely optional, model it explicitly with a named policy or a documented no-op implementation instead of an omitted argument.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-D012",
+      "severity": "warning",
+      "severityRatchet": {
+        "to": "error",
+        "at": "2.0.0"
+      },
+      "level": "L1",
+      "title": "Optional argument hides an operational decision",
+      "summary": "An application-owned method or function does not use an optional or defaulted parameter to hide a decision its caller should make.",
+      "fix": "Require the argument, or split the operation into distinct methods, or take an explicit options value whose fields are required; keep a default only where a language or framework contract needs it, and document why.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-D013",
+      "severity": "warning",
+      "level": "L1",
+      "title": "Implicit component registration",
+      "summary": "Application-owned components must be registered and constructed explicitly at the composition boundary; automatic scanning, convention registration and dynamic discovery must not hide the graph.",
+      "fix": "Register each component explicitly and construct it with named dependencies; if a framework scanner is unavoidable, declare a reviewed exception and prove the discovered set.",
+      "automation": "automated",
+      "severityRatchet": {
+        "to": "error",
+        "at": "2.0.0"
+      }
+    },
+    {
+      "id": "ACIMA-D014",
+      "severity": "warning",
+      "level": "L1",
+      "title": "Property or field injection",
+      "summary": "An application-owned component must receive dependencies through its constructor or composition function, not through property or field injection or post-construction assignment.",
+      "fix": "Move the dependency to the constructor and supply it from the host; if activation is framework-managed, keep the required dependencies in the declared constructor.",
+      "automation": "automated",
+      "severityRatchet": {
+        "to": "error",
+        "at": "2.0.0"
+      }
+    },
+    {
+      "id": "ACIMA-D015",
+      "severity": "warning",
+      "level": "L1",
+      "title": "Closed-over application dependency",
+      "summary": "An application component must receive application-owned collaborators through declared parameters or fields; it must not capture them from an enclosing scope through a closure, returned function or callback.",
+      "fix": "Pass the collaborator as a parameter or constructor field, or bind it explicitly at the composition boundary; keep closures for pure values and transformations.",
+      "automation": "automated",
+      "severityRatchet": {
+        "to": "error",
+        "at": "2.0.0"
+      }
+    },
+    {
+      "id": "ACIMA-D016",
+      "severity": "warning",
+      "level": "L1",
+      "title": "Partial application of an application dependency",
+      "summary": "Partial application or method binding of an application-owned dependency must occur at the composition boundary; a component must not pre-bind a collaborator into a function it returns.",
+      "fix": "Move the partial application to the host and pass the resulting function in, or keep every dependency as an explicit parameter of the component's function.",
+      "automation": "automated",
+      "severityRatchet": {
+        "to": "error",
+        "at": "2.0.0"
+      }
+    },
+    {
+      "id": "ACIMA-A007",
+      "severity": "warning",
+      "level": "L3",
+      "title": "Unnecessary transient lifetime",
+      "summary": "A stateless application service should be shared; a transient lifetime must be justified by independent identity, isolated mutable state, a short-lived resource or an operation boundary.",
+      "fix": "Register the stateless service at the longest appropriate lifetime (application/process/shared) rather than transient; keep transient only for components whose identity or state requires it.",
+      "automation": "automated",
+      "severityRatchet": {
+        "to": "error",
+        "at": "2.0.0"
+      }
+    },
+    {
+      "id": "ACIMA-A008",
+      "severity": "warning",
+      "level": "L3",
+      "title": "Captive scoped dependency",
+      "summary": "A longer-lived component must not directly capture a dependency with a shorter lifecycle; use an explicit scope boundary or lifecycle-aware factory that does not conceal the dependency.",
+      "fix": "Shorten the consumer lifetime, move the dependency to the call surface, or use a reviewed factory/scope boundary that resolves the shorter-lived dependency at the correct time.",
+      "automation": "automated",
+      "severityRatchet": {
+        "to": "error",
+        "at": "2.0.0"
+      }
+    },
+    {
+      "id": "ACIMA-A009",
+      "severity": "warning",
+      "level": "L3",
+      "title": "Shared mutable state without ownership",
+      "summary": "A shared component must not contain incidental mutable state without an explicit owner, isolation boundary and, where concurrent access is possible, a synchronization or concurrency strategy.",
+      "fix": "Move the state to a repository, request/operation context, cache or state store with an explicit owner and lifecycle; make the shared service stateless, or document and enforce safe isolation and synchronization.",
+      "automation": "automated",
+      "severityRatchet": {
+        "to": "error",
+        "at": "2.0.0"
+      }
+    },
+    {
+      "id": "ACIMA-N001",
+      "severity": "warning",
+      "level": "L3",
+      "title": "Non-idiomatic type identifier",
+      "summary": "A user-defined class, interface, type alias or enum must follow the target language's established type-name convention; semantic naming quality is assessed separately.",
+      "fix": "Rename the type to the language's type convention (PascalCase in Python, TypeScript, C#, Go and Java), while preserving the domain term; do not rename framework, generated or external types.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-N002",
+      "severity": "warning",
+      "level": "L3",
+      "title": "Generic responsibility name",
+      "summary": "An application-owned type must not use a generic placeholder such as Helper, Manager, Processor, Utility, Common, Base, Default or Generic as a substitute for its actual responsibility.",
+      "fix": "Name the responsibility or domain concept directly (OrderValidator, PriceCalculator, PaymentAuthorizer), or document why the generic role is the precise abstraction in this context.",
+      "automation": "automated"
+    },
+    {
+      "id": "ACIMA-N003",
+      "severity": "warning",
+      "level": "L3",
+      "title": "Semantic naming clarity review",
+      "summary": "Names must communicate responsibility, behaviour, side effects, domain meaning and relevant units; abbreviations, boolean polarity, contextual sufficiency and lifecycle/version naming require semantic review.",
+      "fix": "Rewrite the identifier in the domain's vocabulary: state the operation and outcome, make side effects explicit, name the unit, expand local abbreviations, use positive boolean conditions, and remove incidental lifecycle or version information from the identity.",
+      "automation": "manual",
+      "manualEvidence": "Record the reviewed naming decision, the affected public or application surface, the rationale, and the reviewer for each repository scope."
+    },
+    {
+      "id": "ACIMA-A010",
+      "severity": "error",
+      "level": "L3",
+      "title": "Unowned effect boundary",
+      "summary": "Every externally visible effect has exactly one owning module; the owner declares its trigger, commit boundary, retry owner, idempotency and compensation.",
+      "fix": "Assign one owner module and declare the effect's trigger, commit point, retry owner, idempotency or deduplication rule and compensation; route cross-module effects through that owner.",
+      "automation": "manual",
+      "manualEvidence": "Maintain an effect inventory: owner module, trigger, commit boundary, retry owner, idempotency key, compensation and every cross-module effect call."
+    },
+    {
+      "id": "ACIMA-A011",
+      "severity": "error",
+      "level": "L3",
+      "title": "Hidden effect semantics",
+      "summary": "A published operation or event makes its effect semantics visible: whether it writes, sends, publishes, deletes, charges or schedules, and how retry, idempotency and failure behave.",
+      "fix": "Declare the observable effect, retryability, idempotency and failure semantics on the operation or result type; do not hide a meaningful effect behind a data-only or read-named surface.",
+      "automation": "manual",
+      "manualEvidence": "Review every published operation and event for caller-visible effect semantics: effect kind, retryability, idempotency, result and failure modes."
+    },
+    {
+      "id": "ACIMA-A012",
+      "severity": "error",
+      "level": "L3",
+      "title": "Untruthful effect outcome",
+      "summary": "An operation reports success only after its owned effect is committed, and distinguishes failure, partial completion, cancellation and unknown outcome.",
+      "fix": "Report success after the commit point, return a typed failure, partial, cancelled or unknown outcome, reject unsafe duplicates and define compensation where recovery is possible.",
+      "automation": "manual",
+      "manualEvidence": "Exercise success, duplicate, retry, timeout, cancellation, partial completion and unknown-outcome scenarios; record observed state, returned outcome and recovery action."
+    },
+    {
+      "id": "ACIMA-A013",
+      "severity": "warning",
+      "level": "L3",
+      "title": "Critical effect without evidence",
+      "summary": "Every critical effect emits owned, correlated evidence sufficient to establish what changed, for whom, under which operation and with what outcome.",
+      "fix": "Emit an owned audit or operational record with actor, subject, operation or correlation identity, outcome and timestamp; define retention, access and a tested failure case.",
+      "automation": "manual",
+      "manualEvidence": "List critical effects and show the owned audit or operational record: actor, subject, operation or correlation id, outcome, timestamp, retention and access."
     }
   ],
   "claimModel": {

@@ -31,6 +31,26 @@ does not forbid it — some questions need answers — but requires that the dep
 runtime shape of a compile-time cycle (`D005`), and it produces deadlocks and timeout cascades
 rather than a design conversation.
 
+## 6.2.1 Retry ownership
+
+A retry is an effect policy, not a generic resilience decoration. Where retries exist, one component
+MUST own the decision and the caller MUST be able to tell whether it may retry (`P15.1`, `P15.2`;
+`A010`, `A011`):
+
+- the owner is the module or adapter that owns the effect, or the host's declared delivery policy;
+- the policy is bounded and visible: which failures are retryable, the attempt limit, backoff,
+  timeout and what happens when the budget is exhausted (`A006`);
+- a retry of a command that may already have been applied requires a duplicate-execution rule
+  (§6.3.1), not merely a retry count;
+- an unknown outcome MUST NOT be retried as though the first attempt definitely failed. The owner
+  either establishes the outcome or treats the retry as a duplicate-sensitive operation;
+- retries MUST NOT multiply non-idempotent effects (charges, emails, inventory decrements) merely
+  because the transport failed.
+
+A library, framework or broker MAY implement the policy. Its presence is not evidence that ownership
+is clear; the module's contract and failure semantics must still say what a retry means. This
+obligation is conditional: an operation with no retry behaviour has no retry owner to declare.
+
 ## 6.3 Events and the outbox
 
 An event is published **as part of the transaction that produced the fact**. In-process, that is
@@ -52,6 +72,26 @@ consume the event.
 Delivery is at-least-once, so **every consumer must be idempotent**. That is why contracts carry stable
 identities (an event id, an aggregate id) and why `P6`'s value equality matters: a duplicate is
 recognisable only if the message is comparable.
+
+## 6.3.1 Idempotency and duplicate execution
+
+Where duplicate execution is possible and could affect correctness — retryable commands,
+at-least-once delivery, webhook redelivery, user double-submission — the effect owner MUST define what
+a duplicate does (`P15.2`; `A011`):
+
+- the deduplication identity is derived from the business operation, not from a transport message id
+  alone, and it is recorded in the owner's own persistence boundary (`A001`);
+- the duplicate either has no additional effect or returns the original outcome; it MUST NOT perform
+  the effect twice;
+- the record has a retention period and a concurrency rule, so two simultaneous duplicates cannot
+  both win;
+- the consumer distinguishes “already applied” from “newly applied” where the caller needs to know;
+- an idempotency key is not required for every operation. A naturally idempotent write, a read or a
+  one-shot local operation may need no key at all.
+
+No ACIMA rule claims exactly-once delivery. The obligation is explicit, owned duplicate behaviour,
+with the storage and concurrency assumptions stated. Static analysis cannot establish that the key is
+correct or that the dedup record is committed atomically; `A011` is therefore manual evidence.
 
 ## 6.4 Sagas, process managers, and the "who owns this decision" question
 
@@ -80,6 +120,39 @@ If a report needs data from three modules, the answer is a **projection**: a rea
 subscribing to events, owned by the reporting module. It is slower to build than a three-table join and
 survives the first schema change.
 
+## 6.5.1 Transaction ownership
+
+When a transaction is used, exactly one module owns it (`P15.1`; `A010`):
+
+- the transaction begins and commits inside the owning implementation, around the state and outbox
+  writes it is responsible for;
+- the host MUST NOT open a transaction and pass it across modules, and a consumer MUST NOT enlist a
+  provider's connection or unit of work;
+- a cross-module workflow uses an outbox, a saga or reconciliation with an explicitly owned
+  intermediate state, never a distributed transaction hidden behind a shared connection;
+- the contract states whether a command is transactional, what it guarantees on return, and what a
+  caller must do when the outcome is unknown (`A012`).
+
+The choice of transaction API is not normative. A framework-managed request transaction is valid when
+its boundary is the module's own work and the module can state its guarantees. “We use transactions”
+is not evidence that the boundary is correct.
+
+## 6.5.2 Atomicity and recovery
+
+A multi-step operation MUST establish its consistency guarantee rather than assume that all-or-nothing
+atomicity is available or appropriate (`P15.4`; `A013`). The owner chooses and documents one of:
+
+- **atomic** — the state change and its required outbox or audit record commit together;
+- **recoverable** — an intermediate state is durable and a later step can resume it;
+- **compensating** — a committed step has an owned compensation for the failure path;
+- **reconciled** — the system compares its state with the external source of truth and repairs drift.
+
+Partial completion MUST be observable, and an interrupted workflow MUST have an owner who can resume,
+compensate or reconcile it. A retry is not a recovery strategy by itself. Where the effect is critical,
+the evidence required by `A013` is proportionate to the failure mode: a test of the partial-failure
+path, a reconciliation report, an operational alert or a recorded review. This chapter does not require
+distributed transactions, global locks or universal atomicity.
+
 ## 6.6 Configuration ownership
 
 Configuration is a boundary like any other (`A002`).
@@ -90,6 +163,11 @@ Configuration is a boundary like any other (`A002`).
 - Secrets follow the same rule: a module never reads another module's secret.
 - Shared infrastructure settings (connection pool sizes, log level) belong to the host's own namespace,
   not to a module's.
+
+The host resolves and validates values once, groups related values into typed settings, and passes
+them in. A module MUST NOT read `os.environ`, `process.env` or a global configuration object for a
+value a caller could supply (`A005`), and an operational timeout, retry or limit MUST have a named
+owner (`A006`; chapter 14).
 
 The test is mechanical: if you deleted a module, would the remaining configuration still make sense?
 A key like `orders.database.catalog` answers no, and `A002` flags the shape even before you find the
@@ -108,11 +186,23 @@ Obligations:
 
 - **Construction order is explicit.** A module receives its dependencies; it does not discover them.
   (`L004` forbids the container-as-registry shortcut.)
+- **The graph is named at the boundary.** Register and construct application components explicitly;
+  a scan or convention that selects them is `D013` (chapter 15).
+- **Dependencies arrive at construction.** Property and field injection are `D014`; a framework may
+  activate an entry point, but its required dependencies belong in the declared constructor.
+  Framework infrastructure registration is not application-owned construction.
+- **Functional composition does not erase the dependency.** A closure or callback must receive its
+  collaborator as a parameter or declared field (`D015`); partial application of a collaborator is
+  host wiring, not component-internal setup (`D016`; chapter 16). Pure transformations are exempt.
 - **No module is a singleton with global state** (`A003`). If two consumers need the same instance for
   performance (a cache, a connection pool), that instance is created by the host and passed in — it is
   a dependency, not a static.
 - **Lifetime is decided once, in the host.** A module declaring a static instance of itself is a
-  module that has decided it is a process.
+  module that has decided it is a process. Stateless application services SHOULD be shared rather
+  than registered transient (`A007`); a shared component MUST NOT directly capture a scoped
+  dependency (`A008`); and shared mutable state MUST have an explicit owner, isolation boundary and
+  concurrency policy (`A009`). Thread safety, tenant isolation, resource cleanup and distributed
+  consistency remain review obligations, not consequences of a registration (chapter 17).
 - **Modules must be constructible in isolation** for tests: the reference implementations do this
   (`CatalogModule(store)` needs nothing else), and that property is what makes the architecture
   testable rather than merely enforced.
@@ -135,3 +225,21 @@ operational terms — which is exactly the trade you want to decide deliberately
 
 The opposite direction is equally important: a service that must be extracted can also be **merged
 back**. ACIMA modules are the same shape at either scale, so the decision is reversible.
+
+## 6.9 Cancellation and partial completion
+
+Cancellation is a request, not a guarantee. Where the execution environment supports it and an
+operation is long-running or externally cancellable, the owner MUST define what cancellation means
+(`P15.2`, `P15.3`; `A011`, `A012`):
+
+- which states are cancellable, and what state is left behind after a cancellation request;
+- whether cancellation is best-effort before a commit and impossible after it;
+- how the caller learns that work completed, stopped partway, or continued despite the request;
+- who performs cleanup or compensation for a partially completed effect;
+- how cancellation interacts with retries and duplicate execution, so a cancelled attempt cannot be
+  retried as a new effect without deduplication.
+
+A component that cannot safely stop MUST report that honestly rather than acknowledge cancellation and
+continue silently. A completed durable effect MUST NOT be reported as cancelled; it is a completed
+effect with a separate compensation, if one exists. ACIMA does not require a cancellation parameter on
+every method, and an unused or ignored token is not evidence of cancellation support.

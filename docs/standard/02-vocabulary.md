@@ -214,6 +214,17 @@ A **layer contract** is the DTO and port surface one layer exposes to its caller
 `<Service>.<Layer>.Contracts`. It has zero references (P12) and contains only boundary types. It is
 not shared with another layer; the caller maps into it.
 
+## 2.16 Required input
+
+A value a component or operation needs in order to behave as specified. A required input is supplied
+by its caller at construction or invocation; it is not resolved by the component, defaulted into
+existence, or inferred from absence. A nullable value may be a required input: `DeliveryDate?` with
+no default still requires the caller to pass `null` deliberately. Chapter 13 defines the obligation;
+`D011` and `D012` enforce it.
+
+**Not:** an optional parameter with a default. That is an *omitted* input, and the implementation
+chooses the value — the opposite of a required input.
+
 ## 2.15 Inter-service contract
 
 An **inter-service contract** is the message vocabulary one service sends to another, in a project
@@ -268,3 +279,86 @@ port). Tiers live in `externals` in `acima.config.json` and are reviewed, never 
 | "Shared" | It names a hope, not an owner. Use *shared kernel* with its constraints, or name the owning module. |
 | "Service" used loosely | It can mean HTTP service, DI registration, domain service and business unit. Chapter 11 defines it precisely: the top-level product ownership envelope. Use *module* for the contract boundary and *provided port* for the capability. |
 | "Contract" meaning "interface" | An interface is one kind of contract type. Using the words interchangeably is how implementations end up in contracts. |
+
+## 2.22 Configuration category
+
+A **configuration category** is the declared nature and change model of a value: local literal, named
+constant, application constant, shared configuration, runtime-adjustable configuration,
+deployment/environment configuration, or secret. The category determines who owns the value, whether
+it may change without a deployment, and what validation and audit it needs (chapter 14 §14.4).
+
+## 2.23 Operational value
+
+An **operational value** is a value that changes how a component behaves under load or failure — a
+timeout, retry count, limit, threshold, rate, batch size, retention period, capacity or concurrency
+limit. It must have a named owner or an explicit configuration source (`A006`), not merely a literal
+at the point of use.
+
+## 2.24 Effect
+
+An **effect** is an externally observable change or interaction: a persistent write, message
+publication, payment, email, file write, cache invalidation, audit record or vendor call. Ordinary
+in-memory mutation of an object is not an effect in this sense; it is governed by the module's state
+ownership. The catalogue uses “effect” for the runtime consequence that must have an owner (`P15`).
+
+> **Not to be confused with:** a domain event. An event is a fact a module publishes; the effect is
+> the act of publishing it and the changes that surround that act.
+
+## 2.25 Effect owner
+
+An **effect owner** is the component with authority to perform an effect and to decide its failure,
+retry, duplicate and recovery semantics. It is usually the module that owns the affected state, or a
+declared adapter or host delivery policy acting for that module. Ownership is explicit when a reader
+can name the owner and locate its boundary; it is not established by the presence of a library.
+
+## 2.26 Execution boundary
+
+An **execution boundary** is the scope within which an effect's ordering and consistency are defined:
+a transaction, an outbox write, a single request, an idempotent consumer, a workflow step or a
+compensating action. The boundary is part of the operation's contract, not an incidental property of
+the framework that happens to invoke it.
+
+## 2.27 Retry owner
+
+A **retry owner** is the component that decides whether a failed effect may be attempted again, with
+which backoff and limit, and what the caller sees when the budget is exhausted. The owner may delegate
+the mechanism to a library or broker, but remains accountable for the policy (`A006`, `A010`).
+
+## 2.28 Transaction owner
+
+A **transaction owner** is the single module whose implementation begins and commits a transaction
+around its own state and outbox writes. A host, consumer or orchestration layer may request work but
+MUST NOT own a transaction that spans modules (`A010`; chapter 6 §6.5.1).
+
+## 2.29 Idempotency key
+
+An **idempotency key** is a value that identifies a business operation for duplicate detection. Its
+scope, storage, retention and concurrency rule belong to the effect owner. ACIMA does not require a
+key for every operation; it requires explicit duplicate behaviour where duplicate execution is
+possible and could affect correctness (`A011`).
+
+## 2.30 Partial completion
+
+**Partial completion** is the state in which some steps of a multi-step operation succeeded and others
+did not. It must be representable and observable, with a named owner for resumption, compensation or
+reconciliation. Partial completion is not evidence of a defect by itself; hiding it is (`A012`, `A013`).
+
+## 2.31 Cancellation
+
+**Cancellation** is a request to stop an operation. It may be best-effort and may arrive after an
+irreversible commit. The owner must state whether the operation stopped, completed or continued, and
+must not report a durable effect as cancelled (`A011`, `A012`).
+
+## 2.32 Critical effect
+
+A **critical effect** is an effect whose failure could corrupt data, duplicate a charge or other
+irreversible commitment, lose a required audit record, or leave a workflow unrecoverable without
+manual intervention. Criticality is a property of the effect and its context, not of the component's
+size; it determines the evidence required by `A013`.
+
+## 2.33 Business behaviour visibility
+
+**Business behaviour visibility** means a boundary operation states the business outcome it produces,
+its material preconditions and failure semantics, and the effects it may trigger. It is a property of
+the contract and its documentation (`P1.7`, `C008`), not a requirement to place business logic in the
+contract or to make every domain function pure.

@@ -1,9 +1,9 @@
 # Contract rules (`C`)
 
-Seven rules about what a contract may contain and how it may change. Full context:
+Eight rules about what a contract may contain and how it may change. Full context:
 [Contract design](../standard/05-contract-design.md).
 
-Each rule is a property of an **immutable contract**. If a type satisfies all seven, it can be
+Each rule is a property of an **immutable contract**. If a type satisfies all eight, it can be
 serialized, retried, replayed, compared, archived and versioned without surprises.
 
 ---
@@ -351,3 +351,50 @@ the implementation and construct the immutable contract only when it is complete
 Flags contract types with a public parameterless constructor plus settable or defaulted members, and
 types where every member is optional (a "bag" with no required state). Warning, because some shapes are
 legitimate.
+
+---
+
+## ACIMA-C008 · Business behaviour is opaque at the boundary
+
+**Severity** `error` · **Level** L2 · **Principle** P1.7 · **Automation** manual
+
+> A boundary operation MUST make its business behaviour visible: outcome, material preconditions,
+> failure semantics and observable effects.
+
+### Violation
+
+```typescript
+// The caller cannot tell what business decision this makes, what it changes, or how it fails.
+execute(input: unknown): Promise<unknown>;
+```
+
+```csharp
+// A “lookup” that also reserves stock and emits an event.
+Task<ProductView?> GetAsync(ProductId id);
+```
+
+### Finding
+
+This rule is manual in every profile. The enforcer reports it as `executed: false`; a review records
+the opaque operation, the missing semantics and the contract change that makes them visible.
+
+### Why
+
+A method name and an untyped signature are not a specification. If the outcome, preconditions, failure
+modes or effects are invisible, consumers guess, retries become unsafe and tests assert the wrong
+thing. The obligation is about *visibility*, not about moving business logic into the contract: the
+domain decision still belongs in the owning module's implementation (`C003`).
+
+### Fix
+
+Use a named command or query with a typed result. Document the business outcome, material
+preconditions, expected failure values, and whether the operation writes, publishes or calls a vendor.
+A read-named operation that mutates state must be renamed or split. Keep the decision itself in the
+implementation; expose only what a consumer needs to use it correctly.
+
+### Detection
+
+No portable detector. Source text can find untyped signatures, but it cannot decide whether a typed
+operation conceals a business decision or an effect. Reviewers use the contract, its documentation and
+the owning implementation together. `C006` catches an untyped payload; `C008` catches a semantically
+opaque one. The two rules are complementary, not substitutes.

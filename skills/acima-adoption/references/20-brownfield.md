@@ -98,9 +98,27 @@ Migration order from `docs/standard/09-adoption.md` §9.2, with the reasoning:
 | 3 | immutability (`C001`, `C002`) | mechanical, low risk, visible | hours |
 | 4 | persistence ownership (`A001`) | needs schema work and a migration | weeks |
 | 5 | config keys and statics (`A002`, `A003`) | small, few hot spots | hours |
+| 6 | lifecycle and state ownership (`A007`–`A009`) | usually a registry change, but only after the state owner is decided | hours to days |
+| 7 | naming clarity (`N001`–`N003`) | targeted renames where a name misleads; never a bulk rename | hours |
 
 **Never start with 4.** It is the one that needs a data migration, and it is where programmes are
 abandoned. Start where the fix fits in one pull request.
+
+Lifecycle findings are easy to spot and easy to fix badly. Do not bulk-convert transient
+registrations to singletons. First classify each component as stateless, request/tenant-scoped,
+resource-owning or legitimately transient; then choose the lifetime. A stateless service can be
+shared after checking concurrent safety. A shared component that captures a scoped dependency must
+change its consumption path, not just its registration. A shared mutable container needs an owner,
+isolation key, synchronization and eviction policy — or it belongs in a narrower scope. Record the
+concurrency, tenant-isolation and cleanup claims as review evidence; the scanner does not prove
+them, and Go, .NET and Java do not execute these rules at all.
+
+Naming work begins with the mechanical casing and generic-name candidates, then stops for review.
+Rename only where the current name would mislead a reader about responsibility or a side effect,
+keep domain terms consistent across the modules that share a concept, and get consent before
+changing consumer code. A rename changes the finding fingerprint, so move the baseline or waiver in
+the same pull request. Do not bulk-rename to drive down a count; `N003` is evidence of a reviewed
+judgement, not a scanner result.
 
 A good first slice has: one boundary, fewer than ~400 changed lines, no schema change, and a
 consumer that demonstrably compiles against the new contract.

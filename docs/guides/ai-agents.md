@@ -16,13 +16,15 @@ An ACIMA-aware agent **must**:
 2. Verify the rule catalog version and hash with the adoption preflight.
 3. Inspect the target repository before editing.
 4. Identify the authorized module boundaries and allowed dependency directions, and name the team's architecture family (Clean, Hexagonal, DDD, modular monolith, microservices) — ACIMA enforces it, it does not replace it.
-5. Plan the change and name any published contract it will alter.
-6. Implement the smallest change that fits the declared boundaries.
+5. Plan the change and name any published contract and externally visible effect it will alter.
+6. If the change introduces or modifies an effect, state its owner, execution boundary, duplicate
+   behaviour and truthful failure outcome before implementing it.
+7. Implement the smallest change that fits the declared boundaries.
 7. Run the enforcer and read the structured findings.
-8. Correct violations it introduced.
-9. Report contract changes and compatibility implications.
-10. Ask the owner before adding or changing a waiver.
-11. Produce an implementation summary with the commands run and their results.
+9. Correct violations it introduced.
+10. Report contract changes and compatibility implications.
+11. Ask the owner before adding or changing a waiver or recording manual effect evidence.
+12. Produce an implementation summary with the commands run and their results.
 
 An agent **must not**:
 
@@ -34,6 +36,8 @@ An agent **must not**:
 - use ACIMA to argue for a different architecture; it enforces the chosen boundaries, it does not choose them;
 - import another module's implementation;
 - change a published contract without identifying the compatibility impact;
+- hide an effect behind a read-shaped method or perform a provider's effect in the host;
+- claim that a retry, transaction, idempotency key or cancellation token makes an effect correct;
 - claim conformance when a rule was skipped or not evaluated;
 - use a missing tool or an empty scan as evidence of a pass.
 
@@ -63,11 +67,14 @@ You are changing a repository governed by ACIMA.
 Before editing:
 1. Run the adoption preflight and verify the catalog hash.
 2. Read acima.config.json and list the units and allowed dependencies.
-3. State which module owns the change and which contracts it touches.
+3. State which module owns the change and which contracts and effects it touches.
 4. If a contract changes, identify whether the change is additive or breaking.
+5. If an effect changes, name its owner and execution boundary, and state retry, duplicate,
+   consistency and cancellation semantics where they apply. Do not add them where they do not.
 
 While editing:
 - Depend on other modules only through their contracts.
+- Do not perform another module's effect or open a transaction across modules.
 - Do not edit the config, expected findings or waivers to pass a check.
 - Do not add a cross-module implementation import.
 - Ask before creating an exception. An exception needs owner, reason, scope, expiry and
@@ -120,8 +127,9 @@ it links to. For an assessment, deliver it in the response or outside the target
 
 - The reference enforcers read source and project files; they do not prove runtime
   autonomy or deployment independence.
-- Six portable rules require native analyzers or human judgement; the CLI report lists
-  them as **not evaluated**.
+- Twelve rules require native analyzers or human judgement; the CLI report lists them as **not
+  evaluated**. `C008` and `A010`–`A013` cover business-behaviour visibility, effect ownership,
+  duplicate/retry/consistency semantics, truthful outcomes and recovery evidence.
 - The Java profile has no reference enforcer in this revision.
 - The agent skill is only as current as its pinned catalog hash. If preflight fails, stop;
   do not work around the pin.

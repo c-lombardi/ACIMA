@@ -17,14 +17,14 @@ class DocumentationContractTests(unittest.TestCase):
     def test_rule_index_names_every_non_executed_rule(self) -> None:
         coverage = json.loads(read("conformance/coverage.json"))
         not_executed = set(coverage["profiles"]["python"]["notExecuted"])
-        self.assertEqual(len(not_executed), 6)
+        self.assertEqual(len(not_executed), 12)
         index = read("docs/rules/index.md")
         # coverage.json uses the ACIMA- prefixed ids; the human catalog table uses short ids.
         for rule in sorted(not_executed):
             short = rule.split("-", 1)[-1]
             self.assertIn(f"`{short}`", index, f"{rule} is not documented in the rule index")
         self.assertNotIn("Four rules cannot", index)
-        self.assertIn("Six normative rules", index)
+        self.assertIn("Twelve normative rules", index)
 
     def test_preflight_reference_matches_any_source_classification(self) -> None:
         preflight = read("skills/acima-adoption/references/00-preflight.md")
@@ -56,14 +56,14 @@ class DocumentationContractTests(unittest.TestCase):
     def test_l2_counts_in_the_template_match_the_catalog(self) -> None:
         catalog = json.loads(read("tools/acima-spec/rules.json"))["rules"]
         l2 = [rule for rule in catalog if rule["level"] in ("L1", "L2")]
-        self.assertEqual(len(l2), 30)
+        self.assertEqual(len(l2), 37)
         not_executed = set(json.loads(read("conformance/coverage.json"))
                            ["profiles"]["python"]["notExecuted"])
         executed = [rule for rule in l2 if rule["id"] not in not_executed]
-        self.assertEqual(len(executed), 26)
+        self.assertEqual(len(executed), 32)
         conformance = read("docs/standard/08-conformance.md")
-        self.assertIn("At L2 the catalog requires 30", conformance)
-        self.assertIn("execute 26 of those", conformance)
+        self.assertIn("At L2 the catalog requires 37", conformance)
+        self.assertIn("execute 32 of those", conformance)
 
     def test_waiver_semantics_require_a_fingerprint(self) -> None:
         governance = read("docs/standard/07-executable-governance.md")
@@ -75,10 +75,11 @@ class DocumentationContractTests(unittest.TestCase):
         catalog = json.loads(read("tools/acima-spec/rules.json"))
         manual = {rule["id"] for rule in catalog["rules"]
                   if rule.get("automation") == "manual"}
-        self.assertEqual(manual, {"ACIMA-C003", "ACIMA-C007", "ACIMA-L004",
-                                  "ACIMA-A002", "ACIMA-A004", "ACIMA-G004"})
+        self.assertEqual(manual, {"ACIMA-A002", "ACIMA-A004", "ACIMA-A010", "ACIMA-A011",
+                                  "ACIMA-A012", "ACIMA-A013", "ACIMA-C003", "ACIMA-C007",
+                                  "ACIMA-C008", "ACIMA-G004", "ACIMA-L004", "ACIMA-N003"})
         self.assertEqual(sum(1 for rule in catalog["rules"]
-                             if rule.get("automation") == "automated"), 28)
+                             if rule.get("automation") == "automated"), 41)
         self.assertEqual(catalog["claimModel"]["manualEvidencePath"],
                          ".acima/manual-evidence.json")
         for rule in catalog["rules"]:

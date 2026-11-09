@@ -4,6 +4,7 @@ Run: PYTHONPATH=src python3 -m acima.host.main
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from acima.catalog.contracts import (
@@ -13,6 +14,7 @@ from acima.catalog.contracts import (
     ProductView,
 )
 from acima.catalog.impl import CatalogModule
+from acima.catalog.impl.repository import InMemoryProductStore
 from acima.customers.contracts import CustomerId as CustomersCustomerId, CustomerView
 from acima.customers.impl import CustomersModule
 from acima.orders.contracts import (
@@ -23,18 +25,25 @@ from acima.orders.contracts import (
     ProductId as OrderProductId,
 )
 from acima.orders.impl import OrdersModule
+from acima.payments.contracts import (
+    Currency as PaymentCurrency,
+    Money as PaymentMoney,
+)
 from acima.payments.impl import PaymentsModule
+from acima.payments.impl.gateway import FakeGateway
 
 
 def build() -> tuple[CatalogModule, CustomersModule, OrdersModule, PaymentsModule]:
     """Wire the object graph explicitly. No container, no globals, no discovery."""
-    catalog = CatalogModule()
+    catalog = CatalogModule(InMemoryProductStore())
     customers = CustomersModule()
-    payments = PaymentsModule()
+    payments = PaymentsModule(
+        FakeGateway(PaymentMoney(Decimal("1000.00"), PaymentCurrency.EUR)))
     orders = OrdersModule(
         catalog=catalog.reader(),
         customers=customers.reader(),
         payments=payments.gateway(),
+        clock=lambda: datetime.now(timezone.utc),
     )
     return catalog, customers, orders, payments
 

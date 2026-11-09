@@ -215,7 +215,7 @@ def assess(payload: Any, catalog: dict, level: str | None = None,
         missing.append(rule_id)
         if rule.get("automation") == "manual" or rule_id in {
             "ACIMA-C003", "ACIMA-C007", "ACIMA-L004",
-            "ACIMA-A002", "ACIMA-A004", "ACIMA-G004",
+            "ACIMA-A002", "ACIMA-A004", "ACIMA-G004", "ACIMA-N003",
         }:
             requirement = rule.get("manualEvidence") or "record a repository-scoped manual review"
             reasons.append(f"{rule_id} needs manual evidence: {requirement}")

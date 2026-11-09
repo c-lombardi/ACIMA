@@ -18,7 +18,7 @@ INLINE_CODE = re.compile(r"`[^`\n]*`")
 LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+?)(?:\s+\"[^\"]*\")?\)")
 REMOTE = ("http://", "https://", "mailto:", "#")
 TABLE_ROW = re.compile(
-    r"^\|\s*`([DLCAG]\d{3})`\s*\|\s*([^|]+?)\s*\|\s*(error|warning|info)\s*\|\s*(L[123])\s*\|",
+    r"^\|\s*`([DLCAGN]\d{3})`\s*\|\s*([^|]+?)\s*\|\s*(error|warning|info)\s*\|\s*(L[123])\s*\|",
     re.MULTILINE,
 )
 

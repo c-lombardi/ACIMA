@@ -97,7 +97,10 @@ the repository still has to review configuration ownership manually.
 | Shared contracts | `ACIMA-D003`; decide which value types are local. |
 | Mutable contracts | `ACIMA-C001`, `C002`. |
 | Shared persistence | `ACIMA-A001`; inspect SQL and schema ownership. |
-| Configuration ownership | `ACIMA-A002` is not portable; review configuration reads. |
+| Configuration and values | `ACIMA-A002` is manual; `A005`/`A006` are automated candidates in Python/TypeScript and manual elsewhere. |
+| Composition and injection | `ACIMA-D013`/`D014` are automated candidates in Python/TypeScript; inspect scans, conventions and property injection manually elsewhere. |
+| Functional capture | `ACIMA-D015`/`D016` are automated candidates in Python/TypeScript; inspect closures, callbacks and `bind`/`partial` manually elsewhere. |
+| Effects and consistency | `ACIMA-C008` and `A010`–`A013` are manual everywhere: name the effect owners, transactions, retries, duplicate handling, truthful outcomes and recovery evidence where they apply. |
 | Existing architecture tests | `inspect` plus a source review. |
 | Existing exceptions | The waiver file; `G001`, `G002`. |
 
@@ -111,7 +114,10 @@ CI and source changes are separate approvals. Start at L1 unless the repository 
 | 2 | Break cycles (`D005`) | cycles make every later change harder |
 | 3 | Freeze contracts (`C001`, `C002`) | mechanical and immediately valuable |
 | 4 | Establish persistence ownership (`A001`) | expensive; needs schema work |
-| 5 | Configuration and statics (`A002`, `A003`) | usually a small number of hot spots |
+| 5 | Configuration, values and statics (`A002`, `A005`, `A006`, `A003`) | usually a small number of hot spots |
+| 6 | Explicit composition and injection (`D013`, `D014`) | needs the host; reduces hidden startup behaviour |
+| 7 | Functional capture (`D015`, `D016`) | usually follows once the host exposes the dependency graph |
+| 8 | Effect review (`C008`, `A010`–`A013`) | name critical effects, duplicate and recovery semantics before adding retries or consumers |
 
 Gate CI on **no new findings** at the declared level. Existing findings are allowed only
 through the owned, scoped, expiring waiver file. The first merged slice should change one
@@ -142,6 +148,8 @@ expired waiver is a finding (`G002`); renewal is an individual decision.
 - Do not edit `acima.config.json`, expected findings or waiver dates just to make a run pass.
 - Do not rename every project in one PR. Rename the project you are already changing.
 - Do not treat a skipped or unevaluated rule as compliant.
+- Do not add a retry, transaction, idempotency key or cancellation token merely to satisfy an effect
+  checklist; decide applicability and ownership first.
 
 ## Exit criteria for an approved first adoption slice
 

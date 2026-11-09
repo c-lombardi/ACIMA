@@ -12,24 +12,31 @@ One principle maps to several rules; one rule always traces back to exactly one 
 | Artifact | Role | Authority |
 |---|---|---|
 | [`../../tools/acima-spec/rules.json`](../../tools/acima-spec/rules.json) | id, severity, level, `automation`, manual evidence hint | **authoritative** |
-| [`index.md`](index.md) | the same 34 rules as tables, plus severity policy | generated-equivalent; a test fails if it drifts |
+| [`index.md`](index.md) | the same 53 rules as tables, plus severity policy | generated-equivalent; a test fails if it drifts |
 | [`dependency.md`](dependency.md) | `D` and `L` rules with violation/fix examples per language | explanatory |
 | [`contracts.md`](contracts.md) | `C` rules | explanatory |
 | [`autonomy.md`](autonomy.md) | `A` and `G` rules | explanatory |
+| [`naming.md`](naming.md) | `N` rules | explanatory |
 
 There is exactly one catalog. Do not create a second one in a report, spreadsheet or directory README: that is how the previous `validation/` matrix drifted from the code.
 
 ## Automated versus human judgement
 
-28 of 34 rules are decided by the reference enforcers. Six are normative but require judgement or native analyzers, and are reported as `executed: false`. Five of the 28 (`L005`–`L007`, `D010`, `G006`) are implemented for Python and TypeScript in this revision; the Go and .NET enforcers report them as `executed: false` with that reason:
+41 of 53 rules are executed by the reference enforcers; twelve are normative but require judgement or native analyzers and are reported as `executed: false`. Python and TypeScript execute all 41. Go and .NET execute 23, reporting the five tier rules (`L005`–`L007`, `D010`, `G006`), the two explicit-input rules (`D011`, `D012`), the two value rules (`A005`, `A006`), the two composition rules (`D013`, `D014`), the two functional-capture rules (`D015`, `D016`), the three lifecycle rules (`A007`–`A009`) and the two naming rules (`N001`–`N002`) as `executed: false` with that reason:
 
 | Rule | Who decides |
 |---|---|
 | `C003` behaviour in contracts | human review |
 | `C007` one-step construction | human review |
+| `C008` business behaviour visibility | contract and implementation review |
+| `A010` effect boundary ownership | effect-owner review |
+| `A011` effect semantics | contract, retry and consistency review |
+| `A012` truthful effect outcome | failure-path review |
+| `A013` critical-effect evidence | test, reconciliation or operational evidence review |
 | `L004` service locator | human review or framework analyzer |
 | `A002` cross-module configuration key | human review |
 | `A004` version-lock coupling | package metadata review |
+| `N003` semantic naming clarity | human semantic review |
 | `G004` unreviewed contract change | API baseline comparison |
 
 A clean portable run is therefore **not** full conformance. A full claim needs a repository-scoped entry for each of these in `.acima/manual-evidence.json`; see [`../standard/08-conformance.md`](../standard/08-conformance.md#89-manual-evidence-for-full-claims).

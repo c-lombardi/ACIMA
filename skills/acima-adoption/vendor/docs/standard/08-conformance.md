@@ -6,13 +6,13 @@ Conformance is a claim a repository makes about itself, and it is only credible 
 
 | Level | Name | Requires | Typical adoption moment |
 |---|---|---|---|
-| **L1** | Structural | `D001`–`D010`, `L001`–`L007`, `G001`, `G002`, `G005`, `G006` | you have modules and want the graph to stay acyclic |
-| **L2** | Immutable | L1 + `C001`–`C007`, `G003`, `G004` | contracts are consumed by another team |
-| **L3** | Autonomous | L2 + `A001`–`A004` | modules have their own data and could be extracted |
+| **L1** | Structural | `D001`–`D016`, `L001`–`L007`, `G001`, `G002`, `G005`, `G006` | you have modules and want the graph to stay acyclic |
+| **L2** | Immutable | L1 + `C001`–`C008`, `G003`, `G004` | contracts are consumed by another team |
+| **L3** | Autonomous | L2 + `A001`–`A013` | modules have their own data and effects, and could be extracted |
 
-`L004` and `C007` are `warning`-severity: at their level they must be *reported*, and a repository at
-that level must show zero unwaived `error` findings. Warnings are expected to trend down; they are not
-a pass/fail gate. Every other rule above is an `error`.
+`warning`-severity rules must be *reported* at their level, and a repository at that level must show
+zero unwaived `error` findings. Warnings are expected to trend down; they are not a pass/fail gate.
+The catalog is authoritative for each rule's severity.
 
 ## 8.2 Declaring conformance
 
@@ -45,6 +45,16 @@ is reported.
 - [ ] Domain and application code do not reference infrastructure (`L001`).
 - [ ] Contracts expose no framework or transport types (`L002`).
 - [ ] Modules receive peers through construction, not through a locator (`L004`).
+- [ ] Application-owned components are registered and constructed explicitly at the composition
+      boundary; no scan, convention or dynamic discovery hides the graph (`D013`, warning).
+- [ ] Dependencies arrive through constructors or composition functions, not property/field
+      injection or post-construction assignment (`D014`, warning).
+- [ ] Closures, callbacks and returned functions do not capture application dependencies from a
+      module or enclosing local; pure closures remain allowed (`D015`, warning).
+- [ ] Partial application or method binding of an application dependency occurs at the composition
+      boundary, not inside a component (`D016`, warning).
+- [ ] Every required construction and invocation input is supplied explicitly; no dependency arrives
+      through an optional parameter or a default (`D011`, `D012`, warning).
 - [ ] Every integration library is declared in `externals` with one adapter and one port, and only
       that adapter imports it (`L005`, `L006`).
 - [ ] No vendor type appears outside its adapter and no port carries a vendor shape (`L007`, `D010`).
@@ -63,6 +73,8 @@ Everything in L1, plus:
 - [ ] Contracts expose no persistence types (`C005`).
 - [ ] Contracts are explicitly typed — no `object`/`dynamic`/`any`/bare maps (`C006`).
 - [ ] Contract types are constructible in one step, with required state obvious (`C007`, warning).
+- [ ] Boundary operations make their business behaviour, material preconditions, failure semantics and
+      observable effects visible (`C008`).
 - [ ] Every public contract type is documented (`G003`, warning).
 - [ ] The contracts API baseline matches the reviewed baseline (`G004`).
 
@@ -72,8 +84,19 @@ Everything in L2, plus:
 
 - [ ] No module reads or writes another module's schema, tables or store (`A001`).
 - [ ] No module reads another module's configuration keys or secrets (`A002`).
+- [ ] Components receive configuration from the composition boundary; no implementation or adapter
+      reads ambient environment or global configuration (`A005`, warning).
+- [ ] Operational timeouts, retries, limits, rates, batch sizes and retention values have a named
+      owner or an explicit configuration source (`A006`, warning).
 - [ ] No cross-module communication through shared mutable statics or globals (`A003`).
 - [ ] Consumers pin contracts versions, never implementation versions (`A004`).
+- [ ] Every externally visible effect has one owner and an execution boundary; callers do not perform
+      a provider's effect (`A010`).
+- [ ] Retry, duplicate, consistency, partial-completion and cancellation semantics are explicit where
+      the operation's design makes them applicable (`A011`).
+- [ ] Effect outcomes distinguish success, failure, unknown and partial completion truthfully
+      (`A012`).
+- [ ] Critical effects have evidence proportionate to their failure impact (`A013`, warning).
 - [ ] Dependency budgets in `acima.config.json` are respected.
 
 ## 8.4 What counts as evidence
@@ -120,14 +143,17 @@ enforcers in this repository fail when a suite finds zero files.
 | Last verified commit | `abc1234` |
 ```
 
-The count is derived from `rules.json`; never copy a fixed number. At L2 the catalog requires 30
-rules. The reference portable enforcers execute 26 of those and report `L004`, `C003`, `C007` and
-`G004` as not executed; without manual evidence for those four, the correct claim is
-`PARTIAL ASSESSMENT`, not `FULL CONFORMANCE`. At L3 the catalog requires 34 rules; 28 execute and
-the six manual rules are `L004`, `C003`, `C007`, `A002`, `A004` and `G004`. The five third-party
-tier rules execute in the Python and TypeScript enforcers; a Go or .NET run reports them
-`executed: false`, so that repository needs manual evidence for them or the scoped statement in
-§8.10.
+The count is derived from `rules.json`; never copy a fixed number. At L2 the catalog requires 37
+rules. The reference portable enforcers execute 32 of those and report `L004`, `C003`, `C007`,
+`C008` and `G004` as not executed; without manual evidence for those five, the correct claim is
+`PARTIAL ASSESSMENT`, not `FULL CONFORMANCE`. At L3 the catalog requires 53 rules; 41 execute and
+the twelve manual rules are `L004`, `C003`, `C007`, `C008`, `A002`, `A004`, `A010`–`A013`, `N003` and
+`G004`. The five
+third-party tier rules, the two explicit-input rules, the two value rules, the two composition
+rules, the two functional-capture rules, the three lifecycle rules and the two naming rules
+(`N001`–`N002`) execute in the Python and TypeScript enforcers; a Go or .NET run reports those
+eighteen `executed: false`, so that repository needs manual evidence for them or the scoped statement
+in §8.10. `N003` is one of the twelve manual rules, not an automated gap.
 
 The claim class is computed, not chosen by the author:
 
@@ -234,7 +260,7 @@ accepted only when:
 
 Expired, missing or malformed evidence makes the claim `PARTIAL ASSESSMENT`; it does not make the run
 invalid. A missing execution map, an unknown level or malformed JSON is `INVALID ASSESSMENT` and exits
-`2`. The reference enforcers continue to report the six rules as `executed: false`; the evidence file
+`2`. The reference enforcers continue to report the twelve manual rules as `executed: false`; the evidence file
 is how a repository records the review the portable tool cannot perform.
 
 ## 8.10 Third-party governance and the swap drill

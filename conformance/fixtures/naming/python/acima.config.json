@@ -1,0 +1,7 @@
+{
+  "standard": "1.7.0-draft.1",
+  "mode": "base",
+  "language": "python",
+  "level": "L3",
+  "units": [{ "id": "host", "role": "host", "paths": ["src/host"] }]
+}

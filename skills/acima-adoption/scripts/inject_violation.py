@@ -231,8 +231,14 @@ def enforcer_invocation(manifest: dict, language: str, root: Path):
     enforcer = manifest.get("enforcers", {}).get(language, {})
     if not enforcer.get("run"):
         return None, None, enforcer
-    command = list(enforcer["run"]) + ["--root", str(root), "--config", "acima.config.json",
-                                       "--format", "json"]
+    command = list(enforcer["run"])
+    # The manifest names the portable ``python`` command. On Windows the App
+    # Execution Alias can shadow it, so run the interpreter that is running
+    # this tool instead of depending on PATH resolution.
+    if command and Path(command[0]).stem.lower() in {"python", "python3"}:
+        command[0] = sys.executable
+    command += ["--root", str(root), "--config", "acima.config.json",
+                "--format", "json"]
     cwd = STANDARD_ROOT / enforcer["cwd"] if enforcer.get("cwd") else STANDARD_ROOT
     return command, cwd, enforcer
 

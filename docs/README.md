@@ -7,7 +7,7 @@ This directory **defines** ACIMA. Everything here is either normative or explain
 | Question | Authoritative document |
 |---|---|
 | What is ACIMA, in normative terms? | [`standard/00-preface.md`](standard/00-preface.md) |
-| What are the obligations? | [`standard/01-principles.md`](standard/01-principles.md) — P1–P9 are the base standard; P10–P13 belong to the service-topology profile |
+| What are the obligations? | [`standard/01-principles.md`](standard/01-principles.md) — P1–P9, P14 and P15 are the base standard; P10–P13 belong to the service-topology profile |
 | What do the words mean? | [`standard/02-vocabulary.md`](standard/02-vocabulary.md) |
 | What may reference what? | [`standard/04-dependency-model.md`](standard/04-dependency-model.md) |
 | Which rules exist, and what severity/level? | [`../tools/acima-spec/rules.json`](../tools/acima-spec/rules.json) — machine source; [`rules/index.md`](rules/index.md) is its human form |
@@ -20,11 +20,11 @@ If two documents disagree, the order above wins: `rules.json` over `rules/index.
 
 | Path | Role |
 |---|---|
-| `standard/` | the specification, chapters 0–12 (normative) |
+| `standard/` | the specification, chapters 0–18 (normative) |
 | `rules/` | the human rule catalog with violation/fix examples ([README](rules/README.md)) |
 | `languages/` | per-language expression of the rules: .NET, TypeScript, Python, Go, Java ([index](languages/index.md)) |
 | `start/` | [quickstart](start/quickstart.md) and [brownfield adoption](start/brownfield.md) |
-| `guides/` | explanatory material: leaders, reviewers, AI agents, before/after, architecture tests, analyzers, walkthrough, architecture families |
+| `guides/` | explanatory material: leaders, reviewers, AI agents, before/after, architecture tests, analyzers, walkthrough, architecture families, [owned effects and atomicity](guides/effects-and-atomicity.md) |
 | `commands.md` | every command, its flags and exit codes, mapped to the adoption step that uses it |
 | `status.md` | verified vs proposed capability, with limits |
 | `product-contract.md` | consumer guarantees, known gaps, release gates |
@@ -38,7 +38,7 @@ If two documents disagree, the order above wins: `rules.json` over `rules/index.
 5. [`languages/index.md`](languages/index.md) — your language
 6. [`standard/08-conformance.md`](standard/08-conformance.md) — how a claim is proved
 
-Chapters 11 (service topology) and 12 (library profile) are **optional profiles**. Read them only if you are building a multi-service product or publishing an artifact.
+Chapters 11 (service topology) and 12 (library profile) are **optional profiles**. Chapters 13 (explicit inputs), 14 (values and configuration), 15 (composition and injection), 16 (functional composition), 17 (lifecycle and state ownership) and 18 (intent-revealing naming) apply to every repository in base mode. P15's effect rules are base obligations, but they are **conditional**: retry, duplicate, transaction and cancellation requirements apply only where the operation's design makes them applicable. The practical guide is [Owned effects, retries and transactions](guides/effects-and-atomicity.md). Read the optional profiles only if you are building a multi-service product or publishing an artifact.
 
 ## Changing the standard
 

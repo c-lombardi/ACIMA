@@ -5,9 +5,9 @@ license: MIT
 compatibility: Python 3.9+ for the preflight script. The target language toolchain is only needed to run that language's enforcer.
 allowed-tools: Read Grep Glob Bash Edit Write
 metadata:
-  standard: "1.1.0-draft.1"
-  skill-version: "1.9.0"
-  catalog-sha256: "a699510322ec5decdb6bc212c7d65b23df106d5f2e6fc027a53fa800af350eea"
+  standard: "1.8.0-draft.1"
+  skill-version: "1.16.0"
+  catalog-sha256: "b908a5f739b80c323778f47bfe574036294f268a6e1f905522a654970aef2578"
 ---
 
 # ACIMA adoption
@@ -15,7 +15,7 @@ metadata:
 You are applying the ACIMA architecture standard — Autonomous, Contract-Isolated, Immutable
 Modular Architecture — to a real repository. The standard lives in this repository:
 
-- `tools/acima-spec/rules.json` — the 34-rule catalog. **Normative.**
+- `tools/acima-spec/rules.json` — the 53-rule catalog: 41 automated and 12 manual-evidence rules. **Normative.**
 - `docs/standard/` — the specification. Chapters 4 (dependency model), 5 (contract design),
   8 (conformance) and 9 (adoption) are the ones you will use most.
 - `examples/<language>/` — a working ordering system (four modules in Python, three in
@@ -185,6 +185,24 @@ message that is the summary.
     adopt is not approval to create files. Present the exact paths, contents and consequences, and
     act only on an explicit affirmative response to that proposal.
 
+### Reviewing an effect boundary
+
+Use this sequence for `C008` and `A010`–`A013`. It is a review, not a source scan:
+
+1. **Enumerate effects.** Use the operation's contract, handlers, adapters and tests. Distinguish an
+   external effect from ordinary local mutation; aggregate mutation is not a defect.
+2. **Name the owner and boundary.** The owner is the module or declared adapter/host policy that can
+   decide failure and duplicate behaviour. If two owners are plausible, say so; do not invent one.
+3. **Check applicability.** For each effect, decide whether retry, duplicate handling, a consistency
+   guarantee, cancellation and evidence apply. "Not applicable" is a valid, reviewable answer; it is
+   not a pass by omission.
+4. **Trace the outcome path.** Follow success, failure, unknown and partial completion. Verify that a
+   caller cannot mistake acceptance for durability, or a post-commit exception for no effect.
+5. **Check the evidence.** A test that only covers success is not evidence for a critical effect.
+   Name the missing failure-path test, reconciliation or operational signal.
+6. **Report uncertainty honestly.** Confirmed, suspected and insufficient evidence are different
+   results. Never turn a missing detector into a clean result.
+
 Re-entering an adopted repository: run `python3 tools/acima.py status --root .` first; it reports
 the evidenced steps and the one next command. Name artefacts by path: a reader who has to ask
 "what now?" was given data, not an answer.
@@ -224,7 +242,7 @@ when the thing they record changes; never reconstruct state from the conversatio
 | `acima.config.json` | units, roles, paths, architecture mode | Step 0 and every resume | only after approval, with human review |
 | `.acima/baseline.json` | the fingerprints measured at adoption | before the gate | only after approval; generated from a run |
 | `.acima/waivers.json` | one owned, fingerprinted, expiring exception per finding | before claiming, before editing | only after approval, when an owner accepts an exception |
-| `.acima/manual-evidence.json` | recorded evidence for the six judgement rules | before any level claim | after approval, when a required rule is manual |
+| `.acima/manual-evidence.json` | recorded evidence for the twelve judgement rules (`C003`, `C007`, `C008`, `L004`, `A002`, `A004`, `A010`–`A013`, `G004`, `N003`) | before any level claim | after approval, when a required rule is manual |
 | `docs/acima/adoption-plan.md` | boundaries, architecture family, phases, metrics | Step 2 and every resume | only if approved; when scope, owner or dates change |
 | `docs/acima/STATUS.md` | phase, findings, next step, blockers | every resume | at the end of every session that changes map, baseline or gate |
 | `docs/acima/gate-*.json` | the run artefacts a claim rests on | claim and status | each measured run |
@@ -248,7 +266,7 @@ Report the blocker to the user in its own words, with the remedy the preflight p
 
 The preflight asserts the skill is calibrated to the catalog in this repository *at this commit*:
 `SKL-002` compares `rules.json` against the pinned SHA-256 in `manifest.json`, and `SKL-003`
-checks that all 28 portable rule IDs still exist. If either fails, the standard changed after
+checks that all 41 automated rule IDs and the 12 manual IDs still exist. If either fails, the standard changed after
 this skill was written. Re-read the changed rules, update the skill deliberately, and only then
 continue. Never silence the check.
 
@@ -263,8 +281,8 @@ The preflight reports one of:
 | `adopting` | `acima.config.json` present | verify the baseline, then resume at the current level |
 
 Then read the **architecture mode** from `acima.config.json.mode` before proposing units. `base`
-(or an absent field) applies P1–P9 and P2.1's one-contracts-unit rule. `service-topology` applies
-P1–P9 plus P10–P13 and supersedes exactly P2.1 and P3.5 with per-layer contracts and total
+(or an absent field) applies P1–P9, P14 and P15 plus P2.1's one-contracts-unit rule. `service-topology`
+applies P1–P9, P10–P15 and supersedes exactly P2.1 and P3.5 with per-layer contracts and total
 isolation; this revision has no service workflow, so stop and report `NOT SUPPORTED`. Do not infer
 the mode from directory names, and do not let `acima.topology.json` substitute for the config field.
 
@@ -358,6 +376,88 @@ one finding into another (breaking a cycle with a shared kernel produces `D007`)
 idioms for contract findings, and the fingerprint rule: a rename changes the fingerprint, so the
 baseline or waiver must move in the same pull request. Never invent a remedy the rule page does not
 support, and never lower the count by widening an exclusion.
+
+For `D011`/`D012` the remedy is almost always *invert* or *localise*: make the parameter required and
+move the default to the composition root as an explicit value, a named policy or a no-op
+implementation. Do not close the finding by documenting the default; the defect is that the caller
+never made the decision.
+
+For `A005`/`A006`, report candidates rather than externalizing every literal. Classify each value as
+deployment, operational, business policy, secret or fixed; name its owner; and require the host to
+resolve and pass it in. A literal is not a finding merely because it is a literal — `A006` reports
+operational names, and the review decides whether the value is meaningful.
+
+For `D013`/`D014`, inspect the composition boundary, not just the finding. `D013` means a host scan,
+convention or dynamic discovery is choosing application components; name the components and their
+implementations, or record a reviewed plugin exception with a reproducible discovered set. `D014`
+means a required application dependency arrives through a property, field or post-construction
+assignment; move it to the constructor and supply it from the host. A framework may activate a
+controller or handler: do not demand manual instantiation, but do require its application
+dependencies to be declared in the constructor. Service-locator calls are `L004`; report them once,
+not as a duplicate `D014`. Never treat registration presence as proof of an inspectable graph.
+
+For `D015`/`D016`, preserve functional techniques. A closure over a pure value or a transformation is
+fine; a closure over a module or enclosing-local repository, service, client, logger or settings
+object is a capture. A dependency declared by an enclosing *parameter* is the explicit curried form
+and is allowed. Partial application or `bind` of a dependency is host wiring, not component setup.
+Do not tell a team to ban closures, currying or higher-order functions; fix the dependency path.
+
+For `A007`/`A008`/`A009`, decide lifetime from state ownership, never from a desire to reduce
+registrations. Identify which components are stateless, which hold request/tenant state, which own
+resources and which depend on a scoped component. `A007` means a stateless service is transient:
+share it only after confirming it has no mutable state and is safe for concurrent calls. `A008`
+means a shared component directly captures a scoped dependency: make the consumer scoped, pass the
+value as an operation parameter, or use an explicit factory — never a service locator. `A009` means
+a shared component owns a mutable container: name the owner, isolation key, synchronization, eviction
+and failure policy, or move the state to an explicitly owned store. A transient registration is not
+a defect by itself, and a singleton is not a fix by itself. Thread safety, tenant isolation,
+resource cleanup and distributed consistency are manual-review claims; a clean `A007`–`A009` scan
+does not establish any of them. Go, .NET and Java report these rules `executed: false` and need
+recorded evidence (chapter 17).
+
+For `C008` and `A010`–`A013`, review effects as **conditional** obligations, not a new checklist to
+apply universally. First identify the externally visible effects in the approved scope: persistent
+writes, messages, charges, emails, file writes, required audit records and vendor calls. For each,
+name the owning module and execution boundary; verify that a caller or host is not performing the
+provider's effect. Then establish which of the following actually apply to that operation, and say
+why the others do not:
+
+- **Retry:** owner, retryable failures, attempt limit, backoff and what happens when the budget is
+exhausted. No retry behaviour means no retry policy to invent.
+- **Duplicate execution:** the business identity, dedup record, retention and concurrency rule, and
+  whether a duplicate returns the original outcome. A read or a naturally idempotent write may need
+  no key.
+- **Consistency and atomicity:** the guarantee on return, what may still be pending, and whether the
+  operation is atomic, recoverable, compensating or reconciled. Do not demand all-or-nothing
+  atomicity where the domain needs a recoverable intermediate state.
+- **Cancellation:** whether the environment supports it, what a cancelled state looks like, and
+  whether an irreversible commit makes cancellation impossible. Do not demand a token on every
+  method.
+- **Outcome:** success only after durability or acceptance; failure, unknown and partial completion
+  represented separately; no catch-and-claim-nothing-happened.
+- **Evidence:** for a critical effect, the test, reconciliation, alert or runbook that covers the
+  failure path. Match evidence to blast radius; do not demand payment-grade evidence for a cache.
+
+`C008` additionally asks whether a boundary operation makes its business outcome, material
+preconditions, failure semantics and observable effects visible. Visibility does not mean moving
+business logic into the contract. `C003` still forbids behaviour in contracts.
+
+These six rules are **manual in every profile**. The enforcer reports them `executed: false`; never
+infer a pass from a retry library, a transaction API, a cancellation parameter, a logging call or a
+clean scan. In an assessment, distinguish a **confirmed defect** (the reviewed evidence shows an
+unowned effect, a silent duplicate hazard or a false outcome), a **suspected defect** (the evidence
+is incomplete or the design intent is ambiguous) and **insufficient evidence** (the repository does
+not expose enough to decide). A suspected defect is a review item, not a violation. Record the
+repository-scoped evidence in `.acima/manual-evidence.json` only after the owner approves that
+adoption artifact.
+
+For `N001`–`N003`, keep convention separate from semantics. `N001` checks type-declaration casing and
+`N002` flags generic responsibility candidates; neither proves that a name is good. `N003` is
+manual: responsibility clarity, side-effect transparency, boolean polarity, units, abbreviations and
+domain consistency. Recommend a targeted rename only when the current name would mislead a reader,
+show every affected identifier, and explain what the new name makes clear. Never bulk-rename a
+repository or present a subjective preference as a proven violation. Generated code, framework
+contracts and compatibility-sensitive public APIs may need an owned exception (chapter 18).
 
 ### Step 5 — Verify, with the run artefact
 

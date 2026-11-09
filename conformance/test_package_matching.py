@@ -83,8 +83,12 @@ class PackageIdentityTests(unittest.TestCase):
             self.assertIn("ACIMA-D004", rules)
             # ... but the package must not be mistaken for a reference to the `tools` module.
             self.assertNotIn("ACIMA-D002", rules)
+            # D004 intentionally names the package. The false positive under test is a
+            # package-derived module edge (D002/D008), so only those messages must not
+            # contain the package id.
             for finding in payload["findings"]:
-                self.assertNotIn("Grpc.Tools", finding.get("message", ""))
+                if finding["rule"] in {"ACIMA-D002", "ACIMA-D008"}:
+                    self.assertNotIn("Grpc.Tools", finding.get("message", ""))
 
 
 if __name__ == "__main__":

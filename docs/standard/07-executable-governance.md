@@ -3,7 +3,7 @@
 This chapter is the contract between the standard and the tools. Implement it exactly and any
 language's enforcer interoperates with any other.
 
-## 7.1 Three artefacts
+## 7.1 Four artefacts
 
 | Artefact | Location | Purpose |
 |---|---|---|
@@ -12,8 +12,9 @@ language's enforcer interoperates with any other.
 | `.acima/api-surface.json` | repository root | The reviewed baseline of every contracts surface |
 | `.acima/manual-evidence.json` | repository root | Review evidence for normative rules the portable enforcers cannot execute |
 
-All three are version-controlled, reviewed in pull requests, and owned by the same people who own the
-code.
+All four are version-controlled, reviewed in pull requests, and owned by the same people who own the
+code. The first three are mandatory for an assessment; manual evidence is required only for a full
+claim that includes a rule the run did not execute.
 
 ## 7.2 The finding format
 
@@ -108,8 +109,8 @@ suites and compare them against the same expected findings.
 
 Field notes:
 
-- `mode` selects the architecture mode. `base` (the default when absent) applies P1–P9.
-  `service-topology` applies P1–P9 plus P10–P13 and supersedes exactly P2.1 and P3.5 (chapter 11).
+- `mode` selects the architecture mode. `base` (the default when absent) applies P1–P9, P14 and P15.
+  `service-topology` applies P1–P9, P10–P15 and supersedes exactly P2.1 and P3.5 (chapter 11).
   The topology manifest cannot select a mode; a mismatch is a configuration error (exit `2`), not a
   finding.
 - `units[].paths` are directory prefixes or globs. **The most specific match wins**, so
@@ -238,13 +239,26 @@ Rules are added, deprecated and retired with the standard's version:
 
 | Action | Version change | Requirement |
 |---|---|---|
-| Add a rule | minor | it must ship with a violation fixture and at least one language implementation |
+| Add an automated rule | minor | it must ship with a violation fixture and at least one language implementation |
+| Add a manual rule | minor | it must name a principle, a decision procedure and an evidence method; it has no fixture because it cannot be executed |
 | Lower a rule's severity | minor | documented in the changelog with the reason |
 | Raise severity to `error` | major | migrating existing findings first, or a waiver with an expiry |
 | Retire a rule | major | id is retired permanently, never reused |
 
 A rule that cannot produce the four answers in §4.8 — who, what, why, where — is not ready to be
 enforced. **Do not ship rules that only say "this is wrong".** They train people to ignore the report.
+
+A manual rule is a deliberate exception to the fixture requirement. It ships with a stable id, a
+principle, an applicability condition, a review method and a manual-evidence requirement. It MUST be
+reported as `executed: false` with a reason in every enforcer; a waiver cannot substitute for the
+evidence, because a waiver records an accepted departure, not a completed review. The five P15/P1.7
+rules (`A010`–`A013`, `C008`) follow this path: their subject matter — ownership, duplicate semantics,
+outcome truthfulness and recovery evidence — is not reliably decidable from source text, and a
+heuristic that guessed would be worse than an honest manual rule.
+
+Manual rules may later acquire an automated rule when a native analyzer can decide a narrowly defined
+part of them. That new rule gets its own id and fixture; the manual obligation is not silently
+downgraded, and the two rules must state their relationship.
 
 ## 7.9 What the tools must not do
 

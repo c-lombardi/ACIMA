@@ -1,26 +1,31 @@
 # 1. Principles
 
-Thirteen principles. Each states an obligation, the reasoning behind it, and the rules — or profile
-requirements — that make it fail a build. The principles are ordered so that each one is only achievable because of the ones before it.
+Fifteen principles. Each states an obligation, the reasoning behind it, and the rules, profile
+requirements or manual-evidence obligations that verify it. Automated rules fail a build; manual
+rules fail a full conformance claim when their evidence is missing. The principles are ordered so
+that each one is only achievable because of the ones before it.
 
-P1–P9 are the base standard. P10–P13 belong to the service topology profile in
+P1–P9, P14 and P15 are the base standard. P10–P13 belong to the service topology profile in
 [chapter 11](11-service-topology.md); they are checked by the profile runner as `ACIMA-S001`–`S012`.
+P14 is numbered after the profile so that the existing profile identifiers keep their meaning.
 
 | # | Principle | Enforced by |
 |---|-----------|-------------|
-| P1 | [Service Ownership](#p1-service-ownership) | `D001` `D009` `L003` `A001` `A002` `A003` |
+| P1 | [Service Ownership](#p1-service-ownership) | `D001` `D009` `L003` `A001` `A002` `A003` `C008` |
 | P2 | [Contract Isolation](#p2-contract-isolation) | `D002` `D006` `D009` `L003` `G003` |
 | P3 | [Zero-Dependency Contracts](#p3-zero-dependency-contracts) | `D003` `D004` `D008` `L002` `C005` |
-| P4 | [Dependency Inversion](#p4-dependency-inversion) | `D002` `L003` `L004` `G003` |
+| P4 | [Dependency Inversion](#p4-dependency-inversion) | `D002` `D013` `D014` `D015` `D016` `L003` `L004` `G003` |
 | P5 | [Strict Dependency Boundaries](#p5-strict-dependency-boundaries) | `D001` `D005` `D008` `L001` |
 | P6 | [Immutable by Default](#p6-immutable-by-default) | `C001`–`C007` |
-| P7 | [Independent Evolution](#p7-independent-evolution) | `A001`–`A004` `G004` |
+| P7 | [Independent Evolution](#p7-independent-evolution) | `A001`–`A006` `G004` |
 | P8 | [Executable Governance](#p8-executable-governance) | `G001`–`G005` and the harness contract |
 | P9 | [Explicit Exceptions](#p9-explicit-exceptions) | `G001` `G002` |
 | P10 | [Service-Aligned Topology](#p10-service-aligned-topology) | `ST-1`–`ST-3` `ST-7` (profile, automated) |
 | P11 | [Layer Contract Independence](#p11-layer-contract-independence) | `ST-4` `ST-6` (profile, automated) |
 | P12 | [Absolute Contract Isolation](#p12-absolute-contract-isolation) | `ST-5` (profile, automated) |
 | P13 | [Product-Oriented Services](#p13-product-oriented-services) | `ST-11` `ST-12` (profile, automated) |
+| P14 | [Intent-Revealing Naming](#p14-intent-revealing-naming) | `N001` `N002`, `N003` review |
+| P15 | [Owned Effects](#p15-owned-effects) | `A010`–`A013` review |
 
 ---
 
@@ -49,6 +54,10 @@ A module is a unit of ownership before it is a unit of code. It owns:
   (`A003`).
 - **P1.6** Abstractions over infrastructure (repositories, gateways, clocks, message buses) belong to
   the module that uses them, in its implementation — never in a cross-module "core" project.
+- **P1.7** An operation exposed at a boundary MUST make its business behaviour visible: the outcome it
+  produces, its material preconditions and failure semantics, and the observable effects it may have.
+  Visibility is documentation and typed result semantics; it MUST NOT be used to move business rules
+  into a contract (`C008`; chapter 6 §6.1).
 
 ### The failure it prevents
 
@@ -161,6 +170,44 @@ ACIMA distinguishes two kinds of abstraction at a boundary:
   cross-module project (`D002` if published, `L003` if leaked).
 - **P4.5** Wiring — deciding which implementation satisfies which port — MUST happen in the
   composition root, not inside modules (`D006`).
+- **P4.6** A required input MUST be supplied explicitly at construction and at invocation. An
+  optional parameter, a default value or an implicit fallback MUST NOT conceal a dependency or a
+  decision the caller owns (`D011`, `D012`; chapter 13). A nullable parameter **without** a default
+  is required and permitted: the caller chooses the absence explicitly.
+- **P4.7** A meaningful value MUST have an identified owner and an intentional classification: a
+  local literal, a named constant, an application constant, shared configuration, runtime
+  configuration, deployment configuration or a secret (`A006`; chapter 14). Identical text does not
+  establish identical meaning, and occurrence count is not an ownership criterion.
+- **P4.8** Configuration MUST be resolved and validated at the composition boundary and passed into
+  the component that consumes it. A module MUST NOT read ambient environment variables or a global
+  configuration object to discover a value a caller could supply (`A005`, `A002`; chapter 14).
+- **P4.9** Application-owned components MUST be registered and constructed at an identifiable
+  composition boundary. Automatic scanning, convention registration or dynamic discovery MUST NOT
+  hide which components exist or which implementation is selected (`D013`; chapter 15).
+- **P4.10** Dependencies MUST arrive through a constructor or composition function, not through
+  property/field injection, post-construction assignment or a global service locator (`D014`,
+  `L004`; chapter 15). A framework MAY activate a component, but it MUST NOT conceal the
+  component's declared dependencies.
+- **P4.11** A closure, lambda, callback or returned function MUST NOT capture an application-owned
+  dependency from a module or enclosing local. The dependency MUST be an explicit parameter or a
+  declared field; pure closures over values and transformations remain permitted (`D015`;
+  chapter 16).
+- **P4.12** Currying and higher-order composition are permitted when every application dependency
+  is a parameter. Partial application or method binding of an application dependency MUST happen at
+  the composition boundary, not inside a component (`D016`; chapter 16).
+- **P4.13** A stateless application service SHOULD be shared at the longest appropriate lifetime
+  rather than repeatedly constructed. A transient lifetime remains valid when per-instance
+  identity, isolated mutable state, a short-lived resource or an operation boundary requires it
+  (`A007`; chapter 17).
+- **P4.14** A component's lifetime MUST be compatible with the lifetimes of the dependencies it
+  captures. A shared/singleton component MUST NOT directly capture a scoped dependency; a
+  longer-lived component that needs shorter-lived state MUST use an explicit scope, factory or
+  operation parameter rather than a service locator (`A008`; chapter 17).
+- **P4.15** Shared mutable state MUST have an explicit owner, mutation authority, isolation
+  boundary and concurrency policy, and a resource-owning component MUST have an explicit
+  initialisation, lifetime and cleanup story. Transient construction is not a substitute for state
+  ownership (`A009`; chapter 17). Thread safety, tenant isolation, resource cleanup and distributed
+  consistency remain review obligations, not static-analysis claims.
 
 ### The test
 
@@ -273,7 +320,7 @@ become a service without redesign, because the seam already exists.
 P7 forces the question *who owns this concept?* earlier than most teams ask it. That is the point.
 Shared concepts are either value types (kernel), owned by exactly one module (contract), or a process
 spanning modules (saga/policy). There is no fourth answer, and the fourth answer is what
-`A001`–`A003` exist to prevent.
+`A001`–`A006` exist to prevent.
 
 ---
 
@@ -441,3 +488,96 @@ not migrated remain governed by P3.5; new repositories MUST use absolute isolati
 A rule enforced only in the UI is a suggestion; a service shaped by its database is a schema with
 endpoints. The product outcome is the unit of design, and the architecture exists to keep that
 outcome enforceable as the system grows.
+
+## P14. Intent-Revealing Naming
+
+> **Names communicate responsibility, behaviour, domain meaning and relevant units. Naming syntax
+> follows the language; naming semantics follow the architecture.**
+
+This principle applies to every construct a reader navigates by: modules, classes, interfaces,
+methods, functions, properties, variables, parameters, constants, events, commands, queries,
+enums and exceptions. It does not impose universal casing; it requires that the name and the thing
+agree.
+
+### Obligations
+
+- **P14.1** A type, module or component name MUST identify a responsibility or domain concept, not
+  merely a generic role. `Helper`, `Manager`, `Processor`, `Utility`, `Common`, `Base`, `Default`
+  and `Generic` are not substitutes for a responsibility; a generic role is permitted only when
+  the surrounding abstraction makes it precise (`N002`; chapter 18).
+- **P14.2** An operation name MUST state the action and its meaningful outcome. A name MUST NOT
+  conceal a mutation or external interaction behind a read-named operation; where a side effect
+  matters, the name communicates it (`N003`; chapter 18).
+- **P14.3** The same domain concept MUST use consistent terminology across contracts,
+  implementations, events, commands, queries, persistence abstractions and API boundaries, unless
+  a genuinely different concept justifies a different term (`N003`; chapter 18).
+- **P14.4** Boolean identifiers SHOULD express a positive condition or decision. Values whose unit,
+  scale or distinction is not established by their type MUST communicate it in the name. Unexplained
+  local abbreviations MUST NOT replace the domain vocabulary (`N003`; chapter 18).
+- **P14.5** Language-specific casing, prefixes and suffixes are conventions, not architecture. They
+  MUST follow the target language's established practice, and they MUST NOT be imposed uniformly
+  across languages. Semantic naming quality remains a review decision, not a static-analysis proof
+  (`N001`, `N003`; chapter 18).
+
+## P15. Owned Effects
+
+> **Every externally visible effect has one identifiable owner, an explicit execution boundary, a
+> truthful outcome and evidence proportionate to its criticality.**
+
+An **effect** is anything outside the module's own memory that another actor can observe: a database
+write, message publication, payment, email, file write, cache invalidation, audit record or call to a
+vendor. ACIMA does not require every effect to be transactional, retryable, cancellable or
+idempotent. It requires the architectural decisions that *do* apply to be owned and visible rather
+than accidental.
+
+This principle extends P1 (ownership), P7 (independent evolution) and P8 (executable governance) to
+the runtime boundary. It does not replace the persistence, configuration and statics obligations in
+P7, and it does not prescribe a framework, a messaging product or a distributed transaction.
+
+### Obligations
+
+- **P15.1** Every externally visible effect MUST have an identifiable owning component and execution
+  boundary. A caller MUST NOT perform a provider's effect on its behalf, and an effect MUST NOT be
+  hidden behind a read-shaped abstraction (`A010`; chapter 6 §6.2.1).
+- **P15.2** An operation that owns an effect MUST make the effect's semantics visible: ordering,
+  failure and partial-completion behaviour, duplicate handling, retry policy and consistency
+  expectations where they apply (`A011`; chapter 6 §6.3.1, §6.5, §6.9).
+- **P15.3** An effect owner MUST report a truthful outcome. It MUST NOT report success before the
+  effect is durable or accepted, MUST NOT report failure after an irreversible commit as though
+  nothing happened, and MUST distinguish an unknown outcome from both success and failure (`A012`).
+- **P15.4** An effect whose failure could corrupt data, duplicate a charge, lose a required record or
+  leave an operation unrecoverable MUST have evidence proportionate to that risk: a test, a
+  reconciliation check, an operational signal or a recorded review. A clean static scan alone is not
+  evidence that the effect is correct (`A013`; chapter 6 §6.5.2).
+
+### What this does not require
+
+- Every multi-step change does not need all-or-nothing atomicity. A workflow may define a recoverable
+  intermediate state, a compensating action or a reconciliation process instead.
+- Every command does not need an idempotency key. The obligation applies where duplicate execution is
+  possible and could affect correctness.
+- Every method does not need a cancellation parameter. Cancellation applies where the execution
+  environment supports it and the operation is long-running or externally cancellable.
+- Every module does not need its own broker, outbox or saga framework. The owner may be a host policy,
+  an adapter, a library or a managed platform capability, provided the ownership is visible.
+- A local mutation inside an aggregate does not need a separate state-ownership mechanism. P15 is about
+  observable effects and the consistency contract around them; ordinary in-memory mutation remains
+  governed by the module's internal design (chapter 17).
+
+### Why a thin principle rather than nine rules
+
+The existing principles already establish who owns data, configuration, dependencies and contracts.
+Side effects, retries, transactions, idempotency and cancellation are runtime consequences of those
+ownership decisions, not a second architecture. P15 makes the consequences explicit while leaving the
+choice of mechanism to the team and the domain. A retry policy is required only when retries exist; a
+transaction boundary only when consistency requires one; an idempotency key only when duplicates can
+harm. This is the same conditional style as P7's configuration ownership: the obligation is triggered
+by the design, not imposed on every operation.
+
+### Enforcement boundary
+
+The four P15 obligations are assessed through `A010`–`A013`, all manual-evidence rules. No portable
+static analysis can prove that an effect owner is correct, that an unknown outcome is represented,
+or that recovery evidence is adequate. The enforcers report those rules as `executed: false`; a full
+claim needs repository-scoped manual evidence. A source scan that merely finds a retry library, a
+transaction API, a cancellation token or a logging call proves none of the obligations.

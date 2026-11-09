@@ -5,7 +5,7 @@ from typing import Sequence
 
 from acima.catalog.contracts import ProductId, ProductView
 
-from .repository import InMemoryProductStore, ProductStore
+from .repository import ProductStore
 
 
 class _CatalogReader:
@@ -24,8 +24,8 @@ class _CatalogReader:
 class CatalogModule:
     """The module. Constructed with its dependencies, never discovering them."""
 
-    def __init__(self, store: ProductStore | None = None) -> None:
-        self._store: ProductStore = store or InMemoryProductStore()
+    def __init__(self, store: ProductStore) -> None:
+        self._store = store
         self._reader = _CatalogReader(self._store)
 
     def reader(self) -> _CatalogReader:

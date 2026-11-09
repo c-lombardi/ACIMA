@@ -1,10 +1,10 @@
 # Rule catalog
 
-34 rules. Five categories. Every rule has a permanent id, a severity, a conformance level and a
+53 rules. Six categories. Every rule has a permanent id, a severity, a conformance level and a
 detection strategy. Python, TypeScript, Go and .NET each have a reference enforcer; Java is a
 documented profile only and has no reference enforcer in this revision. The five third-party tier
 rules (`L005`–`L007`, `D010`, `G006`) are implemented by the Python and TypeScript enforcers in this
-revision and reported `executed: false` by Go and .NET.
+revision and reported `executed: false` by Go and .NET. The explicit-input rules (`D011`, `D012`), the value rules (`A005`, `A006`), the composition rules (`D013`, `D014`), the functional-capture rules (`D015`, `D016`), the lifecycle rules (`A007`–`A009`) and the naming rules (`N001`–`N002`) follow the same split. `C008`, `A010`–`A013` and `N003` are manual in every profile: no portable analyzer can decide them reliably.
 
 The machine-readable source of truth is [`tools/acima-spec/rules.json`](../../tools/acima-spec/rules.json).
 This catalog is its human-readable form; if they disagree, the JSON is authoritative.
@@ -17,6 +17,7 @@ This catalog is its human-readable form; if they disagree, the JSON is authorita
 | `L` | Layering inside a module | [Dependency rules](dependency.md#layering-l) |
 | `C` | Contract shape and immutability | [Contract rules](contracts.md) |
 | `A` | Autonomy at runtime | [Autonomy rules](autonomy.md) |
+| `N` | Intent-revealing naming and semantic clarity | [Naming rules](naming.md) |
 | `G` | Governance and exception hygiene | [Governance rules](autonomy.md#governance-g) |
 
 ## All rules
@@ -35,6 +36,12 @@ This catalog is its human-readable form; if they disagree, the JSON is authorita
 | `D008` | Transitive implementation leak | error | L1 |
 | `D009` | Access to another module's internals | error | L1 |
 | `D010` | Port exposes a vendor shape | error | L1 |
+| `D011` | Optional construction dependency | warning | L1 |
+| `D012` | Optional argument hides an operational decision | warning | L1 |
+| `D013` | Implicit component registration | warning | L1 |
+| `D014` | Property or field injection | warning | L1 |
+| `D015` | Closed-over application dependency | warning | L1 |
+| `D016` | Partial application of an application dependency | warning | L1 |
 
 ### Layering
 
@@ -59,6 +66,7 @@ This catalog is its human-readable form; if they disagree, the JSON is authorita
 | `C005` | Persistence type leak | error | L2 |
 | `C006` | Untyped payload | error | L2 |
 | `C007` | Cannot be constructed in one step | warning | L2 |
+| `C008` | Business behaviour is opaque at the boundary | error | L2 |
 
 ### Autonomy
 
@@ -68,6 +76,23 @@ This catalog is its human-readable form; if they disagree, the JSON is authorita
 | `A002` | Cross-module configuration key | warning | L3 |
 | `A003` | Cross-module mutable static state | error | L3 |
 | `A004` | Version-lock coupling | warning | L3 |
+| `A005` | Configuration read outside the composition boundary | warning | L3 |
+| `A006` | Operational value without a declared owner | warning | L3 |
+| `A007` | Unnecessary transient lifetime | warning | L3 |
+| `A008` | Captive scoped dependency | warning | L3 |
+| `A009` | Shared mutable state without ownership | warning | L3 |
+| `A010` | Effect boundary is unowned | error | L3 |
+| `A011` | Effect semantics are hidden | error | L3 |
+| `A012` | Effect outcome is untruthful | error | L3 |
+| `A013` | Critical effect has no evidence | warning | L3 |
+
+### Naming
+
+| Id | Rule | Sev | Level |
+|---|---|---|---|
+| `N001` | Non-idiomatic type identifier | warning | L3 |
+| `N002` | Generic responsibility name | warning | L3 |
+| `N003` | Semantic naming clarity review | warning | L3 |
 
 ### Governance
 
@@ -100,9 +125,9 @@ Every rule entry has the same six parts:
 | `warning` | A strong default that was departed from. Reported, tracked, not blocking. | reported only |
 | `info` | Something the reviewer should know (an additive API change, an unparsed file). | reported only |
 
-Only `L004`, `C007`, `A002`, `A004`, `G003` and the three ratcheting third-party rules (`L005`,
-`L007`, `G006`) are warnings; every other rule is an error. The three ratcheting rules become `error`
-at the next major release — the ratchet is recorded in `rules.json` as
+Only `L004`, `C007`, `A002`, `A004`, `A013`, `G003`, `N001`–`N003` and the ratcheting rules recorded in `rules.json` are
+warnings; every other rule is an error. Every ratcheting rule becomes `error` at the next major
+release — the ratchet is recorded in `rules.json` as
 `severityRatchet: { "to": "error", "at": "2.0.0" }` and explained in
 [§8.10](../standard/08-conformance.md#810-third-party-governance-and-the-swap-drill) and the
 [changelog](../../CHANGELOG.md). This ratio is deliberate: a catalogue of warnings is a catalogue of
@@ -110,8 +135,8 @@ things nobody fixes.
 
 ## Rules that need judgement
 
-Six normative rules cannot be decided by the portable reference enforcers. The machine-readable
-catalog marks them `automation: "manual"`; the other 28 are `automation: "automated"`. They remain
+Twelve normative rules cannot be decided by the portable reference enforcers. The machine-readable
+catalog marks them `automation: "manual"`; the other 41 are `automation: "automated"`. They remain
 in the catalogue because a native analyzer, package metadata or a human review can decide them, but
 a clean portable run is not evidence that they pass. A full conformance claim records one
 repository-scoped entry per manual rule in `.acima/manual-evidence.json`; without that file the
@@ -121,15 +146,22 @@ claim is `PARTIAL ASSESSMENT`. See [Conformance §8.9](../standard/08-conformanc
 |---|---|---|---|
 | `C003` | error | reports `executed: false` | decides whether a contract helper is validation or business logic, IO or orchestration |
 | `C007` | warning | reports `executed: false` | decides whether a builder or multi-step construction is justified and whether required state is obvious |
+| `C008` | error | reports `executed: false` | decides whether a boundary operation hides a business decision, nondeterministic input or meaningful effect |
 | `L004` | warning | reports `executed: false` | inspects framework-specific service-locator/container resolution |
 | `A002` | warning | reports `executed: false` | decides whether a configuration key is genuinely shared infrastructure or another module's key/secret |
 | `A004` | warning | reports `executed: false` | inspects published package/artifact versions across the product graph |
+| `A010` | error | reports `executed: false` | identifies the effect owner and execution boundary; confirms no caller performs a provider's effect |
+| `A011` | error | reports `executed: false` | decides whether retry, duplicate, consistency, partial-completion and cancellation semantics are explicit where applicable |
+| `A012` | error | reports `executed: false` | checks that success, failure, unknown and partial outcomes are reported truthfully |
+| `A013` | warning | reports `executed: false` | decides whether a critical effect has evidence proportional to its failure impact |
+| `N003` | warning | reports `executed: false` | decides responsibility, side-effect, unit, abbreviation, boolean and domain-consistency clarity |
 | `G004` | error | reports `executed: false` | compares a reviewed per-language API baseline and classifies the change as additive or breaking |
 
 `G003` is executed, but a human still writes and reviews the documentation it looks for. The other
-28 rules execute in at least one reference enforcer and have gallery fixtures; the third-party tier
-rules are scoped to Python and TypeScript in this revision, so a Go or .NET run reports them
-`executed: false` and a full claim needs manual evidence for them.
+41 rules execute in at least one reference enforcer and have gallery fixtures; the third-party tier,
+explicit-input, value, composition, functional-capture, lifecycle and naming rules are scoped to
+Python and TypeScript in this revision, so a Go or .NET run reports those eighteen plus the twelve
+manual rules `executed: false` and a full claim needs manual evidence for all of them.
 
 A rule that mixes machine and human judgement must say which part is which — otherwise the tool gets
 blamed for the human's decision, and the rule gets disabled.

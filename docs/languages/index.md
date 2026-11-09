@@ -13,26 +13,38 @@ enforced depends on what the language and its ecosystem give you.
 
 ## Coverage matrix
 
-The implemented reference enforcers cover the same **23** portable rules with the same ids and
-the same finding format, so one conformance run can compare profiles. Six rules are **not**
-implemented by the portable enforcer:
+Python and TypeScript execute all **41** automated rules with the same ids and finding format; Go and
+.NET implement 23. Twelve rules are **manual in every profile**:
 
 | Rule | Why not portable | Where it is covered |
 |---|---|---|
-| `C003` public setters | a setter is only a violation at the contract surface, which needs symbol analysis | Roslyn / ArchUnit / ESLint analyzers |
+| `C003` behaviour in contracts | whether a method contains business logic, IO or orchestration needs semantic analysis | Roslyn / ArchUnit / ESLint analyzers |
 | `C007` constructor validation | requires judging whether a guard clause is present and correct | native analyzers, property-based tests |
+| `C008` business behaviour visibility | requires judging whether an operation's outcome, preconditions, failures and effects are visible | contract/implementation review |
+| `A010` effect ownership | requires identifying the owner and execution boundary from design intent | effect-ownership review; chapter 6 |
+| `A011` effect semantics | retry, duplicate, consistency and cancellation semantics are not decidable from syntax | contract and failure-path review |
+| `A012` outcome truthfulness | requires reasoning about commits, unknown outcomes and partial completion | failure-path review; tests/runbooks |
+| `A013` critical-effect evidence | criticality and evidence proportionality are business judgements | test, reconciliation and operational evidence review |
 | `L004` service locator | needs framework-specific call knowledge (DI containers differ per ecosystem) | documented per language; production analyzers where available |
 | `A002` cross-module config key | configuration APIs differ per ecosystem | documented per language |
 | `A004` version-lock coupling | only meaningful with published packages | package manifests, reviewed at release |
 | `G004` API baseline | needs a stable surface format per language | specified in [07](../standard/07-executable-governance.md); regeneration is a per-language command |
+| `N003` naming clarity | responsibility, side effects, units, boolean polarity and domain consistency are semantic judgements | adoption skill review; chapter 18 |
+
+Go and .NET carry the catalog entries for the tier rules (`L005`–`L007`, `D010`, `G006`), the
+explicit-input rules (`D011`, `D012`), the value rules (`A005`, `A006`), the composition rules
+(`D013`, `D014`), the functional-capture rules (`D015`, `D016`), the lifecycle rules
+(`A007`–`A009`) and the naming rules (`N001`–`N002`), and report those eighteen `executed: false`.
+`N003` is one of the twelve manual rules, not an automated gap.
 
 Each profile implements what its language can express. This table is the measured coverage of
 the reference enforcers, not the coverage of the standard:
 
 | Coverage | Python | TypeScript | Go | .NET | Java |
 |---|---|---|---|---|---|
-| Portable rules fired by the gallery | 23 / 23 | 23 / 23 | 23 / 23 | 23 / 23 | — |
-| Documented gaps | none | none | none | none | — |
+| Automated rules fired by the gallery | 41 / 41 | 41 / 41 | 23 / 41 | 23 / 41 | — |
+| Manual rules executed | 0 / 12 | 0 / 12 | 0 / 12 | 0 / 12 | 0 / 12 |
+| Documented gaps | twelve manual | twelve manual | eighteen automated + twelve manual | eighteen automated + twelve manual | no enforcer |
 
 A rule counts only when a violation fixture makes it fire **and** the resulting finding is checked by
 `conformance/run.py`. Rules in the documented-gap column are still normative for that language; the

@@ -40,7 +40,7 @@ export class CatalogModule {
   private readonly store: InMemoryProductStore;
   private readonly adapter: CatalogReaderAdapter;
 
-  constructor(store: InMemoryProductStore = new InMemoryProductStore()) {
+  constructor(store: InMemoryProductStore) {
     this.store = store;
     this.adapter = new CatalogReaderAdapter(store);
   }

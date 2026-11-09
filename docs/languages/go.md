@@ -108,6 +108,59 @@ is `P4.3` (consumer-owned ports) for free. Use it: declare the narrow interface 
 package, and let the provider's concrete type satisfy it implicitly. That is the most idiomatic
 expression of consumer-owned abstraction in any language in this standard.
 
+### Explicit inputs (`D011`, `D012`)
+
+Go has no optional parameters, but it has the same failure mode: `NewOrdersModule(deps Deps)` with a
+zero-value `Deps` field is a dependency the caller did not supply, and a variadic option list can hide
+a required collaborator. Require dependencies as explicit constructor arguments (or a `Deps` struct
+whose constructor rejects zero values); do not treat the zero value as a default. The reference
+enforcer reports `D011` and `D012` `executed: false` in this revision, so a Go repository records
+manual evidence for them (chapter 8 §8.9).
+
+### Values and configuration (`A005`, `A006`)
+
+Pass a typed `Settings` struct into the module constructor; do not call `os.Getenv` inside the module.
+Go has no named-constant enforcement for struct fields, so review operational values explicitly: a
+zero-value field must not stand in for a policy decision. The reference enforcer reports `A005` and
+`A006` `executed: false`; a Go repository records manual evidence for them (chapter 8 §8.9).
+
+### Composition and injection (`D013`, `D014`)
+
+`cmd/orders-host/main.go` constructs the graph with explicit `New...` calls. Package `init()`
+registration, a global registry or a reflection-based lookup that chooses application components is
+`D013`; a handler receiving an application service through an unexported field set after construction
+is `D014`. Constructor functions and explicit `Deps` structs are the normal Go expression of the
+requirement. This profile has no executable `D013`/`D014` in this revision; record manual evidence
+(chapter 15, chapter 8 §8.9).
+
+### Functional capture (`D015`, `D016`)
+
+A function literal must receive a collaborator through its parameters or an explicitly constructed
+struct field, not capture a package-level repository or service. Passing a dependency to a
+constructor is the normal Go form. Partial application via a returned closure is allowed only when
+the dependency is an explicit outer parameter; binding it inside a component hides the graph. This
+profile has no executable `D015`/`D016`; record manual evidence (chapter 16, chapter 8 §8.9).
+
+### Lifecycle and state ownership (`A007`–`A009`)
+
+Go has no container scope by default. Shared state is a package-level variable, a field on a
+long-lived struct or a value captured by a goroutine; `context.Context` is the request-scope carrier
+and must not be stored on a long-lived struct. A stateless constructor-built service can be shared
+safely; a struct with a mutable map needs an owner and either a mutex or a single-goroutine
+confinement policy. A goroutine that retains a request value after the request ends is the captive
+shape even though no container is involved. This profile reports `A007`–`A009` `executed: false` in
+this revision; record manual evidence for lifetime, synchronization, tenant isolation and resource
+cleanup (chapter 17, chapter 8 §8.9).
+
+### Intent-revealing naming (`N001`–`N003`)
+
+Exported identifiers use `MixedCaps` and unexported identifiers use `mixedCaps`; package names are
+short and role-oriented, not `util` or `common`; interfaces name the capability; initialisms keep
+their conventional case (`ID`, `URL`, `HTTP`). Name the responsibility, not a generic `Manager` or
+`Helper`. This profile reports `N001`–`N003` `executed: false`; record manual evidence for type
+casing, generic responsibilities, units, side effects, domain terminology and boolean clarity
+(chapter 18, chapter 8 §8.9).
+
 ## 6. Service topology profile
 
 Chapter 11's naming maps to packages, with `internal/` doing the ownership work:

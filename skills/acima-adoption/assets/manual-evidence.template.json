@@ -1,6 +1,6 @@
 {
-  "_note": "One repository-scoped entry per manual rule required by the declared level. Without these, the claim is PARTIAL ASSESSMENT. The artifact must exist and contain the recorded review.",
-  "standard": "1.0.0-draft.1",
+  "_note": "One repository-scoped entry per manual rule required by the declared level. Without these, the claim is PARTIAL ASSESSMENT. Replace owner, reviewer and artifact with real evidence; the artifact must exist and contain the recorded review. Do not add entries for rules that are not required by the level. Applicability is recorded in the review: a non-applicable obligation is explained, never silently omitted.",
+  "standard": "1.8.0-draft.1",
   "evidence": [
     {
       "rule": "ACIMA-C003",
@@ -9,8 +9,129 @@
       "reviewer": "architecture-review",
       "method": "review",
       "artifact": "docs/reviews/C003-contract-behaviour.md",
-      "reviewedOn": "2026-11-08",
-      "expires": "2027-05-08",
+      "reviewedOn": "2026-11-09",
+      "expires": "2027-05-09",
+      "result": "pass"
+    },
+    {
+      "rule": "ACIMA-C007",
+      "scope": "repository",
+      "owner": "team-contracts",
+      "reviewer": "architecture-review",
+      "method": "review",
+      "artifact": "docs/reviews/C007-construction.md",
+      "reviewedOn": "2026-11-09",
+      "expires": "2027-05-09",
+      "result": "pass"
+    },
+    {
+      "rule": "ACIMA-C008",
+      "scope": "repository",
+      "owner": "team-contracts",
+      "reviewer": "architecture-review",
+      "method": "review",
+      "artifact": "docs/reviews/C008-business-visibility.md",
+      "reviewedOn": "2026-11-09",
+      "expires": "2027-05-09",
+      "result": "pass"
+    },
+    {
+      "rule": "ACIMA-L004",
+      "scope": "repository",
+      "owner": "team-platform",
+      "reviewer": "architecture-review",
+      "method": "review",
+      "artifact": "docs/reviews/L004-service-locator.md",
+      "reviewedOn": "2026-11-09",
+      "expires": "2027-05-09",
+      "result": "pass"
+    },
+    {
+      "rule": "ACIMA-A002",
+      "scope": "repository",
+      "owner": "team-platform",
+      "reviewer": "architecture-review",
+      "method": "review",
+      "artifact": "docs/reviews/A002-configuration-ownership.md",
+      "reviewedOn": "2026-11-09",
+      "expires": "2027-05-09",
+      "result": "pass"
+    },
+    {
+      "rule": "ACIMA-A004",
+      "scope": "repository",
+      "owner": "release-owner",
+      "reviewer": "architecture-review",
+      "method": "review",
+      "artifact": "docs/reviews/A004-contract-versions.md",
+      "reviewedOn": "2026-11-09",
+      "expires": "2027-05-09",
+      "result": "pass"
+    },
+    {
+      "rule": "ACIMA-A010",
+      "scope": "repository",
+      "owner": "module-owners",
+      "reviewer": "architecture-review",
+      "method": "review",
+      "artifact": "docs/reviews/A010-effect-ownership.md",
+      "reviewedOn": "2026-11-09",
+      "expires": "2027-05-09",
+      "result": "pass"
+    },
+    {
+      "rule": "ACIMA-A011",
+      "scope": "repository",
+      "owner": "module-owners",
+      "reviewer": "architecture-review",
+      "method": "review",
+      "artifact": "docs/reviews/A011-effect-semantics.md",
+      "reviewedOn": "2026-11-09",
+      "expires": "2027-05-09",
+      "result": "pass"
+    },
+    {
+      "rule": "ACIMA-A012",
+      "scope": "repository",
+      "owner": "module-owners",
+      "reviewer": "architecture-review",
+      "method": "review",
+      "artifact": "docs/reviews/A012-outcome-truthfulness.md",
+      "reviewedOn": "2026-11-09",
+      "expires": "2027-05-09",
+      "result": "pass"
+    },
+    {
+      "rule": "ACIMA-A013",
+      "scope": "repository",
+      "owner": "module-owners",
+      "reviewer": "architecture-review",
+      "method": "review",
+      "artifact": "docs/reviews/A013-critical-effect-evidence.md",
+      "reviewedOn": "2026-11-09",
+      "expires": "2027-05-09",
+      "result": "pass"
+    },
+    {
+      "rule": "ACIMA-G004",
+      "scope": "repository",
+      "owner": "release-owner",
+      "reviewer": "architecture-review",
+      "method": "review",
+      "artifact": "docs/reviews/G004-api-baseline.md",
+      "reviewedOn": "2026-11-09",
+      "expires": "2027-05-09",
+      "result": "pass"
+    },
+    {
+      "rule": "ACIMA-N003",
+      "scope": "repository",
+      "owner": "team-contracts",
+      "reviewer": "architecture-review",
+      "method": "review",
+      "artifact": "docs/reviews/N003-naming-clarity.md",
+      "reviewedOn": "2026-11-09",
+      "expires": "2027-05-09",
       "result": "pass"
     }
   ]

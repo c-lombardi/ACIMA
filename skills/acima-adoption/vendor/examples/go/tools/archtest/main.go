@@ -66,15 +66,23 @@ var catalog = map[string][2]string{
 	"ACIMA-L004": {"warning", "L1"},
 	"ACIMA-C001": {"error", "L2"}, "ACIMA-C002": {"error", "L2"}, "ACIMA-C003": {"error", "L2"},
 	"ACIMA-C004": {"error", "L2"}, "ACIMA-C005": {"error", "L2"}, "ACIMA-C006": {"error", "L2"},
-	"ACIMA-C007": {"warning", "L2"},
+	"ACIMA-C007": {"warning", "L2"}, "ACIMA-C008": {"error", "L2"},
 	"ACIMA-A001": {"error", "L3"}, "ACIMA-A002": {"warning", "L3"},
 	"ACIMA-A003": {"error", "L3"}, "ACIMA-A004": {"warning", "L3"},
+	"ACIMA-A005": {"warning", "L3"}, "ACIMA-A006": {"warning", "L3"},
 	"ACIMA-G001": {"error", "L1"}, "ACIMA-G002": {"error", "L1"},
 	"ACIMA-G003": {"warning", "L2"}, "ACIMA-G004": {"error", "L2"},
 	"ACIMA-G005": {"error", "L1"},
 	"ACIMA-D010": {"error", "L1"},
 	"ACIMA-L005": {"warning", "L1"}, "ACIMA-L006": {"error", "L1"}, "ACIMA-L007": {"warning", "L1"},
 	"ACIMA-G006": {"warning", "L1"},
+	"ACIMA-D011": {"warning", "L1"}, "ACIMA-D012": {"warning", "L1"},
+	"ACIMA-D013": {"warning", "L1"}, "ACIMA-D014": {"warning", "L1"},
+	"ACIMA-D015": {"warning", "L1"}, "ACIMA-D016": {"warning", "L1"},
+	"ACIMA-A007": {"warning", "L3"}, "ACIMA-A008": {"warning", "L3"}, "ACIMA-A009": {"warning", "L3"},
+	"ACIMA-A010": {"error", "L3"}, "ACIMA-A011": {"error", "L3"},
+	"ACIMA-A012": {"error", "L3"}, "ACIMA-A013": {"warning", "L3"},
+	"ACIMA-N001": {"warning", "L3"}, "ACIMA-N002": {"warning", "L3"}, "ACIMA-N003": {"warning", "L3"},
 }
 
 var notExecuted = map[string]string{
@@ -89,6 +97,25 @@ var notExecuted = map[string]string{
 	"ACIMA-L006": "third-party tier rules are implemented by the python and typescript enforcers in this revision",
 	"ACIMA-L007": "third-party tier rules are implemented by the python and typescript enforcers in this revision",
 	"ACIMA-G006": "manifest package governance is implemented by the python and typescript enforcers in this revision",
+	"ACIMA-D011": "explicit-input rules are implemented by the python and typescript enforcers in this revision",
+	"ACIMA-D012": "explicit-input rules are implemented by the python and typescript enforcers in this revision",
+	"ACIMA-A005": "value and configuration rules are implemented by the python and typescript enforcers in this revision",
+	"ACIMA-A006": "value and configuration rules are implemented by the python and typescript enforcers in this revision",
+	"ACIMA-D013": "composition rules are implemented by the python and typescript enforcers in this revision",
+	"ACIMA-D014": "composition rules are implemented by the python and typescript enforcers in this revision",
+	"ACIMA-D015": "functional capture rules are implemented by the python and typescript enforcers in this revision",
+	"ACIMA-D016": "functional capture rules are implemented by the python and typescript enforcers in this revision",
+	"ACIMA-A007": "lifecycle rules are implemented by the python and typescript enforcers in this revision",
+	"ACIMA-A008": "lifecycle rules are implemented by the python and typescript enforcers in this revision",
+	"ACIMA-A009": "lifecycle rules are implemented by the python and typescript enforcers in this revision",
+	"ACIMA-N001": "naming rules are implemented by the python and typescript enforcers in this revision",
+	"ACIMA-N002": "naming rules are implemented by the python and typescript enforcers in this revision",
+	"ACIMA-N003": "semantic naming quality needs human review",
+	"ACIMA-C008": "business behavior visibility is a semantic contract review",
+	"ACIMA-A010": "effect ownership and commit boundaries require application and operational review",
+	"ACIMA-A011": "effect semantics require contract and API review",
+	"ACIMA-A012": "outcome truthfulness requires failure, retry and cancellation evidence",
+	"ACIMA-A013": "critical-effect evidence requires audit and telemetry inspection",
 }
 
 var rank = map[string]int{"L1": 1, "L2": 2, "L3": 3}
@@ -188,7 +215,7 @@ func main() {
 	byDir := map[string]*source{}
 	paths := sortedKeys(files)
 	for _, path := range paths {
-		byDir[filepath.Dir(path)] = files[path]
+		byDir[filepath.ToSlash(filepath.Dir(path))] = files[path]
 	}
 
 	for _, path := range paths {

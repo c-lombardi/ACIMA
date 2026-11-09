@@ -48,7 +48,7 @@ a metric, and an architecture programme that overclaims loses the next budget cy
 
 | Anti-metric | Why it is harmful |
 |---|---|
-| Rules executed | 34 rules executed over zero discovered files is a false pass |
+| Rules executed | 53 rules recorded as executed over zero discovered files is a false pass |
 | Lines of architecture documentation | documentation is not enforcement |
 | Percentage of "compliant" modules before a baseline exists | there is no denominator; the number is invented |
 | Waivers closed | closing a waiver by deleting the code that needed it is good; by bulk-renewal is not |
@@ -65,12 +65,14 @@ waiver report.
 
 **L2 — Immutable.** Contracts are frozen data with no behaviour, no framework types, no mutable
 collections, and the reviewed API baseline matches. *Evidence:* L2 automated run plus manual
-artifacts for `C003`, `C007` and `G004`; the API baseline diff is an artifact, not a green run.
+artifacts for `C003`, `C007`, `C008` and `G004`; the API baseline diff is an artifact, not a green
+run.
 
-**L3 — Autonomous.** Each module owns its persistence and configuration, modules do not share
-mutable statics, and consumers pin contracts versions. *Evidence:* L3 automated run plus manual
-artifacts for `A002` and `A004`, a schema ownership map, a configuration namespace map, and runtime
-grant evidence where the claim is operational autonomy.
+**L3 — Autonomous.** Each module owns its persistence, configuration and externally visible effects;
+modules do not share mutable statics; consumers pin contracts versions; retry, duplicate, consistency
+and recovery semantics have owners where they apply. *Evidence:* L3 automated run plus manual
+artifacts for `A002`, `A004` and `A010`–`A013`, a schema ownership map, a configuration namespace map,
+an effect/recovery review, and runtime grant evidence where the claim is operational autonomy.
 
 A level is claimed per repository, per commit. It expires when the commit changes; the CI artefact
 is what keeps it current.
@@ -114,7 +116,8 @@ becomes a tax with a standup.
 
 Use the template in `docs/standard/08-conformance.md` §8.5. It asks for the run, the artefact, the
 waiver report, the pipeline and the last verified commit. The executed count must be derived from
-the catalog; the reference portable enforcers do not execute `L004`, `C003`, `C007`, `G004`,
-`A002` or `A004`. If any required line is empty, or a required rule is `executed:false`, the
+the catalog; the reference portable enforcers do not execute `L004`, `C003`, `C007`, `C008`, `G004`,
+`A002`, `A004`, `A010`–`A013` or `N003`. If any required line is empty, or a required rule is
+`executed:false`, the
 repository is a **partial assessment**, not fully conformant. That is a perfectly good thing to be,
 as long as it is labelled accurately.

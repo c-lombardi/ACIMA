@@ -4,7 +4,9 @@
 
 This is the **normative specification** of ACIMA. It states obligations. Where it says a design
 *MUST* or *MUST NOT* do something, a conforming repository has to satisfy it, and every such
-obligation maps to at least one machine-checkable rule in the [rule catalog](../rules/index.md).
+obligation maps to at least one automated rule in the [rule catalog](../rules/index.md), or to a
+manual-evidence rule where no reliable automated decision exists. A manual rule is still normative;
+it is not a suggestion and it cannot be satisfied by a clean automated run.
 
 It is written to be read by three audiences at once:
 
@@ -31,6 +33,7 @@ Identifiers never change meaning. The categories are:
 | `L` | Layering inside a single module |
 | `C` | Contract shape and immutability |
 | `A` | Autonomy at runtime |
+| `N` | Intent-revealing naming and semantic clarity |
 | `G` | Governance and exception hygiene |
 
 ## 0.3 Scope
@@ -81,7 +84,7 @@ checkable:
 | Rules as tests | NetArchTest, ArchUnit | One rule catalogue and one finding format across languages |
 | Policy as data, reviewed waivers | [Purview Architests](https://purview.dev/projects/architests/) | Waivers become mandatory for *every* departure, with expiry, at L1 |
 | Immutable messages | DDD value objects, functional core practice | Promoted from style to a build-blocking rule (`C001`–`C007`) |
-| Module autonomy | Microservice / bounded-context thinking | Extended to persistence, configuration and static state (`A001`–`A003`) |
+| Module autonomy | Microservice / bounded-context thinking | Extended to persistence, configuration, values, static state, lifetime and state ownership (`A001`–`A009`) |
 | Layering | Clean / Hexagonal architecture | Reduced to four checkable edges (`L001`–`L004`) |
 
 ACIMA is an **enforcement standard, not an architecture**. Clean Architecture, Hexagonal
@@ -116,12 +119,12 @@ mode selector.
 
 | Mode | Obligations in force | Superseded base obligations |
 |---|---|---|
-| `base` (default when `mode` is absent) | P1–P9 | — |
-| `service-topology` | P1–P9 **plus** P10–P13 | P2.1 (one contracts unit per module) → P11.1/P11.2 per-layer contracts; P3.5 (shared-kernel allowance) → P12.2 zero-reference contracts |
+| `base` (default when `mode` is absent) | P1–P9, P14 and P15 | — |
+| `service-topology` | P1–P9, P10–P15 | P2.1 (one contracts unit per module) → P11.1/P11.2 per-layer contracts; P3.5 (shared-kernel allowance) → P12.2 zero-reference contracts |
 
-The profile does **not** replace P1–P9 wholesale. Exactly the two named obligations are superseded;
-immutability, acyclic dependencies, no implementation references, owned persistence, owned
-configuration and owned data still apply.
+The profile does **not** replace P1–P9 wholesale, and P14 and P15 apply in both modes. Exactly the two
+named obligations are superseded; immutability, acyclic dependencies, no implementation references,
+owned persistence, owned configuration, owned data and owned effects still apply.
 
 Mode consistency is a configuration check, not a finding:
 

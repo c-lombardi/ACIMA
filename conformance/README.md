@@ -1,6 +1,6 @@
 # Conformance
 
-This directory **verifies** ACIMA. It does not define it: every expectation here is derived from [`../tools/acima-spec/rules.json`](../tools/acima-spec/rules.json) and [`../docs/standard/`](../docs/README.md).
+This directory **verifies** ACIMA. It does not define it: every expectation here is derived from [`../tools/acima-spec/rules.json`](../tools/acima-spec/rules.json) and [`../docs/standard/`](../docs/README.md). Composition-specific coverage and limitations are recorded in [COMPOSITION_VALIDATION.md](COMPOSITION_VALIDATION.md); functional-capture coverage is in [FUNCTIONAL_COMPOSITION_VALIDATION.md](FUNCTIONAL_COMPOSITION_VALIDATION.md); lifecycle and state-ownership coverage is in [LIFECYCLE_OWNERSHIP_VALIDATION.md](LIFECYCLE_OWNERSHIP_VALIDATION.md); naming coverage is in [NAMING_VALIDATION.md](NAMING_VALIDATION.md).
 
 ## Run it
 
@@ -19,7 +19,7 @@ Exit codes: `0` every selected profile conformed, `1` drift or a missing toolcha
 |---|---|
 | clean tree | does the reference implementation produce zero findings? |
 | gallery | does every required rule fire, at the expected path? |
-| `coverage.json` | does each profile partition all 34 rules into executed / not-executed, with a reason? |
+| `coverage.json` | does each profile partition all 53 rules into executed / not-executed, with a reason? |
 | source count | did the enforcer actually see files? Zero files is a failure, not a pass |
 | execution map | does the run name every catalog rule, with `executed: false` where applicable? |
 | `tools` | do the CLI, claim model, waiver, exclusion, profile, topology and documentation contracts still hold? |
@@ -47,12 +47,12 @@ Positive fixtures (the clean reference implementations) and negative fixtures (t
 
 ## What a pass proves, and what it does not
 
-Passing means: for the four implemented languages, the reference enforcers detect the portable rules on checked-in fixtures (28 in Python and TypeScript, 23 in Go and .NET, where the five third-party tier rules report `executed: false`), agree on finding shape, and do not fire on a clean tree, and the claim model refuses to overstate.
+Passing means: for the four implemented languages, the reference enforcers detect the portable rules on checked-in fixtures (41 in Python and TypeScript, 23 in Go and .NET, where the five tier rules, two explicit-input rules, two value rules, two composition rules, two functional-capture rules, three lifecycle rules and two naming rules (`N001`–`N002`) report `executed: false`), agree on finding shape, and do not fire on a clean tree, and the claim model refuses to overstate. The twelve manual rules are reported `executed: false` in every profile: `C003`, `C007`, `C008`, `L004`, `A002`, `A004`, `A010`–`A013`, `G004` and `N003`.
 
 Passing does **not** mean:
 
 - your repository is architecturally sound — it is one input, not a certificate;
-- the six manual rules were evaluated (they were not);
+- the twelve manual rules were evaluated (they were not);
 - runtime isolation, type correctness or framework behaviour was proven;
 - Java is supported (it is not);
 - hosted CI ever ran (see [`../docs/status.md`](../docs/status.md)).

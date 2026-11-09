@@ -52,12 +52,22 @@ has one owner.
 | Mutable message or collection | `ACIMA-C001`, `C002` | `examples/python/violations/c001_mutable_contract.py`, `c002_mutable_collection.py` | Frozen dataclass, readonly fields, immutable collections. |
 | Shared persistence access | `ACIMA-A001` | `examples/python/violations/a001_shared_table.py` | One schema owner; use a contract or an event. |
 | Uncontrolled configuration ownership | `ACIMA-A002` (warning) | **Not evaluated by the portable runner** | Pass namespaced configuration into the module; review manually. |
+| Ambient configuration read inside a component | `ACIMA-A005` (warning) | Python/TypeScript automated; manual elsewhere | Resolve and validate it in the host; inject typed settings. |
+| Unnamed operational literal | `ACIMA-A006` (warning) | Python/TypeScript candidate scanner; manual elsewhere | Name the value in its owner or inject it from configuration. |
+| Discovery chooses application components | `ACIMA-D013` (warning) | Python/TypeScript automated; manual elsewhere | Name registrations/constructors; keep discovery only in a reviewed, proven exception. |
+| Dependency injected into a property or field | `ACIMA-D014` (warning) | Python/TypeScript automated; manual elsewhere | Move the dependency to the constructor and supply it from the host. |
+| Collaborator captured by a closure or callback | `ACIMA-D015` (warning) | Python/TypeScript automated; manual elsewhere | Pass it as a parameter or declared field; keep pure closures. |
+| Dependency partially applied inside a component | `ACIMA-D016` (warning) | Python/TypeScript automated; manual elsewhere | Move `bind`/`partial` to the composition boundary or keep it as a parameter. |
 | Dependency cycle | `ACIMA-D005` | `examples/python/violations/d005_cycle_orders.py`, `d005_cycle_payments.py` | Invert the dependency, publish an event, or merge the modules. |
 | Unapproved architectural exception | `ACIMA-G001`, `G002` | `examples/python/violations/waivers.json` | Owner, reason, scope, expiry, review date. |
 
 The `A002` row is deliberately not claimed as detected. The report lists it under
-**Not evaluated**; a human must review configuration access. That distinction is part of
-the standard.
+**Not evaluated**; a human must review configuration access. `A005` and `A006` are automated only
+where a language profile implements them, and their findings are candidates that still need an
+ownership decision. The same applies to `D013` and `D014`: they identify construction patterns, not a
+runtime graph. A framework-managed controller with constructor injection is compliant even though
+application code does not instantiate it. `D015` and `D016` likewise identify a syntactic capture or
+pre-binding, not proof of the runtime dependency graph. That distinction is part of the standard.
 
 ## Run the demonstration
 

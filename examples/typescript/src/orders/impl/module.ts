@@ -16,7 +16,7 @@ export class OrdersModule {
   private readonly payments: PaymentGateway;
   private readonly now: () => Date;
 
-  constructor(catalog: CatalogReader, payments: PaymentGateway, now: () => Date = () => new Date()) {
+  constructor(catalog: CatalogReader, payments: PaymentGateway, now: () => Date) {
     this.catalog = catalog;
     this.payments = payments;
     this.now = now;

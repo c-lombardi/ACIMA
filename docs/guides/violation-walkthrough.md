@@ -17,10 +17,13 @@ cd examples/go         && go run ./tools/archtest --root . --config acima.galler
 cd examples/dotnet     && dotnet run --project tools/Acima.ArchTests -- --root . --config acima.gallery.config.json
 ```
 
-Not every language fires every rule. Python and TypeScript cover all 28 portable rules; Go and .NET
-cover 23 of them, because the five third-party tier rules (`L005`–`L007`, `D010`, `G006`) report
-`executed: false` there in this revision. Each profile documents the other constructs it cannot see;
-the gaps are listed in [the language profiles](../languages/index.md).
+Not every language fires every rule. Python and TypeScript cover all 41 automated rules; Go and .NET
+cover 23 of them, because the five tier rules (`L005`–`L007`, `D010`, `G006`), the two
+explicit-input rules (`D011`, `D012`), the two value rules (`A005`, `A006`), the two composition
+rules (`D013`, `D014`), the two functional-capture rules (`D015`, `D016`), the three lifecycle rules
+(`A007`–`A009`) and the two naming rules (`N001`–`N002`) report `executed: false` there in this
+revision. The twelve manual rules, including `N003`, report `executed: false` in every language. Each profile documents
+the other constructs it cannot see; the gaps are listed in [the language profiles](../languages/index.md).
 
 ---
 
@@ -364,20 +367,27 @@ and will be imported by the first person who finds it convenient.
 
 ## Rules without fixtures
 
-Six rules are in the catalog but not in the portable enforcer, because detecting them needs
+Twelve rules are in the catalog but not in the portable enforcer, because detecting them needs
 information the source text does not carry:
 
 | Rule | Why it has no fixture |
 |---|---|
-| `ACIMA-C003` public setters | a setter is only a violation if it is reachable from the contract surface; compilers expose this, a text enforcer does not |
+| `ACIMA-C003` behaviour in contracts | a method is only a violation if it contains business logic, IO or orchestration; that is a semantic judgment |
 | `ACIMA-C007` constructor validation | needs to know whether a guard clause is present and correct, which is a semantic judgment |
+| `ACIMA-C008` business behaviour visibility | whether an operation makes its outcome, failures and effects visible is a semantic judgment |
 | `ACIMA-L004` service locator | resolving a dependency through a container is framework-specific |
 | `ACIMA-A002` shared configuration keys | configuration APIs differ per ecosystem |
 | `ACIMA-A004` version-lock coupling | only observable across published packages |
+| `ACIMA-A010` effect ownership | the owner and execution boundary are design intent, not syntax |
+| `ACIMA-A011` effect semantics | retry, duplicate, consistency and cancellation semantics require failure-path reasoning |
+| `ACIMA-A012` outcome truthfulness | whether an outcome represents a durable commit or an unknown remote state requires design context |
+| `ACIMA-A013` critical-effect evidence | criticality and evidence proportionality are business judgments |
 | `ACIMA-G004` API baseline | needs a per-language surface format |
+| `ACIMA-N003` naming clarity | whether a name communicates responsibility, side effects and units is a semantic judgment |
 
 They remain normative. They are enforced by native analyzers, review, or the per-language
-tooling named in [analyzers-and-linters.md](analyzers-and-linters.md).
+tooling named in [analyzers-and-linters.md](analyzers-and-linters.md). A clean portable run says
+nothing about them, and a full claim needs repository-scoped evidence.
 
 ## Adding a fixture
 

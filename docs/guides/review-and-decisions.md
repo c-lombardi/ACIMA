@@ -24,6 +24,7 @@ a comment thread.
 | Is this a published-surface change? | contracts path + API baseline | `G004` |
 | Can a consumer mutate this value? | contract shape | `C001`, `C002` |
 | Does this reach into another module's data? | persistence ownership | `A001`, `A003` |
+| Who owns this external effect, and what does the caller learn? | effect boundary and outcome review | `A010`–`A013` |
 | Is this exception acceptable? | owner, reason, scope, expiry | `G001`, `G002` |
 | Did the run actually discover the code? | unit coverage | `G005` |
 
@@ -83,6 +84,9 @@ reproducible**, so the human half gets the attention.
 | Mutable contract or exposed collection | pull request | `C001`, `C002` |
 | Contract surface changed without review | pull request | `G004` |
 | Shared table or cross-module static | design / pull request | `A001`, `A003` |
+| Host opens a transaction across modules, or a read-shaped operation writes | design review | `A010`, `C008` |
+| Retry duplicates a charge, or a timeout is reported as a clean failure | failure-path review | `A011`, `A012` |
+| Critical effect has no partial-failure evidence | design / test review | `A013` |
 | Undeclared module | CI | `G005` |
 
 The cost curve is the argument: a finding at PR time costs minutes, at integration days, and in
@@ -134,6 +138,9 @@ Side effects to check explicitly, because they are the ones that escape tests:
 | Modules coordinate through a static | a cache or flag declared `static` | `A003` |
 | A change reaches a module through a transitive reference | a package that re-exports an implementation | `D008` |
 | An undeclared module escapes the map | a new folder outside every declared path | `G005` |
+| The host performs a module's write inside its own transaction | a shared unit of work or connection | `A010` |
+| A retry repeats a non-idempotent effect | a generic retry decorator around a command | `A011` |
+| A timeout is reported as "nothing happened" | a catch block that returns a generic failure | `A012` |
 
 ## 8. Reviewer checklist
 
@@ -143,6 +150,10 @@ Side effects to check explicitly, because they are the ones that escape tests:
 - [ ] contract changes are immutable, typed, framework-free, and documented
 - [ ] the API baseline diff is reviewed, not regenerated blindly
 - [ ] no cross-module persistence, configuration, or static state was introduced
+- [ ] no cross-module transaction, hidden write or provider effect was introduced (`A010`)
+- [ ] retry, duplicate, consistency, partial-completion and cancellation semantics are stated where they apply (`A011`)
+- [ ] success, failure, unknown and partial outcomes are reported truthfully (`A012`)
+- [ ] a critical effect has failure-path evidence, not only a happy-path test (`A013`)
 - [ ] waivers, if any, have an owner, a reason, and a near expiry
 - [ ] the enforcer ran on this commit and found the expected units
 - [ ] tests cover the behaviour change, not just the structure

@@ -116,6 +116,68 @@ A `ruff` rule that bans `impl` imports from other packages uses `banned-api` or 
 for naive tools. The reference enforcer parses annotations through the AST, so it sees the real type
 regardless of the future import — and `mypy` runs with the same setting, so the two agree.
 
+### Explicit inputs (`D011`, `D012`)
+
+Python makes the omission easy to write: `def __init__(self, clock=None)` and
+`def place(self, notify=True)` are ordinary code. The reference enforcer reads `__init__` and function
+signatures with `ast` and reports a parameter that carries a default. A nullable annotation **without**
+a default is required and is not a finding — `clock: Callable[[], datetime] | None` forces the caller
+to pass `None` explicitly. `@overload` stubs, dunders other than `__init__`, contracts, tests and
+tooling are out of scope (chapter 13). `mypy --strict` does not catch the omission: an argument with a
+default is optional to the type checker, which is exactly why the architecture rule is separate.
+
+### Values and configuration (`A005`, `A006`)
+
+Use module-level uppercase constants for fixed policy (`MANUAL_REVIEW_THRESHOLD`) and a frozen
+dataclass for a component's settings. The host reads the environment and constructs
+`OrdersSettings(retry_limit=...)`; `OrdersService` requires that object and never calls `os.getenv`.
+The reference enforcer scans `implementation` and `adapter` units for `os.environ`/`os.getenv`
+(`A005`) and for numeric or string literals bound to operational names (`A006`). Uppercase named
+constants are skipped, and incidental literals are not findings; the rule is a review candidate, not
+a mandate to extract every number. Config modules belong to the host, not to a package that a module
+imports for convenience.
+
+### Composition and injection (`D013`, `D014`)
+
+The host's `build()` is the composition boundary: `CatalogModule(InMemoryProductStore())` and
+`OrdersModule(catalog=catalog.reader(), ...)` name every component and every dependency. Do not scan
+packages with `pkgutil.walk_packages` or `importlib.import_module` to decide what exists; `D013`
+reports those calls in a host unit. Do not declare `repo: Provide[...]` or `repo: Inject[...]` class
+fields; `D014` reports them. Constructor injection and a module-owned composition function are both
+explicit. A framework may activate a request handler, but the handler's application dependencies
+must be constructor parameters.Both rules are automated candidates here, not proof of the runtime graph.
+
+### Functional capture (`D015`, `D016`)
+
+Pass collaborators as parameters, including through a curried outer function; a lambda may capture
+an explicit parameter of its enclosing function. Do not read a module-level `order_repository` or an
+enclosing local from a callback (`D015`). Keep `functools.partial` of a collaborator at the host, not
+inside a component (`D016`). Pure closures over constants and transformations are allowed. The AST
+scanner does not resolve `getattr`/`globals`; those remain manual review.
+
+### Lifecycle and state ownership (`A007`–`A009`)
+
+A module-level object is a process singleton in practice; a decorator such as `@lru_cache` adds a
+shared cache with its own lifetime; a mutable default argument is shared by every call. Decide at the
+host whether a component is shared, request/tenant scoped or transient, and pass request-bound values
+as parameters rather than storing them. The reference scanner reads `register(... lifetime=...)` and
+`add_singleton`/`add_scoped`/`add_transient` in host units: `A007` reports a stateless transient
+service, `A008` reports a shared service whose constructor annotation names a scoped dependency, and
+`A009` reports a shared service initialising a mutable container. Decorators, provider functions,
+module-level construction and async task lifetimes are not resolved; use context managers for
+resource ownership and record manual evidence for cleanup, concurrency and tenant isolation
+(chapter 17).
+
+### Intent-revealing naming (`N001`–`N003`)
+
+Classes and protocols use `PascalCase`; functions, methods, variables, parameters and modules use
+`snake_case`; constants use `UPPER_SNAKE_CASE`. A leading underscore marks a non-public name. Name
+the responsibility (`OrderValidator`), not a generic role (`OrderHelper`). `N001` checks class-name
+casing and `N002` checks generic class names; both are candidates. `N003` is manual: side effects,
+boolean polarity, units, abbreviations, domain consistency and contextual naming are review
+claims, not scanner output. Framework-required names and generated declarations need an owned
+exception (chapter 18).
+
 ## 6. Service topology profile
 
 Chapter 11's naming maps to one distribution per layer:

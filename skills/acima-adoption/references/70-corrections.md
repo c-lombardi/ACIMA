@@ -11,6 +11,7 @@ are legal, the trap that turns one finding into another, and how to prove the co
 | `D`, `L` | [`docs/rules/dependency.md`](../vendor/docs/rules/dependency.md) |
 | `C` | [`docs/rules/contracts.md`](../vendor/docs/rules/contracts.md) |
 | `A`, `G` | [`docs/rules/autonomy.md`](../vendor/docs/rules/autonomy.md) |
+| `N` | [`docs/rules/naming.md`](../vendor/docs/rules/naming.md) |
 
 Each entry has Statement, Violation, Finding, Why, **Fix**, Detection. Read the Fix and Detection
 together: the Detection section says what the enforcer can and cannot see, which tells you whether a
@@ -33,6 +34,22 @@ Every remedy is one of these. Pick the smallest one that stops the rule firing.
 
 Restructuring is last because it moves code between owners and needs their agreement. Inverting is
 usually first because it adds a seam instead of moving a boundary.
+
+## Naming findings (`N`)
+
+- **`N001` type casing** — rename the type in its own language convention, then update every reference
+  in the same change. The enforcer checks declarations, not the semantic quality of the name. Do not
+  rename external contracts or generated declarations; record an owned exception instead.
+- **`N002` generic responsibility** — split the type by what it actually does (`OrderValidator`,
+  `OrderCalculator`) or rename it when one responsibility is already clear. A generic name that is
+  precise inside a narrow abstraction is not automatically a defect; record why it is meaningful.
+- **`N003` semantic clarity** — this is a review finding, never scanner output. Establish the domain
+  term, make side effects explicit (`Find` vs `Create`, `Get` vs `GetOrCreate`), state units, and
+  remove unexplained local abbreviations. Propose the smallest rename that removes the ambiguity and
+  obtain consent before editing consumer code.
+
+A rename changes the finding fingerprint, so move the baseline or waiver in the same pull request.
+Never bulk-rename to reduce the count, and never treat a preferred synonym as a proven violation.
 
 ## Dependency findings (`D`)
 
@@ -72,7 +89,12 @@ usually first because it adds a seam instead of moving a boundary.
 | `C006` untyped payload | a named type per message; `object`/`any`/`interface{}` is a contract nobody can version |
 | `C007` one-step construction | a builder only when construction is genuinely staged; otherwise required members in the constructor |
 
-`C003`, `C007` and `C005`'s judgement parts are decided by review: record the decision, do not assume a
+- **`C008` business behaviour visibility** — name the operation, its business outcome, material
+  preconditions, typed failures and observable effects. Replace a read-shaped mutator or an untyped
+  `execute`/`handle` contract. The boundary exposes the outcome; the domain decision stays in the
+  implementation. This is a contract review, not a source-scan finding.
+
+`C003`, `C007`, `C008` and `C005`'s judgement parts are decided by review: record the decision, do not assume a
 green run decided them.
 
 ## Autonomy findings (`A`)
@@ -85,6 +107,39 @@ green run decided them.
   injects it if several modules need it.
 - **`A004` version lock** — depend on `X.Contracts` with a range. Needing the implementation's version
   means `D001` is still present.
+- **`A007` unnecessary transient** — first confirm the component has no mutable state and is safe for
+  concurrent calls. Then share it at the longest appropriate lifetime. Do **not** promote it to a
+  singleton merely to silence the finding if it owns state: fix `A009` first. A domain object,
+  value object or per-operation object is not an application service and should not be registered.
+- **`A008` captive scoped dependency** — choose the state boundary. If the consumer itself holds
+  request/tenant state, make it scoped. If only one operation needs the value, pass it as a
+  parameter. If the consumer genuinely needs to create shorter-lived work, inject an explicit
+  factory and invoke it inside the scope. Never replace the constructor with a service locator
+  (`L004`), and never make the dependency a singleton to satisfy the container.
+- **`A009` shared mutable state** — name the owner and move the container into it, or scope the
+  component to the state's boundary. If the shared container is intentional, record the isolation
+  key, synchronization, initialization, eviction/expiration, failure behaviour and consistency
+  expectation, and test concurrent access and cross-tenant isolation. A lock alone does not make an
+  unbounded or tenant-mixed cache correct.
+- **Lifecycle claims are review claims.** `A007`–`A009` do not prove thread safety, tenant isolation,
+  resource cleanup or the runtime graph. For Go, .NET and Java they report `executed: false`; record
+  manual evidence instead of treating the green scan as a pass.
+
+## Effect findings (`A010`–`A013`)
+
+These are manual rules. A review names the effect owner, the boundary and the applicable semantics;
+no code edit is "the fix" until that decision is made.
+
+| Rule | Move | Trap |
+|---|---|---|
+| `A010` effect boundary | move the transaction, write or vendor call into the module that owns the affected state; expose a command whose contract states the effect | calling a provider inside the caller's transaction and declaring it atomic because it compiled |
+| `A011` effect semantics | state retryability, duplicate identity, consistency, partial completion and cancellation where they apply | adding an unused idempotency key or cancellation token so the checklist looks complete |
+| `A012` outcome truthfulness | return typed succeeded/failed/unknown/partial outcomes; commit before reporting durable success; report post-commit notification failure as partial | catching a timeout and reporting that nothing happened when the remote side may have committed |
+| `A013` critical-effect evidence | add the failure-path test, reconciliation, alert or runbook that matches the blast radius | treating a clean scan or a happy-path test as evidence |
+
+A retry is not a recovery policy. An idempotency key is not a transaction. A transaction is not a
+compensation. A cancellation token is not proof that cancellation works. Fix the underlying ownership
+and then choose the mechanism the domain needs.
 
 ## Governance findings (`G`)
 

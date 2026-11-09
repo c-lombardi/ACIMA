@@ -370,7 +370,10 @@ def enforcer_invocation(manifest: dict, language: str, project: Path,
     enforcer = manifest.get("enforcers", {}).get(language, {})
     if not enforcer.get("run"):
         return None
-    command = list(enforcer["run"]) + ["--root", str(project)]
+    command = list(enforcer["run"])
+    if command and Path(command[0]).stem.lower() in {"python", "python3"}:
+        command[0] = sys.executable
+    command += ["--root", str(project)]
     if config_name:
         # Every reference enforcer resolves --config relative to --root, not to cwd.
         command += ["--config", config_name]
@@ -413,18 +416,20 @@ def check_skill(manifest: dict, manifest_path: Path, report: Report) -> None:
 
     ids = {rule.get("id") for rule in rules}
     portable = catalog.get("portableIds", [])
+    manual = catalog.get("notPortableIds", [])
     missing = [rule_id for rule_id in portable if rule_id not in ids]
+    missing_manual = [rule_id for rule_id in manual if rule_id not in ids]
     if len(rules) != catalog.get("rules"):
         report.add("SKL-003", "fail",
                    f"catalog has {len(rules)} rules, the skill pins {catalog.get('rules')}",
                    "update the skill against the new catalog")
-    elif missing:
+    elif missing or missing_manual:
         report.add("SKL-003", "fail",
-                   f"portable rule ids missing from the catalog: {', '.join(missing)}",
+                   f"catalog rule ids missing: {', '.join(missing + missing_manual)}",
                    "update the skill: a rule was renamed or removed")
     else:
         report.add("SKL-003", "pass",
-                   f"{len(rules)} rules, all {len(portable)} portable ids present")
+                   f"{len(rules)} rules, {len(portable)} automated and {len(manual)} manual ids present")
 
     version = load_json(catalog_path).get("version")
     if version != manifest.get("standard"):
@@ -482,12 +487,12 @@ def check_skill(manifest: dict, manifest_path: Path, report: Report) -> None:
 def check_environment(report: Report) -> None:
     import shutil as shutil_module
 
-    toolchains = {"python3": True, "node": False, "go": False, "dotnet": False, "java": False}
-    available = [name for name in toolchains if shutil_module.which(name)]
-    report.add("ENV-001", "pass", f"toolchains available: {', '.join(available) or 'none'}")
-    if "python3" not in available:
-        report.add("ENV-002", "fail", "python3 is not on PATH",
-                   "the preflight itself requires Python 3.9+")
+    # This process is already running Python 3.9+, so its own interpreter is the
+    # portable Python the enforcers can use even when `python3` is not on PATH
+    # (for example behind the Windows App Execution Alias).
+    available = ["python3"] + [name for name in ("node", "go", "dotnet", "java")
+                               if shutil_module.which(name)]
+    report.add("ENV-001", "pass", f"toolchains available: {', '.join(available)}")
 
 
 def check_target(project: Path, report: Report, manifest: dict) -> tuple[list[dict], dict | None]:
@@ -731,8 +736,10 @@ def check_deep(manifest: dict, report: Report) -> None:
         if not enforcer.get("run"):
             report.add(f"ENF-{language}", "skip", f"{language}: no reference runner")
             continue
-        if shutil_module.which(enforcer["run"][0]) is None:
-            report.add(f"ENF-{language}", "skip", f"{language}: {enforcer['run'][0]} not installed")
+        executable = enforcer["run"][0]
+        python_enforcer = Path(executable).stem.lower() in {"python", "python3"}
+        if not python_enforcer and shutil_module.which(executable) is None:
+            report.add(f"ENF-{language}", "skip", f"{language}: {executable} not installed")
             continue
         example = enforcer.get("example")
         if not example:

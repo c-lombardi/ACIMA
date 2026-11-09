@@ -91,6 +91,10 @@ that **required state is obvious**:
 - "update" messages are not partial mutations of a full message; if a command is a patch, its name and
   its shape say so (`ChangeShippingAddress`, not `Order` with nulls).
 
+`D011` and `D012` (chapter 13) apply the same principle to the objects that *use* contracts. A
+contract may carry an optional member for compatible evolution (§5.7); an application constructor or
+method must not accept a required dependency or decision by omission.
+
 ## 5.5 Value types and where they live
 
 | Kind | Home | Example |
@@ -173,6 +177,8 @@ A command that can fail must say how, in the contract (`C006` forbids `object`-s
 - [ ] Does it name another module's types (`D003`)?
 - [ ] Does it expose persistence, transport or hosting types (`C005`, `L002`)?
 - [ ] Is every failure a typed outcome rather than a string or an untyped bag (`C006`)?
+- [ ] Does each boundary operation state its business outcome, material preconditions, failure
+      semantics and observable effects (`C008`)?
 - [ ] Are events past-tense facts with stable names and versions (5.6, `G004`)?
 - [ ] Is the contract documented, including its invariants (`G003`)?
 
@@ -245,3 +251,28 @@ Both exist in ACIMA and they are not the same decision:
 
 The test is who changes when the port changes. A provided port changes when the provider's capability
 changes. An integration port changes when the consumer's need changes — not when the vendor ships.
+
+## 5.13 Effect and outcome semantics
+
+A contract that can trigger an effect must say enough for a consumer to act safely (`P1.7`, `P15`;
+`C008`, `A010`–`A012`):
+
+- **Outcome** — what business result the operation produces, not merely its transport status.
+- **Preconditions** — the state or authority the caller must establish first, when they are material.
+- **Failure** — expected failures as typed values; unexpected failures as errors the host translates.
+- **Effects** — whether the operation writes, publishes, charges, sends or calls a vendor. A
+  read-shaped operation that mutates is misnamed and opaque.
+- **Duplicate and retry semantics** — whether a retry is safe, what identity defines a duplicate, and
+  what happens when the outcome is unknown. State these only where they apply; a pure query has no
+  duplicate policy to invent.
+- **Consistency** — the guarantee the operation provides on return and what may still be pending. Do
+  not imply atomicity the implementation does not provide.
+
+These are contract obligations about *visibility*, not a licence to put business logic in contracts.
+The decision stays in the implementation (`C003`); the contract exposes the decision's outcome and
+consequences. A typed signature alone does not satisfy `C008`: `Task<bool>` is typed and still says
+nothing about what `true` means, what was changed or what a failure leaves behind.
+
+This section does not require an idempotency key, cancellation token or transaction parameter on every
+operation. It requires the applicable semantics to be stated and the inapplicable ones to be
+identified during review.

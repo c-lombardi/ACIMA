@@ -1,7 +1,7 @@
 # Autonomy rules (`A`) and governance rules (`G`)
 
-Nine rules. The `A` rules constrain what happens at runtime — data, configuration and state. The `G`
-rules constrain the standard's own bookkeeping, and they are what keep the other 20 rules honest.
+Fifteen rules. The `A` rules constrain what happens at runtime — data, configuration, values, state and lifetime.
+The `G` rules constrain the standard's own bookkeeping, and they are what keep the other rules honest.
 
 Full context: [Dependency model](../standard/04-dependency-model.md) ·
 [Runtime boundaries](../standard/06-runtime-boundaries.md) ·
@@ -187,6 +187,493 @@ implementation offers, the boundary is wrong — see `D001`.
 
 Package manifests: any dependency on another module's implementation package/artifact from within the
 product graph.
+
+---
+
+## ACIMA-A005 · Configuration read outside the composition boundary
+
+**Severity** `warning` · **Level** L3 · **Principle** P4.8, P7.2
+
+> An application component MUST NOT read deployment, operational or secret configuration from ambient
+> environment variables or a global configuration object. The composition root resolves it and passes
+> the value in.
+
+### Violation
+
+```python
+# orders/impl/shipping.py
+import os
+
+rates_url = os.environ["ORDERS_RATES_URL"]      # ❌ resolved inside the module
+```
+
+```ts
+// orders/impl/shipping.ts
+export const ratesUrl = process.env.ORDERS_RATES_URL;   // ❌ resolved inside the module
+```
+
+### Finding
+
+```
+ACIMA-A005  warning  orders reads the process environment directly; resolve it at the composition root and pass the value into the component.
+  src/orders/impl/shipping.py:4
+```
+
+### Why
+
+A module that reads the environment is not constructible from its declared inputs. Its behaviour
+changes with the process it happens to run in, its tests need ambient state, and the value has no
+visible owner. In a monolith the coupling is hidden; after extraction it becomes a deployment
+failure. Hosts are the composition boundary and are exempt by design.
+
+### Fix
+
+Resolve and validate the value once in the host, group related values into a typed settings object,
+and require that object in the module constructor or composition function. If the value belongs to
+another module, ask for it through that module's port (`A002`).
+
+### Detection
+
+Python and TypeScript scan `implementation` and `adapter` units for `os.environ`, `os.getenv`,
+`process.env` and `import.meta.env`. The finding is a confirmed access; whether the component should
+receive the value remains a review decision. Go, .NET and Java report the rule as not executed and
+require manual evidence.
+
+---
+
+## ACIMA-A006 · Operational value without a declared owner
+
+**Severity** `warning` · **Level** L3 · **Principle** P4.7
+
+> A timeout, retry count, limit, rate, batch size, retention period or similar operational policy
+> MUST be a named constant, a typed configuration value supplied by the host, or a reviewed local
+> literal.
+
+### Violation
+
+```python
+# orders/impl/submission.py
+def submit(order):
+    retry_limit = 3              # ❌ policy with no name and no owner
+    return gateway.send(order, retry_limit)
+```
+
+```ts
+// orders/impl/submission.ts
+export function submit(order: Order): void {
+  const retryLimit = 3;          // ❌ policy with no name and no owner
+  gateway.send(order, retryLimit);
+}
+```
+
+### Finding
+
+```
+ACIMA-A006  warning  orders embeds an operational value in retry_limit; name it in its owner or supply it as configuration at the composition root.
+  src/orders/impl/submission.py:3
+```
+
+### Why
+
+An unexplained `3` cannot be reviewed: nobody knows whether it is a business decision, a vendor
+limit, a temporary mitigation or a typo. Moving it to a named constant gives it a purpose; moving it
+to configuration gives it an owner and a change process. The rule is not about the number of
+occurrences — a value used once can still be important policy.
+
+### Fix
+
+Name the value in the component that owns it, or classify it as deployment or runtime configuration
+and inject it from the composition boundary. If the literal is genuinely incidental, keep it local
+and be prepared to explain why at review.
+
+### Detection
+
+Python and TypeScript scan `implementation` and `adapter` units for numeric and string literals bound
+to operational names: timeout, retry, limit, threshold, TTL, interval, batch, rate, retention,
+capacity, delay, quota, backoff, concurrency, attempts, workers, endpoint, URL, host, port, queue,
+topic and bucket. All-uppercase named constants are skipped. The finding is a candidate: static
+analysis cannot decide semantic equivalence or the correct configuration category. Go, .NET and Java
+report the rule as not executed and require review evidence.
+
+---
+
+## ACIMA-A007 · Unnecessary transient lifetime
+
+**Severity** `warning` → `error` at 2.0.0 · **Level** L3 · **Principle** P4.13
+
+> A stateless application service SHOULD be shared at the longest appropriate lifetime rather than
+> registered transient. A transient registration MUST have a defensible reason: independent
+> identity, isolated mutable state, a short-lived resource or an operation boundary.
+
+### Violation
+
+```typescript
+class OrderValidator {
+  validate(order: Order): boolean {
+    return order.lines.length > 0;
+  }
+}
+
+register(OrderValidator, { lifetime: 'transient' });   // ❌ no per-instance state
+```
+
+```python
+class OrderValidator:
+    def validate(self, order):
+        return bool(order.lines)
+
+container.add_transient(OrderValidator)                 # ❌ rebuilt for every use
+```
+
+### Finding
+
+```
+ACIMA-A007  warning  lifecycle.host registers the stateless service OrderValidator as transient;
+                     share it at the longest appropriate lifetime.
+  src/host/registrations.ts:14
+  register(OrderValidator, { lifetime: 'transient' });
+```
+
+### Why
+
+A service with no per-instance state has no reason to be rebuilt. Transient construction is not
+free: it repeats initialisation, defeats caching, makes identity unstable and hides the fact that
+the component is safe to share. The common cause is a container default, not a design decision.
+
+This is not a rule that everything should be a singleton. A transient component is correct when
+identity matters, when mutable state must be isolated, when the object represents one operation or
+when it owns a short-lived resource. The finding is about the absence of such a reason.
+
+### Fix
+
+Share the service at the longest appropriate lifetime (application, process or scope). If the
+service must stay transient, state the reason and make sure no shared component retains it. If the
+service has mutable state, do not simply promote it to singleton: give the state an owner first
+(`A009`), and check that concurrent calls are safe.
+
+### Detection
+
+Python and TypeScript read explicit host registrations (`register(... lifetime=...)`,
+`add_singleton`/`add_scoped`/`add_transient`, `register(Class, { lifetime })` and
+`addSingleton`/`addScoped`/`addTransient`). A transient registration fires when the class body has
+no `this.`/`self.` field writes and no constructor-assigned state. That is evidence of statelessness,
+not proof of thread safety. Domain objects and unregistered classes are not evaluated. Go, .NET and
+Java report `executed: false`.
+
+---
+
+## ACIMA-A008 · Captive scoped dependency
+
+**Severity** `warning` → `error` at 2.0.0 · **Level** L3 · **Principle** P4.14
+
+> A shared/singleton component MUST NOT directly capture a scoped dependency in a way that lets the
+> dependency outlive its intended boundary. A longer-lived component that needs shorter-lived state
+> MUST use an explicit scope, factory or operation parameter.
+
+### Violation
+
+```typescript
+class RequestContext {}
+
+class OrdersService {
+  constructor(private readonly context: RequestContext) {}
+}
+
+register(RequestContext, { lifetime: 'scoped' });
+register(OrdersService, { lifetime: 'singleton' });   // ❌ retains the first request's context
+```
+
+```csharp
+// ❌ the singleton keeps the first request's context forever
+public sealed class OrdersService
+{
+    private readonly RequestContext _context;
+    public OrdersService(RequestContext context) => _context = context;
+}
+```
+
+### Finding
+
+```
+ACIMA-A008  warning  lifecycle.host shares OrdersService, which captures the scoped dependency
+                     RequestContext; shorten the lifetime or resolve it at the correct scope boundary.
+  src/host/registrations.ts:18
+  register(OrdersService, { lifetime: 'singleton' });
+```
+
+### Why
+
+A scoped dependency is a promise that its state dies at the end of the request, transaction or
+operation. When a singleton captures it, the object survives and the promise is false. The first
+request's user, tenant, unit of work or cancellation token silently becomes the process's state.
+The defect is easy to miss because the constructor signature is correct and the container may
+resolve it without complaint.
+
+### Fix
+
+Choose the correction that matches the state:
+
+- make the consumer scoped when its own behaviour is request-bound;
+- pass the scoped value as an operation parameter instead of storing it;
+- resolve the dependency inside the scope through an explicit factory/provider that the host wires;
+- split a shared stateless part from a scoped stateful part.
+
+Do not replace the constructor with a service locator. A global `get()` hides the lifecycle mismatch
+and is `L004`.
+
+### Detection
+
+Python and TypeScript compare explicit host registrations. A shared/singleton class fires when its
+constructor declares a dependency that is registered scoped in the same host. Only direct
+constructor annotations are resolved. Framework proxies, property injection, factory closures,
+decorator scopes and runtime resolution are manual-review items. Go, .NET and Java report
+`executed: false`; .NET's container can validate some captive dependencies at startup, but that is
+native evidence, not this rule.
+
+---
+
+## ACIMA-A009 · Shared mutable state without ownership
+
+**Severity** `warning` → `error` at 2.0.0 · **Level** L3 · **Principle** P4.15
+
+> A shared component MUST NOT own a mutable container without an explicit owner, isolation boundary,
+> concurrency policy and disposal or expiration rule.
+
+### Violation
+
+```typescript
+class PriceCache {
+  private values = new Map<string, number>();   // ❌ process-wide, unbounded, unsynchronised
+}
+
+register(PriceCache, { lifetime: 'singleton' });
+```
+
+```python
+class PriceCache:
+    def __init__(self):
+        self.prices = {}        # ❌ no owner, key space, eviction or lock policy
+
+container.add_singleton(PriceCache)
+```
+
+### Finding
+
+```
+ACIMA-A009  warning  lifecycle.host shares PriceCache, which owns mutable state; give that state an
+                     explicit owner, isolation boundary and concurrency policy.
+  src/host/registrations.ts:22
+  register(PriceCache, { lifetime: 'singleton' });
+```
+
+### Why
+
+A mutable container on a shared component is process-wide state by accident. Its ownership is
+implicit, its key space may mix tenants, its growth may be unbounded, and its access may race.
+Making the component transient does not fix this if the container is written to a shared cache or
+static; the ownership question remains.
+
+Shared mutable state is not forbidden. A guarded cache, a request-scoped buffer, a per-instance
+accumulator or an intentionally owned resource are all legitimate when their owner, isolation,
+synchronisation and lifetime are stated.
+
+### Fix
+
+Choose one:
+
+1. remove the state from the service and delegate it to an explicitly owned store, cache or
+   repository;
+2. scope the component to the boundary that owns the state;
+3. keep the container shared, but document the owner, mutation authority, synchronization,
+   tenant/request key, initialization, eviction and failure behaviour, and test the concurrency and
+   isolation claims.
+
+A lock alone is not a complete policy: unbounded growth, tenant mixing and stale data remain
+defects.
+
+### Detection
+
+Python and TypeScript inspect the class body of a shared/singleton registration for a mutable
+container initialised as a field: `list`/`dict`/`set`, `Map`/`Set`/array/object literal, or an
+assignment to `this`/`self`. A mutable field is not proof of a race; it is evidence that a policy
+must be stated. Legitimate owned and synchronized state is reviewed rather than automatically
+rejected. Go, .NET and Java report `executed: false`.
+
+---
+
+## ACIMA-A010 · Effect boundary is unowned
+
+**Severity** `error` · **Level** L3 · **Principle** P15.1 · **Automation** manual
+
+> Every externally visible effect MUST have an identifiable owner and an execution boundary.
+
+### Violation
+
+```csharp
+// Host opens a transaction, calls two modules, and commits both inside it.
+using var tx = db.BeginTransaction();          // ❌ host owns effects it does not understand
+await orders.PlaceAsync(command, tx);
+await payments.ChargeAsync(payment, tx);
+tx.Commit();
+```
+
+```python
+class PricingService:
+    def price(self, product):
+        self.audit.append(product.id)          # ❌ a read-shaped method hides an audit effect
+        return self.calculator.price(product)
+```
+
+### Finding
+
+Manual rules do not produce a source finding. The enforcer reports:
+
+```
+ACIMA-A010  info  Effect boundary is unowned: manual evidence required.
+  execution map: executed=false
+```
+
+### Why
+
+The caller cannot know the provider's invariants, so a transaction or write opened by the host is a
+boundary breach disguised as consistency. A read-shaped method that writes an audit record hides an
+effect from every consumer and every test. Ownership must be nameable before retry, transaction or
+recovery behaviour can be correct.
+
+### Fix
+
+Move the effect into the module that owns the affected state, and expose a command or operation whose
+contract states the effect. Let one module own its transaction and outbox writes. Name a host delivery
+policy only when the host genuinely owns the effect, and document that decision.
+
+### Evidence
+
+Record a repository-scoped manual review that names each critical effect owner and its boundary. The
+review must identify at least one attempted cross-boundary effect or explain why none exists. A clean
+scan is not evidence; `A010` has no portable detector.
+
+---
+
+## ACIMA-A011 · Effect semantics are hidden
+
+**Severity** `error` · **Level** L3 · **Principle** P15.2 · **Automation** manual
+
+> An effect-owning operation MUST state the retry, duplicate, consistency, partial-completion and
+> cancellation semantics that apply to it.
+
+### Violation
+
+```typescript
+// Contract says only “returns true on success”. Nothing says what a retry does.
+async placeOrder(command: PlaceOrder): Promise<boolean>;
+```
+
+### Finding
+
+Manual rules do not produce a source finding. A review records the missing semantics and the contract
+or design change that resolves it.
+
+### Why
+
+Two consumers can read the same signature and make incompatible assumptions: one retries a timeout,
+one treats it as a permanent failure. The operation's real semantics become folklore. Conditional
+requirements matter here: a read-only query has no duplicate or retry semantics to document; a payment
+command does.
+
+### Fix
+
+State the applicable subset in the contract or its documentation: retryability, duplicate identity and
+effect, the consistency guarantee, what a partial outcome looks like, and whether cancellation can
+change the result. Use typed outcomes rather than a bare boolean. Do not add every possible parameter
+to every method.
+
+### Evidence
+
+Record the operations reviewed, the semantics chosen, and why the others are not applicable. Include
+the duplicate and retry cases where they exist. An unused cancellation token or the presence of a retry
+library is not evidence.
+
+---
+
+## ACIMA-A012 · Effect outcome is untruthful
+
+**Severity** `error` · **Level** L3 · **Principle** P15.3 · **Automation** manual
+
+> An effect owner MUST report success only after the effect is durable or accepted, and MUST distinguish
+> failure, unknown and partial completion.
+
+### Violation
+
+```python
+def publish(event):
+    queue.put_nowait(event)       # ❌ not durable; may be lost on crash
+    return "published"            # ❌ reports success for an accepted-in-memory write
+```
+
+```typescript
+// The HTTP timeout throws, but the charge may already have succeeded.
+await gateway.charge(card, amount);
+return { status: "failed" };       // ❌ unknown outcome reported as failure
+```
+
+### Finding
+
+Manual rules do not produce a source finding. A review records the untruthful outcome, its blast
+radius and the correction.
+
+### Why
+
+A false success loses work; a false failure invites a duplicate. An unknown outcome is not an error
+message — it is a distinct state that requires idempotent recovery or reconciliation. Returning it
+truthfully is what makes retry and compensation safe.
+
+### Fix
+
+Return a typed outcome with `succeeded`, `failed`, `unknown` and `partial` states where they are
+possible. Commit before reporting durable success. After a commit, report completion even if a
+subsequent notification fails, or report the partial state explicitly. Do not catch an exception and
+assert that nothing happened.
+
+### Evidence
+
+Record the critical effects reviewed, their outcome mapping, and the tests or operational signals that
+prove the unknown and partial paths. A passing happy-path test does not establish outcome truthfulness.
+
+---
+
+## ACIMA-A013 · Critical effect has no evidence
+
+**Severity** `warning` · **Level** L3 · **Principle** P15.4 · **Automation** manual
+
+> A critical effect MUST have evidence proportionate to its failure impact.
+
+### Violation
+
+A payment capture, inventory decrement or required audit write has no partial-failure test, no
+reconciliation check and no operational signal. The only evidence is a clean architecture scan.
+
+### Finding
+
+Manual rules do not produce a source finding. The review records the missing evidence and the risk it
+leaves.
+
+### Why
+
+Static boundaries say where code lives; they do not say what happens when a vendor times out after
+committing, a relay crashes between database and broker, or a retry duplicates a charge. Evidence is
+the only way to distinguish an owned effect from a hopeful one. The obligation is proportionate: a
+low-impact cache invalidation does not need the same evidence as a payment.
+
+### Fix
+
+Add the smallest evidence that matches the failure mode: a test that injects failure between steps, an
+idempotency test, a reconciliation query and alert, a documented manual recovery runbook, or a
+recorded review of why the effect is not critical. Name the owner and the review date.
+
+### Evidence
+
+The evidence file names the effect, its criticality, the failure mode and the artefact that covers it.
+A test that only exercises the success path does not satisfy the rule.
 
 ---
 

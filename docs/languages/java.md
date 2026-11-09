@@ -118,6 +118,57 @@ Java 21 records give you `C001`, part of `C002` and value equality for free — 
 to L2 in any of the five languages. The remaining work is the collection copy in the compact constructor
 and keeping behaviour out of the record body.
 
+### Explicit inputs (`D011`, `D012`)
+
+Java has no default parameters, but overloads and nullable constructor arguments reproduce the defect:
+`new OrdersModule(catalog)` and `new OrdersModule(catalog, payments)` are two construction paths, and a
+`null` payment service that triggers a fallback is a hidden dependency. Keep one constructor requiring
+every collaborator, or make the shorter overload delegate with an explicit no-op implementation. This
+profile has no enforcer in this revision, so `D011`/`D012` are manual-review requirements here
+(chapter 13, chapter 8 §8.9).
+
+### Values and configuration (`A005`, `A006`)
+
+Java has no optional parameters, but a constructor overload or a `System.getenv` call can reproduce
+the same hidden configuration. Require a typed `OrdersSettings` record in the constructor; the host
+reads the environment and validates it. This profile has no enforcer in this revision, so `A005` and
+`A006` are manual-review requirements here (chapter 14, chapter 8 §8.9).
+
+### Composition and injection (`D013`, `D014`)
+
+A Spring `@Configuration` class or an explicit `Main` factory is the composition boundary; constructor
+injection is the default. Classpath scanning that selects application components, field injection
+(`@Autowired` on a field) and `ApplicationContext.getBean` inside domain/application code are review
+blockers (`D013`, `D014`, `L004`). Framework-managed controllers are fine when their application
+dependencies are constructor parameters and the host declares the beans. This profile has no enforcer
+in this revision; record manual evidence (chapter 15, chapter 8 §8.9).
+
+### Functional capture (`D015`, `D016`)
+
+A lambda or anonymous class must not capture an application service from an enclosing field or
+local when it could be a parameter; constructor-injected fields are visible. Partial application is
+not a Java idiom, but a returned function that closes over a service is the same `D015` defect.
+This profile has no enforcer; record manual evidence (chapter 16, chapter 8 §8.9).
+
+### Lifecycle and state ownership (`A007`–`A009`)
+
+Spring and similar containers distinguish singleton, prototype and request scopes. A singleton bean
+that depends on a request-scoped bean needs a scoped proxy or an explicit provider; a mutable field
+in a singleton is shared across requests; static mutable state is process-wide. Decide lifetime from
+the state boundary, not from the default scope annotation. This profile has no enforcer and reports
+`A007`–`A009` as manual-review requirements: record the owner, isolation key, synchronization and
+cleanup policy, and do not treat a `@Singleton` annotation as evidence of thread safety
+(chapter 17, chapter 8 §8.9).
+
+### Intent-revealing naming (`N001`–`N003`)
+
+Classes, interfaces, enums and records use `PascalCase`; methods, fields and parameters use
+`camelCase`; constants use `UPPER_SNAKE_CASE`; packages are lower-case and domain-oriented. Boolean
+accessors use `is`/`has`/`can` where the framework permits. Name the responsibility, not a generic
+`Manager` or `Helper`. This profile has no enforcer: record manual evidence for type casing,
+generic responsibilities, side effects, units, boolean polarity and domain consistency
+(chapter 18, chapter 8 §8.9).
+
 ## 6. Service topology profile
 
 Chapter 11's naming maps to Gradle subprojects and JPMS module names:

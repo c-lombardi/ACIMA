@@ -128,6 +128,59 @@ T:System.Linq.IQueryable`1; Contracts must not expose queryables (ACIMA-C005)
 internal dependency edges stop at the project boundary. It is the .NET expression of `D008`'s redaction,
 and it is the single most useful line in an ACIMA csproj.
 
+### Explicit inputs (`D011`, `D012`)
+
+C# optional parameters (`IPaymentService? payments = null`) and nullable reference types make the two
+construction paths easy to write. The rule requires the parameter and leaves `IPaymentService?`
+without a default legal: the composition root passes `null` deliberately. Nullable reference analysis
+does not object to an optional parameter, so `TreatWarningsAsErrors` is not a substitute. The reference
+enforcer reports `D011` and `D012` `executed: false` in this revision; a small Roslyn analyzer or the
+manual review in chapter 8 §8.9 supplies the evidence.
+
+### Values and configuration (`A005`, `A006`)
+
+Bind typed options at the host (`IOptions<OrdersSettings>` or a validated record) and require the
+settings object in the module constructor. A module must not call
+`Environment.GetEnvironmentVariable` or reach into `IConfiguration` for a value the host can pass.
+Named constants for fixed policy are preferable to options that imply runtime changeability. The
+reference enforcer reports `A005` and `A006` `executed: false`; use a Roslyn analyzer or the manual
+review in chapter 8 §8.9 for evidence.
+
+### Composition and injection (`D013`, `D014`)
+
+`Orders.Host` registers `IOrderRepository`/`IOrderService` and selects the concrete implementations.
+`AddScoped<IOrderRepository, SqlOrderRepository>()` is inspectable when the constructor is unambiguous;
+a scan/convention that decides which types exist, or a factory that resolves arbitrary types, is
+`D013`. `[Inject]` or `[FromServices]` on an application property is `D014`; constructor injection on
+an ASP.NET controller is legitimate framework-managed activation. The reference enforcer reports both
+rules `executed: false` in this revision, so a Roslyn analyzer or manual evidence is required.
+
+### Functional capture (`D015`, `D016`)
+
+A lambda or method group must not capture an application service from a field or enclosing method
+when it could receive it as a parameter; `this` access to an explicit constructor field is visible
+and allowed. Delegate binding of a service belongs at the host. A Roslyn analyzer can inspect the
+semantic model; until one is validated here, record manual evidence for `D015`/`D016` (chapter 16).
+
+### Lifecycle and state ownership (`A007`–`A009`)
+
+`AddSingleton`, `AddScoped` and `AddTransient` make lifetime explicit, and the container can validate
+some captive dependencies at startup. A singleton constructor that takes a scoped service is the
+canonical `A008`; a singleton holding a `Dictionary` mutated after construction is the canonical
+`A009`. `IDisposable`/`IAsyncDisposable` establish a cleanup contract, not a guarantee; `IHostedService`
+owns a worker lifecycle that must stop on shutdown. Static fields are process-wide and remain shared
+mutable state even when they do not cross a module boundary. This profile reports `A007`–`A009`
+`executed: false` in this revision; use a Roslyn analyzer, container validation and recorded manual
+evidence for lifetime, concurrency, tenant isolation and resource cleanup (chapter 17).
+
+### Intent-revealing naming (`N001`–`N003`)
+
+Types, public members and methods use `PascalCase`; parameters and locals use `camelCase`;
+interfaces conventionally begin with `I`; async methods end in `Async` when meaningful. Name the
+responsibility (`OrderValidator`), not a generic role (`OrderHelper`). `N001` and `N002` report
+`executed: false` in this revision, as does manual `N003`; use a Roslyn analyzer and recorded
+manual evidence for side effects, units, boolean clarity and domain terminology (chapter 18).
+
 ## 6. Service topology profile
 
 Chapter 11 defines the profile. In .NET it is one solution folder per service and one project per

@@ -133,6 +133,66 @@ when someone adds a bad import.
 consumer's compilation to the provider's internal shape, and it breaks as soon as the provider renames a
 type. The runner flags type-only imports exactly like value imports.
 
+### Explicit inputs (`D011`, `D012`)
+
+`constructor(store: Store = new InMemoryStore())` and `create(request, notify = true)` are the two
+shapes the rule reports. `payments?: Payments` is optional; `payments: Payments | null` is required and
+legal — the caller chooses `null`. `exactOptionalPropertyTypes` keeps that distinction honest in
+contracts. The reference enforcer scans constructors, class methods and `function` declarations; an
+arrow function assigned to a variable is not scanned, so a default in `const f = (x = 1) => …` is a
+review item, not a finding. Contracts, tests and tooling are out of scope (chapter 13).
+
+### Values and configuration (`A005`, `A006`)
+
+Define a `readonly` settings interface and require it in the constructor; resolve `process.env` once in
+the host and pass the validated object in. The enforcer scans implementations and adapters for
+`process.env`/`import.meta.env` (`A005`) and for operational names assigned, passed as properties or
+compared against numeric/string literals (`A006`). Uppercase constants are skipped. Default
+parameters are `D012`'s concern, not `A006`'s. Destructuring defaults and string contents are not
+parsed, so review them manually; an arrow function that embeds a timeout is still a review item even
+when the scanner does not see it.
+
+### Composition and injection (`D013`, `D014`)
+
+Construct at the host with `new CatalogModule(new InMemoryProductStore())`, or use an explicit
+factory that names the implementation. `import.meta.glob` and `require.context` are `D013` candidates
+when they select application components; dynamic asset loading is not the same thing. Property
+decorators such as `@Inject` above a field are `D014` candidates. Constructor parameter decorators are
+not property injection: the dependency is still part of the declared constructor. NestJS/Angular
+controllers may be framework-activated, but their application dependencies belong in the constructor
+and the host must register the implementation.The scanner does not execute decorators or resolve a container.
+
+### Functional capture (`D015`, `D016`)
+
+A function or arrow must declare every collaborator it uses. Currying is allowed when each layer
+declares its dependency; a module-level repository captured by an arrow is `D015`. `partial` and
+`.bind` of a collaborator inside an implementation/adapter are `D016`; the same binding at the host
+is valid composition. Pure HOFs and closures over value parameters are not findings. The scanner
+does not type-check, resolve framework callbacks or evaluate dynamic dispatch.
+
+### Lifecycle and state ownership (`A007`–`A009`)
+
+Decide lifetime at the host: a stateless service is shared, request- or tenant-bound state is scoped,
+and a shared service does not retain either. Registrations of the form
+`register(Class, { lifetime: 'transient' })` and `addSingleton`/`addScoped`/`addTransient` are read by
+the reference scanner. `A007` reports a transient registration whose class has no mutable field;
+`A008` reports a shared class whose constructor declares a dependency registered scoped; `A009`
+reports a shared class that initialises a mutable container. A module-level `export const service =
+new Service(...)` is a process singleton regardless of the DI framework and is a manual-review item.
+So are decorator scopes, factory closures, callback registrations and framework-managed providers.
+A mutable field is not proof of a race, and sharing is not proof of thread safety: record the
+owner, isolation key, synchronization, eviction and cleanup policy (chapter 17).
+
+### Intent-revealing naming (`N001`–`N003`)
+
+Types, interfaces, enums and React components use `PascalCase`; functions, variables and parameters
+use `camelCase`. Name the responsibility (`OrderValidator`), not a generic role (`OrderHelper`).
+Names must not hide a write behind `get*`, and units belong in the name when the type does not
+carry them. `N001` checks type casing and `N002` checks generic type names; both are candidates.
+`N003` is manual: side effects, boolean polarity, domain terminology, abbreviations, units and
+context need review. Generated declarations, framework-required hook/component names and external
+contract names need an owned exception (chapter 18).
+
 ## 6. Service topology profile
 
 Chapter 11's naming maps to npm workspaces:

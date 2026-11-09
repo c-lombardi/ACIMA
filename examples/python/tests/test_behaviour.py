@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import sys
 import unittest
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from acima.catalog.contracts import (  # noqa: E402
     ProductView,
 )
 from acima.catalog.impl import CatalogModule  # noqa: E402
+from acima.catalog.impl.repository import InMemoryProductStore  # noqa: E402
 from acima.customers.contracts import (  # noqa: E402
     CustomerId as CustomersCustomerId,
     CustomerView,
@@ -29,7 +31,12 @@ from acima.orders.contracts import (  # noqa: E402
     ProductId,
 )
 from acima.orders.impl import OrdersModule  # noqa: E402
+from acima.payments.contracts import (  # noqa: E402
+    Currency as PaymentCurrency,
+    Money as PaymentMoney,
+)
 from acima.payments.impl import PaymentsModule  # noqa: E402
+from acima.payments.impl.gateway import FakeGateway  # noqa: E402
 
 
 def eur(amount: str) -> Money:
@@ -42,11 +49,13 @@ def catalog_eur(amount: str) -> CatalogMoney:
 
 class OrderingTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.catalog = CatalogModule()
+        self.catalog = CatalogModule(InMemoryProductStore())
         self.customers = CustomersModule()
-        self.payments = PaymentsModule()
+        self.payments = PaymentsModule(
+            FakeGateway(PaymentMoney(Decimal("1000.00"), PaymentCurrency.EUR)))
         self.orders = OrdersModule(
-            self.catalog.reader(), self.customers.reader(), self.payments.gateway())
+            self.catalog.reader(), self.customers.reader(), self.payments.gateway(),
+            clock=lambda: datetime.now(timezone.utc))
         self.catalog.add(ProductView(CatalogProductId("p-1"), "Beans", catalog_eur("12.50")))
         self.customers.add(CustomerView(CustomersCustomerId("c-1"), "Ada", "ada@example.test"))
 

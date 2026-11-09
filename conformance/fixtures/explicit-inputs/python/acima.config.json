@@ -1,0 +1,14 @@
+{
+  "standard": "1.4.0-draft.1",
+  "mode": "base",
+  "language": "python",
+  "level": "L1",
+  "units": [
+    {
+      "id": "orders",
+      "module": "orders",
+      "role": "implementation",
+      "paths": ["src/orders"]
+    }
+  ]
+}

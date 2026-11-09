@@ -92,6 +92,7 @@ internal sealed class Enforcer
     private const string C005 = "ACIMA-C005";
     private const string C006 = "ACIMA-C006";
     private const string C007 = "ACIMA-C007";
+    private const string C008 = "ACIMA-C008";
     private const string A001 = "ACIMA-A001";
     private const string A002 = "ACIMA-A002";
     private const string A003 = "ACIMA-A003";
@@ -106,6 +107,24 @@ internal sealed class Enforcer
     private const string L005 = "ACIMA-L005";
     private const string L006 = "ACIMA-L006";
     private const string L007 = "ACIMA-L007";
+    private const string D011 = "ACIMA-D011";
+    private const string D012 = "ACIMA-D012";
+    private const string A005 = "ACIMA-A005";
+    private const string A006 = "ACIMA-A006";
+    private const string D013 = "ACIMA-D013";
+    private const string D014 = "ACIMA-D014";
+    private const string D015 = "ACIMA-D015";
+    private const string D016 = "ACIMA-D016";
+    private const string A007 = "ACIMA-A007";
+    private const string A008 = "ACIMA-A008";
+    private const string A009 = "ACIMA-A009";
+    private const string A010 = "ACIMA-A010";
+    private const string A011 = "ACIMA-A011";
+    private const string A012 = "ACIMA-A012";
+    private const string A013 = "ACIMA-A013";
+    private const string N001 = "ACIMA-N001";
+    private const string N002 = "ACIMA-N002";
+    private const string N003 = "ACIMA-N003";
 
     private static readonly Dictionary<string, (string Severity, string Level)> Catalog = new(StringComparer.Ordinal)
     {
@@ -116,15 +135,23 @@ internal sealed class Enforcer
         [L004] = ("warning", "L1"),
         [C001] = ("error", "L2"), [C002] = ("error", "L2"), [C003] = ("error", "L2"),
         [C004] = ("error", "L2"), [C005] = ("error", "L2"), [C006] = ("error", "L2"),
-        [C007] = ("warning", "L2"),
+        [C007] = ("warning", "L2"), [C008] = ("error", "L2"),
         [A001] = ("error", "L3"), [A002] = ("warning", "L3"),
         [A003] = ("error", "L3"), [A004] = ("warning", "L3"),
+        [A005] = ("warning", "L3"), [A006] = ("warning", "L3"),
         [G001] = ("error", "L1"), [G002] = ("error", "L1"),
         [G003] = ("warning", "L2"), [G004] = ("error", "L2"),
         [G005] = ("error", "L1"),
         [D010] = ("error", "L1"),
         [L005] = ("warning", "L1"), [L006] = ("error", "L1"), [L007] = ("warning", "L1"),
         [G006] = ("warning", "L1"),
+        [D011] = ("warning", "L1"), [D012] = ("warning", "L1"),
+        [D013] = ("warning", "L1"), [D014] = ("warning", "L1"),
+        [D015] = ("warning", "L1"), [D016] = ("warning", "L1"),
+        [A007] = ("warning", "L3"), [A008] = ("warning", "L3"), [A009] = ("warning", "L3"),
+        [A010] = ("error", "L3"), [A011] = ("error", "L3"),
+        [A012] = ("error", "L3"), [A013] = ("warning", "L3"),
+        [N001] = ("warning", "L3"), [N002] = ("warning", "L3"), [N003] = ("warning", "L3"),
     };
 
     private static readonly Dictionary<string, string> NotExecuted = new(StringComparer.Ordinal)
@@ -140,6 +167,25 @@ internal sealed class Enforcer
         [L006] = "third-party tier rules are implemented by the python and typescript enforcers in this revision",
         [L007] = "third-party tier rules are implemented by the python and typescript enforcers in this revision",
         [G006] = "manifest package governance is implemented by the python and typescript enforcers in this revision",
+        [D011] = "explicit-input rules are implemented by the python and typescript enforcers in this revision",
+        [D012] = "explicit-input rules are implemented by the python and typescript enforcers in this revision",
+        [A005] = "value and configuration rules are implemented by the python and typescript enforcers in this revision",
+        [A006] = "value and configuration rules are implemented by the python and typescript enforcers in this revision",
+        [D013] = "composition rules are implemented by the python and typescript enforcers in this revision",
+        [D014] = "composition rules are implemented by the python and typescript enforcers in this revision",
+        [D015] = "functional capture rules are implemented by the python and typescript enforcers in this revision",
+        [D016] = "functional capture rules are implemented by the python and typescript enforcers in this revision",
+        [A007] = "lifecycle rules are implemented by the python and typescript enforcers in this revision",
+        [A008] = "lifecycle rules are implemented by the python and typescript enforcers in this revision",
+        [A009] = "lifecycle rules are implemented by the python and typescript enforcers in this revision",
+        [N001] = "naming rules are implemented by the python and typescript enforcers in this revision",
+        [N002] = "naming rules are implemented by the python and typescript enforcers in this revision",
+        [N003] = "semantic naming quality needs human review",
+        [C008] = "business behavior visibility is a semantic contract review",
+        [A010] = "effect ownership and commit boundaries require application and operational review",
+        [A011] = "effect semantics require contract and API review",
+        [A012] = "outcome truthfulness requires failure, retry and cancellation evidence",
+        [A013] = "critical-effect evidence requires audit and telemetry inspection",
     };
 
     private static readonly Dictionary<string, int> Rank = new() { ["L1"] = 1, ["L2"] = 2, ["L3"] = 3 };

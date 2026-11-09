@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Callable, Dict, Sequence
 
 from acima.catalog.contracts import CatalogReader, ProductId as CatalogProductId, ProductNotFound
@@ -45,12 +45,12 @@ class OrdersModule:
         catalog: CatalogReader,
         customers: CustomerReader,
         payments: PaymentGateway,
-        clock: Callable[[], datetime] | None = None,
+        clock: Callable[[], datetime],
     ) -> None:
         self._catalog = catalog
         self._customers = customers
         self._payments = payments
-        self._clock = clock or (lambda: datetime.now(timezone.utc))
+        self._clock = clock
         self._orders: Dict[str, Order] = {}
         self._published: list[object] = []
 

@@ -15,8 +15,8 @@ import acima_claim as claim  # noqa: E402
 
 CATALOG = claim.load_catalog(ROOT)
 MANUAL = {
-    "ACIMA-C003", "ACIMA-C007", "ACIMA-L004",
-    "ACIMA-A002", "ACIMA-A004", "ACIMA-G004",
+    "ACIMA-A002", "ACIMA-A004", "ACIMA-A010", "ACIMA-A011", "ACIMA-A012", "ACIMA-A013",
+    "ACIMA-C003", "ACIMA-C007", "ACIMA-C008", "ACIMA-G004", "ACIMA-L004", "ACIMA-N003",
 }
 
 
@@ -66,19 +66,19 @@ def evidence_document(rules: set[str], root: Path, *,
 
 class ClaimModelTests(unittest.TestCase):
     def test_required_rule_counts_and_manual_partition(self) -> None:
-        self.assertEqual(len(claim.required_rules(CATALOG, "L1")), 21)
-        self.assertEqual(len(claim.required_rules(CATALOG, "L2")), 30)
-        self.assertEqual(len(claim.required_rules(CATALOG, "L3")), 34)
+        self.assertEqual(len(claim.required_rules(CATALOG, "L1")), 27)
+        self.assertEqual(len(claim.required_rules(CATALOG, "L2")), 37)
+        self.assertEqual(len(claim.required_rules(CATALOG, "L3")), 53)
         self.assertEqual(
             {rule["id"] for rule in CATALOG["rules"] if rule["automation"] == "manual"},
             MANUAL,
         )
         self.assertEqual(sum(1 for rule in CATALOG["rules"]
-                             if rule["automation"] == "automated"), 28)
+                             if rule["automation"] == "automated"), 41)
         self.assertEqual(
             {rule["id"] for rule in claim.required_rules(CATALOG, "L2")
              if rule["automation"] == "manual"},
-            {"ACIMA-C003", "ACIMA-C007", "ACIMA-G004", "ACIMA-L004"},
+            {"ACIMA-C003", "ACIMA-C007", "ACIMA-C008", "ACIMA-G004", "ACIMA-L004"},
         )
 
     def test_all_executed_is_full(self) -> None:
@@ -86,7 +86,7 @@ class ClaimModelTests(unittest.TestCase):
         self.assertEqual(result["claim"], claim.FULL)
         self.assertTrue(result["eligible"])
         self.assertEqual(result["missing"], [])
-        self.assertEqual(result["executed"], 34)
+        self.assertEqual(result["executed"], 53)
 
     def test_missing_manual_evidence_is_partial_and_named(self) -> None:
         result = claim.assess(payload("L3", MANUAL), CATALOG)
@@ -104,7 +104,7 @@ class ClaimModelTests(unittest.TestCase):
             result = claim.assess(payload("L3", MANUAL), CATALOG,
                                   evidence=document["evidence"], root=root)
             self.assertEqual(result["claim"], claim.FULL)
-            self.assertEqual(result["manualEvidence"], 6)
+            self.assertEqual(result["manualEvidence"], 12)
 
     def test_expired_evidence_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -117,6 +117,11 @@ class ClaimModelTests(unittest.TestCase):
             self.assertTrue(any("expired" in error
                                 for entry in result["invalidEvidence"]
                                 for error in entry["errors"]))
+
+    def test_c008_is_required_at_l2(self) -> None:
+        result = claim.assess(payload("L2", {"ACIMA-C008"}), CATALOG)
+        self.assertEqual(result["claim"], claim.PARTIAL)
+        self.assertEqual(result["missing"], ["ACIMA-C008"])
 
     def test_unit_scoped_evidence_cannot_certify_the_repository(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
