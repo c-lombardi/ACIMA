@@ -593,6 +593,12 @@ def check_target(project: Path, report: Report, manifest: dict) -> tuple[list[di
                 report.add("GOV-002", "fail",
                            f"enforcer failed to run: {(err or out).strip()[:300]}",
                            "fix the enforcer invocation before trusting any architecture claim")
+            elif code == 127:
+                report.add("GOV-002", "fail",
+                           f"required toolchain {command[0]!r} is not installed; the "
+                           "architecture was not measured",
+                           "install the toolchain, then re-run the preflight; do not treat an "
+                           "unmeasured repository as clean")
             elif payload is None:
                 report.add("GOV-002", "fail", "enforcer returned invalid or truncated JSON",
                            "this is a tool failure, not an architecture result; keep the raw output")
@@ -697,7 +703,9 @@ def check_target(project: Path, report: Report, manifest: dict) -> tuple[list[di
         elif report.mode == "brownfield":
             report.add("TGT-004", "fail",
                        "no candidate units found for a source-bearing repository",
-                       "declare units manually; ADR-0001 in the adoption plan explains the split")
+                       "run the read-only assessment before declaring anything; if it confirms "
+                       "no meaningful ownership boundaries, recommend against adoption. If the "
+                       "layout really has modules, declare them manually and explain the split.")
         else:
             report.add("TGT-004", "warn", "no candidate units found",
                        "declare units manually; ADR-0001 in the adoption plan explains the split")

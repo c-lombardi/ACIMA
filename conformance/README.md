@@ -8,6 +8,7 @@ This directory **verifies** ACIMA. It does not define it: every expectation here
 python3 conformance/run.py                 # topology, python, typescript, go, dotnet, tools
 python3 conformance/run.py python          # one reference implementation
 python3 conformance/run.py tools           # the test modules only
+python3 conformance/test_adoption_scenarios.py  # A-M adoption matrix
 python3 conformance/run.py --artifacts out # keep per-profile JSON evidence
 ```
 
@@ -23,6 +24,7 @@ Exit codes: `0` every selected profile conformed, `1` drift or a missing toolcha
 | source count | did the enforcer actually see files? Zero files is a failure, not a pass |
 | execution map | does the run name every catalog rule, with `executed: false` where applicable? |
 | `tools` | do the CLI, claim model, waiver, exclusion, profile, topology and documentation contracts still hold? |
+| scenario matrix | do adoption scenarios A–M produce the expected read-only/write, scope, status and next-action behaviour? Conversation prose is reported `NOT EXECUTED`. |
 
 ## Files
 
@@ -33,6 +35,7 @@ Exit codes: `0` every selected profile conformed, `1` drift or a missing toolcha
 | `acima_claim.py` | `FULL CONFORMANCE` vs `PARTIAL ASSESSMENT` computation |
 | `topology.py` | optional service-topology profile (`ACIMA-S001`–`S012`) |
 | `test_*.py` | focused contract tests; each is independently runnable |
+| `test_adoption_scenarios.py` | executable A–M adoption matrix with structured, unexecuted response specs |
 | `fixtures/` | library and .NET profile fixtures used by those tests |
 
 ## Adding a fixture
