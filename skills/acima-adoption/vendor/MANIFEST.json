@@ -4,12 +4,12 @@
   "catalogSha256": "084d53a04582b955a4f64f80ca41067ff609bba812f2437ff8cc5c2306454822",
   "files": {
     "conformance/acima_claim.py": {
-      "sha256": "2888a8d474eba9aa36368147248f28ee9a5e892d0fb36bdf61273d7d06bd73bf",
-      "bytes": 12841
+      "sha256": "98d1f835493dc9acd4943f6f9554d1ffb215618edfb7c3fec617ba5f2bba7d1e",
+      "bytes": 17767
     },
     "docs/commands.md": {
-      "sha256": "ba58c11e590eb4264a154dabba4d78035acd028ccc87019fdf1b5db745ab783e",
-      "bytes": 12394
+      "sha256": "f68e6d2069b7c30e83e3b882846762fa642d544bd15e828ac633a2dafcbe022e",
+      "bytes": 13988
     },
     "docs/guides/architecture-families.md": {
       "sha256": "b02bd837bce377c02d1e48b26ab5ab27478b426a5eed97fa4a6d342c7d60ade2",
@@ -172,8 +172,8 @@
       "bytes": 33855
     },
     "tools/acima.py": {
-      "sha256": "5cb2dcadf876a8e9827edd47ac65661e38ca8c76a62200ebac0f6302c1c48d23",
-      "bytes": 70096
+      "sha256": "85281449ee8abebad6d8c84ef6be915bfafe00fffa5db6d964cfd854cee2f0d6",
+      "bytes": 88442
     }
   }
 }

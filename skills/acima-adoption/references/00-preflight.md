@@ -79,8 +79,8 @@ Only run when `acima.config.json` exists.
 |---|---|---|
 | `GOV-001` | units are declared and the level is `L1`, `L2` or `L3` | repair the config; an empty config classifies nothing |
 | `GOV-002` | the enforcer runs, and reports the baseline; a profile with no runner blocks | exit `2` is a tool failure — stop; exit `1` is a baseline, expected on day one; no reference runner is `fail` (unsupported, not clean) |
-| `GOV-003` | waivers have the required fields — including the exact finding fingerprint — and none are expired | `G001`/`G002`: complete them or renew deliberately |
-| `GOV-004` | no waiver is still owned by `unassigned` | replace with real names before merging the gate |
+| `GOV-003` | waivers have rule, scope, fingerprint (`sha256:<64 hex>`), owner, reason, expiry and review date; none are expired or unowned | `G001`/`G002`: complete them or renew deliberately; replace `unassigned` with a real owner |
+| `GOV-004` | each waiver scope is `repository` or a declared unit id/module | correct the scope; it is a filter, not permission to suppress a unit |
 
 `GOV-002` deliberately distinguishes four outcomes: clean (`pass`), baseline findings (`warn`),
 enforcer failure (`fail`), and unsupported language profile (`fail`). Collapsing the first two
@@ -118,7 +118,8 @@ signal available. Review it with someone who knows the domain before committing 
 The waiver writer emits one waiver per **exact finding fingerprint**, scoped to the unit that owns
 the path, with owner `unassigned`, a 90-day expiry and today's review date. The scope is a filter,
 not permission to suppress every future finding in the unit. The file is structurally valid but
-**not acceptable**: `GOV-004` warns until a human replaces every owner. That is intentional. An
+**not acceptable**: `GOV-003` blocks until a human replaces every owner, because an unowned
+exception is not an accepted exception. That is intentional. An
 automatically generated exception file that passes review is how governance dies.
 
 ## Reading the report

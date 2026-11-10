@@ -31,6 +31,8 @@ SKILL_DIR = Path(__file__).resolve().parents[1]
 _REPOSITORY = SKILL_DIR.parents[1]
 STANDARD_ROOT = (_REPOSITORY if (_REPOSITORY / "tools/acima-spec/rules.json").is_file()
                  else SKILL_DIR / "vendor")
+sys.path.insert(0, str(STANDARD_ROOT / "conformance"))
+from acima_claim import validate_waivers  # noqa: E402 - shared governance validation
 
 PRUNE = {
     ".git", "node_modules", "bin", "obj", "dist", "build", "target", "out",
@@ -624,11 +626,15 @@ def check_target(project: Path, report: Report, manifest: dict) -> tuple[list[di
                                        "run scripts/inject_violation.py (L001 and D001) against this target before claiming clean")
 
         waiver_name = config.get("waivers")
+        explicit_waivers = bool(waiver_name)
+        waiver_name = waiver_name or ".acima/waivers.json"
         if waiver_name:
             waiver_path = project / waiver_name
-            if not waiver_path.is_file():
+            if not waiver_path.is_file() and explicit_waivers:
                 report.add("GOV-003", "fail", f"waivers file missing: {waiver_name}",
                            "create it with an empty waivers array, or fix the path")
+            elif not waiver_path.is_file():
+                report.add("GOV-003", "pass", "no waiver file; no exceptions recorded")
             else:
                 try:
                     document = load_json(waiver_path)
@@ -639,42 +645,34 @@ def check_target(project: Path, report: Report, manifest: dict) -> tuple[list[di
                     waivers = []
                     document = {}
                 if document:
-                    incomplete = [
-                        waiver for waiver in waivers
-                        if any(not str(waiver.get(field, "")).strip() for field in WAIVER_FIELDS)
-                    ]
-                    expired = [
-                        waiver for waiver in waivers
-                        if str(waiver.get("expires", ""))[:10] < date.today().isoformat()
-                    ]
-                    unhashed = [
-                        waiver for waiver in waivers
-                        if str(waiver.get("expires", ""))[:10] >= date.today().isoformat()
-                        and not str(waiver.get("fingerprint", "")).strip()
-                    ]
-                    unassigned = [
-                        waiver for waiver in waivers
-                        if str(waiver.get("owner", "")).strip().lower() == "unassigned"
-                    ]
-                    if incomplete:
+                    scopes = {str(unit.get("id")) for unit in config.get("units", []) if unit.get("id")}
+                    scopes |= {str(unit.get("module")) for unit in config.get("units", [])
+                               if unit.get("module")}
+                    validation = validate_waivers(document, valid_scopes=scopes)
+                    if validation["invalid"]:
+                        first = validation["invalid"][0]
+                        detail = f"{len(validation['invalid'])} waiver(s) invalid"
+                        if first.get("problems"):
+                            detail += ": " + "; ".join(first["problems"])
+                        report.add("GOV-003", "fail", detail,
+                                   "G001 requires rule, scope, fingerprint, owner, reason, expires "
+                                   "and reviewedOn; fingerprint is sha256:<64 hex>")
+                    elif validation["expired"]:
                         report.add("GOV-003", "fail",
-                                   f"{len(incomplete)} waiver(s) missing required fields",
-                                   "G001 requires rule, scope, fingerprint, owner, reason, expires and reviewedOn")
-                    elif expired:
-                        report.add("GOV-003", "fail",
-                                   f"{len(expired)} expired waiver(s)",
+                                   f"{len(validation['expired'])} expired waiver(s)",
                                    "renew deliberately with the owner, or fix the violation")
-                    elif unhashed:
+                    elif validation["unowned"]:
                         report.add("GOV-003", "fail",
-                                   f"{len(unhashed)} active waiver(s) have no finding fingerprint",
-                                   "regenerate the baseline with --write-waivers; broad waivers hide new findings")
+                                   f"{len(validation['unowned'])} waiver(s) still owned by 'unassigned'",
+                                   "replace with real names before merging the gate")
                     else:
                         report.add("GOV-003", "pass",
-                                   f"{len(waivers)} active waiver(s), none expired")
-                    if unassigned:
+                                   f"{len(validation['valid'])} active waiver(s), none expired")
+                    if validation["scopeMismatch"]:
                         report.add("GOV-004", "warn",
-                                   f"{len(unassigned)} waiver(s) still owned by 'unassigned'",
-                                   "replace with real names before the first gate is merged")
+                                   f"{len(validation['scopeMismatch'])} waiver(s) name a scope that "
+                                   "no declared unit owns",
+                                   "use 'repository' or a declared unit id/module")
     else:
         if (project / PROFILE_MANIFEST).is_file():
             report.add("TGT-006", "fail",

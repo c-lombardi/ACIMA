@@ -19,6 +19,7 @@ document.  It does not re-run analysis.
 from __future__ import annotations
 
 import json
+import re
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -42,6 +43,103 @@ EVIDENCE_FIELDS = (
 )
 FULL_SCOPE = "repository"
 PASS_RESULT = "pass"
+WAIVER_FIELDS = ("rule", "scope", "fingerprint", "owner", "reason", "expires", "reviewedOn")
+FINGERPRINT_PATTERN = re.compile(r"sha256:[0-9a-f]{64}$")
+
+
+def _iso_date(value: Any) -> date | None:
+    try:
+        return date.fromisoformat(str(value)[:10])
+    except (TypeError, ValueError):
+        return None
+
+
+def validate_run_artefact(payload: Any, catalog_version: str | None = None) -> list[str]:
+    """Return every reason a JSON object cannot be treated as a measured run.
+
+    Shared by status and any other consumer. A file that exists is not a measurement: the run must
+    carry a positive source count, a real execution map, a findings list and a declared level.
+    """
+    if not isinstance(payload, dict):
+        return ["run artefact is not a JSON object"]
+    problems: list[str] = []
+    sources = payload.get("sourceFiles")
+    if isinstance(sources, bool) or not isinstance(sources, int) or sources <= 0:
+        problems.append("sourceFiles is not a positive count")
+    execution = payload.get("execution")
+    if not isinstance(execution, dict) or len(execution) < 2:
+        problems.append("execution map is missing or too small to be a run")
+    if not isinstance(payload.get("findings"), list):
+        problems.append("findings is not a list")
+    if payload.get("level") not in LEVELS:
+        problems.append("level is missing or invalid")
+    # ``standard`` is the target's declared standard version, not the catalog version.
+    # The two differ by design (for example a 1.0.0 target and a 1.9.0-draft catalog), so
+    # comparing them would reject every real enforcer run. The catalog is identified by the
+    # rule set and, for a gate observation, by catalogSha256.
+    standard = payload.get("standard")
+    if not isinstance(standard, str) or not standard.strip():
+        problems.append("standard is missing")
+    return problems
+
+
+def validate_waivers(document: Any, *, today: date | None = None,
+                     valid_scopes: set[str] | None = None) -> dict:
+    """Validate waiver governance once, for status and preflight alike.
+
+    An invalid, expired or unowned waiver is never treated as an accepted exception. The result
+    counts every waiver once and names the entries that fail each rule.
+    """
+    today = today or date.today()
+    result: dict[str, Any] = {
+        "total": 0, "valid": [], "invalid": [], "expired": [], "unowned": [],
+        "missing": [], "scopeMismatch": [],
+    }
+    waivers = document.get("waivers") if isinstance(document, dict) else None
+    if not isinstance(waivers, list):
+        result["invalid"].append({"index": None, "rule": None,
+                                  "problems": ["waivers is not a list"]})
+        return result
+    result["total"] = len(waivers)
+    scopes = set(valid_scopes or set()) | {FULL_SCOPE}
+    for index, waiver in enumerate(waivers):
+        if not isinstance(waiver, dict):
+            result["invalid"].append({"index": index, "rule": None,
+                                      "problems": ["waiver is not an object"]})
+            continue
+        problems: list[str] = []
+        missing = [field for field in WAIVER_FIELDS
+                   if not str(waiver.get(field, "")).strip()]
+        if missing:
+            problems.append("missing " + ", ".join(missing))
+        fingerprint = str(waiver.get("fingerprint", "")).strip()
+        if fingerprint and not FINGERPRINT_PATTERN.match(fingerprint):
+            problems.append("fingerprint is not sha256:<64 hex>")
+        expiry = _iso_date(waiver.get("expires"))
+        reviewed = _iso_date(waiver.get("reviewedOn"))
+        if str(waiver.get("expires", "")).strip() and expiry is None:
+            problems.append("expires is not an ISO date")
+        if str(waiver.get("reviewedOn", "")).strip() and reviewed is None:
+            problems.append("reviewedOn is not an ISO date")
+        if reviewed and reviewed > today:
+            problems.append("reviewedOn is in the future")
+        scope = str(waiver.get("scope", "")).strip()
+        entry = {"index": index, "rule": waiver.get("rule"), "problems": problems}
+        if missing:
+            result["missing"].append(entry)
+        if problems:
+            result["invalid"].append(entry)
+        if expiry and expiry < today:
+            result["expired"].append(entry)
+        if str(waiver.get("owner", "")).strip().lower() in ("", "unassigned"):
+            result["unowned"].append(entry)
+        if scope and scopes and scope not in scopes:
+            result["scopeMismatch"].append(entry)
+            result["invalid"].append({**entry, "problems": problems + [
+                f"scope {scope!r} matches no declared unit"]})
+        if not problems and not (expiry and expiry < today) and scope in scopes:
+            result["valid"].append(entry)
+    return result
 
 
 class ClaimError(Exception):

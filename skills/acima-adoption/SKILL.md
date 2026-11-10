@@ -88,7 +88,8 @@ required/conditional/optional status, tradeoffs, and the one approval question. 
 **Phase 3 — Explicit authorization.** Approval covers the listed scope only — the named paths,
 level and changes. Partial approval
 is supported: implement exactly what was approved and name the capability that stays unavailable.
-Interest, silence, "looks good" about the diagnosis, or a request to see files is not approval.
+Wait for an unambiguous yes to that proposal before touching a path. Interest, silence, "looks good"
+about the diagnosis, or a request to see files is not approval.
 Approval to change files never authorizes merge, release, publication or external systems.
 
 **Phase 4 — Approved implementation.** Only approved changes. A new path, level, dependency or enforcement
@@ -136,14 +137,25 @@ and agents. Distinguish what this repository can achieve now from what needs org
 `COMPLETE`, `NOT_APPLICABLE`, `UNKNOWN` — rendered in plain English. A step is complete only when
 its criterion is verified:
 
+- **fit** is a conversational decision; no artefact proves the assessment or the map's approval,
+  so it stays `UNKNOWN` until the owner acts on the proposal. A config file does not prove fit.
+- **trust the tool** requires a proof record naming the standard and catalog hash with `L001` and
+  `D001` detected; an empty or stale record blocks.
 - **calibration** compares the manifest pin with the catalog on disk; a config file proves nothing.
-- **declare** requires a parsable config with at least one unit that covers source.
+- **declare** requires a parsable config with at least one unit that covers source; review and
+  approval are not proven by the file.
 - **freeze** requires a run artefact with `sourceFiles > 0`, an `execution` map and a findings list.
   A fingerprint file alone is in progress, not measured.
-- **own** requires owners, unexpired waivers; expired or unassigned exceptions block.
+- **own** requires owners, scopes, fingerprints and unexpired waivers; invalid, unowned or expired
+  exceptions block, and are never accepted as exceptions.
 - **gate** reads the workflow: a file that mentions ACIMA without invoking an enforcer is blocked;
-  a configured invocation is *in progress, not observed*. Only an observation record completes it.
-- **slice** compares measured runs; a count that never falls is not a completed boundary change.
+  a configured invocation is *in progress, not observed*. An observation must name the repository,
+  commit, workflow, command, time, standard, catalog hash, level, source count and exit status. A
+  manually recorded result is *in progress, not independently verified*; only a provider-sourced
+  run matching `HEAD` completes the step. CI configuration alone never proves enforcement.
+- **slice** compares runs only when standard, level, source scope and execution map match; a lower
+  count from a different scope is not an improvement, and a resolved finding must be named with no
+  new errors.
 - **claim** computes the class with `acima.py claim`. A manual-evidence file is not proof; invalid
   or expired evidence blocks, and missing evidence is a partial assessment.
 
@@ -209,7 +221,7 @@ Every command below is read-only unless marked.
 | `acima.py claim --report <run> --level <L> --require full` | `FULL`/`PARTIAL` and gate it | no |
 | `summarize.py --root <target> --report <run>` | run → reader-facing summary | `--out` only |
 | `preflight.py --project <target>` | calibration and classification | `--write-*` only |
-| `inject_violation.py --project <target>` | prove the enforcer detects controlled input | no |
+| `inject_violation.py --project <target> --out docs/acima/proof.json` | prove the enforcer detects controlled input | `--out` only |
 | `<language enforcer> --root <target> --format json` | the gate for one language | no |
 
 When a user must run a command, give purpose, working directory, prerequisites, whether it writes,

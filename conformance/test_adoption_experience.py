@@ -5,13 +5,16 @@ optional artifacts, gate configuration versus observation, and claim honesty.
 """
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
 from datetime import date, timedelta
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("acima_experience", ROOT / "tools/acima.py")
@@ -20,6 +23,7 @@ assert SPEC and SPEC.loader
 SPEC.loader.exec_module(acima)
 
 CATALOG = json.loads((ROOT / "tools/acima-spec/rules.json").read_text(encoding="utf-8"))
+CATALOG_SHA = hashlib.sha256((ROOT / "tools/acima-spec/rules.json").read_bytes()).hexdigest()
 
 
 def snapshot(root: Path) -> dict:
@@ -36,7 +40,7 @@ def write_json(root: Path, relative: str, payload: dict) -> Path:
 
 def config(root: Path, level: str = "L2", units: int = 1) -> None:
     write_json(root, "acima.config.json", {
-        "language": "python", "level": level, "mode": "base",
+        "standard": CATALOG["version"], "language": "python", "level": level, "mode": "base",
         "units": [{"id": f"u{index}", "role": "implementation", "paths": [f"src/u{index}"]}
                   for index in range(units)],
     })
@@ -56,6 +60,29 @@ def run_payload(findings: list[dict] | None = None, sources: int = 4,
 
 def baseline(root: Path, name: str = "baseline-2026-01-01.json", **kwargs) -> None:
     write_json(root, f"docs/acima/{name}", run_payload(**kwargs))
+
+
+def error(fingerprint: str, path: str = "src/a.py") -> dict:
+    return {"rule": "ACIMA-D001", "severity": "error", "message": "crosses a boundary",
+            "path": path, "line": 1, "fingerprint": "sha256:" + fingerprint * 64}
+
+
+def observation(root: Path, **overrides) -> None:
+    workflow = root / ".github/workflows/acima.yml"
+    workflow.parent.mkdir(parents=True, exist_ok=True)
+    workflow.write_text(
+        "on: pull_request\njobs:\n  gate:\n    steps:\n"
+        "      - run: python3 examples/python/tools/acima_arch.py --root . --level L2\n",
+        encoding="utf-8")
+    payload = {
+        "manual": True, "repository": root.name, "commit": "a" * 40,
+        "workflow": ".github/workflows/acima.yml",
+        "provider": "", "runId": "", "command": "acima_arch.py --root .",
+        "executedAt": "2026-11-09T10:00:00Z", "standard": CATALOG["version"],
+        "catalogSha256": CATALOG_SHA, "level": "L2", "exitCode": 0, "sourceFiles": 4,
+    }
+    payload.update(overrides)
+    write_json(root, "docs/acima/gate-observed.json", payload)
 
 
 def step(report: dict, name: str) -> dict:
@@ -126,17 +153,140 @@ class AdoptionExperienceTests(unittest.TestCase):
             self.assertIn("pull request", report["next"]["action"].lower())
             self.assertIn("in progress", acima.status_text(report))
 
-    def test_observed_gate_completes_the_step(self) -> None:
+    def test_bare_exit_code_is_not_a_verifiable_gate_observation(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             config(root)
             baseline(root)
-            write_json(root, "docs/acima/gate-observed.json", {
-                "exitCode": 1, "command": "acima_arch.py --root . --level L2",
-                "observedOn": date.today().isoformat()})
+            write_json(root, "docs/acima/gate-observed.json", {"exitCode": 0})
             gate = step(acima.status_project(root), "gate")
-            self.assertEqual(gate["state"], "COMPLETE")
-            self.assertIn("observed exit 1", gate["evidence"])
+            self.assertEqual(gate["state"], "BLOCKED")
+            self.assertIn("missing commit", gate["evidence"])
+
+    def test_manual_gate_observation_stays_in_progress(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config(root)
+            baseline(root)
+            observation(root)
+            gate = step(acima.status_project(root), "gate")
+            self.assertEqual(gate["state"], "IN_PROGRESS")
+            self.assertIn("not independently verified", gate["evidence"])
+
+    def test_failed_gate_is_not_a_success_milestone(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config(root)
+            baseline(root)
+            observation(root, exitCode=1)
+            gate = step(acima.status_project(root), "gate")
+            self.assertEqual(gate["state"], "IN_PROGRESS")
+            self.assertIn("failure", gate["evidence"])
+
+    def test_verified_flag_without_git_cannot_complete_the_gate(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config(root)
+            baseline(root)
+            observation(root, manual=False, verified=True, provider="github-actions",
+                        runId="42")
+            gate = step(acima.status_project(root), "gate")
+            self.assertEqual(gate["state"], "IN_PROGRESS")
+            self.assertIn("cross-checked", gate["evidence"])
+
+    def test_real_run_standard_version_is_accepted(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config(root)
+            payload = run_payload()
+            payload["standard"] = "1.0.0"
+            write_json(root, "docs/acima/baseline-2026-01-01.json", payload)
+            self.assertEqual(acima.validate_run_artefact(payload, CATALOG["version"]), [])
+            freeze = step(acima.status_project(root), "freeze")
+            self.assertEqual(freeze["state"], "COMPLETE", freeze)
+            payload.pop("standard")
+            self.assertIn("standard is missing",
+                          acima.validate_run_artefact(payload, CATALOG["version"]))
+
+    def test_unit_map_does_not_prove_fit_approval(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config(root)
+            baseline(root)
+            fit = step(acima.status_project(root), "fit")
+            self.assertEqual(fit["state"], "UNKNOWN")
+            self.assertIn("no artefact proves", fit["evidence"])
+
+    def test_proof_requires_both_controlled_violations(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config(root)
+            baseline(root)
+            write_json(root, "docs/acima/proof.json", {
+                "standard": CATALOG["version"], "catalogSha256": CATALOG_SHA,
+                "results": [{"rule": "ACIMA-L001", "detected": True, "exitCode": 1}]})
+            trust = step(acima.status_project(root), "trust the tool")
+            self.assertEqual(trust["state"], "BLOCKED")
+            self.assertIn("ACIMA-D001", trust["evidence"])
+
+    def test_slice_rejects_incomparable_measurements(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config(root)
+            baseline(root, name="baseline-01.json", sources=4)
+            baseline(root, name="baseline-02.json", sources=9)
+            boundary = step(acima.status_project(root), "slice")
+            self.assertEqual(boundary["state"], "IN_PROGRESS")
+            self.assertIn("not comparable", boundary["evidence"])
+            self.assertIn("sourceFiles", boundary["evidence"])
+
+    def test_slice_requires_a_resolved_finding_and_no_new_errors(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config(root)
+            baseline(root, name="baseline-01.json",
+                     findings=[error("a"), error("b")])
+            baseline(root, name="baseline-02.json", findings=[error("c")])
+            boundary = step(acima.status_project(root), "slice")
+            self.assertEqual(boundary["state"], "IN_PROGRESS")
+            self.assertIn("new error", boundary["evidence"])
+
+    def test_slice_completes_only_when_a_named_finding_is_resolved(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config(root)
+            baseline(root, name="baseline-01.json",
+                     findings=[error("a"), error("b")])
+            baseline(root, name="baseline-02.json", findings=[error("b")])
+            boundary = step(acima.status_project(root), "slice")
+            self.assertEqual(boundary["state"], "COMPLETE")
+            self.assertIn("1 named finding(s) resolved", boundary["evidence"])
+
+    def test_invalid_waiver_is_never_an_accepted_exception(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config(root)
+            baseline(root, findings=[error("a")])
+            write_json(root, ".acima/waivers.json", {"waivers": [{
+                "rule": "ACIMA-D001", "scope": "u0", "fingerprint": "not-a-hash",
+                "owner": "team", "reason": "legacy", "expires": "2027-01-01",
+                "reviewedOn": "2026-01-01"}]})
+            own = step(acima.status_project(root), "own")
+            self.assertEqual(own["state"], "BLOCKED")
+            self.assertIn("fingerprint", own["evidence"])
+
+    def test_waiver_scope_must_match_a_declared_unit(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config(root)
+            baseline(root, findings=[error("a")])
+            write_json(root, ".acima/waivers.json", {"waivers": [{
+                "rule": "ACIMA-D001", "scope": "billing", "fingerprint": "sha256:" + "a" * 64,
+                "owner": "team", "reason": "legacy", "expires": "2027-01-01",
+                "reviewedOn": "2026-01-01"}]})
+            own = step(acima.status_project(root), "own")
+            self.assertEqual(own["state"], "BLOCKED")
+            self.assertIn("matches no declared unit", own["evidence"])
 
     def test_zero_source_run_is_rejected_as_a_baseline(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -249,6 +399,72 @@ class AdoptionExperienceTests(unittest.TestCase):
             self.assertIn(phrase, text)
         intro = text.split("## Positioning", 1)[0]
         self.assertNotIn("ACIMA-D0", intro)
+
+
+    def test_independently_verified_gate_matches_head(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config(root)
+            baseline(root, findings=[])
+            observation(root, manual=False, verified=True, provider="github-actions",
+                        runId="42", commit="a" * 40)
+            with mock.patch.object(acima, "_git_head", return_value="a" * 40), \
+                    mock.patch.object(acima, "_git_remote", return_value=None):
+                gate = step(acima.status_project(root), "gate")
+            self.assertEqual(gate["state"], "COMPLETE", gate)
+            self.assertIn("independently recorded", gate["evidence"])
+
+    def test_inject_violation_out_produces_a_valid_proof_record(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config(root)
+            baseline(root, findings=[])
+            proof = root / "docs/acima/proof.json"
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "skills/acima-adoption/scripts/inject_violation.py"),
+                 "--project", str(ROOT / "examples/python"), "--out", str(proof),
+                 "--format", "json"], capture_output=True, text=True, timeout=180)
+            self.assertEqual(result.returncode, 0, result.stderr[-800:])
+            record = json.loads(proof.read_text(encoding="utf-8"))
+            self.assertEqual(record["standard"], CATALOG["version"])
+            self.assertEqual({entry["rule"] for entry in record["results"]},
+                             {"ACIMA-L001", "ACIMA-D001"})
+            trust = step(acima.status_project(root), "trust the tool")
+            self.assertEqual(trust["state"], "COMPLETE", trust)
+
+    def test_preflight_reports_the_same_invalid_waiver(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config(root)
+            (root / "src/u0").mkdir(parents=True)
+            (root / "src/u0/app.py").write_text("VALUE = 1\n", encoding="utf-8")
+            baseline(root, findings=[error("a")])
+            write_json(root, ".acima/waivers.json", {"waivers": [{
+                "rule": "ACIMA-D001", "scope": "u0", "fingerprint": "not-a-hash",
+                "owner": "team", "reason": "legacy", "expires": "2027-01-01",
+                "reviewedOn": "2026-01-01"}]})
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "skills/acima-adoption/scripts/preflight.py"),
+                 "--project", str(root), "--format", "json"],
+                capture_output=True, text=True, timeout=180)
+            payload = json.loads(result.stdout)
+            checks = {check["id"]: check for check in payload["checks"]}
+            self.assertEqual(checks["GOV-003"]["status"], "fail", checks["GOV-003"])
+            self.assertEqual(step(acima.status_project(root), "own")["state"], "BLOCKED")
+
+
+    def test_stale_gate_observation_is_blocked(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config(root)
+            baseline(root, findings=[])
+            observation(root, manual=False, verified=True, provider="github-actions",
+                        runId="42", commit="b" * 40)
+            with mock.patch.object(acima, "_git_head", return_value="a" * 40), \
+                    mock.patch.object(acima, "_git_remote", return_value=None):
+                gate = step(acima.status_project(root), "gate")
+            self.assertEqual(gate["state"], "BLOCKED", gate)
+            self.assertIn("stale", gate["evidence"])
 
 
 if __name__ == "__main__":

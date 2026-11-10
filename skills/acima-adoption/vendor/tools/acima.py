@@ -28,6 +28,7 @@ sys.path.insert(0, str(ACIMA_ROOT / "conformance"))
 from acima_claim import (  # noqa: E402 - path is set above deliberately
     EVIDENCE_FILE, FULL, INVALID, ClaimError, assess as assess_claim,
     load_catalog, load_evidence, render_markdown as render_claim_markdown,
+    validate_run_artefact, validate_waivers,
 )
 CONFIG_NAME = "acima.config.json"
 PRUNE = {".git", "node_modules", "bin", "obj", "dist", "build", "target", "out",
@@ -384,6 +385,142 @@ def _next_steps(report: dict) -> list[str]:
     return steps
 
 
+LEVEL_GUIDANCE = {
+    "L1": {
+        "establishes": "module boundaries and a dependency graph the gate can check",
+        "checks": ("cross-module implementation imports, contract dependency purity, cycles, "
+                   "unclassified source and unowned exceptions"),
+        "requires": ("a reviewed unit map, a measured baseline and owned exceptions for "
+                     "pre-existing findings"),
+        "doesNotEstablish": ("runtime isolation, persistence ownership or configuration "
+                             "ownership"),
+        "nextLevelWhen": ("the structural graph is stable and remaining findings sit inside "
+                          "modules rather than between them"),
+    },
+    "L2": {
+        "establishes": "contracts that are immutable data and safe to depend on",
+        "checks": ("behaviour or framework types in contracts, mutable collections, documented "
+                   "contract surface and reviewed API changes"),
+        "requires": ("the L1 gate plus contract recreation, API baselines and manual evidence "
+                     "for contract judgement rules"),
+        "doesNotEstablish": ("persistence ownership, runtime autonomy or effect ownership"),
+        "nextLevelWhen": ("contracts change only through reviewed, additive-or-breaking "
+                          "decisions"),
+    },
+    "L3": {
+        "establishes": "modules that own their persistence, configuration and externally visible effects",
+        "checks": ("persistence and configuration ownership, shared mutable state, static state, "
+                   "retry/duplicate/consistency/cancellation semantics and telemetry boundaries"),
+        "requires": ("L1 and L2 plus data ownership maps, effect reviews and repository-scoped "
+                     "manual evidence for the judgement rules"),
+        "doesNotEstablish": ("correctness, performance, security or operational autonomy"),
+        "nextLevelWhen": "the owner needs independently deployable or independently owned modules",
+    },
+}
+
+
+ARCHITECTURE_MARKERS = ("domain", "application", "infrastructure", "adapters", "ports",
+                        "contracts", "services", "api")
+
+
+def infer_architecture(root: Path, units: list[dict]) -> list[dict]:
+    """Low-confidence layout signals, never presented as an ownership decision."""
+    names = {path.name.lower() for path in root.iterdir() if path.is_dir()} if root.is_dir() else set()
+    signals: list[dict] = []
+    layered = sorted(names & {"domain", "application", "infrastructure"})
+    if {"domain", "application"} <= names:
+        signals.append({"candidate": "layered domain architecture (Clean or hexagonal shape)",
+                        "evidence": layered, "confidence": "low"})
+    if {"adapters", "ports"} <= names:
+        signals.append({"candidate": "ports and adapters (Hexagonal)",
+                        "evidence": ["adapters/", "ports/"], "confidence": "low"})
+    implementations = [unit for unit in units if unit.get("role") == "implementation"]
+    if len(implementations) >= 2 and "domain" in names:
+        signals.append({"candidate": "modular monolith or DDD bounded contexts",
+                        "evidence": [f"{len(implementations)} implementation units", "domain/"],
+                        "confidence": "low"})
+    if not signals:
+        signals.append({"candidate": "not determined from layout",
+                        "evidence": ["no domain/application/adapters markers"],
+                        "confidence": "low"})
+    return signals
+
+
+def _assessment_benefits(report: dict) -> list[str]:
+    rules = (report.get("findings") or {}).get("byRule") or {}
+    benefits = ["Fails a pull request that adds a boundary violation and names the rule and remedy."]
+    if any(rule.startswith("ACIMA-D") for rule in rules):
+        benefits.insert(0, "Stops one module from importing another module's implementation, so "
+                           "a change in one cannot silently break its consumers.")
+    if any(rule.startswith("ACIMA-C") for rule in rules):
+        benefits.insert(0, "Keeps contracts free of behaviour and framework types, so consumers "
+                           "depend on a stable surface.")
+    if any(rule.startswith("ACIMA-A") for rule in rules):
+        benefits.append("Makes persistence, configuration and effect ownership visible instead "
+                        "of leaking across boundaries.")
+    return benefits[:4]
+
+
+def build_assessment_result(report: dict, config: dict | None) -> dict:
+    """Separate facts, inferences, unknowns and a recommendation for the proposal."""
+    verdict = report.get("verdict")
+    findings = report.get("findings") or {}
+    coverage = report.get("coverage") or {}
+    errors = (findings.get("bySeverity") or {}).get("error") if findings else None
+    if verdict == "ASSESSED":
+        fit = "recommended" if errors == 0 else "recommended-with-limitations"
+        confidence = "high" if coverage.get("complete") else "medium"
+    elif verdict == "NEEDS_UNIT_MAP":
+        fit, confidence = "insufficient-evidence", "medium"
+    else:
+        fit, confidence = "insufficient-evidence", "low"
+    unknowns = [
+        "The application's purpose and business requirements were not inferred from names; the "
+        "owner must confirm them.",
+        "Runtime behaviour, data ownership and operational autonomy are not established by a "
+        "static run.",
+    ]
+    if not config:
+        unknowns.append("Module ownership is not declared, so findings cannot be attributed to "
+                        "an owner.")
+    if coverage and not coverage.get("complete"):
+        unknowns.append(f"{len(coverage.get('notExecuted') or [])} required rule(s) did not "
+                        "execute; they are not evidence of a pass.")
+    recommendation = {
+        "recommended": "ACIMA fits this repository; adopt the smallest scope that adds a "
+                       "measured gate.",
+        "recommended-with-limitations": "ACIMA fits with limitations: the existing findings are "
+                                       "real work, and the smallest useful adoption starts "
+                                       "with a map, a baseline and owned exceptions.",
+        "insufficient-evidence": "There is not enough evidence for a recommendation yet; "
+                                 "complete the read-only assessment first.",
+    }[fit]
+    level = ((report.get("assessment") or {}).get("level")
+             or report.get("requestedLevel") or "L1")
+    return {
+        "facts": {
+            "languages": report.get("languages"),
+            "sourceFiles": report.get("sourceFiles"),
+            "unitMap": report.get("unitMap"),
+            "reportedLevel": (report.get("assessment") or {}).get("level"),
+        },
+        "inferences": infer_architecture(Path(report["root"]),
+                                         (report.get("unitMap") or {}).get("units", [])),
+        "unknowns": unknowns,
+        "fit": fit,
+        "confidence": confidence,
+        "recommendation": recommendation,
+        "benefits": _assessment_benefits(report),
+        "whatItWillNotSolve": [
+            "It does not choose module ownership for the team.",
+            "It does not migrate persistence or split services.",
+            "It does not prove correctness, performance or security.",
+        ],
+        "levelGuidance": LEVEL_GUIDANCE.get(level or "L1", LEVEL_GUIDANCE["L1"]),
+        "recommendedNextAction": (report.get("nextSteps") or [None])[0],
+    }
+
+
 def assess_project(root: Path, language: str | None = None,
                    level: str | None = None) -> tuple[int, dict]:
     """Read-only compatibility assessment: never writes to the target repository."""
@@ -416,6 +553,7 @@ def assess_project(root: Path, language: str | None = None,
         report["verdict"] = "NO_SOURCE"
         report["verdictMeaning"] = VERDICT_MEANING["NO_SOURCE"]
         report["nextSteps"] = _next_steps(report)
+        report["assessmentResult"] = build_assessment_result(report, None)
         return 0, report
 
     try:
@@ -425,6 +563,7 @@ def assess_project(root: Path, language: str | None = None,
                        "verdictMeaning": VERDICT_MEANING["INVALID_CONFIG"],
                        "error": str(error)})
         report["nextSteps"] = _next_steps(report)
+        report["assessmentResult"] = build_assessment_result(report, None)
         return 2, report
 
     selected = language or (config or {}).get("language") or (languages[0] if languages else None)
@@ -452,15 +591,16 @@ def assess_project(root: Path, language: str | None = None,
         report["verdictMeaning"] = VERDICT_MEANING[verdict]
         report.update(extra)
         report["nextSteps"] = _next_steps(report)
+        report["assessmentResult"] = build_assessment_result(report, config)
         return code, report
 
-    if config is None:
-        return finish("NEEDS_UNIT_MAP")
     spec = enforcer_spec(selected or "")
     if spec is None:
         return finish("UNSUPPORTED_LANGUAGE")
     if shutil.which(spec["run"][0]) is None:
         return finish("TOOLCHAIN_MISSING", detail="%s is not installed" % spec["run"][0])
+    if config is None:
+        return finish("NEEDS_UNIT_MAP")
 
     code, payload, error = run_enforcer(root, selected, None, level)
     if payload is None:
@@ -507,6 +647,14 @@ def assess_text(report: dict) -> str:
     if unit_map.get("modules"):
         shown = ", ".join(unit_map["modules"][:8])
         lines.append("  modules     %s%s" % (shown, " ..." if len(unit_map["modules"]) > 8 else ""))
+    result = report.get("assessmentResult") or {}
+    if result:
+        lines.append("  fit         %s (%s confidence)" % (result["fit"], result["confidence"]))
+        lines.append("  recommend   " + result["recommendation"])
+        for signal in result.get("inferences") or []:
+            lines.append("  layout      %s - evidence: %s (confidence: %s)"
+                         % (signal["candidate"], ", ".join(signal["evidence"]) or "none",
+                            signal["confidence"]))
     coverage = report.get("coverage")
     if coverage:
         lines.append("  coverage    %s rules executed - %s not evaluated"
@@ -630,6 +778,7 @@ GATE_TOKENS = ("acima_arch.py", "acima-arch.mjs", "./tools/archtest",
                "Acima.ArchTests", "acima.py analyze", "preflight.py")
 GATE_OBSERVATION = "docs/acima/gate-observed.json"
 PROOF_ARTEFACT = "docs/acima/proof.json"
+COMPARISON_FIELDS = ("standard", "level", "sourceFiles", "catalog", "executed")
 
 
 def _step(number: int, name: str, state: str, evidence: str, remedy: str = "") -> dict:
@@ -637,18 +786,57 @@ def _step(number: int, name: str, state: str, evidence: str, remedy: str = "") -
             "verified": state == STEP_COMPLETE, "evidence": evidence, "remedy": remedy}
 
 
-def _calibration() -> dict:
-    """Compare the skill's pinned catalog against the catalog on disk.
+def execution_context() -> dict:
+    """Resolve where this copy of the tool is running and which commands are valid there."""
+    root = ACIMA_ROOT
+    if (root / "skills/acima-adoption").is_dir():
+        context, skill_root = "checkout", root / "skills/acima-adoption"
+    elif (root / "MANIFEST.json").is_file():
+        context, skill_root = "vendor", root.parent
+    else:
+        context, skill_root = "installed", root
 
-    A config file proves nothing about calibration; this is the only artefact that does.
-    """
+    def python(path: Path) -> str:
+        return 'python3 "%s"' % path.as_posix()
+
+    enforcers = {
+        "python": python(root / "examples/python/tools/acima_arch.py"),
+        "typescript": 'node "%s"' % (root / "examples/typescript/tools/acima-arch.mjs").as_posix(),
+        "go": '(cd "%s" && go run ./tools/archtest)' % (root / "examples/go").as_posix(),
+        "dotnet": 'dotnet run --project "%s" --'
+                  % (root / "examples/dotnet/tools/Acima.ArchTests").as_posix(),
+        "java": None,
+    }
+    return {
+        "context": context,
+        "standardRoot": str(root),
+        "skillRoot": str(skill_root),
+        "commands": {
+            "acima": python(root / "tools/acima.py"),
+            "preflight": python(skill_root / "scripts/preflight.py"),
+            "inject": python(skill_root / "scripts/inject_violation.py"),
+            "summarize": python(skill_root / "scripts/summarize.py"),
+            "enforcers": enforcers,
+        },
+        "checkoutOnly": ["preflight --deep", "acima.py verify"],
+    }
+
+
+def _enforcer_command(language: str | None) -> str:
+    command = execution_context()["commands"]["enforcers"].get(language or "")
+    return command or "the reference enforcer for your language"
+
+
+def _calibration() -> dict:
+    """Compare the skill's pinned catalog against the catalog on disk."""
     try:
-        manifest = json.loads((ACIMA_ROOT / CALIBRATION_MANIFEST).read_text(encoding="utf-8"))
+        manifest_path = Path(execution_context()["skillRoot"]) / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         raw = (ACIMA_ROOT / "tools/acima-spec/rules.json").read_bytes()
         catalog = json.loads(raw)
     except (OSError, json.JSONDecodeError) as error:
         return _step(0, "calibration", STEP_UNKNOWN, f"cannot verify the skill pin: {error}",
-                     "run preflight.py from an ACIMA checkout")
+                     "run preflight.py from an ACIMA checkout or bundled skill")
     pinned = manifest.get("catalog") or {}
     digest = hashlib.sha256(raw).hexdigest()
     rules = catalog.get("rules") or []
@@ -667,11 +855,18 @@ def _calibration() -> dict:
         return _step(0, "calibration", STEP_BLOCKED, "; ".join(problems),
                      "run preflight.py, then re-calibrate the skill against this catalog")
     return _step(0, "calibration", STEP_COMPLETE,
-                 f"PIN MATCHES {len(rules)} RULES ({digest[:12]}...)")
+                 f"pin matches {len(rules)} rules ({digest[:12]}...)")
 
 
-def _run_artefacts(root: Path) -> tuple[list[dict], list[str]]:
-    """Return usable measured runs, plus named reasons for files that only look like runs."""
+def _catalog_version_and_hash() -> tuple[str | None, str | None]:
+    try:
+        raw = (ACIMA_ROOT / "tools/acima-spec/rules.json").read_bytes()
+        return json.loads(raw).get("version"), hashlib.sha256(raw).hexdigest()
+    except (OSError, json.JSONDecodeError):
+        return None, None
+
+
+def _run_artefacts(root: Path, catalog_version: str | None) -> tuple[list[dict], list[str]]:
     directory = root / "docs/acima"
     usable: list[dict] = []
     rejected: list[str] = []
@@ -684,29 +879,41 @@ def _run_artefacts(root: Path) -> tuple[list[dict], list[str]]:
         except (OSError, json.JSONDecodeError):
             rejected.append(f"{name}: not valid JSON")
             continue
-        if not isinstance(payload, dict):
-            rejected.append(f"{name}: not a run artefact")
+        problems = validate_run_artefact(payload, catalog_version)
+        if problems:
+            rejected.append(f"{name}: " + "; ".join(problems))
             continue
-        sources = payload.get("sourceFiles")
-        execution = payload.get("execution")
-        findings = payload.get("findings")
-        if not isinstance(sources, int) or sources <= 0:
-            rejected.append(f"{name}: sourceFiles is not a positive count")
-            continue
-        if not isinstance(execution, dict) or len(execution) < 2:
-            rejected.append(f"{name}: no execution map, so the run is incomplete")
-            continue
-        if not isinstance(findings, list):
-            rejected.append(f"{name}: no findings list")
-            continue
-        usable.append({"path": name, "payload": payload,
-                       "mtime": path.stat().st_mtime})
+        usable.append({"path": name, "payload": payload, "mtime": path.stat().st_mtime})
     usable.sort(key=lambda entry: entry["mtime"])
     return usable, rejected
 
 
+def _git_head(root: Path) -> str | None:
+    try:
+        result = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"],
+                                capture_output=True, text=True)
+    except OSError:
+        return None
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
+def _git_remote(root: Path) -> str | None:
+    try:
+        result = subprocess.run(["git", "-C", str(root), "remote", "get-url", "origin"],
+                                capture_output=True, text=True)
+    except OSError:
+        return None
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
+def _repository_identity(value: str) -> str:
+    value = value.strip().removesuffix(".git")
+    value = re.sub(r"^[a-z]+://[^/]+/", "", value, flags=re.I)
+    value = re.sub(r"^git@[^:]+:", "", value, flags=re.I)
+    return value.lower().strip("/")
+
+
 def _gate_workflows(root: Path) -> list[dict]:
-    """Inspect workflows that mention ACIMA, and say whether they invoke a real gate."""
     directory = root / ".github/workflows"
     entries: list[dict] = []
     if not directory.is_dir():
@@ -728,25 +935,181 @@ def _gate_workflows(root: Path) -> list[dict]:
     return entries
 
 
-def _gate_observation(root: Path) -> dict | None:
-    path = root / GATE_OBSERVATION
+def _proof_step(root: Path, catalog_version: str | None, catalog_sha: str | None) -> dict:
+    path = root / PROOF_ARTEFACT
     if not path.is_file():
-        return None
+        return _step(3, "trust the tool", STEP_UNKNOWN,
+                     "no proof artefact; detection is unproven",
+                     "run inject_violation.py with --out docs/acima/proof.json")
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    if not isinstance(payload, dict) or payload.get("exitCode") not in (0, 1):
-        return None
-    return payload
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        return _step(3, "trust the tool", STEP_BLOCKED, f"proof artefact unreadable: {error}",
+                     "re-run inject_violation.py with --out")
+    problems = []
+    if not isinstance(data, dict):
+        problems.append("not an object")
+    else:
+        if catalog_version and data.get("standard") != catalog_version:
+            problems.append("standard does not match the catalog")
+        if catalog_sha and data.get("catalogSha256") != catalog_sha:
+            problems.append("catalog hash does not match")
+        results = data.get("results")
+        by_rule = {str(item.get("rule")): item for item in results
+                   if isinstance(item, dict)} if isinstance(results, list) else {}
+        for rule in ("ACIMA-L001", "ACIMA-D001"):
+            entry = by_rule.get(rule)
+            if not entry or entry.get("detected") is not True:
+                problems.append(f"{rule} was not proven")
+            elif entry.get("exitCode") != 1:
+                problems.append(f"{rule} did not report a detected violation")
+    if problems:
+        return _step(3, "trust the tool", STEP_BLOCKED, "; ".join(problems),
+                     "re-run the controlled-violation proof")
+    return _step(3, "trust the tool", STEP_COMPLETE,
+                 f"L001 and D001 were detected in controlled input ({path.name})")
 
 
-def _error_count(payload: dict) -> int:
+def _gate_step(root: Path, workflows: list[dict], level: str | None,
+               catalog_version: str | None, catalog_sha: str | None) -> dict:
+    path = root / GATE_OBSERVATION
+    invoking = [entry for entry in workflows if entry["invokes"]]
+    if not path.is_file():
+        if invoking:
+            return _step(8, "gate", STEP_IN_PROGRESS,
+                         f"{invoking[0]['path']} invokes {invoking[0]['invokes'][0]}; "
+                         "configured, not observed on a pull request",
+                         "keep a provider-sourced observation record for a real run")
+        if workflows:
+            return _step(8, "gate", STEP_BLOCKED,
+                         f"{workflows[0]['path']} mentions ACIMA but invokes no gate command",
+                         "make the workflow run an enforcer, or remove the misleading file")
+        return _step(8, "gate", STEP_NOT_STARTED, "no workflow invokes a gate",
+                     "propose a CI gate and wait for approval")
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        return _step(8, "gate", STEP_BLOCKED, f"observation unreadable: {error}",
+                     "replace it with a valid observation record")
+    problems: list[str] = []
+    if not isinstance(data, dict):
+        data, problems = {}, ["observation is not an object"]
+    else:
+        for field in ("repository", "commit", "workflow", "command", "executedAt",
+                      "standard", "catalogSha256"):
+            if not str(data.get(field, "")).strip():
+                problems.append(f"missing {field}")
+        workflow = str(data.get("workflow", ""))
+        if workflow and workflow not in {entry["path"] for entry in workflows}:
+            problems.append("workflow does not exist or does not invoke a gate")
+        repository = str(data.get("repository", "")).strip()
+        remote = _git_remote(root)
+        if repository and remote and _repository_identity(repository) != _repository_identity(remote):
+            problems.append("repository does not match the origin remote")
+        if str(data.get("standard", "")) != str(catalog_version):
+            problems.append("standard does not match the catalog")
+        if data.get("catalogSha256") != catalog_sha:
+            problems.append("catalog hash does not match")
+        if level and data.get("level") != level:
+            problems.append("level does not match the declared level")
+        if data.get("exitCode") not in (0, 1):
+            problems.append("exitCode is not 0 or 1")
+        try:
+            date.fromisoformat(str(data.get("executedAt", ""))[:10])
+        except ValueError:
+            problems.append("executedAt is not an ISO date")
+        sources = data.get("sourceFiles")
+        if isinstance(sources, bool) or not isinstance(sources, int) or sources <= 0:
+            problems.append("sourceFiles is not a positive count")
+        commit = str(data.get("commit", "")).strip()
+        if commit and not re.fullmatch(r"[0-9a-f]{7,40}", commit):
+            problems.append("commit is not a git SHA")
+        head = _git_head(root)
+        if head and commit and not head.startswith(commit):
+            problems.append(f"observation is stale: commit {commit[:12]} is not HEAD {head[:12]}")
+        if problems:
+            return _step(8, "gate", STEP_BLOCKED, "; ".join(problems),
+                         "record a fresh observation with repository, commit and workflow provenance")
+        if data.get("exitCode") == 1:
+            return _step(8, "gate", STEP_IN_PROGRESS,
+                         f"observed gate failure at {commit[:12]}; the gate ran and rejected the commit",
+                         "fix the finding, then record a passing observation")
+        independently = (data.get("verified") is True and data.get("provider")
+                          and data.get("runId"))
+        if data.get("manual") is True or not independently:
+            return _step(8, "gate", STEP_IN_PROGRESS,
+                         f"observed manually at {commit[:12]}; not independently verified",
+                         "attach provider and run identifier, or treat it as manual evidence")
+        if not head:
+            return _step(8, "gate", STEP_IN_PROGRESS,
+                         "observation is recorded but the commit cannot be cross-checked here",
+                         "run status inside the measured repository's git worktree")
+        return _step(8, "gate", STEP_COMPLETE,
+                     f"independently recorded run {data.get('runId')} at {commit[:12]}")
+    return _step(8, "gate", STEP_BLOCKED, "observation did not validate", "re-record it")
+
+
+def _count_errors(payload: dict) -> int:
     return sum(1 for finding in payload.get("findings") or []
                if str(finding.get("severity", "")).lower() == "error")
 
 
-def _claim_evidence(root: Path, runs: list[dict], level: str | None) -> dict:
+def _finding_key(finding: dict) -> str:
+    fingerprint = str(finding.get("fingerprint") or "").strip()
+    if fingerprint:
+        return fingerprint
+    return "%s@%s:%s" % (finding.get("rule"), finding.get("path"), finding.get("line"))
+
+
+def _run_identity(payload: dict) -> dict:
+    execution = payload.get("execution") or {}
+    return {
+        "standard": payload.get("standard"),
+        "level": payload.get("level"),
+        "sourceFiles": payload.get("sourceFiles"),
+        "catalog": payload.get("catalogSha256") or payload.get("catalog"),
+        "executed": sum(1 for value in execution.values()
+                        if isinstance(value, dict) and value.get("executed") is True),
+    }
+
+
+def _slice_step(runs: list[dict]) -> dict:
+    if not runs:
+        return _step(9, "slice", STEP_NOT_STARTED, "no measured run",
+                     "measure the current state first")
+    if len(runs) < 2:
+        return _step(9, "slice", STEP_IN_PROGRESS,
+                     "one measurement; no boundary change is evidenced yet",
+                     "land one approved boundary change, then re-measure")
+    first, last = runs[0], runs[-1]
+    identity_first, identity_last = _run_identity(first["payload"]), _run_identity(last["payload"])
+    differences = [key for key in COMPARISON_FIELDS
+                   if identity_first.get(key) != identity_last.get(key)]
+    if differences:
+        return _step(9, "slice", STEP_IN_PROGRESS,
+                     "measurements are not comparable: " + ", ".join(differences) + " differ",
+                     "re-measure the same scope, level and configuration before comparing")
+    before = {_finding_key(finding) for finding in first["payload"].get("findings") or []
+              if str(finding.get("severity", "")).lower() == "error"}
+    after = {_finding_key(finding) for finding in last["payload"].get("findings") or []
+             if str(finding.get("severity", "")).lower() == "error"}
+    resolved, added = before - after, after - before
+    errors_first, errors_last = _count_errors(first["payload"]), _count_errors(last["payload"])
+    if errors_last < errors_first and resolved and not added:
+        return _step(9, "slice", STEP_COMPLETE,
+                     f"errors fell {errors_first} -> {errors_last}; {len(resolved)} named "
+                     "finding(s) resolved with no new errors")
+    if added:
+        return _step(9, "slice", STEP_IN_PROGRESS,
+                     f"errors {errors_first} -> {errors_last}, but {len(added)} new error "
+                     "finding(s) appeared; not a verified boundary improvement",
+                     "separate the new findings from the intended correction")
+    return _step(9, "slice", STEP_IN_PROGRESS,
+                 f"errors did not fall ({errors_first} -> {errors_last})",
+                 "land one boundary change and re-measure")
+
+
+def _claim_step(root: Path, runs: list[dict], level: str | None) -> dict:
     if not runs:
         return _step(10, "claim", STEP_NOT_STARTED, "no measured run to base a claim on",
                      "measure a run, then record manual evidence where a rule is manual")
@@ -780,10 +1143,8 @@ def _claim_evidence(root: Path, runs: list[dict], level: str | None) -> dict:
 def status_project(root: Path) -> dict:
     """Report what the artefacts actually prove, and the one next action.
 
-    Read-only. A step is complete only when its completion criterion is verified: a config is
-    checked for units, calibration is compared against the pinned catalog, a baseline is parsed
-    and inspected, a workflow is read to see whether it invokes a gate, and a claim is computed
-    with the authoritative claim implementation.
+    Read-only. Each milestone is evaluated with the same validation its authoritative operation
+    uses; where no authoritative artefact exists the state is UNKNOWN, never complete.
     """
     root = root.resolve()
     if not root.is_dir():
@@ -800,35 +1161,30 @@ def status_project(root: Path) -> dict:
     units = list((config or {}).get("units") or [])
     level = (config or {}).get("level")
     mode = (config or {}).get("mode") or "base"
+    context = execution_context()
 
+    catalog_version, catalog_sha = _catalog_version_and_hash()
     calibration = _calibration()
-    waivers = _waiver_document(root / ((config or {}).get("waivers") or ".acima/waivers.json"))
-    waiver_list = waivers.get("waivers") if isinstance(waivers.get("waivers"), list) else []
-    unowned = [entry for entry in waiver_list
-               if not str(entry.get("owner") or "").strip()
-               or str(entry.get("owner")).strip().lower() == "unassigned"]
-    today = date.today().isoformat()
-    expired = [entry for entry in waiver_list if str(entry.get("expires") or "") < today]
+    waiver_path = root / ((config or {}).get("waivers") or ".acima/waivers.json")
+    waivers = _waiver_document(waiver_path) if waiver_path.is_file() else {"waivers": []}
+    scopes = {str(unit.get("id")) for unit in units if unit.get("id")}
+    scopes |= {str(unit.get("module")) for unit in units if unit.get("module")}
+    waiver_report = validate_waivers(waivers, valid_scopes=scopes)
     fingerprinted = _waiver_document(root / ".acima/baseline.json").get("fingerprints")
     fingerprinted = fingerprinted if isinstance(fingerprinted, list) else []
 
-    runs, rejected_runs = _run_artefacts(root)
+    runs, rejected_runs = _run_artefacts(root, catalog_version)
     newest = runs[-1] if runs else None
-    errors = _error_count(newest["payload"]) if newest else 0
+    errors = _count_errors(newest["payload"]) if newest else 0
     workflows = _gate_workflows(root)
-    observation = _gate_observation(root)
-    proof_path = root / PROOF_ARTEFACT
 
     steps = [_step(1, "recon", STEP_READY,
                    f"{sources} source file(s), {language or 'unknown language'}")]
-    steps.append(_step(2, "fit", STEP_COMPLETE if config else STEP_NOT_STARTED,
-                       "the unit map records the fit decision" if config
-                       else "no unit map; the fit decision is not recorded",
-                       "assess fit, then propose a unit map"))
-    steps.append(_step(3, "trust the tool", STEP_COMPLETE if proof_path.is_file() else STEP_UNKNOWN,
-                       proof_path.relative_to(root).as_posix() if proof_path.is_file()
-                       else "no proof artefact; detection is unproven",
-                       "run inject_violation.py and keep its result"))
+    steps.append(_step(2, "fit", STEP_UNKNOWN,
+                       "the fit decision is conversational; no artefact proves assessment or "
+                       "unit-map approval",
+                       "record the approved proposal path if the owner keeps one"))
+    steps.append(_proof_step(root, catalog_version, catalog_sha))
     steps.append(_step(4, "calibrate", calibration["state"], calibration["evidence"],
                        calibration["remedy"]))
     if config_problem:
@@ -836,7 +1192,7 @@ def status_project(root: Path) -> dict:
                         "repair acima.config.json; nothing else can be trusted until it parses")
     elif units:
         declare = _step(5, "declare", STEP_COMPLETE,
-                        f"{len(units)} unit(s) at {level or 'unset level'}")
+                        f"{len(units)} unit(s) at {level or 'unset level'}; review is not proven")
     elif config:
         declare = _step(5, "declare", STEP_BLOCKED, "the config declares no units",
                         "add at least one unit with its role and paths")
@@ -850,13 +1206,12 @@ def status_project(root: Path) -> dict:
                        "re-run the enforcer and keep its unmodified JSON output")
     elif runs:
         detail = f"{newest['path']}: {newest['payload'].get('sourceFiles')} source file(s), " \
-                 f"{len(newest['payload'].get('findings') or [])} finding(s), " \
-                 f"{errors} error(s)"
+                 f"{len(newest['payload'].get('findings') or [])} finding(s), {errors} error(s)"
         freeze = _step(6, "freeze", STEP_COMPLETE, detail)
     elif fingerprinted:
         freeze = _step(6, "freeze", STEP_IN_PROGRESS,
                        f".acima/baseline.json holds {len(fingerprinted)} fingerprint(s), but no "
-                       "measured run artefact proves the measurement",
+                       "valid measured run proves the measurement",
                        "keep the enforcer's JSON as docs/acima/baseline-<date>.json")
     else:
         freeze = _step(6, "freeze", STEP_NOT_STARTED, "no measured run",
@@ -866,69 +1221,41 @@ def status_project(root: Path) -> dict:
     if not newest:
         own = _step(7, "own", STEP_NOT_STARTED, "no measured findings to own",
                     "freeze a baseline first")
-    elif expired:
-        own = _step(7, "own", STEP_BLOCKED,
-                    f"{len(expired)} waiver(s) expired; {len(unowned)} unowned",
-                    "renew or remove each expired exception with its owner")
-    elif unowned:
-        own = _step(7, "own", STEP_IN_PROGRESS,
-                    f"{len(unowned)} of {len(waiver_list)} waiver(s) have no owner")
-    elif waiver_list:
+    elif waiver_report["invalid"] or waiver_report["expired"] or waiver_report["unowned"]:
+        first_problem = (waiver_report["invalid"][0].get("problems")
+                         if waiver_report["invalid"] else [])
+        detail = (f"{len(waiver_report['invalid'])} invalid, {len(waiver_report['expired'])} "
+                  f"expired, {len(waiver_report['unowned'])} unowned of "
+                  f"{waiver_report['total']} waiver(s)")
+        if first_problem:
+            detail += "; first: " + "; ".join(first_problem)
+        own = _step(7, "own", STEP_BLOCKED, detail,
+                    "complete every waiver field, scope and fingerprint, and renew individually")
+    elif waiver_report["valid"]:
         own = _step(7, "own", STEP_COMPLETE,
-                    f"{len(waiver_list)} owned, unexpired waiver(s)")
+                    f"{len(waiver_report['valid'])} valid, current waiver(s)")
     elif errors:
         own = _step(7, "own", STEP_NOT_STARTED,
-                    f"{errors} unwaived error(s) and no waiver file",
+                    f"{errors} unwaived error(s) and no valid waiver",
                     "propose scoped, owned waivers for pre-existing findings")
     else:
         own = _step(7, "own", STEP_NOT_APPLICABLE,
                     "no error findings require an exception")
     steps.append(own)
-
-    invoking = [entry for entry in workflows if entry["invokes"]]
-    if observation:
-        gate = _step(8, "gate", STEP_COMPLETE,
-                     f"observed exit {observation.get('exitCode')} from "
-                     f"{observation.get('command', 'the gate')}")
-    elif invoking:
-        gate = _step(8, "gate", STEP_IN_PROGRESS,
-                     f"{invoking[0]['path']} invokes {invoking[0]['invokes'][0]}; "
-                     "configured, not observed on a pull request",
-                     "confirm the check runs and blocks on a real pull request")
-    elif workflows:
-        gate = _step(8, "gate", STEP_BLOCKED,
-                     f"{workflows[0]['path']} mentions ACIMA but invokes no gate command",
-                     "make the workflow run an enforcer, or remove the misleading file")
-    else:
-        gate = _step(8, "gate", STEP_NOT_STARTED, "no workflow invokes a gate",
-                     "propose a CI gate and wait for approval")
-    steps.append(gate)
-
-    if len(runs) < 2:
-        slice_step = _step(9, "slice", STEP_NOT_STARTED if not runs else STEP_IN_PROGRESS,
-                           "one measurement; no boundary change is evidenced yet",
-                           "pick one finding, change one boundary, re-measure")
-    else:
-        first, last = _error_count(runs[0]["payload"]), _error_count(runs[-1]["payload"])
-        if last < first:
-            slice_step = _step(9, "slice", STEP_COMPLETE,
-                               f"errors fell from {first} ({runs[0]['path']}) to "
-                               f"{last} ({runs[-1]['path']})")
-        else:
-            slice_step = _step(9, "slice", STEP_IN_PROGRESS,
-                               f"errors did not fall between {runs[0]['path']} and {runs[-1]['path']}",
-                               "land one boundary change and re-measure")
-    steps.append(slice_step)
-    steps.append(_claim_evidence(root, runs, level))
+    steps.append(_gate_step(root, workflows, level, catalog_version, catalog_sha))
+    steps.append(_slice_step(runs))
+    steps.append(_claim_step(root, runs, level))
     steps.append(_step(11, "maintain", STEP_NOT_APPLICABLE,
                        "maintaining the standard is not part of adopting it"))
 
-    optional = [{"name": name, "path": f"docs/acima/{name}", "present": (root / "docs/acima" / name).is_file()}
+    optional = [{"name": name, "path": f"docs/acima/{name}",
+                 "present": (root / "docs/acima" / name).is_file()}
                 for name in ("adoption-plan.md", "communication-plan.md", "STATUS.md")]
 
     next_step = {"action": "", "why": "", "command": "", "doneWhen": "",
                  "approvalRequired": False, "writes": False}
-    preflight = "python3 skills/acima-adoption/scripts/preflight.py --project . --format text"
+    preflight = context["commands"]["preflight"] + " --project . --format text"
+    assess = context["commands"]["acima"] + " assess --root ."
 
     if calibration["state"] == STEP_BLOCKED:
         next_step.update(action="Re-calibrate the skill before trusting any result",
@@ -943,46 +1270,53 @@ def status_project(root: Path) -> dict:
     elif not config:
         next_step.update(action="Check whether ACIMA fits this repository, before changing anything",
                          why="A fit decision comes from read-only evidence, not from a template.",
-                         command=f"{preflight} && python3 tools/acima.py assess --root .",
+                         command=f"{preflight} && {assess}",
                          doneWhen="a verdict and named gaps exist; no target file is written.")
     elif not runs:
         next_step.update(action="Measure the current architecture",
-                         why="Without a measured run, findings and progress are guesses.",
+                         why="Without a validated run, findings and progress are guesses.",
                          command=f"{_enforcer_command(language)} --root . --format json",
-                         doneWhen="the JSON parses, sourceFiles > 0 and the execution map is complete.")
-    elif gate["state"] == STEP_NOT_STARTED:
+                         doneWhen="the JSON parses, sourceFiles > 0, the level is set and the "
+                                  "execution map is complete.")
+    elif steps[6]["state"] == STEP_BLOCKED:
+        next_step.update(action="Repair waiver governance before relying on the gate",
+                         why="An invalid, expired or unowned exception hides new findings.",
+                         command="edit .acima/waivers.json: complete every field, scope and expiry",
+                         doneWhen="every waiver validates and none is expired.",
+                         approvalRequired=True, writes=True)
+    elif steps[6]["state"] == STEP_NOT_STARTED and errors:
+        next_step.update(action="Ask the owner to approve owned exceptions for existing findings",
+                         why="The baseline has errors but no valid waiver; the gate cannot be honest yet.",
+                         command="propose scoped waivers, then write them only with approval",
+                         doneWhen="each pre-existing finding has an owner and an expiry.",
+                         approvalRequired=True, writes=True)
+    elif steps[7]["state"] == STEP_NOT_STARTED:
         next_step.update(action="Ask the owner to approve a CI gate",
                          why="The gate is what stops new violations; it is a write and needs consent.",
                          command="propose .github/workflows/acima.yml running the enforcer for the declared level",
                          doneWhen="an approved workflow invokes the gate on pull requests.",
                          approvalRequired=True, writes=True)
-    elif gate["state"] == STEP_BLOCKED:
+    elif steps[7]["state"] == STEP_BLOCKED:
         next_step.update(action="Make the CI workflow run a real gate",
                          why="A workflow that mentions ACIMA without invoking it proves nothing.",
                          command="edit the workflow to run the enforcer with --root and the declared level",
                          doneWhen="the workflow invokes the gate and a failing pull request blocks.",
                          approvalRequired=True, writes=True)
-    elif own["state"] in (STEP_BLOCKED, STEP_IN_PROGRESS) or (newest and errors and not waiver_list):
-        next_step.update(action="Give every exception an owner and an expiry",
-                         why="Unowned or expired exceptions hide new findings.",
-                         command="edit .acima/waivers.json: one owner, reason, scope, expiry and review date each",
-                         doneWhen="no waiver is unassigned and none is expired.",
-                         approvalRequired=True, writes=True)
-    elif gate["state"] == STEP_IN_PROGRESS:
-        next_step.update(action="Confirm the gate actually runs on a pull request",
-                         why="A configured workflow is not evidence that the check executes or blocks.",
-                         command="open a pull request and watch the ACIMA check; keep the result",
-                         doneWhen="the check appears and a failing commit is rejected.")
-    elif steps[9]["state"] in (STEP_NOT_STARTED, STEP_IN_PROGRESS):
+    elif steps[7]["state"] == STEP_IN_PROGRESS:
+        next_step.update(action="Confirm the gate runs on a pull request and record provider provenance",
+                         why="Configured or manually recorded is not independently observed.",
+                         command="open a pull request, then record commit, workflow and run id",
+                         doneWhen="a provider-sourced observation matches HEAD and the declared level.")
+    elif steps[8]["state"] in (STEP_NOT_STARTED, STEP_IN_PROGRESS):
         rule = ""
         if newest and newest["payload"].get("findings"):
             rule = str(newest["payload"]["findings"][0].get("rule") or "")
         next_step.update(action="Plan one boundary correction from the newest run",
                          why="One boundary per pull request keeps the gate explainable.",
-                         command=f"python3 tools/acima.py fix --report {newest['path']} "
+                         command=f"{context['commands']['acima']} fix --report {newest['path']} "
                                  f"{rule or '--all'}".replace("  ", " "),
                          doneWhen="one correction is chosen, explained and separately approved.")
-    elif steps[10]["state"] == STEP_IN_PROGRESS:
+    elif steps[9]["state"] == STEP_IN_PROGRESS:
         next_step.update(action="Record the evidence the claim still needs",
                          why="A partial assessment is honest; accepted evidence is what can make it full.",
                          command="fill .acima/manual-evidence.json for the named manual rules",
@@ -1001,15 +1335,17 @@ def status_project(root: Path) -> dict:
 
     return {
         "root": str(root), "language": language, "sourceFiles": sources,
+        "context": context,
         "config": {"present": config is not None, "level": level, "mode": mode,
                    "units": len(units), "problem": config_problem or None},
         "evidence": {
             "runArtefacts": [entry["path"] for entry in runs],
             "rejectedArtefacts": rejected_runs,
             "runErrors": errors,
-            "waivers": len(waiver_list), "unownedWaivers": len(unowned),
-            "expiredWaivers": len(expired), "gateWorkflows": workflows,
-            "gateObserved": observation is not None,
+            "waivers": waiver_report["total"], "invalidWaivers": len(waiver_report["invalid"]),
+            "expiredWaivers": len(waiver_report["expired"]),
+            "unownedWaivers": len(waiver_report["unowned"]),
+            "gateWorkflows": workflows, "proof": (root / PROOF_ARTEFACT).is_file(),
             "manualEvidence": (root / EVIDENCE_FILE).is_file(),
             "fingerprints": len(fingerprinted),
         },
@@ -1019,7 +1355,7 @@ def status_project(root: Path) -> dict:
         "blocked": blocked,
         "optional": optional,
         "next": next_step,
-        "limitation": ("Derived from artefacts and verified criteria; a missing or unparsable "
+        "limitation": ("Derived from artefacts and verified criteria; a missing, invalid or stale "
                        "artefact is reported, never assumed complete. Optional documents never "
                        "block adoption."),
     }
@@ -1027,9 +1363,9 @@ def status_project(root: Path) -> dict:
 
 def status_text(report: dict) -> str:
     config = report["config"]
-    evidence = report["evidence"]
     lines = ["ACIMA status",
              "  repository  " + report["root"],
+             "  context     %s (%s)" % (report["context"]["context"], report["context"]["standardRoot"]),
              "  language    %s - %s source file(s)"
              % (report["language"] or "unknown", report["sourceFiles"])]
     if config["present"]:

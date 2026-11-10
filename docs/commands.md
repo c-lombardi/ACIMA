@@ -20,7 +20,7 @@ errors at this level", never "the architecture is good".
 | `tools/acima.py claim` | `FULL CONFORMANCE` vs `PARTIAL ASSESSMENT` | no | claim |
 | `tools/acima.py verify` | the full reference conformance suite | no | maintain |
 | `skills/acima-adoption/scripts/preflight.py` | skill calibration + target classification | only with `--write-*`, after approval | Step 0 |
-| `skills/acima-adoption/scripts/inject_violation.py` | prove the enforcer detects known violations | no | Step 5 |
+| `skills/acima-adoption/scripts/inject_violation.py` | prove the enforcer detects known violations | `--out` only | Step 5 |
 | `skills/acima-adoption/scripts/summarize.py` | run artefact → plain-language adoption summary | `--out` only | report |
 | `examples/<lang>/tools/...` | the enforcer itself, for one language | no | Step 5 |
 | `conformance/run.py` | all profiles' clean + gallery fixtures | `--artifacts` only | maintain |
@@ -69,10 +69,37 @@ It reports the eleven steps with evidence-verified states — `NOT_STARTED`, `RE
 `BLOCKED`, `COMPLETE`, `NOT_APPLICABLE`, `UNKNOWN` — rendered in plain English. A step is complete
 only when its criterion is verified: calibration compares the manifest pin with the catalog, a
 baseline must parse with `sourceFiles > 0` and an execution map, a workflow is read to see whether it
-invokes a gate (configured is `in progress`, observed is `complete`), and the claim is computed with
-`acima.py claim`. Optional documents never appear in the next action. It prints one next action, why,
-its done condition, and whether approval is required. Two honest limits remain: step 3 leaves no
-artefact until `inject_violation.py` is run, and step 9 needs two measurements to show a fall.
+invokes a gate, and a gate observation is validated for repository, commit, workflow, command,
+time, standard, catalog hash, level, source count and exit status. A configured gate and a manually
+recorded observation are `in progress`; only a provider-sourced run matching `HEAD` is complete. The
+proof record must show `L001` and `D001` detected, and the claim is computed with `acima.py claim`.
+Optional documents never appear in the next action. It prints one next action, why, its done
+condition, and whether approval is required. Two honest limits remain: step 3 stays `UNKNOWN`
+until `inject_violation.py --out` is run, and step 9 needs two comparable measurements to show a
+fall.
+
+### Evidence contracts
+
+**Gate observation** — `docs/acima/gate-observed.json`:
+
+```json
+{"repository": "owner/name", "commit": "<sha>", "workflow": ".github/workflows/acima.yml",
+ "command": "acima_arch.py --root .", "executedAt": "2026-11-09T10:00:00Z",
+ "standard": "1.9.0-draft.1", "catalogSha256": "<64 hex>", "level": "L2",
+ "sourceFiles": 69, "exitCode": 1,
+ "manual": false, "verified": true, "provider": "github-actions", "runId": "123"}
+```
+
+Every field except `manual`, `verified`, `provider` and `runId` is required. The workflow must
+exist and invoke a gate, the catalog hash and level must match, and the commit must match `HEAD`
+when it can be checked. `exitCode: 1` means the gate ran and rejected the commit — reported as a
+failure, never as a milestone. `manual: true`, or a record without provider provenance, is
+`IN_PROGRESS` and is not independently verified.
+
+**Proof record** — `docs/acima/proof.json`, written by
+`inject_violation.py --project . --out docs/acima/proof.json`: `standard`, `catalogSha256`,
+`generatedAt`, `sourceFiles` and one result per rule with `detected` and `exitCode`. Both
+`ACIMA-L001` and `ACIMA-D001` must be detected with exit `1`.
 
 Exit `0` whenever a status is produced, `2` when the root or its config cannot be read. It never
 writes, so it is safe to run first in any session — including on a repository you do not own.
@@ -133,6 +160,7 @@ python3 skills/acima-adoption/scripts/preflight.py --project . --write-draft aci
 python3 skills/acima-adoption/scripts/preflight.py --project . --write-waivers .acima/waivers.json
 python3 skills/acima-adoption/scripts/preflight.py --project <target> --deep
 python3 skills/acima-adoption/scripts/inject_violation.py --project <target> --format json
+python3 skills/acima-adoption/scripts/inject_violation.py --project <target> --out docs/acima/proof.json
 ```
 
 | Flag | Meaning |

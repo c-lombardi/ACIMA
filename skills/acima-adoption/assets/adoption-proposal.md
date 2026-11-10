@@ -88,6 +88,22 @@ existing file. Never mark optional work as required.
 
 ## 7. Tradeoffs and risks
 
+### Effort and disruption (estimates)
+
+Use repository evidence and label every figure as an estimate. Do not invent dates or prices.
+
+- **Source changes:** `<n>` modules and roughly `<n>` files are likely touched for the first
+  boundary; `<n>` findings are pre-existing and need no immediate change. *(Estimate)*
+- **Configuration and enforcement:** `<n>` new files (config, baseline, waivers, gate, manual
+  evidence) — the table in section 6 is the exact list.
+- **Tests:** `<n>` tests may change if they assert internal types; contract tests usually need none.
+- **CI and developer workflow:** one required check; developers run the same command locally.
+- **Ongoing maintenance:** waiver review per cycle, catalog upgrades when the standard moves,
+  baseline refresh after an approved scope change.
+- **Compatibility and migration risk:** `<schema, deployment ordering, published API, framework
+  activation>`; name the riskiest boundary and why it is not first.
+- **Incremental?** Yes/No, and which steps can be postponed without weakening the first gate.
+
 - **Maintenance:** catalog updates, tool upgrades, baseline refresh, waiver review, CI ownership.
 - **Tooling limitations:** rules that cannot execute in this language, missing toolchains, no
   observed CI, no runtime evidence.

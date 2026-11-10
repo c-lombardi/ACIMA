@@ -131,6 +131,18 @@ log belongs in the evidence, not in the conversation.
 
 Short examples of the interaction contract. Adapt the facts; keep the shape.
 
+**Initial explanation (first-time user).**
+
+> **Where you are:** this is a read-only look; nothing has been changed.
+> **What ACIMA is:** a way to make the boundaries between parts of your application explicit and
+> check them automatically. It does not prescribe Clean Architecture, DDD, microservices or a
+> rewrite. It enforces the boundaries your team declares, one at a time.
+> **What it is not:** a code-quality score, a migration project or a claim that your current design
+> is wrong. Existing good boundaries are recognised, not replaced.
+> **Limits:** a static check cannot prove runtime behaviour or business correctness.
+> **Next:** I will inspect the repository and tell you where ACIMA would help, where it would not,
+> and what the smallest useful adoption would cost. No files will be written.
+
 **Assessment (read-only).**
 
 > **Where you are:** nothing has been changed. I inspected the repository and ran the read-only
@@ -146,6 +158,18 @@ Short examples of the interaction contract. Adapt the facts; keep the shape.
 **Proposal.** Recommendation first, then discovery, what ACIMA adds, evidence-grounded benefits,
 scope in plain English, the exact path table with required/conditional/optional status, tradeoffs,
 sequence, and one question: "Would you like me to proceed with the listed files and scope?"
+
+**Recommendation and approval request.**
+
+> **Recommendation:** recommended with limitations. The module boundaries are clear, but Orders and
+> Billing still share implementation types, so a change in one can break the other. ACIMA would
+> make that edge fail a pull request with a named remedy; it would not remove the shared types or
+> split the services.
+> **Smallest useful scope:** declare the existing units, keep a measured baseline, and add one local
+> check. CI and waivers can wait for a second decision.
+> **What stays unchanged:** deployment topology, framework and public APIs.
+> **Decision:** may I create the unit map, baseline and local check in the listed paths? A partial
+> yes is fine; anything outside that list stays untouched.
 
 **Implementation progress.**
 

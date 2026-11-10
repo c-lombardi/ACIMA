@@ -19,6 +19,7 @@ told what was injected.
 
     python3 inject_violation.py --project <target> [--rule L001|D001|both]
         [--format json|text] [--reveal] [--keep]
+        [--out docs/acima/proof.json]
 
 Exit codes: 0 all requested proofs passed, 1 not proven, 2 the tool could not run.
 """
@@ -409,6 +410,36 @@ def prove_d001(language: str, manifest: dict, reveal: bool, keep: bool) -> dict:
             shutil.rmtree(root, ignore_errors=True)
 
 
+SOURCE_EXTENSIONS = {".py", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".cs", ".go", ".java"}
+
+
+def _source_count(project: Path) -> int:
+    return sum(1 for path in project.rglob("*")
+               if path.is_file() and path.suffix.lower() in SOURCE_EXTENSIONS
+               and not any(part in {".git", "node_modules", "bin", "obj", "dist", "build",
+                                    "target", "out", "coverage", ".venv", "venv", "__pycache__"}
+                           for part in path.relative_to(project).parts))
+
+
+def proof_record(project: Path, requested: list[str], proofs: dict) -> dict:
+    """A portable record that status can validate, not just a transcript of this run."""
+    catalog_path = STANDARD_ROOT / "tools/acima-spec/rules.json"
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    return {
+        "tool": "acima-inject-violation",
+        "standard": catalog.get("version"),
+        "catalogSha256": hashlib.sha256(catalog_path.read_bytes()).hexdigest(),
+        "generatedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "repository": project.name,
+        "sourceFiles": _source_count(project),
+        "results": [
+            {"rule": rule, "detected": proofs[rule]["proven"],
+             "exitCode": proofs[rule].get("exitCode")}
+            for rule in requested
+        ],
+    }
+
+
 def report(project: Path, language: str, requested: list[str], proofs: dict) -> dict:
     return {
         "tool": "acima-inject-violation",
@@ -461,6 +492,8 @@ def main() -> int:
     parser.add_argument("--reveal", action="store_true",
                         help="include injected paths and fixture contents in the report")
     parser.add_argument("--keep", action="store_true", help="keep the disposable directories")
+    parser.add_argument("--out", default=None,
+                        help="write a validated proof record (for example docs/acima/proof.json)")
     args = parser.parse_args()
 
     requested = [L001, D001] if args.rule == "both" else (
@@ -516,6 +549,13 @@ def main() -> int:
     if D001 in requested:
         proofs[D001] = prove_d001(language, manifest, args.reveal, args.keep)
     payload = report(project, language, requested, proofs)
+    if args.out:
+        out_path = Path(args.out)
+        if not out_path.is_absolute():
+            out_path = Path.cwd() / out_path
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(proof_record(project, requested, proofs), indent=2) + "\n",
+                            encoding="utf-8")
     if args.format == "json":
         print(json.dumps(payload, indent=2))
     else:
