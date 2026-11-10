@@ -2488,6 +2488,780 @@ def _claim_step(root: Path, runs: list[dict], level: str | None, config: dict | 
         "record repository-scoped manual evidence for the named rules, then measure again")
 
 
+ADOPTION_SCOPE_FILE = ".acima/adoption-scope.json"
+ADOPTION_SCOPE_ALT = "docs/acima/adoption-scope.json"
+ASSESSMENT_EVIDENCE = "docs/acima/assessment.json"
+SCOPE_DISPOSITIONS = ("required", "approved", "declined", "deferred", "optional",
+                      "not-applicable")
+OBJECTIVE_DEFS = (
+    {"id": "assessment", "title": "Architecture assessment", "dependsOn": ()},
+    {"id": "local-enforcement", "title": "Local enforcement", "dependsOn": ()},
+    {"id": "baseline-waivers", "title": "Baseline and waiver management",
+     "dependsOn": ("local-enforcement",)},
+    {"id": "ci-enforcement", "title": "CI enforcement",
+     "dependsOn": ("local-enforcement",)},
+    {"id": "full-conformance", "title": "Full conformance evidence",
+     "dependsOn": ("local-enforcement",)},
+    {"id": "developer-handoff", "title": "Developer guidance and handoff",
+     "dependsOn": (), "optionalByDefault": True},
+    {"id": "communication-governance", "title": "Communication and governance materials",
+     "dependsOn": (), "optionalByDefault": True},
+)
+OBJECTIVE_BY_ID = {entry["id"]: entry for entry in OBJECTIVE_DEFS}
+OBJECTIVE_IDS = tuple(entry["id"] for entry in OBJECTIVE_DEFS)
+OBJECTIVE_ALIASES = {
+    "assessment-only": "assessment", "assessment_only": "assessment",
+    "local": "local-enforcement", "local-only": "local-enforcement",
+    "local_only": "local-enforcement",
+    "baseline": "baseline-waivers", "waivers": "baseline-waivers",
+    "baseline-and-waivers": "baseline-waivers",
+    "ci": "ci-enforcement", "ci-gate": "ci-enforcement",
+    "conformance": "full-conformance", "full": "full-conformance",
+    "handoff": "developer-handoff", "developer-guidance": "developer-handoff",
+    "communication": "communication-governance", "governance": "communication-governance",
+}
+OBJECTIVE_LABEL = dict(STATE_LABEL, DECLINED="declined", DEFERRED="deferred",
+                       OPTIONAL="optional, not required", UNSUPPORTED="unsupported")
+HANDOFF_DOCUMENTS = ("docs/acima/handoff.md", "docs/acima/developer-guide.md")
+COMMUNICATION_DOCUMENTS = ("docs/acima/communication-plan.md", "docs/acima/governance.md")
+
+
+def _next_action(action: str = "", *, why: str = "", command: str = "", done: str = "",
+                 approval: bool = False, writes: bool = False, effect: str = "") -> dict:
+    return {"action": action, "why": why, "command": command, "doneWhen": done,
+            "approvalRequired": approval, "writes": writes, "effect": effect}
+
+
+def _scope_placeholder(problem: str = "") -> dict:
+    return {
+        "present": False, "source": None, "state": STEP_UNKNOWN, "approvedBy": None,
+        "approvedOn": None, "proposal": None, "objectives": [], "dispositions": {},
+        "required": [], "approved": [], "declined": [], "deferred": [], "optional": [],
+        "notApplicable": [], "unsupported": [], "autoRequired": [], "problems":
+        ([problem] if problem else []), "conflicts": [], "raw": {},
+    }
+
+
+def _scope_entries(raw: object, problems: list[str]) -> list[dict]:
+    entries: list[dict] = []
+
+    def add(identifier: object, disposition: object, reason: object = "",
+            revisit: object = "") -> None:
+        if not isinstance(identifier, str) or not identifier.strip():
+            problems.append("every objective needs a non-empty id")
+            return
+        name = identifier.strip()
+        name = OBJECTIVE_ALIASES.get(name, name)
+        if isinstance(disposition, str):
+            disposition = disposition.strip().lower().replace("_", "-")
+            if disposition in ("notapplicable", "n/a"):
+                disposition = "not-applicable"
+        if not isinstance(disposition, str) or disposition not in SCOPE_DISPOSITIONS:
+            problems.append("objective %r has disposition %r; expected one of %s"
+                            % (name, disposition, ", ".join(SCOPE_DISPOSITIONS)))
+            return
+        if any(entry["id"] == name for entry in entries):
+            problems.append("objective %r is listed more than once" % name)
+            return
+        entry = {"id": name, "disposition": disposition,
+                 "reason": str(reason).strip() if reason else ""}
+        if revisit:
+            try:
+                revisit_date = date.fromisoformat(str(revisit))
+            except ValueError:
+                problems.append("objective %r has an invalid revisitOn date %r" % (name, revisit))
+            else:
+                entry["revisitOn"] = revisit_date.isoformat()
+        entries.append(entry)
+
+    if isinstance(raw, dict):
+        for identifier, value in raw.items():
+            if isinstance(value, dict):
+                add(identifier, value.get("disposition", value.get("status", value.get("state"))),
+                    value.get("reason", ""), value.get("revisitOn", ""))
+            else:
+                add(identifier, value)
+    elif isinstance(raw, list):
+        for item in raw:
+            if isinstance(item, str):
+                add(item, "approved")
+            elif isinstance(item, dict):
+                add(item.get("id"), item.get("disposition", item.get("status", item.get("state"))),
+                    item.get("reason", ""), item.get("revisitOn", ""))
+            else:
+                problems.append("every objective must be an id or an object")
+    elif raw is not None:
+        problems.append("objectives must be a list or an id-to-disposition object")
+    return entries
+
+
+def _normalise_scope(document: dict, source: str) -> dict:
+    problems: list[str] = []
+    conflicts: list[str] = []
+    if not isinstance(document, dict):
+        return dict(_scope_placeholder("the scope record must be a JSON object"),
+                    present=True, source=source, state=STEP_BLOCKED)
+    version = document.get("version", 1)
+    if version != 1:
+        problems.append("unsupported scope version %r; expected 1" % (version,))
+    approved_by = document.get("approvedBy")
+    if not isinstance(approved_by, str) or not approved_by.strip() or approved_by.strip().lower() in (
+            "unassigned", "unknown", "tbd", "none"):
+        problems.append("approvedBy must name the owner who approved this scope")
+        approved_by = approved_by.strip() if isinstance(approved_by, str) else None
+    else:
+        approved_by = approved_by.strip()
+    approved_on = document.get("approvedOn")
+    approved_date = None
+    if not isinstance(approved_on, str) or not approved_on.strip():
+        problems.append("approvedOn must be an ISO date")
+        approved_on = None
+    else:
+        try:
+            approved_date = date.fromisoformat(approved_on.strip())
+        except ValueError:
+            problems.append("approvedOn must be an ISO date, not %r" % approved_on)
+            approved_on = None
+        else:
+            approved_on = approved_date.isoformat()
+            if approved_date > date.today():
+                problems.append("approvedOn cannot be in the future")
+    proposal = document.get("proposal")
+    if proposal is not None and not isinstance(proposal, str):
+        problems.append("proposal must be a path string when present")
+        proposal = None
+    entries = _scope_entries(document.get("objectives"), problems)
+    if not entries and document.get("objectives") is None:
+        for key, disposition in (("required", "required"), ("approved", "approved"),
+                                 ("declined", "declined"), ("deferred", "deferred"),
+                                 ("optional", "optional"),
+                                 ("notApplicable", "not-applicable"),
+                                 ("not-applicable", "not-applicable")):
+            values = document.get(key)
+            if values is None:
+                continue
+            if not isinstance(values, list):
+                problems.append("%s must be a list of objective ids" % key)
+                continue
+            for identifier in values:
+                entries.append({"id": str(identifier), "disposition": disposition, "reason": ""})
+        deduped = []
+        seen = set()
+        for entry in entries:
+            if entry["id"] in seen:
+                problems.append("objective %r is listed more than once" % entry["id"])
+                continue
+            seen.add(entry["id"])
+            deduped.append(entry)
+        entries = deduped
+    if not entries and not problems:
+        problems.append("objectives must approve at least one objective")
+    unsupported: list[str] = []
+    dispositions: dict[str, str] = {}
+    explicit: dict[str, dict] = {}
+    for entry in entries:
+        identifier = entry["id"]
+        if identifier not in OBJECTIVE_BY_ID:
+            unsupported.append(identifier)
+            continue
+        if entry["disposition"] not in SCOPE_DISPOSITIONS:
+            continue
+        explicit[identifier] = entry
+        dispositions[identifier] = entry["disposition"]
+    if unsupported:
+        problems.append("unsupported objective(s): %s" % ", ".join(sorted(unsupported)))
+    if not any(value in ("required", "approved") for value in dispositions.values()):
+        problems.append("at least one objective must be required or approved")
+
+    origin: dict[str, str] = {}
+    auto_required: list[str] = []
+    for definition in OBJECTIVE_DEFS:
+        identifier = definition["id"]
+        if identifier in dispositions:
+            origin[identifier] = "declared"
+        elif definition.get("optionalByDefault"):
+            dispositions[identifier] = "optional"
+            origin[identifier] = "optional-by-default"
+        else:
+            dispositions[identifier] = "not-applicable"
+            origin[identifier] = "not-in-scope"
+
+    def require_dependencies(identifier: str, chain: tuple[str, ...]) -> None:
+        for dependency in OBJECTIVE_BY_ID[identifier]["dependsOn"]:
+            disposition = dispositions.get(dependency)
+            if disposition not in ("required", "approved"):
+                if dependency not in explicit:
+                    dispositions[dependency] = "required"
+                    origin[dependency] = "prerequisite for %s" % identifier
+                    if dependency not in auto_required:
+                        auto_required.append(dependency)
+                else:
+                    conflicts.append("%s is %s but %s needs it as a prerequisite"
+                                     % (dependency, disposition, identifier))
+                    continue
+            if dependency not in chain:
+                require_dependencies(dependency, chain + (dependency,))
+
+    for identifier, disposition in list(dispositions.items()):
+        if disposition in ("required", "approved"):
+            require_dependencies(identifier, (identifier,))
+
+    if conflicts:
+        problems.extend(conflicts)
+    scope = {
+        "present": True, "source": source,
+        "state": STEP_BLOCKED if problems else STEP_IN_PROGRESS,
+        "approvedBy": approved_by, "approvedOn": approved_on, "proposal": proposal,
+        "objectives": entries, "dispositions": dispositions, "origin": origin,
+        "required": [key for key in OBJECTIVE_IDS if dispositions.get(key) == "required"],
+        "approved": [key for key in OBJECTIVE_IDS if dispositions.get(key) == "approved"],
+        "declined": [key for key in OBJECTIVE_IDS if dispositions.get(key) == "declined"],
+        "deferred": [key for key in OBJECTIVE_IDS if dispositions.get(key) == "deferred"],
+        "optional": [key for key in OBJECTIVE_IDS if dispositions.get(key) == "optional"],
+        "notApplicable": [key for key in OBJECTIVE_IDS
+                          if dispositions.get(key) == "not-applicable"],
+        "unsupported": unsupported, "autoRequired": auto_required,
+        "problems": problems, "conflicts": conflicts, "raw": document,
+    }
+    return scope
+
+
+def _load_adoption_scope(root: Path, config: dict | None) -> dict:
+    found: list[tuple[str, object]] = []
+    for relative in (ADOPTION_SCOPE_FILE, ADOPTION_SCOPE_ALT):
+        path = root / relative
+        if not path.is_file():
+            continue
+        try:
+            found.append((relative, json.loads(path.read_text(encoding="utf-8"))))
+        except (OSError, json.JSONDecodeError) as error:
+            return dict(_scope_placeholder("cannot read %s: %s" % (relative, error)),
+                        present=True, source=relative, state=STEP_BLOCKED)
+    if isinstance(config, dict) and "adoption" in config:
+        inline = config.get("adoption")
+        if not isinstance(inline, dict):
+            return dict(_scope_placeholder("acima.config.json adoption must be an object"),
+                        present=True, source="acima.config.json#adoption",
+                        state=STEP_BLOCKED)
+        found.append(("acima.config.json#adoption", inline))
+    if not found:
+        return _scope_placeholder()
+    if len(found) > 1:
+        return dict(_scope_placeholder("multiple scope records found: %s; keep one"
+                                        % ", ".join(item[0] for item in found)),
+                    present=True, source=found[0][0], state=STEP_BLOCKED)
+    source, document = found[0]
+    return _normalise_scope(document, source)
+
+
+def _assessment_evidence(root: Path, scope: dict) -> dict:
+    if not scope.get("present") or scope.get("state") == STEP_BLOCKED:
+        return {"state": STEP_NOT_STARTED, "path": None, "verdict": None,
+                "evidence": "no usable assessment evidence"}
+    raw = scope.get("raw") if isinstance(scope.get("raw"), dict) else {}
+    configured = raw.get("assessment")
+    candidates: list[str] = []
+    if isinstance(configured, dict) and isinstance(configured.get("artifact"), str) \
+            and configured["artifact"].strip():
+        candidates.append(configured["artifact"].strip())
+    else:
+        candidates.extend((ASSESSMENT_EVIDENCE, ".acima/assessment.json"))
+    for relative in candidates:
+        path = root / relative
+        if not path.is_file():
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            return {"state": STEP_BLOCKED, "path": relative, "verdict": None,
+                    "evidence": "%s does not parse: %s" % (relative, error)}
+        if not isinstance(payload, dict):
+            return {"state": STEP_BLOCKED, "path": relative, "verdict": None,
+                    "evidence": "%s is not a JSON object" % relative}
+        verdict = payload.get("verdict")
+        if verdict not in VERDICT_MEANING:
+            return {"state": STEP_BLOCKED, "path": relative, "verdict": verdict,
+                    "evidence": "%s has no recognized assessment verdict" % relative}
+        if payload.get("readOnly") is False:
+            return {"state": STEP_BLOCKED, "path": relative, "verdict": verdict,
+                    "evidence": "%s is not marked read-only" % relative}
+        recorded_root = payload.get("root")
+        if isinstance(recorded_root, str) and recorded_root.strip():
+            try:
+                recorded = Path(recorded_root)
+                if not recorded.is_absolute():
+                    recorded = root / recorded
+                if recorded.resolve() != root.resolve():
+                    return {"state": STEP_BLOCKED, "path": relative, "verdict": verdict,
+                            "evidence": "%s belongs to a different repository" % relative}
+            except OSError:
+                pass
+        if verdict in ("INVALID_ROOT", "INVALID_CONFIG", "INVALID_ASSESSMENT",
+                       "TOOLCHAIN_MISSING"):
+            return {"state": STEP_BLOCKED, "path": relative, "verdict": verdict,
+                    "evidence": "%s records %s: %s" % (relative, verdict,
+                                                         VERDICT_MEANING[verdict])}
+        if verdict == "ASSESSED" and not isinstance(payload.get("sourceFiles"), int):
+            return {"state": STEP_BLOCKED, "path": relative, "verdict": verdict,
+                    "evidence": "%s does not record a source count" % relative}
+        return {"state": STEP_COMPLETE, "path": relative, "verdict": verdict,
+                "evidence": "%s records %s (%s)" % (relative, verdict,
+                                                      VERDICT_MEANING[verdict])}
+    return {"state": STEP_NOT_STARTED, "path": candidates[0], "verdict": None,
+            "evidence": "no assessment evidence at %s" % candidates[0]}
+
+
+def _document_evidence(root: Path, candidates: tuple[str, ...]) -> dict:
+    for relative in candidates:
+        path = root / relative
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if text.strip():
+            return {"present": True, "path": relative,
+                    "evidence": "%s has %s word(s)" % (relative, len(text.split()))}
+    return {"present": False, "path": candidates[0],
+            "evidence": "no non-empty document at %s" % " or ".join(candidates)}
+
+
+def _scope_remedy(scope: dict) -> dict:
+    problem_text = "; ".join(scope.get("problems") or ["the scope record is invalid"])
+    return _next_action(
+        "Correct the adoption scope record before acting on it",
+        why="The owner's approved scope is the only basis for completion and next actions.",
+        command="edit .acima/adoption-scope.json: fix approvedBy, approvedOn and objective dispositions",
+        done="status accepts the scope and names every required, declined and deferred objective.",
+        approval=True, writes=True,
+        effect="Only the scope record changes; no architecture, evidence or CI is modified. "
+               "Current problem: " + problem_text)
+
+
+def _objective_record(definition: dict, disposition: str, state: str, evidence: str,
+                      *, blockers: list[str] | None = None, next_action: dict | None = None,
+                      reason: str = "") -> dict:
+    action = next_action or _next_action()
+    return {
+        "id": definition["id"], "title": definition["title"],
+        "disposition": disposition, "state": state,
+        "label": OBJECTIVE_LABEL.get(state, state.lower()),
+        "evidence": evidence, "prerequisites": list(definition.get("dependsOn", ())),
+        "blocking": blockers or [], "reason": reason,
+        "approvalRequired": bool(action.get("approvalRequired")),
+        "writes": bool(action.get("writes")),
+        "next": action,
+        "completion": _objective_completion(definition["id"]),
+    }
+
+
+def _objective_completion(identifier: str) -> str:
+    return {
+        "assessment": "a read-only assessment artefact for this repository records a valid verdict",
+        "local-enforcement": "the config declares reviewed units and a validated run measures them",
+        "baseline-waivers": "a validated baseline exists and every pre-existing error is owned or none remain",
+        "ci-enforcement": "a real pull-request gate is configured and independently observed at HEAD",
+        "full-conformance": "a current FULL CONFORMANCE claim accounts for every required rule",
+        "developer-handoff": "an approved, non-empty handoff or developer guide exists",
+        "communication-governance": "an approved, non-empty communication or governance document exists",
+    }[identifier]
+
+
+def _build_objectives(root: Path, scope: dict, assessment: dict, steps: list[dict],
+                      config: dict | None, config_problem: str, units: list[dict],
+                      runs: list[dict], newest: dict | None, errors: int,
+                      waiver_report: dict, language: str | None) -> tuple[list[dict], dict]:
+    by_name = {step["name"]: step for step in steps}
+    objectives: list[dict] = []
+    if not scope.get("present"):
+        for definition in OBJECTIVE_DEFS:
+            objectives.append(_objective_record(
+                definition, "undetermined", STEP_UNKNOWN,
+                "scope has not been declared, so this objective is not required or declined"))
+        return objectives, {
+            "state": STEP_UNKNOWN, "complete": False, "scopeDefined": False,
+            "completed": [], "inProgress": [], "remaining": [], "blocked": [],
+            "declined": [], "deferred": [], "optional": [], "notApplicable": [],
+            "unsupported": [], "required": [], "approved": [], "next": None,
+            "problems": scope.get("problems", []),
+        }
+    if scope.get("state") == STEP_BLOCKED:
+        for definition in OBJECTIVE_DEFS:
+            disposition = scope["dispositions"].get(definition["id"], "not-applicable")
+            if disposition in ("required", "approved"):
+                state = STEP_BLOCKED
+            elif disposition == "declined":
+                state = "DECLINED"
+            elif disposition == "deferred":
+                state = "DEFERRED"
+            elif disposition == "optional":
+                state = "OPTIONAL"
+            else:
+                state = STEP_NOT_APPLICABLE
+            objectives.append(_objective_record(
+                definition, disposition, state,
+                "scope record is invalid: " + "; ".join(scope.get("problems") or []),
+                blockers=scope.get("problems") or []))
+        for name in scope.get("unsupported", []):
+            objectives.append({
+                "id": name, "title": name, "disposition": "unsupported",
+                "state": "UNSUPPORTED", "label": OBJECTIVE_LABEL["UNSUPPORTED"],
+                "evidence": "not a supported objective id", "prerequisites": [],
+                "blocking": scope.get("problems") or [], "reason": "",
+                "approvalRequired": True, "writes": True, "next": _scope_remedy(scope),
+                "completion": "remove the unsupported id or replace it with a supported objective",
+            })
+        return objectives, {
+            "state": STEP_BLOCKED, "complete": False, "scopeDefined": True,
+            "completed": [], "inProgress": [], "remaining": [],
+            "blocked": [definition["id"] for definition in OBJECTIVE_DEFS
+                        if scope["dispositions"].get(definition["id"]) in ("required", "approved")]
+                       + list(scope.get("unsupported", [])),
+            "declined": scope["declined"], "deferred": scope["deferred"],
+            "optional": scope["optional"], "notApplicable": scope["notApplicable"],
+            "unsupported": scope.get("unsupported", []),
+            "required": scope["required"], "approved": scope["approved"], "next": None,
+            "problems": scope.get("problems", []),
+            "scopeProblems": scope.get("problems", []),
+        }
+
+    disposition = scope["dispositions"]
+    local = by_name["freeze"]
+    own = by_name["own"]
+    gate = by_name["gate"]
+    claim = by_name["claim"]
+    handoff = _document_evidence(root, HANDOFF_DOCUMENTS)
+    communication = _document_evidence(root, COMMUNICATION_DOCUMENTS)
+    preflight = execution_context()["commands"]["preflight"] + " --project . --format text"
+    enforcer = _enforcer_command(language) + " --root . --format json"
+    local_complete = (config is not None and bool(units) and not config_problem
+                      and local["state"] == STEP_COMPLETE)
+    baseline_complete = local_complete and own["state"] in (STEP_COMPLETE,
+                                                             STEP_NOT_APPLICABLE)
+
+    def terminal(identifier: str) -> dict:
+        definition = OBJECTIVE_BY_ID[identifier]
+        disp = disposition[identifier]
+        reason = next((entry.get("reason", "") for entry in scope["objectives"]
+                       if entry["id"] == identifier), "")
+        if disp == "declined":
+            state = "DECLINED"
+            evidence = "declined in the approved scope" + (": " + reason if reason else "")
+        elif disp == "deferred":
+            state = "DEFERRED"
+            entry = next((item for item in scope["objectives"] if item["id"] == identifier), {})
+            when = entry.get("revisitOn")
+            evidence = "deferred in the approved scope" + (" until " + when if when else "")
+            if reason:
+                evidence += ": " + reason
+        elif disp == "optional":
+            state = "OPTIONAL"
+            evidence = "optional and not part of the approved completion condition"
+        else:
+            state = STEP_NOT_APPLICABLE
+            evidence = "not included in the approved scope"
+        return _objective_record(definition, disp, state, evidence)
+
+    for definition in OBJECTIVE_DEFS:
+        identifier = definition["id"]
+        disp = disposition[identifier]
+        if disp not in ("required", "approved"):
+            objectives.append(terminal(identifier))
+            continue
+        blockers: list[str] = []
+        state = STEP_NOT_STARTED
+        evidence = ""
+        action = _next_action()
+        if identifier == "assessment":
+            audit = assessment
+            if audit["state"] == STEP_COMPLETE:
+                state = STEP_COMPLETE
+                evidence = str(audit["evidence"])
+            elif audit["state"] == STEP_BLOCKED:
+                state = STEP_BLOCKED
+                evidence = str(audit["evidence"])
+                blockers.append(evidence)
+                action = _next_action(
+                    "Correct the assessment evidence",
+                    why="The existing assessment artefact cannot support a verified assessment.",
+                    command="python3 tools/acima.py assess --root . --format json > "
+                            + ASSESSMENT_EVIDENCE,
+                    done="the artefact parses, belongs to this repository and records a valid verdict.",
+                    approval=True, writes=True,
+                    effect="Replaces only the assessment evidence; no config, source or CI changes.")
+            else:
+                state = STEP_READY
+                evidence = str(audit["evidence"])
+                action = _next_action(
+                    "Complete the read-only assessment and save its evidence",
+                    why="An assessment-only scope is complete only when the assessment is verified.",
+                    command="python3 tools/acima.py assess --root . --format json > "
+                            + ASSESSMENT_EVIDENCE,
+                    done="the artefact parses, belongs to this repository and records a valid verdict.",
+                    approval=True, writes=True,
+                    effect="Creates the assessment evidence; it does not change architecture, config or CI.")
+        elif identifier == "local-enforcement":
+            if config_problem:
+                state = STEP_BLOCKED
+                evidence = config_problem
+                blockers.append(config_problem)
+                action = _next_action(
+                    "Repair the unit map", why="No valid unit map means nothing can be measured.",
+                    command="edit acima.config.json: add units with roles and paths",
+                    done="units parse and cover every source file.", approval=True, writes=True,
+                    effect="Changes only the declaration; approval is required for the exact unit map.")
+            elif not config or not units:
+                state = STEP_READY
+                evidence = "no reviewed unit map" if not config else "the config declares no units"
+                action = _next_action(
+                    "Approve the unit map and create acima.config.json",
+                    why="Local enforcement needs a reviewed declaration of units and paths.",
+                    command=preflight + " --write-draft",
+                    done="every unit covers real source and the owner approves the map.",
+                    approval=True, writes=True,
+                    effect="Creates the declaration only; no source, CI or baseline changes.")
+            elif local["state"] == STEP_BLOCKED:
+                state = STEP_BLOCKED
+                evidence = local["evidence"]
+                blockers.append(local["evidence"])
+                action = _next_action(
+                    "Produce a valid local measurement", why=local["evidence"],
+                    command=enforcer, done="the JSON parses, sourceFiles > 0 and the execution map is complete.",
+                    effect="Prints a measurement; save its unmodified JSON under docs/acima/.")
+            elif local["state"] != STEP_COMPLETE:
+                state = STEP_READY
+                evidence = "units declared; no validated run" if not runs else local["evidence"]
+                action = _next_action(
+                    "Measure the declared architecture locally",
+                    why="Without a validated run, findings and local enforcement are guesses.",
+                    command=enforcer,
+                    done="the JSON parses, sourceFiles > 0 and the execution map is complete.",
+                    effect="Prints a measurement; save it under docs/acima/ so status can verify it.")
+            else:
+                state = STEP_COMPLETE
+                evidence = local["evidence"]
+        elif identifier == "baseline-waivers":
+            if not local_complete:
+                blockers.append("local enforcement is %s" % ("complete" if local_complete else "incomplete"))
+                evidence = "waiting for a validated local measurement"
+            elif own["state"] == STEP_COMPLETE:
+                state = STEP_COMPLETE
+                evidence = own["evidence"]
+            elif own["state"] == STEP_NOT_APPLICABLE:
+                state = STEP_COMPLETE
+                evidence = "baseline measured with no error findings; no waivers are required"
+            elif own["state"] == STEP_BLOCKED:
+                state = STEP_BLOCKED
+                evidence = own["evidence"]
+                blockers.append(own["evidence"])
+                action = _next_action(
+                    "Repair waiver governance before relying on the baseline",
+                    why="An invalid, expired or unowned exception hides new findings.",
+                    command="edit .acima/waivers.json: complete every field, scope and expiry",
+                    done="every waiver validates and none is expired.", approval=True, writes=True,
+                    effect="Changes only exception records; it does not hide or rewrite findings.")
+            else:
+                state = STEP_IN_PROGRESS
+                evidence = own["evidence"]
+                action = _next_action(
+                    "Ask the owner to approve owned exceptions for existing findings",
+                    why="The baseline has errors but no accepted exception; the baseline is not owned yet.",
+                    command="propose scoped waivers, then write .acima/waivers.json only with approval",
+                    done="each pre-existing finding has an owner, scope, fingerprint and expiry.",
+                    approval=True, writes=True,
+                    effect="Adds scoped exceptions only for named pre-existing findings; never suppresses new errors.")
+        elif identifier == "ci-enforcement":
+            if not local_complete:
+                blockers.append("local enforcement is incomplete")
+                evidence = "waiting for local enforcement"
+            elif not baseline_complete:
+                blockers.append("baseline and waiver management is incomplete")
+                evidence = "waiting for a complete baseline and waiver record"
+            elif gate["state"] == STEP_COMPLETE:
+                state = STEP_COMPLETE
+                evidence = gate["evidence"]
+            elif gate["state"] == STEP_BLOCKED:
+                state = STEP_BLOCKED
+                evidence = gate["evidence"]
+                blockers.append(gate["evidence"])
+                gate_state = gate.get("gateState")
+                if gate_state == "mention-only":
+                    action = _next_action(
+                        "Make the CI workflow run a real gate",
+                        why="A workflow that mentions ACIMA without invoking it proves nothing.",
+                        command="edit the workflow to run the enforcer with --root and the declared level",
+                        done="the workflow invokes the gate and a failing pull request blocks.",
+                        approval=True, writes=True,
+                        effect="Changes CI configuration only within the approved CI objective.")
+                elif gate_state == "not-pull-request":
+                    action = _next_action(
+                        "Make the CI gate run on pull requests",
+                        why="A command that runs only on push or manually does not protect merges.",
+                        command="add a pull_request or merge_group trigger to the gate workflow",
+                        done="the workflow runs the enforcer for pull requests and merge groups.",
+                        approval=True, writes=True,
+                        effect="Changes the workflow trigger, not application source.")
+                elif gate_state in ("observation-stale", "observation-mismatch"):
+                    action = _next_action(
+                        "Re-record the gate observation from the actual workflow",
+                        why="The recorded run is stale or does not match this workflow and commit.",
+                        command="open a fresh pull request run and record its provider, run id, workflow and HEAD",
+                        done="the observation references this workflow and its commit is HEAD.",
+                        approval=True, writes=True,
+                        effect="Replaces only the observation record; it does not change the workflow.")
+                else:
+                    action = _next_action(
+                        "Fix the CI gate before trusting it",
+                        why="The enforcer invocation is disabled, advisory, conditional or unsupported.",
+                        command="remove if: false and continue-on-error; use --root . and the declared level",
+                        done="one unconditional step invokes the enforcer at the declared level.",
+                        approval=True, writes=True,
+                        effect="Changes CI configuration only; application source remains untouched.")
+            elif gate["state"] == STEP_IN_PROGRESS:
+                state = STEP_IN_PROGRESS
+                evidence = gate["evidence"]
+                if gate.get("gateState") == "observation-failed":
+                    action = _next_action(
+                        "Fix the failure the gate observed",
+                        why="The gate ran and rejected the commit; that is not a passing milestone.",
+                        command="fix the reported finding, then record a fresh passing run",
+                        done="a provider-sourced observation at HEAD exits 0.")
+                else:
+                    action = _next_action(
+                        "Confirm the gate runs on a pull request and record provider provenance",
+                        why="Configured or manually recorded is not independently observed.",
+                        command="open a pull request, then record commit, workflow and run id",
+                        done="a provider-sourced observation matches HEAD and the declared level.",
+                        effect="Adds gate provenance only; it does not claim the gate passed until the provider says so.")
+            else:
+                state = STEP_READY
+                evidence = gate["evidence"]
+                action = _next_action(
+                    "Ask the owner to approve a CI gate",
+                    why="The gate is what stops new violations; it is a write and needs consent.",
+                    command="propose .github/workflows/acima.yml running the enforcer for the declared level",
+                    done="an approved workflow invokes the gate on pull requests.",
+                    approval=True, writes=True,
+                    effect="Adds CI enforcement for the declared level; no application source changes.")
+        elif identifier == "full-conformance":
+            if not local_complete:
+                blockers.append("local enforcement is incomplete")
+                evidence = "waiting for a validated local measurement"
+            elif claim["state"] == STEP_COMPLETE:
+                state = STEP_COMPLETE
+                evidence = claim["evidence"]
+            elif claim["state"] == STEP_BLOCKED:
+                state = STEP_BLOCKED
+                evidence = claim["evidence"]
+                blockers.append(claim["evidence"])
+                action = _next_action(
+                    "Correct the claim evidence",
+                    why="The current claim record is invalid; it cannot be promoted to conformance.",
+                    command="repair .acima/manual-evidence.json and recompute the claim",
+                    done="the claim has valid, current repository and manual evidence.",
+                    approval=True, writes=True,
+                    effect="Changes only evidence for named manual rules; the claim itself is unchanged.")
+            else:
+                state = STEP_IN_PROGRESS if claim["state"] == STEP_IN_PROGRESS else STEP_READY
+                evidence = claim["evidence"]
+                claim_state = claim.get("claimState")
+                if (claim.get("claim") or {}).get("missingManual"):
+                    action = _next_action(
+                        "Record the evidence the claim still needs",
+                        why="A partial assessment is honest; accepted evidence is what can make it full.",
+                        command="fill .acima/manual-evidence.json for the named manual rules",
+                        done="acima.py claim --require full exits 0 at the declared level.",
+                        approval=True, writes=True,
+                        effect="Adds accepted evidence for named manual rules; it does not waive automated findings.")
+                elif claim_state in ("historical", "stale", "uncommitted", "incomplete"):
+                    action = _next_action(
+                        "Measure the current repository state again",
+                        why="The existing claim is historical or incomplete; freshness is the limitation.",
+                        command=enforcer,
+                        done="a new run records the current HEAD, catalog, configuration and source "
+                             "inventory, then the claim matches it.")
+                else:
+                    action = _next_action(
+                        "Establish a current conformance claim",
+                        why="Full conformance requires a run and accepted evidence for every manual rule.",
+                        command=enforcer,
+                        done="the run is current and acima.py claim --require full exits 0.")
+        elif identifier in ("developer-handoff", "communication-governance"):
+            document = handoff if identifier == "developer-handoff" else communication
+            candidates = HANDOFF_DOCUMENTS if identifier == "developer-handoff" \
+                else COMMUNICATION_DOCUMENTS
+            if document["present"]:
+                state = STEP_COMPLETE
+                evidence = document["evidence"]
+            else:
+                state = STEP_READY
+                evidence = document["evidence"]
+                label = "developer handoff" if identifier == "developer-handoff" \
+                    else "communication or governance plan"
+                action = _next_action(
+                    "Write the approved " + label,
+                    why="This objective is approved but its document does not exist or is empty.",
+                    command="create " + candidates[0],
+                    done="the document is non-empty, approved and names what changed and what remains.",
+                    approval=True, writes=True,
+                    effect="Adds the approved document only; no source or enforcement changes.")
+        objectives.append(_objective_record(
+            definition, disp, state, evidence, blockers=blockers, next_action=action))
+
+    blocking = [obj for obj in objectives if obj["disposition"] in ("required", "approved")]
+    completed = [obj["id"] for obj in blocking if obj["state"] == STEP_COMPLETE]
+    blocked = [obj["id"] for obj in blocking if obj["state"] == STEP_BLOCKED]
+    remaining = [obj["id"] for obj in blocking
+                 if obj["state"] not in (STEP_COMPLETE, STEP_BLOCKED)]
+    in_progress = [obj["id"] for obj in blocking
+                   if obj["state"] in (STEP_READY, STEP_IN_PROGRESS, STEP_NOT_STARTED)]
+    selected = next((obj for obj in blocking if obj["state"] != STEP_COMPLETE), None)
+    if selected is None:
+        next_action = _next_action(
+            "No further action in the approved scope",
+            why="Every required and approved objective is complete; declined, deferred, optional "
+                "and not-applicable work does not block.",
+            done="The scope stays unchanged; a new objective needs a new owner approval.",
+            effect="Nothing changes. Adoption completion is separate from architectural conformance; "
+                   "only full-conformance asserts a conformance claim.")
+        state = STEP_COMPLETE
+    else:
+        next_action = selected["next"]
+        state = STEP_BLOCKED if blocked else STEP_IN_PROGRESS
+    engagement = {
+        "state": state, "complete": selected is None, "scopeDefined": True,
+        "completed": completed, "inProgress": in_progress, "remaining": remaining,
+        "blocked": blocked,
+        "declined": [obj["id"] for obj in objectives if obj["state"] == "DECLINED"],
+        "deferred": [obj["id"] for obj in objectives if obj["state"] == "DEFERRED"],
+        "optional": [obj["id"] for obj in objectives if obj["state"] == "OPTIONAL"],
+        "notApplicable": [obj["id"] for obj in objectives if obj["state"] == STEP_NOT_APPLICABLE],
+        "unsupported": scope.get("unsupported", []),
+        "required": scope["required"], "approved": scope["approved"],
+        "next": next_action, "problems": scope.get("problems", []),
+        "scopeProblems": scope.get("problems", []),
+    }
+    return objectives, engagement
+
+
+def _scope_aware_next(scope: dict, engagement: dict, config: dict | None,
+                      runs: list[dict]) -> dict | None:
+    if not scope.get("present"):
+        if not config and not runs:
+            return None
+        return _next_action(
+            "Record the owner-approved adoption scope",
+            why="Configuration and evidence exist, but no artefact records what the owner approved.",
+            command="create .acima/adoption-scope.json with approvedBy, approvedOn and objective dispositions",
+            done="status accepts the scope and separates approved, declined, deferred and optional work.",
+            approval=True, writes=True,
+            effect="Adds the scope record only; it does not approve or perform any other objective.")
+    if scope.get("state") == STEP_BLOCKED:
+        return _scope_remedy(scope)
+    return engagement.get("next")
+
+
 def status_project(root: Path) -> dict:
     """Report what the artefacts actually prove, and the one next action.
 
@@ -2525,13 +3299,27 @@ def status_project(root: Path) -> dict:
     newest = runs[-1] if runs else None
     errors = _count_errors(newest["payload"]) if newest else 0
     workflows = _gate_workflows(root, level)
+    scope = _load_adoption_scope(root, config)
+    assessment = _assessment_evidence(root, scope)
 
     steps = [_step(1, "recon", STEP_READY,
                    f"{sources} source file(s), {language or 'unknown language'}")]
-    steps.append(_step(2, "fit", STEP_UNKNOWN,
-                       "the fit decision is conversational; no artefact proves assessment or "
-                       "unit-map approval",
-                       "record the approved proposal path if the owner keeps one"))
+    if scope.get("present") and scope.get("state") != STEP_BLOCKED \
+            and assessment["state"] == STEP_COMPLETE:
+        fit = _step(2, "fit", STEP_COMPLETE,
+                    "%s; scope approved by %s on %s"
+                    % (assessment["evidence"], scope.get("approvedBy"),
+                       scope.get("approvedOn")))
+    elif scope.get("present") and scope.get("state") != STEP_BLOCKED:
+        fit = _step(2, "fit", STEP_IN_PROGRESS,
+                    "approved scope recorded, but no verified assessment artefact",
+                    "record the read-only assessment evidence")
+    else:
+        fit = _step(2, "fit", STEP_UNKNOWN,
+                    "the fit decision is conversational; no artefact proves assessment or "
+                    "unit-map approval",
+                    "record the approved proposal path if the owner keeps one")
+    steps.append(fit)
     steps.append(_proof_step(root, catalog_version, catalog_sha))
     steps.append(_step(4, "calibrate", calibration["state"], calibration["evidence"],
                        calibration["remedy"]))
@@ -2596,9 +3384,16 @@ def status_project(root: Path) -> dict:
     steps.append(_step(11, "maintain", STEP_NOT_APPLICABLE,
                        "maintaining the standard is not part of adopting it"))
 
+    objectives, engagement = _build_objectives(
+        root, scope, assessment, steps, config, config_problem, units, runs, newest,
+        errors, waiver_report, language)
+
     optional = [{"name": name, "path": f"docs/acima/{name}",
-                 "present": (root / "docs/acima" / name).is_file()}
+                 "present": (root / "docs/acima" / name).is_file(),
+                 "disposition": "optional"}
                 for name in ("adoption-plan.md", "communication-plan.md", "STATUS.md")]
+
+    scope_next = _scope_aware_next(scope, engagement, config, runs)
 
     next_step = {"action": "", "why": "", "command": "", "doneWhen": "",
                  "approvalRequired": False, "writes": False}
@@ -2733,10 +3528,25 @@ def status_project(root: Path) -> dict:
                          command=f"{_enforcer_command(language)} --root . --format json",
                          doneWhen="the next run has no unwaived errors and the claim still holds.")
 
-    verified = [step["name"] for step in steps if step["state"] == STEP_COMPLETE]
-    blocked = [f"{step['name']}: {step['evidence']}" for step in steps if step["state"] == STEP_BLOCKED]
-    remaining = [step["name"] for step in steps
-                 if step["state"] in (STEP_NOT_STARTED, STEP_IN_PROGRESS, STEP_UNKNOWN)]
+    if scope_next is not None:
+        next_step = scope_next
+    engagement["next"] = next_step
+    if scope.get("present") and scope.get("state") != STEP_BLOCKED:
+        scope["state"] = STEP_COMPLETE if engagement["complete"] else STEP_IN_PROGRESS
+        verified = engagement["completed"]
+        remaining = engagement["remaining"]
+        blocked = ["%s: %s" % (obj["id"], obj["evidence"])
+                   for obj in objectives if obj["id"] in engagement["blocked"]]
+    elif scope.get("present") and scope.get("state") == STEP_BLOCKED:
+        verified = []
+        remaining = []
+        blocked = ["scope: " + problem for problem in scope.get("problems", [])]
+    else:
+        verified = [step["name"] for step in steps if step["state"] == STEP_COMPLETE]
+        blocked = [f"{step['name']}: {step['evidence']}" for step in steps
+                   if step["state"] == STEP_BLOCKED]
+        remaining = [step["name"] for step in steps
+                     if step["state"] in (STEP_NOT_STARTED, STEP_IN_PROGRESS, STEP_UNKNOWN)]
 
     return {
         "root": str(root), "language": language, "sourceFiles": sources,
@@ -2755,19 +3565,31 @@ def status_project(root: Path) -> dict:
             "fingerprints": len(fingerprinted),
         },
         "steps": steps,
+        "scope": scope,
+        "assessmentEvidence": assessment,
+        "objectives": objectives,
+        "engagement": engagement,
         "verified": verified,
         "remaining": remaining,
         "blocked": blocked,
         "optional": optional,
         "next": next_step,
-        "limitation": ("Derived from artefacts and verified criteria; a missing, invalid or stale "
-                       "artefact is reported, never assumed complete. Optional documents never "
-                       "block adoption."),
+        "limitation": ("Completion is relative to the explicitly approved scope. A missing, "
+                       "invalid or stale artefact is reported, never assumed complete. Declined, "
+                       "deferred, optional and not-applicable work never blocks. Adoption "
+                       "completion is separate from architectural conformance."),
     }
 
 
 def status_text(report: dict) -> str:
     config = report["config"]
+    engagement = report.get("engagement") or {}
+    scope = report.get("scope") or {}
+    objectives = {entry["id"]: entry for entry in report.get("objectives", [])}
+
+    def titles(identifiers: list[str]) -> str:
+        return ", ".join(objectives.get(name, {}).get("title", name) for name in identifiers)
+
     lines = ["ACIMA status",
              "  repository  " + report["root"],
              "  context     %s (%s)" % (report["context"]["context"], report["context"]["standardRoot"]),
@@ -2778,14 +3600,33 @@ def status_text(report: dict) -> str:
                      % (config["level"] or "level unset", config["mode"], config["units"]))
     else:
         lines.append("  config      absent (not adopted)")
-    lines.append("  verified    " + (", ".join(report["verified"]) or "nothing yet"))
-    lines.append("  remaining   " + (", ".join(report["remaining"]) or "nothing"))
+    if scope.get("present"):
+        lines.append("  scope       %s - approved by %s on %s (%s)"
+                     % (STATE_LABEL.get(scope.get("state"), str(scope.get("state")).lower()),
+                        scope.get("approvedBy") or "unknown owner",
+                        scope.get("approvedOn") or "unknown date", scope.get("source")))
+    else:
+        lines.append("  scope       not recorded (completion cannot be inferred from files)")
+    if scope.get("present"):
+        completed_text = titles(engagement.get("completed", [])) or "nothing yet"
+        in_progress_text = titles(engagement.get("inProgress", [])) or "nothing"
+        remaining_text = titles(engagement.get("remaining", [])) or "nothing"
+    else:
+        completed_text = ", ".join(report.get("verified", [])) or "nothing yet"
+        in_progress_text = ", ".join(step["name"] for step in report["steps"]
+                                      if step["state"] == STEP_IN_PROGRESS) or "nothing"
+        remaining_text = ", ".join(report.get("remaining", [])) or "nothing"
+    lines.append("  completed   " + completed_text)
+    lines.append("  in progress " + in_progress_text)
+    lines.append("  remaining   " + remaining_text)
     lines.append("  blocked     " + ("; ".join(report["blocked"]) or "nothing"))
-    optional = ", ".join("%s %s" % (item["name"].replace(".md", ""),
-                                    "present" if item["present"] else "absent")
-                         for item in report["optional"])
-    lines.append("  optional    " + optional + " (never required)")
-    lines += ["", "  steps"]
+    lines.append("  declined    " + (titles(engagement.get("declined", [])) or "nothing"))
+    lines.append("  deferred    " + (titles(engagement.get("deferred", [])) or "nothing"))
+    lines.append("  optional    " + (titles(engagement.get("optional", [])) or "nothing"))
+    lines.append("  not appl.   " + (titles(engagement.get("notApplicable", [])) or "nothing"))
+    if engagement.get("complete"):
+        lines.append("  outcome     complete within the approved scope; this is not a conformance claim")
+    lines += ["", "  steps (evidence diagnostics)"]
     for step in report["steps"]:
         lines.append("    %2s  %-14s %-14s %s"
                      % (step["n"], step["name"], step["label"], step["evidence"]))
@@ -2793,12 +3634,47 @@ def status_text(report: dict) -> str:
     lines += ["", "  next",
               "    " + next_step["action"],
               "    why: " + next_step["why"],
-              "    done when: " + next_step["doneWhen"],
-              "    $ " + next_step["command"],
-              "    approval %s - %s"
-              % ("required" if next_step["approvalRequired"] else "not needed",
-                 "writes the target" if next_step["writes"] else "read-only")]
+              "    done when: " + next_step["doneWhen"]]
+    if next_step.get("command"):
+        lines.append("    $ " + next_step["command"])
+    lines.append("    approval %s - %s"
+                 % ("required" if next_step["approvalRequired"] else "not needed",
+                    "writes the target" if next_step["writes"] else "read-only"))
+    if next_step.get("effect"):
+        lines.append("    if approved: " + next_step["effect"])
     return chr(10).join(lines)
+
+
+def status_markdown(report: dict) -> str:
+    """A compact, scope-aware dashboard. Read-only, like the status itself."""
+    engagement = report.get("engagement") or {}
+    objectives = {entry["id"]: entry for entry in report.get("objectives", [])}
+
+    def titles(identifiers: list[str]) -> str:
+        return ", ".join(objectives.get(name, {}).get("title", name) for name in identifiers) \
+            or "Nothing"
+
+    scope = report.get("scope") or {}
+    lines = ["# ACIMA adoption status", "",
+             "**Repository:** `%s`" % report["root"], "",
+             "**Scope:** " + (("approved by %s on %s" % (scope.get("approvedBy"),
+                                                            scope.get("approvedOn")))
+                               if scope.get("present") else "not recorded"), "",
+             "**Completed:** " + titles(engagement.get("completed", [])), "",
+             "**Remaining:** " + titles(engagement.get("remaining", [])), "",
+             "**Blocked:** " + ("; ".join(report.get("blocked", [])) or "Nothing"), "",
+             "**Declined:** " + titles(engagement.get("declined", [])), "",
+             "**Deferred:** " + titles(engagement.get("deferred", [])), "",
+             "**Optional:** " + titles(engagement.get("optional", [])), "", "## Next action", "",
+             report["next"]["action"], "", report["next"]["why"], ""]
+    if report["next"].get("command"):
+        lines += ["```bash", report["next"]["command"], "```", ""]
+    lines += ["**Done when:** " + report["next"]["doneWhen"], "",
+              "**Approval:** " + ("required" if report["next"]["approvalRequired"]
+                                  else "not needed"), ""]
+    if report["next"].get("effect"):
+        lines += ["**If approved:** " + report["next"]["effect"], ""]
+    return chr(10).join(lines).rstrip()
 
 
 CORRECTION_SHAPES = {
@@ -3023,7 +3899,7 @@ def main() -> int:
 
     status = sub.add_parser("status", help="which steps are evidenced, and the next command")
     status.add_argument("--root", default=".")
-    status.add_argument("--format", choices=("text", "json"), default="text")
+    status.add_argument("--format", choices=("text", "json", "markdown"), default="text")
     fix = sub.add_parser("fix", help="turn 1..many findings into named corrections")
     fix.add_argument("selectors", nargs="*",
                      help="rule id, rule@path, path fragment, or fingerprint")
@@ -3143,6 +4019,8 @@ def main() -> int:
         report = status_project(Path(args.root))
         if args.format == "json":
             print(json.dumps(report, indent=2))
+        elif args.format == "markdown":
+            print(status_markdown(report))
         else:
             print(status_text(report))
         return 0

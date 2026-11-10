@@ -75,6 +75,43 @@ integrity, exercise controlled violations where supported, and inspect CI config
 claiming it has run. State exactly what was and was not observed. Handoff includes the approved
 scope, the evidence, the remaining work and the limitations.
 
+## Recording the approved scope
+
+Approval is explicit and machine-readable. Record it at `.acima/adoption-scope.json` (preferred)
+or `docs/acima/adoption-scope.json`; an `adoption` object in `acima.config.json` is also accepted
+but changes the configuration hash, so prefer an external file. The record is written only after
+the owner answers the approval question, and it is read-only to `status`:
+
+```json
+{
+  "version": 1,
+  "approvedBy": "repository-owner",
+  "approvedOn": "2026-11-10",
+  "proposal": "docs/acima/adoption-proposal.md",
+  "objectives": [
+    {"id": "assessment", "disposition": "required"},
+    {"id": "local-enforcement", "disposition": "approved"},
+    {"id": "ci-enforcement", "disposition": "deferred", "reason": "next quarter"},
+    {"id": "communication-governance", "disposition": "declined"}
+  ]
+}
+```
+
+The canonical objectives are `assessment`, `local-enforcement`, `baseline-waivers`,
+`ci-enforcement`, `full-conformance`, `developer-handoff` and `communication-governance`.
+`required` and `approved` are completion obligations; `declined`, `deferred`, `optional` and
+`not-applicable` never block. Do not use `NOT_APPLICABLE` for a declined objective: a declined
+choice, a deferred choice, an optional document and a genuinely irrelevant objective are four
+different answers. Missing approval metadata, unknown ids, duplicate ids, invalid dates and an
+approved objective whose prerequisite was declined make the scope invalid rather than guessed.
+
+The engine promotes a prerequisite of an approved objective to `required`. A stage is not advanced
+while its prerequisite is blocked or unverified, and the status names one next action with its
+completion condition and the effect of approval. Assessment-only and local-only scopes can
+complete without CI, baseline, waivers or optional documents. Full conformance still requires the
+whole claim: no approved objective weakens a normative rule, currentness check or manual-evidence
+requirement.
+
 ## Approval boundary
 
 | Action | Approval |
@@ -122,6 +159,8 @@ required because a template exists for it.
 | `acima.config.json` | declares units, roles, paths, language, level and mode | **Required** for any unit-aware assessment, enforcement or baseline | a reviewed unit map | that boundaries are declared, not that code follows them |
 | `.acima/waivers.json` | records owned, scoped, fingerprinted, expiring exceptions | **Conditional**: required when findings remain or a gate is used; an empty file is needed for an adopted gate | config and a measured run | that exceptions are governed, not that findings are absent |
 | `.acima/baseline.json` | records the measured fingerprints at adoption | **Conditional**: typical for brownfield gating and ratcheting; optional for a clean greenfield | a valid run and config | what was known at that commit, not conformance |
+| `.acima/adoption-scope.json` | records the approved objective dispositions and approval metadata | **Required** to make completion and the next action scope-aware; not needed for a read-only assessment | the owner's answer to the proposal | what was approved, not that any objective was implemented |
+| `docs/acima/assessment.json` | records the read-only assessment verdict | **Required** for an assessment-only completion claim | an assessment run for this repository | what was assessed, not conformance |
 | Enforcement tooling | runs the rules locally or in CI | **Required** for automated enforcement; not required for a read-only assessment | config and a supported enforcer | that checks can run, not that they passed |
 | CI workflow | runs the gate on integration | **Conditional**: only if the owner wants automated blocking | tooling, config, policy for baseline/waivers | that CI is configured, not that it executed |
 | `.acima/manual-evidence.json` | records human/native evidence for non-portable rules | **Conditional**: required for a full claim at a level containing such rules | an actual review and artifact | that a named person reviewed a named method, not that a rule is automated |

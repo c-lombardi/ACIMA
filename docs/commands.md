@@ -63,25 +63,74 @@ added — the output is the delta. Exit `0` on success, `2` when there is no con
 ```bash
 python3 tools/acima.py status --root .              # human summary
 python3 tools/acima.py status --root . --format json
+python3 tools/acima.py status --root . --format markdown
 ```
 
-It reports the eleven steps with evidence-verified states — `NOT_STARTED`, `READY`, `IN_PROGRESS`,
-`BLOCKED`, `COMPLETE`, `NOT_APPLICABLE`, `UNKNOWN` — rendered in plain English. A step is complete
-only when its criterion is verified: calibration compares the manifest pin with the catalog, a
-baseline must parse with `sourceFiles > 0` and an execution map. A gate workflow is parsed for an
-actual `run:` invocation: the enforcer must use `--root .`, the declared level, and a pull-request
-or merge trigger; disabled, advisory, conditional and unsupported reusable/composite jobs do not
-count. A gate observation must reference that workflow and command, match the repository, `HEAD`,
-standard, catalog hash, level and positive source count, and must not report a skipped enforcer. A
-configured gate and a manually recorded observation are `in progress`; only a provider-sourced run
-matching `HEAD` is complete. The proof record must show `L001` and `D001` detected, and the claim is
-computed with `acima.py claim`. A claim completes step 10 only when its repository, commit, standard,
-catalog hash, configuration hash, source inventory and baseline match the current checkout; a
-historical or stale full result leaves the step in progress and names freshness as the limitation.
-Optional documents never appear in the next action. It prints one next action, why, its done
-condition, and whether approval is required. Two honest limits remain: step 3 stays `UNKNOWN`
-until `inject_violation.py --out` is run, and step 9 needs two comparable measurements to show a
-fall.
+The eleven steps remain evidence diagnostics. Adoption completion is calculated from the
+**approved scope** and the evidence for each objective, not from the universal sequence. The
+response contains `scope`, `objectives`, `engagement` and one `next` action.
+
+### The scope record
+
+Approval is explicit. It is not inferred from `acima.config.json`, a template, a baseline or the
+presence of a document. Record it in `.acima/adoption-scope.json` (or
+`docs/acima/adoption-scope.json`; a config's `adoption` object is also accepted, but an external
+file is preferred because it does not change the configuration hash):
+
+```json
+{
+  "version": 1,
+  "approvedBy": "repository-owner",
+  "approvedOn": "2026-11-10",
+  "proposal": "docs/acima/adoption-proposal.md",
+  "objectives": [
+    {"id": "assessment", "disposition": "required"},
+    {"id": "local-enforcement", "disposition": "approved"},
+    {"id": "ci-enforcement", "disposition": "deferred", "reason": "next quarter"},
+    {"id": "communication-governance", "disposition": "declined"}
+  ]
+}
+```
+
+Canonical objective ids are `assessment`, `local-enforcement`, `baseline-waivers`,
+`ci-enforcement`, `full-conformance`, `developer-handoff` and `communication-governance`.
+`required` and `approved` must complete; `declined`, `deferred`, `optional` and `not-applicable`
+never block. `DECLINED`, `DEFERRED`, `OPTIONAL` and `NOT_APPLICABLE` are distinct states: a
+declined plan is not the same as an objective that does not apply. A prerequisite is promoted to
+`required` automatically; an approved objective whose prerequisite was explicitly declined is a
+scope conflict, not silently ignored. Unknown ids, duplicate ids, a missing `approvedBy` or
+`approvedOn`, a future approval date and an invalid disposition make the scope `BLOCKED` before any
+action is proposed.
+
+Assessment evidence is `docs/acima/assessment.json` (or `.acima/assessment.json`), written by
+redirecting `acima.py assess --format json`. It must be read-only, belong to this repository and
+record a recognized verdict. Assessment-only scope can complete without a config, baseline or CI.
+Local-only scope can complete without CI, waivers or optional documents. If full conformance is
+approved, every existing claim requirement still applies; adoption completion never weakens it.
+
+### Evidence and next action
+
+A step is complete only when its criterion is verified: calibration compares the manifest pin with
+the catalog, a baseline must parse with `sourceFiles > 0` and an execution map. A gate workflow is
+parsed for an actual `run:` invocation: the enforcer must use `--root .`, the declared level, and a
+pull-request or merge trigger; disabled, advisory, conditional and unsupported reusable/composite
+jobs do not count. A gate observation must reference that workflow and command, match the
+repository, `HEAD`, standard, catalog hash, level and positive source count, and must not report a
+skipped enforcer. A configured gate and a manually recorded observation are `in progress`; only a
+provider-sourced run matching `HEAD` is complete. The proof record must show `L001` and `D001`
+detected, and the claim is computed with `acima.py claim`. A claim completes the conformance
+objective only when its repository, commit, standard, catalog hash, configuration hash, source
+inventory and baseline match the current checkout; a historical or stale full result leaves it in
+progress and names freshness as the limitation.
+
+Status prints the single highest-value action whose prerequisites are satisfied, why it is next,
+its done condition, whether approval is required and what an approval would change. It does not
+advance past a blocked or unverified prerequisite. Without a scope record it reports `UNKNOWN` and
+asks for the approved scope rather than assuming full adoption; the one exception is a repository
+with no config and no run, where the first action stays the read-only preflight plus assessment.
+Optional documents never appear in the next action. Two honest limits remain: step 3 stays
+`UNKNOWN` until `inject_violation.py --out` is run, and step 9 needs two comparable measurements to
+show a fall.
 
 ### Evidence contracts
 

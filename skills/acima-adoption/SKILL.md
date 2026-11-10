@@ -139,12 +139,20 @@ and agents. Distinguish what this repository can achieve now from what needs org
 
 ## Status: what is actually proven
 
-`acima.py status --root .` reports seven states — `NOT_STARTED`, `READY`, `IN_PROGRESS`, `BLOCKED`,
-`COMPLETE`, `NOT_APPLICABLE`, `UNKNOWN` — rendered in plain English. A step is complete only when
-its criterion is verified:
+`acima.py status --root .` reports the evidence diagnostics and a scope-aware engagement summary.
+The vocabulary is `NOT_STARTED`, `READY`, `IN_PROGRESS`, `BLOCKED`, `COMPLETE`, `NOT_APPLICABLE`
+and `UNKNOWN`; objective dispositions also distinguish `declined`, `deferred`, `optional` and
+`not-applicable`. A step or objective is complete only when its criterion is verified:
 
-- **fit** is a conversational decision; no artefact proves the assessment or the map's approval,
-  so it stays `UNKNOWN` until the owner acts on the proposal. A config file does not prove fit.
+- **scope** is an explicit owner artifact (`.acima/adoption-scope.json` or an `adoption` object in
+  the config) naming `required`, `approved`, `declined`, `deferred`, `optional` and
+  `not-applicable` objectives. File presence never implies approval, and a missing scope is
+  `UNKNOWN`, not full adoption. Required and approved objectives must complete; the others never
+  block. A prerequisite is promoted to required, and a declined prerequisite for an approved
+  objective is a scope conflict.
+- **fit** is complete only when the approved scope exists and a read-only assessment artifact
+  (`docs/acima/assessment.json`) records a valid verdict for this repository. A config file proves
+  neither fit nor approval.
 - **trust the tool** requires a proof record naming the standard and catalog hash with `L001` and
   `D001` detected; an empty or stale record blocks.
 - **calibration** compares the manifest pin with the catalog on disk; a config file proves nothing.
@@ -172,13 +180,17 @@ its criterion is verified:
   or stale. `--require full` succeeds only for a current claim; missing Git metadata never counts as
   current.
 
-Optional documents (adoption plan, communication plan, STATUS dashboard, summary) never block
-progress and never appear in "next". Do not create optional artifacts unless the approved scope
-includes them or the owner asks. Do not create a communication plan by default.
+Assessment-only and local-only engagements can complete without CI, waivers or optional documents.
+When full conformance is approved, every claim requirement still applies; adoption completion and
+architectural conformance stay separate. Optional documents (adoption plan, communication plan,
+STATUS dashboard, summary) never block progress and never appear in "next". Do not create optional
+artifacts unless the approved scope includes them or the owner asks. Do not create a communication
+plan by default.
 
-Status output states where the repository stands, what is verified, what remains, what is blocked,
-the single next action with its command and done condition, and whether approval is required.
-A status command never recommends a write unless that scope was approved; it proposes instead.
+Status output states what is complete, in progress, remaining and blocked within the approved
+scope; what is declined, deferred, optional or not applicable; the single next action with its
+prerequisite, command, done condition and effect; and whether approval is required. A status
+command never recommends a write unless that scope was approved; it proposes instead.
 
 ## Interaction contract
 
@@ -227,7 +239,7 @@ Every command below is read-only unless marked.
 
 | Command | Purpose | Writes |
 |---|---|---|
-| `acima.py status --root .` | evidenced steps, blockers, one next action | no |
+| `acima.py status --root .` | scope-aware objectives, evidenced steps, blockers, one next action | no |
 | `acima.py inspect --root .` | language, units, level, enforcer readiness | no |
 | `acima.py assess --root .` | fit assessment and verdict | no |
 | `acima.py analyze --root .` | run the reference enforcer, print findings | no |
@@ -246,12 +258,14 @@ where the user runs it.
 ## Context files
 
 Read these before proposing or resuming; never reconstruct state from the conversation:
-`acima.config.json` (units, level, mode), `.acima/baseline.json` (frozen fingerprints),
-`.acima/waivers.json` (owned exceptions), `.acima/manual-evidence.json` (manual-rule evidence),
-`docs/acima/STATUS.md` (next step), `docs/acima/gate-*.json` (the runs a claim rests on),
-`.acima/triage.json` (recorded defect / artefact / review decisions). Missing means missing: name the
-artefact and the phase that produces it; do not invent contents. Optional docs:
-`docs/acima/adoption-plan.md`, `docs/acima/communication-plan.md`, `docs/acima/adoption-summary.md`.
+`acima.config.json` (units, level, mode), `.acima/adoption-scope.json` (approved objectives and
+approval metadata), `docs/acima/assessment.json` (the read-only assessment evidence),
+`.acima/baseline.json` (frozen fingerprints), `.acima/waivers.json` (owned exceptions),
+`.acima/manual-evidence.json` (manual-rule evidence), `docs/acima/STATUS.md` (next step),
+`docs/acima/gate-*.json` (the runs a claim rests on), `.acima/triage.json` (recorded defect /
+artefact / review decisions). Missing means missing: name the artefact and the phase that produces
+it; do not invent contents. Optional docs: `docs/acima/adoption-plan.md`,
+`docs/acima/communication-plan.md`, `docs/acima/adoption-summary.md`, `docs/acima/handoff.md`.
 
 ## Hard rules
 

@@ -46,6 +46,21 @@ def config(root: Path, level: str = "L2", units: int = 1) -> None:
     })
 
 
+def assessment(root: Path) -> None:
+    write_json(root, "docs/acima/assessment.json", {
+        "readOnly": True, "root": str(root.resolve()), "verdict": "ASSESSED",
+        "verdictMeaning": acima.VERDICT_MEANING["ASSESSED"], "sourceFiles": 4,
+    })
+
+
+def scope(root: Path, objectives: dict[str, str]) -> None:
+    write_json(root, ".acima/adoption-scope.json", {
+        "version": 1, "approvedBy": "repository-owner", "approvedOn": "2026-01-01",
+        "objectives": [{"id": key, "disposition": value}
+                       for key, value in objectives.items()],
+    })
+
+
 def run_payload(findings: list[dict] | None = None, sources: int = 4,
                 level: str = "L2") -> dict:
     execution = {}
@@ -112,6 +127,9 @@ class AdoptionExperienceTests(unittest.TestCase):
             (root / "src").mkdir()
             (root / "src" / "a.py").write_text("VALUE = 1\n", encoding="utf-8")
             baseline(root)
+            scope(root, {"assessment": "required", "local-enforcement": "approved",
+                         "baseline-waivers": "approved", "ci-enforcement": "approved"})
+            assessment(root)
             report = acima.status_project(root)
             self.assertTrue(all(not item["present"] for item in report["optional"]))
             self.assertNotIn("plan", report["next"]["action"].lower())
@@ -124,6 +142,9 @@ class AdoptionExperienceTests(unittest.TestCase):
             root = Path(directory)
             config(root)
             baseline(root)
+            scope(root, {"assessment": "required", "local-enforcement": "approved",
+                         "baseline-waivers": "approved", "ci-enforcement": "approved"})
+            assessment(root)
             workflow = root / ".github/workflows/ci.yml"
             workflow.parent.mkdir(parents=True)
             workflow.write_text("name: acima notes\non: [push]\njobs: {}\n", encoding="utf-8")
@@ -138,6 +159,9 @@ class AdoptionExperienceTests(unittest.TestCase):
             root = Path(directory)
             config(root)
             baseline(root)
+            scope(root, {"assessment": "required", "local-enforcement": "approved",
+                         "baseline-waivers": "approved", "ci-enforcement": "approved"})
+            assessment(root)
             workflow = root / ".github/workflows/acima.yml"
             workflow.parent.mkdir(parents=True)
             workflow.write_text(
@@ -293,6 +317,8 @@ class AdoptionExperienceTests(unittest.TestCase):
             root = Path(directory)
             config(root)
             baseline(root, sources=0)
+            scope(root, {"assessment": "required", "local-enforcement": "approved"})
+            assessment(root)
             report = acima.status_project(root)
             freeze = step(report, "freeze")
             self.assertEqual(freeze["state"], "BLOCKED")

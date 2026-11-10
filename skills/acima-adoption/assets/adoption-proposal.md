@@ -79,6 +79,7 @@ The smallest useful scope that meets the stated objective:
 
 | Path | Contents | Purpose | Status |
 |---|---|---|---|
+| `.acima/adoption-scope.json` | approved objectives, dispositions and approval metadata | makes completion and the next action reflect what was actually approved | Required to record approval |
 | `acima.config.json` | units, roles, paths, language, level, mode | makes the intended boundaries visible to tools and reviewers | Required |
 | `.acima/baseline.json` | measured fingerprints at adoption | distinguishes existing findings from new ones | Conditional |
 | `.acima/waivers.json` | owned, scoped, expiring exceptions | governs findings that will not be fixed now | Conditional |
@@ -141,3 +142,8 @@ No persistent repository changes have been made. The assessment and this proposa
 Approval covers only the paths and scope above. Partial approval is supported: say which rows are
 approved. If implementation reveals a required change outside this list, I will stop and ask before
 making it. Approval does not authorize merge, release or publication.
+
+After approval I will record the accepted objectives in `.acima/adoption-scope.json` (approved,
+declined, deferred, optional or not applicable) so later status reports name what remains without
+treating an absent file or template as approval. Declined and deferred work will not block the
+approved scope.

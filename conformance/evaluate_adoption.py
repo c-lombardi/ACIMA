@@ -50,6 +50,21 @@ def baseline(root: Path, findings: list[dict], name: str = "baseline-a.json") ->
     write(root / "docs/acima" / name, json.dumps(run_payload(findings)))
 
 
+def assessment(root: Path) -> None:
+    write(root / "docs/acima/assessment.json", json.dumps({
+        "readOnly": True, "root": str(root.resolve()), "verdict": "ASSESSED",
+        "verdictMeaning": acima.VERDICT_MEANING["ASSESSED"], "sourceFiles": 2,
+    }))
+
+
+def scope(root: Path, objectives: dict[str, str]) -> None:
+    write(root / ".acima/adoption-scope.json", json.dumps({
+        "version": 1, "approvedBy": "repository-owner", "approvedOn": "2026-01-01",
+        "objectives": [{"id": key, "disposition": value}
+                       for key, value in objectives.items()],
+    }))
+
+
 def error(fingerprint: str) -> dict:
     return {"rule": "ACIMA-D001", "severity": "error", "message": "crosses a boundary",
             "path": "src/a.py", "line": 1, "fingerprint": "sha256:" + fingerprint * 64}
@@ -106,6 +121,9 @@ def unclear_monolith(root: Path) -> str:
 def aligned(root: Path) -> str:
     config(root)
     baseline(root, [])
+    scope(root, {"assessment": "required", "local-enforcement": "approved",
+                 "baseline-waivers": "approved", "ci-enforcement": "approved"})
+    assessment(root)
     status = acima.status_project(root)
     own = {step["name"]: step for step in status["steps"]}["own"]
     assert own["state"] == "NOT_APPLICABLE", own
@@ -117,6 +135,9 @@ def aligned(root: Path) -> str:
 def coupling(root: Path) -> str:
     config(root)
     baseline(root, [error("a")])
+    scope(root, {"assessment": "required", "local-enforcement": "approved",
+                 "baseline-waivers": "approved"})
+    assessment(root)
     status = acima.status_project(root)
     own = {step["name"]: step for step in status["steps"]}["own"]
     assert own["state"] == "NOT_STARTED", own
@@ -180,6 +201,9 @@ def partial_approval(root: Path) -> str:
 def returning_user(root: Path) -> str:
     config(root)
     baseline(root, [])
+    scope(root, {"assessment": "required", "local-enforcement": "approved",
+                 "baseline-waivers": "approved", "ci-enforcement": "approved"})
+    assessment(root)
     observation(root)
     status = acima.status_project(root)
     gate = {step["name"]: step for step in status["steps"]}["gate"]

@@ -1,6 +1,7 @@
 # ACIMA status — <repository>
 
 Updated: <date> by <name>   Phase: <assess | propose | authorize | implement | verify>
+Approved scope: `.acima/adoption-scope.json` — <approved by / date>
 Declared level: <L1 | L2 | L3 | none>   Run artefact: <path to baseline JSON>
 Reader report: `docs/acima/adoption-summary.md`   Evidence: <path to gate-status / assessment>
 
@@ -34,18 +35,17 @@ If a finding is a tool artefact rather than a defect, say so here and name the d
 Why this one: <one sentence tying it to the highest-value finding or the blocked phase>.
 Owner: <name>. Done when: <observable result, e.g. "the gate prints 0 NEW and exit 0">.
 
-## 4. What remains
+## 4. Approved scope and what remains
 
-In order. Tick what is finished so the route to the next level is visible.
+Completion is relative to these objectives. Do not add a universal checklist: declined, deferred,
+optional and not-applicable work is not outstanding.
 
-- [x] Preflight — <evidence>
-- [x] Classified — <greenfield | brownfield | adopting>
-- [ ] Planned — scope agreed in the proposal (an adoption plan is optional)
-- [ ] Baselined — every pre-existing finding waived with owner + expiry
-- [ ] First slice — <boundary> changes and the gate stays green
-- [ ] Gated — CI blocks new errors on the default branch
-- [ ] L2 — contracts immutable and consumed through contracts only
-- [ ] L3 — persistence, configuration and statics owned per module
+| Objective | Disposition | State | Evidence | Next action |
+|---|---|---|---|---|
+| <assessment / local enforcement / baseline and waivers / CI / full conformance / handoff / communication> | <required / approved / declined / deferred / optional / not applicable> | <state> | <artifact or reason> | <one action, or none> |
+
+Remember: an adoption plan is optional, as are the communication plan, STATUS dashboard and
+summary. Do not turn an absent optional document into an outstanding requirement.
 
 ## 5. Blocked, and by what
 
