@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://acima.dev/schemas/qualitative-review-1.0.json",
+  "title": "ACIMA evidence-backed qualitative review",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "reviewer", "reviewedOn", "catalogSha256", "rules"],
+  "properties": {
+    "schemaVersion": {"const": "1.0"},
+    "reviewer": {"type": "string", "minLength": 1},
+    "reviewedOn": {"type": "string", "format": "date"},
+    "catalogSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["rule", "status", "rationale", "evidence"],
+        "properties": {
+          "rule": {"type": "string", "pattern": "^ACIMA-[A-Z][0-9]{3}$"},
+          "status": {"enum": ["conforms", "gap", "not_applicable", "insufficient_evidence"]},
+          "rationale": {"type": "string", "minLength": 20},
+          "evidence": {
+            "type": "array", "minItems": 1,
+            "items": {
+              "type": "object", "additionalProperties": false,
+              "required": ["path", "kind", "observation"],
+              "properties": {
+                "path": {"type": "string", "minLength": 1},
+                "kind": {"enum": ["source", "test", "configuration", "architecture", "inventory", "absence"]},
+                "startLine": {"type": "integer", "minimum": 1},
+                "endLine": {"type": "integer", "minimum": 1},
+                "quote": {"type": "string", "minLength": 3},
+                "observation": {"type": "string", "minLength": 12}
+              },
+              "allOf": [{
+                "if": {"properties": {"kind": {"not": {"const": "absence"}}}},
+                "then": {"required": ["startLine", "endLine", "quote"]}
+              }]
+            }
+          }
+        }
+      }
+    }
+  }
+}

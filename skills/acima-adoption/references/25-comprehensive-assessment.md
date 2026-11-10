@@ -91,3 +91,51 @@ Do not claim conformance because all requirements were discussed or reviewed. Do
 Report repository scope and exclusions; project/language/deployment inventory; provisional ownership map; existing architecture and enforcement comparison; findings grouped by L1/L2/L3; a complete 55-rule status matrix; cross-project integration contract findings; deterministic coverage by language; formal manual-evidence status; critical gaps; adoption sequence; confidence and limitations.
 
 Prioritize material architectural risks and inconsistencies. Preserve existing good architecture. Distinguish genuine ACIMA conflicts from different but acceptable design choices. Assessment is read-only; implementation requires separate, explicit, scope-specific approval.
+
+
+## Evidence-backed qualitative review: mandatory completion gate
+
+The 55-rule inventory is not proof that the rules were reviewed. For every comprehensive assessment,
+produce a structured JSON review with exactly one entry for every current catalog rule, including rules
+outside the recommended adoption level. Use `tools/qualitative-review.schema.json` as the schema and
+pin `catalogSha256` to the SHA-256 of `tools/acima-spec/rules.json` from the skill's bundled catalog.
+
+Each entry must contain:
+
+- `rule`: exact catalog identifier, exactly once.
+- `status`: `conforms`, `gap`, `not_applicable`, or `insufficient_evidence`.
+- `rationale`: a specific explanation of the disposition, not a keyword summary.
+- `evidence`: one or more references to actual repository material. Use repository-relative paths.
+  File evidence must include valid 1-based `startLine` and `endLine`, an exact `quote` found within
+  those lines, an `observation` describing what was inspected, and a kind (`source`, `test`,
+  `configuration`, `architecture`, or `inventory`). Use `absence` evidence only when explaining
+  a searched-for absence; reference an existing repository file or directory and describe the
+  search scope and method. Do not fabricate line numbers, quotes, files, or observations.
+
+`not_applicable` requires an explicit scope rationale and evidence supporting why the requirement
+is outside the assessed system. `insufficient_evidence` is an honest disposition, not a pass; it keeps
+the review incomplete until the missing evidence is obtained. A `gap` is a completed review finding,
+not a successful conformance result. The validator checks evidence paths, line ranges, exact quotes,
+rule identity/coverage, duplicate and unknown rules, reviewer/date metadata, and catalog freshness.
+It validates evidence provenance and structure, not the semantic correctness of the reviewer's
+interpretation. The adoption agent must still inspect and reason about the cited code; a matching
+quote is not by itself proof that a requirement is satisfied.
+
+Run the validator and require exit code zero:
+
+```powershell
+py -3 "<skill-root>\vendor\tools\acima.py" validate-review --root "<assessed-repository>" --file "<review-json>" --format json
+```
+
+Then attach the same validated review to the comprehensive assessment:
+
+```powershell
+py -3 "<skill-root>\vendor\tools\acima.py" assess --root "<assessed-repository>" --level L3 --review "<review-json>" --format json
+```
+
+An assessment may be called **complete** only when all 55 rule entries validate, none is
+`insufficient_evidence`, the ACIMA unit map is declared, and the deterministic assessment finishes
+successfully. This is assessment completeness, not `FULL CONFORMANCE`. A complete assessment may
+contain gaps. Never manufacture an ACIMA unit map or a rule disposition to obtain a complete result.
+If the project is not yet mapped, report the 55-rule qualitative review state separately and keep
+overall assessment completion false.

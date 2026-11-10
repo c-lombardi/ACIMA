@@ -33,6 +33,9 @@ from acima_claim import (  # noqa: E402 - path is set above deliberately
     load_catalog, load_evidence, render_markdown as render_claim_markdown,
     required_rules, validate_evidence, validate_run_artefact, validate_waivers,
 )
+from qualitative_review import (  # noqa: E402
+    ReviewValidationError, load_and_validate_review,
+)
 CONFIG_NAME = "acima.config.json"
 PRUNE = {".git", "node_modules", "bin", "obj", "dist", "build", "target", "out",
          ".venv", "venv", "__pycache__", ".next", ".nuxt", "coverage"}
@@ -1292,8 +1295,29 @@ def _comprehensive_rule_review(catalog: dict) -> dict:
         "rules": entries,
     }
 
+def _set_assessment_completion(report: dict, verdict: str) -> None:
+    review_complete = bool((report.get("comprehensiveRuleReview") or {}).get("complete"))
+    unit_map = report.get("unitMap") or {}
+    unit_map_complete = bool(unit_map.get("present") and unit_map.get("count", 0) > 0)
+    complete = verdict == "ASSESSED" and review_complete and unit_map_complete
+    reasons = []
+    if not review_complete:
+        reasons.append("qualitative review is missing, incomplete, or invalid; validate all catalog rules with evidence")
+    if not unit_map_complete:
+        reasons.append("a declared ACIMA module/unit map is required")
+    if verdict != "ASSESSED":
+        reasons.append("deterministic assessment did not complete successfully: " + verdict)
+    report["assessmentCompletion"] = {
+        "complete": complete,
+        "qualitativeReviewComplete": review_complete,
+        "unitMapComplete": unit_map_complete,
+        "reasons": reasons,
+    }
+
+
 def assess_project(root: Path, language: str | None = None,
-                   level: str | None = None) -> tuple[int, dict]:
+                   level: str | None = None,
+                   review_path: Path | None = None) -> tuple[int, dict]:
     """Read-only compatibility assessment: never writes to the target repository."""
     root = root.resolve()
     if not root.is_dir():
@@ -1318,14 +1342,48 @@ def assess_project(root: Path, language: str | None = None,
         "sourceCounts": counts,
         "repositoryInventory": _repository_architecture_inventory(root),
         "comprehensiveRuleReview": _comprehensive_rule_review(catalog),
+        "assessmentCompletion": {"complete": False, "qualitativeReviewComplete": False,
+                                 "unitMapComplete": False, "reasons": [
+                                     "all catalog rules require an evidence-backed qualitative disposition",
+                                     "a declared module/unit map and deterministic assessment are required"]},
         "requestedLevel": level or "L1",
         "limitation": ("Read-only assessment. It is not a conformance claim and it computes no "
                        "health score; rules without evidence are reported as not evaluated."),
     }
 
+    if review_path is not None:
+        try:
+            catalog_sha256 = hashlib.sha256((ACIMA_ROOT / "tools/acima-spec/rules.json").read_bytes()).hexdigest()
+            review = load_and_validate_review(review_path.resolve(), root, catalog, catalog_sha256)
+            original_rules = {item["rule"]: item
+                              for item in report["comprehensiveRuleReview"]["rules"]}
+            merged_rules = []
+            for reviewed_rule in review["rules"]:
+                base = original_rules.get(reviewed_rule["rule"], {})
+                merged_rules.append({
+                    **base,
+                    "qualitativeStatus": reviewed_rule["status"] if reviewed_rule["valid"] else "invalid",
+                    "reviewValid": reviewed_rule["valid"],
+                    "rationale": reviewed_rule["rationale"],
+                    "evidence": reviewed_rule["evidence"],
+                    "reviewProblems": reviewed_rule["problems"],
+                })
+            report["comprehensiveRuleReview"] = {
+                **report["comprehensiveRuleReview"],
+                "reviewed": review["reviewed"], "pending": review["pending"],
+                "complete": review["complete"], "status": review["status"],
+                "counts": review["counts"], "unresolved": review["unresolved"],
+                "rules": merged_rules,
+                "validation": {key: value for key, value in review.items() if key != "rules"},
+            }
+        except ReviewValidationError as error:
+            report["comprehensiveRuleReview"]["validationError"] = str(error)
+            report["comprehensiveRuleReview"]["status"] = "invalid"
+
     if report["sourceFiles"] == 0:
         report["verdict"] = "NO_SOURCE"
         report["verdictMeaning"] = VERDICT_MEANING["NO_SOURCE"]
+        _set_assessment_completion(report, report["verdict"])
         report["nextSteps"] = _next_steps(report)
         report["assessmentResult"] = build_assessment_result(report, None)
         return 0, report
@@ -1336,6 +1394,7 @@ def assess_project(root: Path, language: str | None = None,
         report.update({"verdict": "INVALID_CONFIG",
                        "verdictMeaning": VERDICT_MEANING["INVALID_CONFIG"],
                        "error": str(error)})
+        _set_assessment_completion(report, report["verdict"])
         report["nextSteps"] = _next_steps(report)
         report["assessmentResult"] = build_assessment_result(report, None)
         return 2, report
@@ -1381,6 +1440,7 @@ def assess_project(root: Path, language: str | None = None,
                          VERDICT_MEANING[verdict])
             report["coverage"] = _assessment_rule_coverage(
                 root, catalog, requested_level, {}, default_reason=reason)
+        _set_assessment_completion(report, verdict)
         report["nextSteps"] = _next_steps(report)
         report["assessmentResult"] = build_assessment_result(report, config)
         return code, report
@@ -1480,6 +1540,11 @@ def assess_text(report: dict) -> str:
     if review:
         lines.append("  all rules   %s catalog requirements exposed; %s qualitatively reviewed; %s pending" %
                      (review.get("required", 0), review.get("reviewed", 0), review.get("pending", 0)))
+    completion = report.get("assessmentCompletion") or {}
+    if completion:
+        lines.append("  complete    %s" % ("yes" if completion.get("complete") else "no"))
+        for reason in completion.get("reasons", []):
+            lines.append("              - " + reason)
     coverage = report.get("coverage")
     if coverage:
         lines.append("  coverage    %s/%s required rules accounted for (%s%%)"
@@ -1580,12 +1645,19 @@ def assess_markdown(report: dict) -> str:
         lines += ["", "### Existing architecture evidence", ""]
         lines += [f"- `{item}`" for item in inventory.get("architectureEvidence", [])]
         lines += [f"- Repository context: `{item}`" for item in inventory.get("repositoryArchitectureEvidence", [])]
+    completion = report.get("assessmentCompletion") or {}
+    lines += ["", "## Assessment completion", "",
+              "- Complete: **%s**" % ("yes" if completion.get("complete") else "no"),
+              "- Evidence-backed qualitative review: **%s**" % ("complete" if completion.get("qualitativeReviewComplete") else "incomplete"),
+              "- Declared unit map: **%s**" % ("present" if completion.get("unitMapComplete") else "missing"),
+              *["- Remaining: " + reason for reason in completion.get("reasons", [])], ""]
     review = report.get("comprehensiveRuleReview") or {}
     if review:
         lines += ["", "## Comprehensive ACIMA requirement review", "",
                   f"- Catalog requirements: **{review.get('required', 0)}** across L1, L2 and L3",
                   f"- Qualitatively reviewed by an adoption agent: **{review.get('reviewed', 0)}**",
                   f"- Pending qualitative review: **{review.get('pending', 0)}**",
+                  f"- Unresolved insufficient-evidence dispositions: **{review.get('unresolved', 0)}**",
                   "- The CLI does not perform semantic code review. Each requirement must be traced through actual code and evidence before its status can change.", "",
                   "| Level | Requirement | Automation | Status |",
                   "|---|---|---|---|"]
@@ -4262,7 +4334,14 @@ def main() -> int:
     assess.add_argument("--root", default=".")
     assess.add_argument("--language", default=None)
     assess.add_argument("--level", default=None)
+    assess.add_argument("--review", default=None,
+                        help="evidence-backed qualitative review JSON; required for assessment completion")
     assess.add_argument("--format", choices=("text", "json", "markdown"), default="text")
+
+    review = sub.add_parser("validate-review", help="validate evidence-backed qualitative review of every catalog rule")
+    review.add_argument("--root", default=".", help="assessed repository root")
+    review.add_argument("--file", required=True, help="qualitative review JSON")
+    review.add_argument("--format", choices=("json", "markdown"), default="markdown")
 
     status = sub.add_parser("status", help="which steps are evidenced, and the next command")
     status.add_argument("--root", default=".")
@@ -4382,6 +4461,29 @@ def main() -> int:
             return 1
         return 0
 
+    if args.command == "validate-review":
+        root = Path(args.root).resolve()
+        review_path = Path(args.file).resolve()
+        try:
+            catalog_sha256 = hashlib.sha256((ACIMA_ROOT / "tools/acima-spec/rules.json").read_bytes()).hexdigest()
+            validation = load_and_validate_review(
+                review_path, root, load_catalog(ACIMA_ROOT), catalog_sha256)
+        except ReviewValidationError as error:
+            print(f"acima: {error}", file=sys.stderr)
+            return 2
+        if args.format == "json":
+            print(json.dumps(validation, indent=2))
+        else:
+            print("ACIMA qualitative review: %s" % validation["status"].upper())
+            print("  evidence-backed rules: %s/%s" % (validation["reviewed"], validation["required"]))
+            print("  pending: %s" % validation["pending"])
+            for status, count in validation["counts"].items():
+                print("  %-22s %s" % (status, count))
+            for issue in validation["problems"]:
+                print("  %s: %s" % (issue.get("rule", issue.get("scope", "document")), "; ".join(issue["problems"])))
+            print("  meaning: a complete review is not a conformance result")
+        return 0 if validation["complete"] else 1
+
     if args.command == "status":
         report = status_project(Path(args.root))
         if args.format == "json":
@@ -4416,7 +4518,8 @@ def main() -> int:
             print(fix_text(plan))
         return plan["code"]
     if args.command == "assess":
-        code, report = assess_project(Path(args.root), args.language, args.level)
+        code, report = assess_project(Path(args.root), args.language, args.level,
+                                      Path(args.review) if args.review else None)
         if args.format == "json":
             print(json.dumps(report, indent=2))
         elif args.format == "markdown":

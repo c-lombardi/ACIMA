@@ -28,7 +28,9 @@ SOURCES = [
     # the machine catalog, and the CLI that reads it
     "tools/acima-spec/rules.json",
     "tools/acima.py",
+    "tools/qualitative-review.schema.json",
     "conformance/acima_claim.py",
+    "conformance/qualitative_review.py",
     # reference enforcers, with the minimum build context each needs
     "examples/python/tools/acima_arch.py",
     "examples/typescript/tools/acima-arch.mjs",
@@ -122,7 +124,8 @@ def check() -> int:
         elif digest(vendored) != recorded["sha256"]:
             problems.append(f"vendored file edited by hand: {relative}")
     expected = set(manifest["files"]) | {"MANIFEST.json"}
-    for extra in sorted(p.relative_to(VENDOR).as_posix() for p in VENDOR.rglob("*") if p.is_file()):
+    for extra in sorted(p.relative_to(VENDOR).as_posix() for p in VENDOR.rglob("*")
+                        if p.is_file() and "__pycache__" not in p.parts and p.suffix != ".pyc"):
         if extra not in expected:
             problems.append(f"unexpected file: {extra}")
     catalog = manifest["catalogSha256"]

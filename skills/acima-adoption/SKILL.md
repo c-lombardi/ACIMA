@@ -6,7 +6,7 @@ compatibility: Python 3.9+ for the preflight script. The target language toolcha
 allowed-tools: Read Grep Glob Bash Edit Write
 metadata:
   standard: "1.9.0-draft.1"
-  skill-version: "1.22.0"
+  skill-version: "1.23.0"
   catalog-sha256: "b593d28e81dacfdb9ba61b5792cbab04c521c0631cec6ff61292045acada678a"
 ---
 
@@ -114,6 +114,15 @@ The CLI's `comprehensiveRuleReview` is a checklist, not evidence that those rule
 Inspect the repository and record evidence/status for each requirement. A deterministic check that
 cannot run must not be silently replaced by a pass; a qualitative review is also not a conformance
 claim or accepted manual evidence unless the formal evidence requirements are met.
+Produce a structured qualitative-review JSON artefact with exactly one evidence-backed disposition
+for every current catalog rule. Validate it with the vendored `acima.py validate-review` command.
+The artefact must pin the current catalog SHA-256 and include reviewer/date metadata, a rationale,
+and repository-relative evidence for every rule. File evidence must cite valid line ranges and an
+exact quote from those lines. Missing, duplicate, unknown, stale-catalog, fabricated-quote,
+invalid-path, or out-of-range evidence prevents completion. `insufficient_evidence` remains
+unresolved. The overall assessment is complete only when all 55 rules validate, the ACIMA unit map
+is declared, and deterministic assessment succeeds. Completion is not conformance; gaps remain gaps.
+Attach the validated artefact using `assess --review <review-json>` and report its validator result.
 
 **Phase 2 — Proposal.** Present [the proposal](assets/adoption-proposal.md) as a decision document:
 recommendation first, then the compatibility outcome and evidence, requirements already satisfied,

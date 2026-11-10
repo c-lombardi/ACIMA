@@ -312,3 +312,19 @@ a violation gallery, so a green suite proves the enforcers still detect what the
 | reporting a claim | `acima.py claim` with the run and manual evidence, then `summarize.py --claim` |
 | explaining results to a team | `summarize.py` — the reader-facing summary, not the JSON |
 | maintaining the standard | `conformance/run.py` after any rule or enforcer change |
+
+
+### Evidence-backed qualitative assessment review
+
+A comprehensive qualitative review is a separate artefact from deterministic conformance output.
+Validate all catalog requirements with:
+
+```sh
+python3 tools/acima.py validate-review --root /path/to/repository --file /path/to/qualitative-review.json --format json
+```
+
+Attach the validated review to a read-only compatibility assessment with `assess --review`.
+The validator requires exact catalog coverage, one disposition per rule, reviewer/date metadata,
+a matching catalog SHA-256, repository-local evidence paths, valid line ranges and exact quoted
+source text. `insufficient_evidence` remains unresolved. Assessment completion additionally requires
+a declared unit map and successful deterministic assessment; completion is not conformance.
