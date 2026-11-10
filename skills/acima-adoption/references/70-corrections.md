@@ -125,6 +125,49 @@ green run decided them.
   resource cleanup or the runtime graph. For Go, .NET and Java they report `executed: false`; record
   manual evidence instead of treating the green scan as a pass.
 
+## Value ownership (`A006`)
+
+`A006` findings are deterministic **candidates**, not proof of semantic duplication. Start from the
+receiving identifier, then trace the value through declarations, assignments, call arguments and
+downstream parameters before deciding anything. The rule covers meaningful inline literals, mutable
+declarations, candidate duplicates and configuration classification.
+
+1. **Find meaningful primitives.** Business, security, operational, protocol and integration values
+   qualify even when used once. Loop indices, empty collections and trivial arithmetic do not.
+2. **Find the declaration.** A meaningful value needs a name, purpose and owner; an inline literal
+   usually has none.
+3. **Check immutability.** Prefer a constant, `readonly`/`final` field, frozen value object or immutable
+   snapshot. A readonly reference does not make the referenced object immutable.
+4. **Read the receiving identifier.** The parameter or variable that receives a value is the first
+   evidence of its meaning: `requestTimeout`, `maximumRetryAttempts`, `retentionDays`.
+5. **Trace the data flow.** Follow the literal or declaration through assignments, transformations,
+   arguments and consumers. Stop at the boundary where ownership becomes unclear and report that.
+6. **Test semantic identity.** Compare units, type, domain meaning, ownership, downstream use and the
+   expectation that the values change together — not just the literal or the name.
+7. **Choose the owner.** Consolidate at the highest appropriate genuine owner: method, type, file,
+   module, then an application composition boundary. Never centralize across independent deployment
+   units without a shared contract or ownership relationship.
+8. **Propagate explicitly.** Pass shared values through constructors, parameters or typed settings.
+   Never use ambient globals, service locators, mutable statics or hidden environment reads (`A005`).
+9. **Classify configuration.** Stable code-owned policy stays a source constant; environment or
+   deployment variation belongs in deployment configuration; runtime-adjustable values keep the full
+   runtime contract; credentials remain secrets and never become constants or committed settings.
+
+| Evidence | Decision |
+|---|---|
+| Same value, different meaning | Keep separate declarations; never consolidate on equal literals. |
+| Same name, different meaning or units | Keep separate declarations and record the distinction. |
+| Same meaning, same owner | Use one immutable declaration in that scope. |
+| Same meaning, several files in one module | Consolidate at the appropriate module-owned boundary. |
+| Same meaning across architectural components | Promote to their genuine common owner and pass explicitly. |
+| Value depends on environment or deployment | Use the appropriate configuration mechanism, resolved by the host. |
+| Equivalence is uncertain | Report a review candidate with source evidence; do not consolidate or call it a violation. |
+
+A review records the receiving identifiers, the traced path, the chosen owner and why the values do or
+do not change together. Python and TypeScript provide candidate evidence for inline values, mutable
+declarations and same-module duplicates. Go, .NET and Java report `executed: false`; they require
+manual or AI-assisted evidence with file and line citations.
+
 ## Effect findings (`A010`–`A013`)
 
 These are manual rules. A review names the effect owner, the boundary and the applicable semantics;

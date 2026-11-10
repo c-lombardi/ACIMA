@@ -145,12 +145,16 @@ review item, not a finding. Contracts, tests and tooling are out of scope (chapt
 ### Values and configuration (`A005`, `A006`)
 
 Define a `readonly` settings interface and require it in the constructor; resolve `process.env` once in
-the host and pass the validated object in. The enforcer scans implementations and adapters for
-`process.env`/`import.meta.env` (`A005`) and for operational names assigned, passed as properties or
-compared against numeric/string literals (`A006`). Uppercase constants are skipped. Default
-parameters are `D012`'s concern, not `A006`'s. Destructuring defaults and string contents are not
-parsed, so review them manually; an arrow function that embeds a timeout is still a review item even
-when the scanner does not see it.
+the host and pass the validated object in. The enforcer scans implementations and adapters for `process.env`/`import.meta.env` (`A005`). For
+`A006` it scans implementation, adapter and host roles for meaningful inline literals, mutable
+`let`/`var` or writable properties, and same-module duplicate immutable declarations. `const` and
+`readonly` fields satisfy the immutability check; a readonly reference does not make its object
+immutable. Local calls are traced to the callee's receiving parameter where both are in the same
+file, and `capacity`, `threshold`, `secret` and similar names are candidate evidence. Every finding
+is a candidate: static analysis cannot prove semantic equivalence, units or the highest appropriate
+owner. Default parameters are `D012`'s concern, not `A006`'s. Destructuring defaults, aliases and
+string contents are not parsed; an arrow function that embeds a timeout remains a manual review
+item when the scanner cannot trace it.
 
 ### Composition and injection (`D013`, `D014`)
 

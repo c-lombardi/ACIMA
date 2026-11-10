@@ -6,8 +6,8 @@ compatibility: Python 3.9+ for the preflight script. The target language toolcha
 allowed-tools: Read Grep Glob Bash Edit Write
 metadata:
   standard: "1.9.0-draft.1"
-  skill-version: "1.19.0"
-  catalog-sha256: "f11f4b975760b97f854f28d1b48f872a67c9b1a021219846cf6d6b10f513e5b3"
+  skill-version: "1.20.0"
+  catalog-sha256: "b593d28e81dacfdb9ba61b5792cbab04c521c0631cec6ff61292045acada678a"
 ---
 
 # ACIMA adoption
@@ -324,6 +324,13 @@ its owner; decide which of retry, duplicate handling, consistency, cancellation,
 evidence actually apply; fix the dependency path rather than banning closures; choose lifetime from
 state ownership, never to reduce registrations; and keep naming advice targeted, never a bulk rename
 and never a conformance gate.
+
+For `A006`, use the same discipline: start from the receiving identifier, trace the value through its
+data flow, and compare units, domain meaning and ownership — not just the literal or the name. A
+matching value or a matching name is not evidence of the same semantic value. Consolidate only at
+the highest appropriate genuine owner and pass the value explicitly; keep environment-dependent
+values in configuration and secrets out of source constants. When equivalence is uncertain, report a
+candidate with evidence and ask for human review rather than consolidating.
 
 Conformance is per repository and per commit. `FULL CONFORMANCE` requires zero unwaived errors at the
 level, every required rule accounted for, **and** provenance that matches the current checkout —

@@ -77,7 +77,7 @@ This catalog is its human-readable form; if they disagree, the JSON is authorita
 | `A003` | Cross-module mutable static state | error | L3 |
 | `A004` | Version-lock coupling | warning | L3 |
 | `A005` | Configuration read outside the composition boundary | warning | L3 |
-| `A006` | Operational value without a declared owner | warning | L3 |
+| `A006` | Meaningful value without one immutable owner | warning | L3 |
 | `A007` | Unnecessary transient lifetime | warning | L3 |
 | `A008` | Captive scoped dependency | warning | L3 |
 | `A009` | Shared mutable state without ownership | warning | L3 |

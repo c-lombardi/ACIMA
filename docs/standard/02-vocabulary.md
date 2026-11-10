@@ -324,12 +324,27 @@ constant, system constant, shared configuration, runtime-adjustable configuratio
 deployment/environment configuration, or secret. The category determines who owns the value, whether
 it may change without a deployment, and what validation and audit it needs (chapter 14 §14.4).
 
-## 2.23 Operational value
+## 2.23 Meaningful value
 
-An **operational value** is a value that changes how a component behaves under load or failure — a
-timeout, retry count, limit, threshold, rate, batch size, retention period, capacity or concurrency
-limit. It must have a named owner or an explicit configuration source (`A006`), not merely a literal
-at the point of use.
+A **meaningful value** is a primitive value whose exact content influences behaviour, a business or
+security decision, an operational limit, an integration identity or a protocol. It is identified by
+what it represents, not by its literal text or occurrence count. It must have one identifiable,
+immutable declaration at its highest appropriate ownership boundary, or an explicit configuration
+source (`A006`; chapter 14).
+
+An **immutable declaration** is a named binding whose value cannot be rebound or mutated through
+that declaration. The language mechanism may be a compile-time constant, a static readonly field, a
+final field, a frozen value object or an immutable configuration snapshot. A readonly reference to a
+mutable object is not an immutable value.
+
+**Semantic identity** is the meaning a value carries in its domain, including its units, type,
+ownership, downstream use and expected change relationship with other values. It is not established
+by equal literals or matching identifiers alone.
+
+An **operational value** is a meaningful value that changes how a component behaves under load or
+failure — a timeout, retry count, limit, threshold, rate, batch size, retention period, capacity or
+concurrency limit. It must have a named owner or an explicit configuration source (`A006`), not
+merely a literal at the point of use.
 
 ## 2.24 Effect
 

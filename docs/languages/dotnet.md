@@ -142,9 +142,11 @@ manual review in chapter 8 §8.9 supplies the evidence.
 Bind typed options at the host (`IOptions<OrdersSettings>` or a validated record) and require the
 settings object in the module constructor. A module must not call
 `Environment.GetEnvironmentVariable` or reach into `IConfiguration` for a value the host can pass.
-Named constants for fixed policy are preferable to options that imply runtime changeability. The
-reference enforcer reports `A005` and `A006` `executed: false`; use a Roslyn analyzer or the manual
-review in chapter 8 §8.9 for evidence.
+Named constants for fixed policy are preferable to options that imply runtime changeability. Use
+`const` or `static readonly` for stable values, a validated options record for deployment values,
+and a secret store for credentials. Equal literals with different receiving meaning remain separate;
+a matching identifier does not prove matching units. The reference enforcer reports `A005` and
+`A006` `executed: false`; use a Roslyn analyzer or the manual review in chapter 8 §8.9 for evidence.
 
 ### Composition and injection (`D013`, `D014`)
 

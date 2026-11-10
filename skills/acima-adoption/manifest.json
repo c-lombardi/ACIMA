@@ -1,11 +1,11 @@
 {
   "skill": "acima-adoption",
-  "skillVersion": "1.19.0",
+  "skillVersion": "1.20.0",
   "standard": "1.9.0-draft.1",
   "verifiedAt": "2026-11-10",
   "catalog": {
     "path": "tools/acima-spec/rules.json",
-    "sha256": "f11f4b975760b97f854f28d1b48f872a67c9b1a021219846cf6d6b10f513e5b3",
+    "sha256": "b593d28e81dacfdb9ba61b5792cbab04c521c0631cec6ff61292045acada678a",
     "rules": 55,
     "portable": 41,
     "portableIds": [

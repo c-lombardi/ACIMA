@@ -241,59 +241,80 @@ require manual evidence.
 
 ---
 
-## ACIMA-A006 · Operational value without a declared owner
+## ACIMA-A006 · Meaningful value without one immutable owner
 
-**Severity** `warning` · **Level** L3 · **Principle** P4.7
+**Severity** `warning` → `error` at 2.0.0 · **Level** L3 · **Principle** P4.7
 
-> A timeout, retry count, limit, rate, batch size, retention period or similar operational policy
-> MUST be a named constant, a typed configuration value supplied at a composition boundary, or a
-> reviewed local literal.
+> A meaningful primitive value MUST have one identifiable, immutable declaration at its highest
+> appropriate ownership boundary. Its identity is determined by what it represents, not by its
+> literal value or identifier alone. Shared values MUST be supplied explicitly, and configuration
+> MUST be classified deliberately.
 
 ### Violation
 
 ```python
 # orders/impl/submission.py
 def submit(order):
-    retry_limit = 3              # ❌ policy with no name and no owner
-    return gateway.send(order, retry_limit)
+    retry_limit = 3              # ❌ mutable policy declaration
+    return gateway.send(order, 3)  # ❌ inline literal; receiving parameter is retry_limit
 ```
 
 ```ts
 // orders/impl/submission.ts
 export function submit(order: Order): void {
-  const retryLimit = 3;          // ❌ policy with no name and no owner
-  gateway.send(order, retryLimit);
+  const retryLimit = 3;          // ✅ named immutable declaration
+  let fallbackLimit = 3;          // ❌ unnecessarily mutable
+  gateway.send(order, 3);         // ❌ inline literal; receiving parameter is retryLimit
 }
 ```
 
 ### Finding
 
 ```
-ACIMA-A006  warning  orders embeds an operational value in retry_limit; name it in its owner or supply it as configuration at a composition boundary.
+ACIMA-A006  warning  orders declares the meaningful value retry_limit mutably; use an immutable constant, readonly field or immutable value object, or document why mutation is genuinely required.
   src/orders/impl/submission.py:3
+  classification: candidate
 ```
 
 ### Why
 
 An unexplained `3` cannot be reviewed: nobody knows whether it is a business decision, a vendor
-limit, a temporary mitigation or a typo. Moving it to a named constant gives it a purpose; moving it
-to configuration gives it an owner and a change process. The rule is not about the number of
-occurrences — a value used once can still be important policy.
+limit, a temporary mitigation or a typo. The rule is not about occurrence count; a value used once
+can still be important policy. A name alone is also insufficient: a mutable binding, a duplicate with
+a different owner, or a deployment value masquerading as a source constant still obscures ownership.
+
+Equal literals and matching names are not proof of equal meaning. `MaximumOrderAttempts = 3` and
+`MaximumPaymentAttempts = 3` are different policies; two `Timeout` values may use different units.
 
 ### Fix
 
-Name the value in the component that owns it, or classify it as deployment or runtime configuration
-and inject it from the composition boundary. If the literal is genuinely incidental, keep it local
-and be prepared to explain why at review.
+Name the value once in the scope that genuinely owns it, make the declaration immutable where the
+language supports it, and keep distinct policies separate. If several declarations genuinely share
+one meaning, consolidate at their highest appropriate common owner and pass the value explicitly. If
+the value varies by environment or deployment, use the appropriate configuration mechanism. If the
+literal is genuinely incidental, keep it local and be prepared to explain why at review.
 
 ### Detection
 
-Python and TypeScript scan `implementation` and `adapter` units for numeric and string literals bound
-to operational names: timeout, retry, limit, threshold, TTL, interval, batch, rate, retention,
-capacity, delay, quota, backoff, concurrency, attempts, workers, endpoint, URL, host, port, queue,
-topic and bucket. All-uppercase named constants are skipped. The finding is a candidate: static
-analysis cannot decide semantic equivalence or the correct configuration category. Go, .NET and Java
-report the rule as not executed and require review evidence.
+Python and TypeScript scan `implementation`, `adapter` and `host` units for meaningful names,
+including timeout, retry, limit, threshold, TTL, interval, batch, rate, retention, capacity, delay,
+quota, backoff, concurrency, attempts, workers, endpoint, URL, host, port, queue, topic, bucket,
+duration, expiry, deadline, window, minimum, maximum, discount, tax, fee, secret, password and
+credential. They report candidates for:
+
+- inline literals traced to a local callee's receiving parameter;
+- mutable meaningful bindings and writable properties;
+- immutable declarations that appear to duplicate another declaration in the same module;
+- configuration-looking and secret-looking literals.
+
+Every A006 finding carries `"classification": "candidate"`. Static analysis cannot prove semantic
+equivalence, infer units, choose the highest common owner or decide the correct configuration
+category. Equal values with different names are not grouped; matching names and values still require
+review. Duplicate checks never cross module boundaries. The rule does not rewrite source or perform
+automatic refactoring.
+
+Go, .NET and Java report the rule as not executed and require manual or AI-assisted review evidence
+with source citations.
 
 ---
 

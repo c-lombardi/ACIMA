@@ -175,10 +175,13 @@ ACIMA distinguishes two kinds of abstraction at a boundary:
   optional parameter, a default value or an implicit fallback MUST NOT conceal a dependency or a
   decision the caller owns (`D011`, `D012`; chapter 13). A nullable parameter **without** a default
   is required and permitted: the caller chooses the absence explicitly.
-- **P4.7** A meaningful value MUST have an identified owner and an intentional classification: a
-  local literal, a named constant, an application constant, shared configuration, runtime
-  configuration, deployment configuration or a secret (`A006`; chapter 14). Identical text does not
-  establish identical meaning, and occurrence count is not an ownership criterion.
+- **P4.7** A meaningful value MUST have one identifiable, immutable declaration at its highest
+  appropriate ownership boundary and an intentional classification: a local literal, a named
+  constant, a system constant, shared configuration, runtime configuration, deployment
+  configuration or a secret (`A006`; chapter 14). Its identity comes from what it represents, not
+  from its literal value or identifier alone. Shared values MUST be supplied explicitly. Identical
+  text does not establish identical meaning, matching names do not prove equivalence, and
+  occurrence count is not an ownership criterion.
 - **P4.8** Configuration MUST be resolved and validated at the composition boundary and passed into
   the component that consumes it. A module MUST NOT read ambient environment variables or a global
   configuration object to discover a value a caller could supply (`A005`, `A002`; chapter 14).

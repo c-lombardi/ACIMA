@@ -86,8 +86,10 @@ Everything in L2, plus:
 - [ ] No module reads another module's configuration keys or secrets (`A002`).
 - [ ] Components receive configuration from the composition boundary; no implementation or adapter
       reads ambient environment or global configuration (`A005`, warning).
-- [ ] Operational timeouts, retries, limits, rates, batch sizes and retention values have a named
-      owner or an explicit configuration source (`A006`, warning).
+- [ ] Meaningful values have one identifiable, immutable declaration at their highest appropriate
+      owner, or an explicit deployment/runtime/secret configuration source (`A006`, warning).
+- [ ] Equal literals and matching identifiers have not been consolidated without reviewing semantic
+      identity, units, domain meaning and ownership (`A006`, warning candidate).
 - [ ] No cross-module communication through shared mutable statics or globals (`A003`).
 - [ ] Consumers pin contracts versions, never implementation versions (`A004`).
 - [ ] Every externally visible effect has one owner and an execution boundary; callers do not perform
