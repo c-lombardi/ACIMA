@@ -3,6 +3,70 @@
 Two audiences read an adoption: the people who own the repository, and the people who audit the
 run. Give them two different documents, and make the first one the product.
 
+## Communication contract
+
+**All user-facing communication MUST express the actual meaning of an architectural requirement,
+finding, recommendation or decision in plain, human-comprehensible language. An internal identifier
+MUST NOT be the explanation or the primary description.** This applies to every phase: the initial
+assessment, findings, recommendations, implementation plans, approval requests, progress updates,
+final reports, warnings and spoken output.
+
+A reader who has never seen ACIMA must be able to understand what is wrong, why it matters and what
+should happen next without learning a rule, requirement, principle or evaluator identifier.
+
+### Resolve the authoritative meaning
+
+Translate at the point of use from the source that owns the definition:
+
+| Identifier kind | Authoritative source | What to express |
+|---|---|---|
+| Enforcement rule (`ACIMA-D001`, `A006`, `L001`, …) | `tools/acima-spec/rules.json` | the catalog `title`, `summary`, `fix` and coverage limits |
+| Principle or requirement (`P…`, `R…`) | the heading and normative text in `docs/standard/` | the obligation in ordinary architectural language |
+| Evaluation criterion (`D8.4`, …) | the active benchmark rubric | the criterion statement and the evidence it requires |
+| Repository-local identifier | the repository document that defines it | the local meaning, without claiming it is an ACIMA rule |
+
+Do not infer meaning from a prefix or number, and do not keep a second hand-written dictionary of
+labels. Identifiers can be overloaded: an examples index may use `R3` for dependency isolation while
+the lifecycle chapter uses `R3` for separating behaviour from mutable state. Resolve the source in
+context and name it when there is ambiguity. If no authoritative definition resolves the identifier,
+state that the check is unresolved, call it an internal reporting defect, preserve the raw evidence
+and do not invent a meaning or a remedy.
+
+### Explain the finding, not the code
+
+Use this shape in proportion to the finding's importance:
+
+| Part | What it answers |
+|---|---|
+| **What was found** | the actual implementation behaviour, in plain language |
+| **Why it matters** | the architectural consequence, risk or maintenance cost |
+| **Recommended improvement** | the intended software change, including its ownership |
+| **Evidence** | the file, symbol or location and the observation that supports it |
+| **Confidence** | confirmed, probable, uncertain, or requiring human review |
+
+Do not repeat a shared architectural explanation for every occurrence. Group findings that share a
+cause and state the count and affected modules once. Match the depth to the reader: a precise module
+and interface explanation for an engineer; the same consequence and decision in domain terms for a
+manager. Precision is not jargon, and accessibility is not vagueness.
+
+### Preserve traceability without exposing it
+
+Structured evidence may retain the internal requirement ID, rule ID, finding classification, source
+evidence, enforcement mechanism and authoritative reference. The presentation layer must put the
+meaning first. If traceability is useful, add it after the explanation and make it optional, for
+example: “Operational values are embedded instead of owned by named immutable declarations.
+(Internal reference: A006)” Do not use “A006: operational literal” as a finding title.
+Normally omit identifiers unless the user asks for advanced traceability.
+
+### Approval, progress and voice
+
+- An approval request names the files, components, responsibilities and behaviour being authorized.
+  Never ask for approval to “resolve A006” or “apply R3”.
+- Progress updates describe activities and outcomes, not evaluator phases, rule codes or benchmark
+  classifications.
+- Spoken output never reads an identifier as though it were an explanation. Say the meaning first;
+  offer the internal reference only if the listener asks.
+
 | Level | Audience | Question it answers | Artefact |
 |---|---|---|---|
 | **Adoption summary** | developer, lead, architect | what was found, why it matters, what to do next, what is proven | `docs/acima/adoption-summary.md` |
@@ -58,9 +122,10 @@ name freshness, not an architecture defect, as the limitation.
 
 ## Grouping and traceability
 
-Group by `(rule, classification, cluster, severity)`. The group keeps its rule id, count, affected
-modules, every path and every fingerprint, so a reader can trace the summary to the run without
-reading it. Never merge a defect with a detector artefact, and never merge two clusters that need
+Group internally by `(rule, classification, cluster, severity)`. The technical record keeps the rule
+id, count, affected modules, every path and every fingerprint, so a reader can trace the summary to
+the run without reading it. The human-facing heading and explanation use the catalog meaning, never
+the identifier. Never merge a defect with a detector artefact, and never merge two clusters that need
 different remedies: give the triage entry a `cluster` and a `label` when one rule has unrelated
 causes.
 
@@ -77,7 +142,7 @@ say so and link the rule page; do not invent one.
 | Review | manual rules, unclassified matches, detector artefacts, tooling limits |
 
 Priority is a recommendation about order. It never changes a rule's severity, level or normative
-meaning, and it is not a substitute for the rule id.
+meaning, and it is not a substitute for explaining the consequence.
 
 Among High defects with no `new` finding, take the **smallest** group first: the cheapest change
 that proves the remedy is a better first slice than the largest one.
@@ -110,15 +175,17 @@ Language to use, and not use:
   Never “violation”, never code debt, never a reason to rename working code.
 - Review item: “needs a person to decide”; list what evidence would settle it.
 - Tooling limitation: “the check could not run here”; name the environment and who can run it.
-- Confirmed defect: the consequence first, then the rule id.
+- Confirmed defect: the consequence first; the internal reference belongs only in technical
+traceability or an explicit request for it.
 
 ## Progress etiquette
 
 Narrate six milestones at most: structure inspected, boundaries identified, checks run, findings
-triaged, baseline reviewed, report written. One or two sentences each. Do not announce each
-command, restate the plan, or explain the implementation of the skill. A blocker gets a message
-only when it changes the outcome or needs a decision. The final message is the summary; the work
-log belongs in the evidence, not in the conversation.
+triaged, baseline reviewed, report written. One or two sentences each. Describe the meaningful
+activity and result; never narrate evaluator stages, rule codes or benchmark classifications. Do not
+announce each command, restate the plan, or explain the implementation of the skill. A blocker gets a
+message only when it changes the outcome or needs a decision. The final message is the summary; the
+work log belongs in the evidence, not in the conversation.
 
 ## Compatibility
 
@@ -178,11 +245,11 @@ sequence, and one question: "Would you like me to proceed with the listed files 
 
 **Implementation progress.**
 
-> **Where you are:** phase 4, implementing the approved unit map and local check.
-> **Done:** `acima.config.json` now declares five units; the local check reports 14 findings, all
-> pre-existing.
+> **Where you are:** I am implementing the approved unit map and local check.
+> **Done:** `acima.config.json` now declares five modules; the local check reports 14 existing
+> findings, all recorded at adoption.
 > **Not done:** no CI gate and no waivers — both were outside the approved list.
-> **Next:** review the unit map. If it is right, the next decision is whether to gate pull requests.
+> **Next:** review the module map. If it is right, the next decision is whether to gate pull requests.
 
 **Blocker.**
 
@@ -197,5 +264,101 @@ sequence, and one question: "Would you like me to proceed with the listed files 
 > **Verified:** the check runs, finds 14 pre-existing errors, and rejects a new cross-module import.
 > **Not verified:** CI is configured but has not been observed on a pull request; the manual rules
 > have no evidence, so the claim is a partial assessment.
-> **How to use it:** run the check before opening a pull request; a failure names the rule and its
-> remedy. **Next:** approve the CI gate, or watch the check on the next pull request.
+> **How to use it:** run the check before opening a pull request; a failure names the practical
+> problem and the correction. **Next:** approve the CI gate, or watch the check on the next pull
+> request.
+
+## Worked translations
+
+These examples demonstrate wording, not alternative definitions. The catalog, standard and rubric
+remain authoritative.
+
+### An embedded operational value (`A006`)
+
+**Say:**
+
+> Three operational values are written directly into the implementation: a request timeout, a retry
+> limit and a batch size. Each one controls behaviour but has no named owner. A later change can
+> update one copy and leave another inconsistent, and a reader cannot tell which value is the policy.
+> Name each value once in the scope that owns it, make the declaration immutable where the language
+> supports it, and supply environment-dependent values through the composition boundary rather than
+> a source constant. This is a candidate for review: equal numbers do not prove two values mean the
+> same thing.
+
+### A module-boundary dependency (`L001`)
+
+**Say:**
+
+> The domain logic imports the database adapter directly. That makes the business rules depend on a
+> storage choice: changing the database or testing the domain now requires the infrastructure code
+> to be present. Define the operation the domain needs as a port, implement that port in the adapter,
+> and inject it from the composition boundary so dependencies point inward and the domain stays
+> independent of storage.
+
+### A repository requirement labelled `R3`
+
+`R3` is scoped, not globally self-describing. If a repository's requirement register defines it as
+dependency isolation, say:
+
+> The module depends directly on another module's private implementation instead of its published
+> contract. That bypasses the ownership boundary, so an internal change can break this consumer and
+> the two modules become harder to change independently. Depend on the published contract; if it
+> lacks an operation, request an additive contract change from its owner.
+
+If the lifecycle chapter is the source, `R3` instead means “separate behaviour from mutable state”:
+
+> A shared service keeps request-specific data in its own fields. The service now lives longer than
+> the state it holds, so one request can observe another request's data. Move the state to an
+> explicitly owned request or operation boundary, or pass it through the operation instead of
+> retaining it in the service.
+
+Name which source applies rather than silently choosing.
+
+### Equal values with different meanings (`D8.4`)
+
+**Say:**
+
+> These two values are both 30, but one is a request timeout and the other is a cache lifetime. They
+> belong to different behaviours and different owners; numeric equality does not make them the same
+> value. Combining them would make an unrelated change alter both. Keep them separate and name each
+> one for its purpose. We need a person to confirm the units, domain meaning and owner before
+> treating them as the same value. This is a review criterion, not a finding that the code is wrong.
+
+### An approval request
+
+Source metadata may contain internal scope identifiers. The user hears the actual change:
+
+> I propose creating `acima.config.json` with the five discovered modules and their roles, and
+> `.acima/baseline.json` with the current findings frozen as the starting point. This lets the local
+> check distinguish existing problems from new ones. It does not add CI, change source code or
+> suppress any finding. May I create those two files at those paths?
+
+### An unresolved identifier
+
+**Say:**
+
+> One result refers to a check that is not defined in the installed catalog. I cannot explain what it
+> means or recommend a code change without guessing, so I am treating it as a reporting defect. The
+> raw evidence is preserved; restore the matching catalog or tool version and re-run before acting
+> on that result.
+
+### Spoken output
+
+Do not say “A006, three occurrences.” Say:
+
+> Three operational values are embedded in the code instead of being owned by named declarations.
+> That makes policy changes easy to apply inconsistently. I recommend naming each value once and
+> keeping the environment-specific ones in configuration.
+
+### Two readers, same finding
+
+For an engineer:
+
+> `Orders` imports `CatalogRepository` from `catalog/impl`. Depend on `Catalog.Contracts` and call
+> the published operation; if the operation is missing, request it from the Catalog owner.
+
+For a non-specialist:
+
+> The Orders team is using Catalog's private code instead of the interface Catalog publishes for
+> other teams. A change inside Catalog can therefore break Orders without warning. Orders should use
+> the published interface, and Catalog should add anything genuinely missing to that interface.

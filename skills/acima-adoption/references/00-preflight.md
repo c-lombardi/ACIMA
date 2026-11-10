@@ -140,5 +140,7 @@ JSON output is stable and safe to attach to a ticket:
 }
 ```
 
-The `next` array is the path forward. Print it for the user verbatim; it is generated from the
-checks, not from a template.
+The check IDs and JSON keys are internal traceability. Translate each blocker, warning and next
+action into the user's terms using its description and remedy; do not make the user decode `SKL`,
+`TGT`, `GOV` or `ENF` identifiers. The JSON remains available for an auditor or a later session. The
+`next` array is the path forward; present its meaning, not a wall of internal codes.

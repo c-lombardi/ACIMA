@@ -15,12 +15,13 @@ gate not observed in CI.>
 
 Every finding, as an instruction. Never a bare rule ID, never "see the report".
 
-| # | Finding | Where | Why it matters | Correction | Rule | Owner |
+| # | What was found | Where | Why it matters | Recommended improvement | Confidence | Owner |
 |---|---|---|---|---|---|---|
-| 1 | <the problem in plain words> | <module: path:line> | <the consequence for a consumer> | <the exact change: name the project, type or reference to remove> | <ACIMA-D00x> | <name> |
+| 1 | <the problem in plain words> | <module: path:line> | <the consequence for a consumer> | <the exact change: name the project, type or reference to remove> | <confirmed | probable | uncertain | review> | <name> |
 
-Rule identifiers stay in their own column so the problem is readable first. A grouped finding
-names its occurrence count here; the individual paths and fingerprints are in the technical run.
+A grouped finding names its occurrence count here; the individual paths, fingerprints and internal
+check references are in the technical run. Do not add an identifier column unless the reader asked
+for advanced traceability, and never use an identifier as the description.
 
 If a finding is a tool artefact rather than a defect, say so here and name the defect instead.
 
@@ -58,6 +59,6 @@ summary. Do not turn an absent optional document into an outstanding requirement
 - Findings detail: `<path>` — <what it contains, why to open it>
 - Raw run: `<path>` — <command that regenerates it>
 - Plans (optional, if created): `docs/acima/adoption-plan.md`, `docs/acima/communication-plan.md`
-- Rule meanings: `docs/acima/README.md`
-- Correction recipes: the rule page's Fix section in `docs/rules/`, and `references/70-corrections.md` in the skill
+- Explanation sources: the catalog and standard pages that define the checks.
+- Correction recipes: the catalog fix text and the relevant standard page.
 - Commands: `docs/commands.md` in the ACIMA repository — run one, not a programme

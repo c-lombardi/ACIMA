@@ -114,18 +114,25 @@ def category_of(rule: str) -> str:
 def human_title(rule: str, catalog: dict) -> str:
     entry = catalog.get(rule)
     if not entry:
-        return f"Unrecognised rule {rule}"
-    return entry.get("title") or rule
+        return "Unresolved architectural check"
+    return entry.get("title") or "Architectural check without a catalog description"
 
 
 def human_summary(rule: str, catalog: dict) -> str:
-    entry = catalog.get(rule) or {}
-    return entry.get("summary") or ""
+    entry = catalog.get(rule)
+    if not entry:
+        return ("The installed rule catalog does not define the check that produced "
+                "this finding. The code cannot be judged from this result; treat it as "
+                "a reporting defect and keep the original evidence.")
+    return entry.get("summary") or "The catalog does not describe what this check means."
 
 
 def human_fix(rule: str, catalog: dict) -> str:
-    entry = catalog.get(rule) or {}
-    return entry.get("fix") or ""
+    entry = catalog.get(rule)
+    if not entry:
+        return ("Do not change code from this finding. Correct the catalog or tool "
+                "version, restore the authoritative definition, and run the check again.")
+    return entry.get("fix") or "The catalog does not provide a remedy for this check."
 
 
 def plural(count: int, word: str) -> str:
@@ -255,7 +262,11 @@ def prepare(root: Path, report: dict, catalog_rules: dict, config: dict | None,
             "reason": override.get("reason") or "",
             "owner": override.get("owner") or "",
             "known": rule in catalog_rules,
+            "unresolved": rule not in catalog_rules,
+            "candidate": False,
         })
+        if finding.get("classification") == "candidate":
+            group["candidate"] = True
         group["count"] += 1
         group["paths"].append(finding.get("path") or "")
         group["modules"][module_for(finding.get("path") or "", units)] += 1
@@ -274,7 +285,9 @@ def prepare(root: Path, report: dict, catalog_rules: dict, config: dict | None,
             # Reports without per-finding status only expose the aggregate count. Treat it
             # as new for defect groups; that is the conservative reading.
             new_count = report.get("newFindings") or 0
-        if group["classification"] != "defect":
+        if group["unresolved"] or group["candidate"]:
+            group["priority"] = "Review"
+        elif group["classification"] != "defect":
             group["priority"] = "Review"
         elif new_count:
             group["priority"] = "High"
@@ -286,13 +299,20 @@ def prepare(root: Path, report: dict, catalog_rules: dict, config: dict | None,
             group["priority"] = "Low"
         else:
             group["priority"] = "Medium"
-        group["impact"] = (ARTIFACT_IMPACT if group["classification"] == "detector-artifact"
-                           else REVIEW_IMPACT if group["classification"] in
-                           ("review", "tooling-limitation")
-                           else CATEGORY_IMPACT.get(category_of(rule), ""))
-        if group["classification"] == "defect":
+        if group["unresolved"]:
+            group["impact"] = ("The meaning of this result is unknown, so it cannot support "
+                               "a claim about the code or a recommendation to change it.")
+        else:
+            group["impact"] = (
+                ARTIFACT_IMPACT if group["classification"] == "detector-artifact"
+                else REVIEW_IMPACT if group["classification"] in
+                ("review", "tooling-limitation")
+                else CATEGORY_IMPACT.get(category_of(rule), ""))
+        if group["unresolved"]:
+            group["action"] = group["fix"]
+        elif group["classification"] == "defect":
             group["action"] = group["fix"] or (
-                "Read the rule page and correct the dependency at the named paths.")
+                "Correct the dependency or ownership problem at the named paths.")
         elif group["classification"] == "detector-artifact":
             group["action"] = ("Report the detector problem to the ACIMA maintainers with a "
                                "minimal fixture; do not rename or restructure working code "
@@ -300,6 +320,26 @@ def prepare(root: Path, report: dict, catalog_rules: dict, config: dict | None,
         else:
             group["action"] = ("Review the listed occurrences with the module owner and "
                                "classify each one before changing code.")
+        if group["unresolved"]:
+            group["confidence"] = ("Unresolved — the installed catalog does not define this "
+                                    "check; this is a reporting defect, not an architectural "
+                                    "conclusion.")
+        elif group["classification"] == "detector-artifact":
+            group["confidence"] = ("Confirmed detector artefact — the match does not describe "
+                                    "a defect in the code.")
+        elif group["classification"] in ("review", "tooling-limitation"):
+            group["confidence"] = ("Requires human review — the available evidence cannot "
+                                    "settle whether this is a defect.")
+        elif group["candidate"]:
+            group["confidence"] = ("Candidate requiring review — the automated check found a "
+                                    "pattern, but semantic meaning and ownership still need "
+                                    "confirmation.")
+        elif entry.get("automation") == "manual":
+            group["confidence"] = ("Manual review required — this check needs evidence the "
+                                    "automated analysis cannot provide.")
+        else:
+            group["confidence"] = ("Confirmed by the automated check at the recorded "
+                                    "locations.")
         group["modules"] = dict(group["modules"])
         group["paths"] = sorted(set(path for path in group["paths"] if path))
 
@@ -315,6 +355,8 @@ def overall_status(report: dict, groups: list[dict], missing_required: list[str]
     if not report:
         return "Not assessed"
     if not report.get("sourceFiles") or not report.get("execution"):
+        return "Assessment incomplete"
+    if any(group.get("unresolved") for group in groups):
         return "Assessment incomplete"
     if new_findings:
         return "Significant issues found"
@@ -362,8 +404,9 @@ def reconciliation(initial: dict | None, baseline: dict | None,
     ]
     if only_initial:
         counts = Counter(f.get("rule") or "unknown" for f in only_initial)
-        detail = ", ".join(f"`{rule}` ×{count} ({human_title(rule, catalog_rules)})"
-                           for rule, count in sorted(counts.items()))
+        detail = ", ".join(
+            f"{human_title(rule, catalog_rules)} ×{count}"
+            for rule, count in sorted(counts.items()))
         lines.append(f"The difference is {len(only_initial)} finding(s) present in the "
                      f"first run and not in the frozen baseline: {detail}. The baseline is "
                      f"the frozen measurement; the first run is the before photograph.")
@@ -426,15 +469,14 @@ def limitations(report: dict, groups: list[dict], required: set[str],
     unexecuted = sorted(rule for rule, value in (report.get("execution") or {}).items()
                         if value.get("executed") is False)
     if unexecuted:
-        names = ", ".join(f"`{rule}` ({human_title(rule, catalog_rules)})"
-                          for rule in unexecuted)
-        items.append(f"{plural(len(unexecuted), 'rule')} did not run: {names}. A rule that did not "
-                     f"run is not a rule that passed.")
+        names = ", ".join(human_title(rule, catalog_rules) for rule in unexecuted)
+        items.append(f"{plural(len(unexecuted), 'check')} did not run: {names}. A check that "
+                     f"did not run is not a check that passed.")
     if missing_required:
-        names = ", ".join(f"`{rule}` ({human_title(rule, catalog_rules)})"
-                          for rule in missing_required)
-        items.append(f"At the declared level, {names} still need executed evidence or a "
-                     f"recorded manual review. Without them the assessment cannot be full.")
+        names = ", ".join(human_title(rule, catalog_rules) for rule in missing_required)
+        items.append(f"At the declared level, these checks still need executed evidence or a "
+                     f"recorded manual review: {names}. Without them the assessment cannot be "
+                     f"full.")
     if manual_evidence:
         items.append(f"Manual evidence is recorded for {len(manual_evidence)} rule(s); its "
                      f"review date and expiry still apply.")
@@ -448,7 +490,8 @@ def limitations(report: dict, groups: list[dict], required: set[str],
                    if w.get("expires") and w["expires"] > horizon)
     if expired:
         items.append(f"{plural(len(expired), 'waiver')} have expired and should already be "
-                     f"findings (`ACIMA-G002`).")
+                     f"unresolved exceptions. They no longer justify leaving the related "
+                     f"architecture problem unaddressed.")
     if soon:
         items.append(f"{plural(len(soon), 'waiver')} expire within 30 days; renewal is an "
                      f"individual decision, never a bulk action.")
@@ -512,9 +555,9 @@ def next_actions(groups: list[dict], missing_required: list[str], required: set[
             "action": group["action"],
             "reason": group["impact"],
             "where": where or "the paths in the technical report",
-            "done": f"`{group['rule']}` no longer appears in the enforcer report.",
-            "verification": ("Run the enforcer again and confirm this rule is gone and the "
-                             "gate reports no new findings."),
+            "done": "The report no longer contains this finding.",
+            "verification": ("Run the same check again and confirm the finding is gone and "
+                             "the gate reports no new findings."),
             "judgement": len(modules) > 3,
             "count": group["count"],
         }
@@ -603,8 +646,9 @@ def render_markdown(context: dict) -> str:
         "",
         "**How to read this:** a *module* is a declared unit in `acima.config.json`; a *contract* "
         "is the interface other modules are allowed to use; the *baseline* is the frozen snapshot "
-        "of existing findings; a *waiver* is an owned, expiring exception. Rule ids are for "
-        "traceability, not for decoding the sentence.",
+        "of existing findings; a *waiver* is an owned, expiring exception. The explanation comes "
+        "first. Internal check identifiers and fingerprints remain in the technical report; you "
+        "do not need them to understand a finding or decide what to do.",
         "",
         "## 1. Overall result",
         "",
@@ -633,25 +677,29 @@ def render_markdown(context: dict) -> str:
                      "because the run discovered source files; see the verification limits "
                      "below.")
     else:
-        lines += ["| Finding | Impact | Affected areas | Recommended action |",
-                  "|---|---|---|---|"]
+        lines += ["| What was found | Why it matters | Evidence | Recommended improvement | Confidence |",
+                  "|---|---|---|---|---|"]
         for group in groups[:8]:
             count_word = "occurrences" if group["count"] != 1 else "occurrence"
-            label = (f"{group['title']} (`{group['rule']}`, {group['count']} "
-                     f"{count_word})")
+            found = f"**{group['title']}.** {group['summary']} ({group['count']} {count_word})"
             if group.get("scope") == "baseline":
-                label = label[:-1] + ", baseline, waived)"
-            if group["classification"] != "defect":
-                label = label[:-1] + (", " +
-                                      group["classification"].replace("-", " ") + ")")
+                found += " Retained from the baseline for context."
             modules = sorted(group["modules"])
             areas = f"{plural(len(modules), 'module')}: " + ", ".join(modules[:4])
             if len(modules) > 4:
                 areas += f" +{len(modules) - 4} more"
+            paths = group.get("paths") or []
+            if paths:
+                areas += f". Example: `{paths[0]}`"
+                if len(paths) > 1:
+                    areas += f" (+{len(paths) - 1} more paths)"
             action = group["action"]
-            lines.append(f"| {label} | {group['impact']} | {areas} | {action} |")
-        lines += ["", "Rule identifiers are in parentheses for traceability; the grouping "
-                      "and every affected path are in §7 and the technical report."]
+            confidence = group["confidence"]
+            lines.append(f"| {found} | {group['impact']} | {areas} | {action} | "
+                         f"{confidence} |")
+        lines += ["", "Internal check identifiers, execution evidence and every affected "
+                      "path are retained in §7 and the technical report. They are not needed "
+                      "to read the findings above."]
     lines += ["", "## 4. What should happen next?", ""]
     actions = context["actions"]
     if actions:
@@ -884,7 +932,7 @@ def to_json(context: dict) -> dict:
             {key: group[key] for key in (
                 "rule", "classification", "scope", "title", "count", "priority", "waived",
                 "new", "modules", "paths", "fingerprints", "impact", "action",
-                "summary", "reason", "owner")}
+                "summary", "confidence", "unresolved", "candidate", "reason", "owner")}
             for group in context["groups"]
         ],
         "nextActions": context["actions"],

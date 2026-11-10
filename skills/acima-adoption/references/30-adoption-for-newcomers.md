@@ -87,22 +87,26 @@ does not have yet.
 | "We need a shared kernel for `Money` and ids." | No: each contracts unit owns the value types it publishes. A shared kernel is a legacy compatibility allowance, not the default. |
 | "The enforcer is a lint rule; I can suppress it." | A waiver is a reviewed, expiring exception with your name on it. Suppression without a waiver fails CI. |
 | "We need to fix everything before turning it on." | No: baseline, waive, gate, ratchet. Fixing everything first is how this fails. |
-| "Contracts should have validation and business rules." | Contracts carry data and shape validation; decisions live in the implementation (`C003`). |
+| "Contracts should have validation and business rules." | Contracts carry data and shape validation; business decisions and orchestration live in the implementation. |
 
 ## Teaching the enforcer output
 
 Show one real finding and annotate it:
 
 ```
-ACIMA-D001  src/orders/impl/module.ts:14
-  implementation references another implementation
+Orders depends on Catalog's private implementation
+  where:     src/orders/impl/module.ts:14
   evidence:  import { CatalogRepository } from '../../catalog/impl/repository'
-  remedy:    depend on Catalog.Contracts and call ICatalog; if the data is missing,
-             the contract is incomplete — request the field, do not reach through.
+  why:       a Catalog storage change can break Orders without Catalog knowing
+  confidence: confirmed by the automated check
+  remedy:    use Catalog's published interface; if it lacks the operation, request it
+             from the Catalog owner instead of reaching into the implementation
 ```
 
-Three sentences: what rule, what line, what to do instead. If your enforcer's output does not
-look like this, fix the message before onboarding anyone; the message *is* the training.
+Five useful sentences: what happened, where, why it matters, how certain the observation is, and
+what to do instead. The internal check reference belongs in the technical record, not in the
+headline. If your enforcer's output does not explain the problem this way, fix the message before
+onboarding anyone; the message *is* the training.
 
 ## Pairing guide for the first fix
 

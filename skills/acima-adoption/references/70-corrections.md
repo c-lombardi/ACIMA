@@ -4,6 +4,10 @@ Every finding already names its remedy. The authoritative text is the **Fix** se
 page in `docs/rules/`; this file adds what that text does not: which remedy to choose when several
 are legal, the trap that turns one finding into another, and how to prove the correction worked.
 
+The rule IDs below are internal navigation and evidence keys. When speaking to a user, state the
+observed behaviour, consequence and correction from the catalog and rule page; add the ID only when
+the user asks for technical traceability.
+
 ## Before editing: read the rule's Fix section
 
 | Finding prefix | Authoritative page |

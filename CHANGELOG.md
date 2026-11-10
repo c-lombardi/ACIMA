@@ -4,6 +4,38 @@ All normative changes to the ACIMA standard. The machine-readable catalog is
 [`tools/acima-spec/rules.json`](tools/acima-spec/rules.json); this file explains *why* it changed and
 what an adopting repository has to do about it.
 
+## Unreleased — human-comprehensible adoption communication
+
+**Skill change only.** The catalog, standard version, rule ids, levels, severity and claim semantics
+are unchanged; `acima-adoption` moves from 1.20.0 to 1.21.0. No adopting repository has to change
+configuration, waivers or evidence.
+
+### Why
+
+The skill could explain architecture well, but its templates and examples still let internal rule,
+requirement and evaluation identifiers stand in for the explanation. A reader who did not know the
+catalog had to decode codes before deciding whether a finding mattered.
+
+### What changed
+
+- The skill now requires every user-facing interaction to explain the meaning, observed behaviour,
+  consequence, recommended action and confidence before any internal reference. This covers
+  assessments, findings, recommendations, plans, approvals, progress, reports and spoken output.
+- Rule meanings are resolved from the catalog, principles and requirements from the standard, and
+  evaluation criteria from the active rubric. Unknown identifiers are reported as an internal
+  reporting defect; the agent must not invent a meaning.
+- The generated adoption summary now presents semantic finding titles, explanations, impact,
+  evidence, remedies and confidence. Rule IDs and fingerprints remain in machine-readable evidence
+  and the technical appendix.
+- Report, proposal, status and communication templates no longer use rule IDs as primary labels.
+  Worked examples cover value ownership, module boundaries, scoped requirement identifiers,
+  semantic value review, approval requests, unresolved checks and spoken output.
+
+### Adopting repositories
+
+No migration is required. Existing reports remain readable; newly generated summaries explain the
+same evidence in more accessible language. Technical traceability is unchanged.
+
 ## Unreleased — meaningful value ownership
 
 **Normative and enforcement change.** `ACIMA-A006` is repurposed without adding a rule or changing its

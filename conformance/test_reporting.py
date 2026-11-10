@@ -94,7 +94,8 @@ def test_grouping_and_status() -> None:
         d009 = next(g for g in data["groups"] if g["rule"] == "ACIMA-D009")
         assert d009["classification"] == "detector-artifact"
         assert d009["priority"] == "Review"
-        assert any("ACIMA-G004" in item for item in data["limitations"])
+        assert any("Unreviewed contract change" in item for item in data["limitations"])
+        assert not any("ACIMA-G004" in item for item in data["limitations"])
         assert any("Gate" in item or "gate" in item for item in data["limitations"])
         assert data["status"] != "Verified"
 
@@ -153,8 +154,8 @@ def test_reconciliation_names_the_difference() -> None:
                   "newFindings": 0, "execution": execution_map(), "findings": []}
         data = run(Path(directory), report, initial=first)
         text = " ".join(data["reconciliation"])
-        assert "**1**" in text and "ACIMA-G001" in text
-        assert "Undocumented exception" in text
+        assert "**1**" in text and "Undocumented exception" in text
+        assert "ACIMA-G001" not in text, "user-facing reconciliation must explain the meaning"
 
 
 def main() -> int:

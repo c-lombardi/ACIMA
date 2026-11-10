@@ -58,7 +58,7 @@ Decision: <why these boundaries; what was considered and rejected>
 | Risk | Impact | Owner | Mitigation |
 |---|---|---|---|
 | <team disagrees on concept ownership> | boundary churn | <name> | decision by <date> |
-| <migration blocks A001> | L3 delayed | <name> | start schema design in Q2 |
+| <schema migration delays the first contract change> | L3 delayed | <name> | start schema design in Q2 |
 
 ## 7. Review cadence
 

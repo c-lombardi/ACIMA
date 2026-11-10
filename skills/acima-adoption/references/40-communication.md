@@ -38,10 +38,10 @@ owner reads as a reorg.
 
 ## Message 2 — the first finding (pull request comment)
 
-> **ACIMA-D001** — implementation references another implementation
+> **Orders depends on Catalog's private implementation**
 >
-> `Orders` is importing `CatalogRepository` from `catalog/impl`. It works today, but it means a
-> change to Catalog's storage can break Orders at compile time without Catalog knowing.
+> `Orders` imports `CatalogRepository` from `catalog/impl`. It works today, but a change to
+> Catalog's storage can break Orders at compile time without Catalog knowing.
 >
 > Fix: depend on `Catalog.Contracts` (`ICatalog`) and call `GetProduct`. If the data you need
 > isn't on the contract, add it to the contracts unit in this PR — that's the intended path, not a
@@ -73,12 +73,12 @@ ACIMA — <month>
 Declared level: L1     Units: 7     Gate: required since <date>
 
 Findings: 214 → 198  (-16, -7%)
-  by rule: D001 41→33, C001 22→12, D005 3→3
+  by problem: cross-module implementation use 41→33; mutable contracts 22→12; cycles 3→3
 Waivers: 31 active, 3 expired, 4 expire within 30 days
 Owners: 31 named, 0 unassigned
 
 Merged this month: Catalog contracts extraction (#412), immutability sweep in Billing (#418)
-Next: break Orders↔Payments cycle; A001 discovery for Billing
+Next: break the Orders↔Payments cycle; review Billing's cross-module database access
 Risk: two teams disagree on ownership of "pricing"; escalated to <name>
 ```
 
@@ -124,8 +124,8 @@ Three sentences that land with reviewers:
 
 - **"The graph is the blast radius."** No cycles, no implementation references, no shared statics,
   so the affected units are derivable instead of discovered in staging.
-- **"The finding is the review comment, before the review."** Rule id, path, line, evidence and
-  remedy, in JSON, on every PR.
+- **"The finding is the review comment, before the review."** What the code does, why it matters,
+  path, line, evidence and remedy, on every PR. The technical record retains the internal reference.
 - **"The agent cites the same rubric you do."** Findings are machine-readable and the skill pins
   the catalog hash; the agent proposes, the owner decides, and no agent can author a waiver.
 
@@ -144,8 +144,9 @@ For the full reviewer checklist, AI review protocol and anti-patterns, link
 
 ## Language rules
 
-- Name the **consequence**, then the rule ID. Nobody remembers IDs; everybody remembers "Orders
-  can break when Catalog changes its schema".
+- Name the **consequence** first and translate the internal meaning. Nobody remembers IDs; everybody
+  remembers "Orders can break when Catalog changes its schema". Omit the ID unless someone asks for
+  technical traceability.
 - Say "pre-existing" for baselined findings, every time. Otherwise the first baseline read feels
   like an accusation.
 - Never present a level as a maturity badge. L1 on a hard legacy estate is an achievement.

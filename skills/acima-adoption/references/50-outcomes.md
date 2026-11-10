@@ -37,9 +37,9 @@ Two families. Report both; either alone is gameable.
 | Metric | Why it matters here |
 |---|---|
 | Lead time for changes | the boundary should reduce cross-team surprises, not add ceremony |
-| Change failure rate | `D001`/`A001` violations are a common cause of coupled failures |
+| Change failure rate | cross-module implementation use and shared data access are common causes of coupled failures |
 | Time to first PR for a new joiner | contracts make the safe surface discoverable |
-| Incidents caused by cross-module data access | the thing `A001` exists to prevent |
+| Incidents caused by cross-module data access | the failure mode this adoption targets |
 
 Do not claim a delivery improvement without a before/after measurement. "It feels faster" is not
 a metric, and an architecture programme that overclaims loses the next budget cycle.
@@ -84,7 +84,7 @@ Same five lines every month, so month-over-month comparison is honest:
 ```markdown
 ## ACIMA status — <month>
 Level: L1 (declared) · Units: 7 · Gate: required
-Findings: 214 → 198 (D001 41→33, C001 22→12, D005 3→3)
+Findings: 214 → 198 (cross-module implementation use 41→33; mutable contracts 22→12; cycles 3→3)
 Waivers: 31 active · 4 expiring in 30 days · 0 unowned
 Merged: <slice> (#PR) · Next: <slice> · Risk: <blocker with owner>
 ```

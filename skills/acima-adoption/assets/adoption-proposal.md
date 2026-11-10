@@ -21,8 +21,11 @@ confidence. Distinguish observed facts, inferred layout and questions only the o
 
 Key findings that drive the recommendation:
 
-- `<consequence in the team's terms>` (`ACIMA-...`, N occurrences, `<path or module>`)
+- `<what the code does, why it matters, and where it occurs>` (`<path or module>`, N occurrences)
 - `<what could not be checked>` — see limitations below
+
+Keep internal requirement or check identifiers out of the recommendation. If the owner asks for
+traceability, put the reference in a technical appendix after the explanation.
 
 ## 2. Software discovered
 

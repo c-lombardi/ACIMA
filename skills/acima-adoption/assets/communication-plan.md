@@ -19,7 +19,7 @@ Owner: <name>            Audience size: <n>            Cadence: weekly + monthly
 | Moment | Message | Template |
 |---|---|---|
 | Before the gate exists | kickoff: what changes, what does not, why | references/40-communication.md #1 |
-| First new finding in a PR | consequence, rule, exact fix, waiver option | #2 |
+| First new finding in a PR | what happened, consequence, exact fix, waiver option | #2 |
 | Waiver negotiation | owner, reason, expiry, renewal conversation | #3 |
 | Monthly | count, owners, merged slice, next, risk | #4 |
 | Shortcut request | offer the legitimate path, make the exception visible | #5 |
@@ -42,7 +42,7 @@ Owner: <name>            Audience size: <n>            Cadence: weekly + monthly
 
 ## 5. Tone rules
 
-- Consequence first, rule ID second.
+- Explain the consequence first; translate or omit internal identifiers unless the reader asks for traceability.
 - Say "pre-existing" for every baselined finding.
 - Never present a level as a maturity badge.
 - Put the remedy in the failure message; documents are not communication on their own.

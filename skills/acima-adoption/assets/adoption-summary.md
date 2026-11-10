@@ -17,9 +17,12 @@ words, and what the gate does and does not prove.>
 
 ## 3. Key findings
 
-| Finding | Impact | Affected areas | Recommended action |
-|---|---|---|---|
-| <human title> (`ACIMA-...`, <n> occurrences) | <consequence> | <n> modules: <names> | <catalog remedy, one sentence> |
+| What was found | Why it matters | Evidence | Recommended improvement | Confidence |
+|---|---|---|---|---|
+| <meaning in plain language, including what the code does and how often> | <consequence or risk> | <modules, representative paths, occurrence count> | <the actual change, not a rule identifier> | <confirmed | probable | uncertain | requires review> |
+
+Do not make an internal identifier the finding title. Keep rule IDs, fingerprints and machine coverage
+in the technical evidence section; include one only when the reader asks for traceability.
 
 ## 4. What should happen next?
 
@@ -46,7 +49,7 @@ Then, in order:
 
 ## 7. Supporting technical details
 
-- Full run: `<path>` — every finding with rule, path, line, fingerprint and status.
+- Full run: `<path>` — every finding with its internal check reference, path, line, fingerprint and status.
 - Frozen baseline: `<path>`.
 - Waivers: `<path>`.
 - Triage: `<path>`.
