@@ -4,8 +4,8 @@
 > counts, manual-rule classifications and toolchain availability have since changed. Current
 > coverage is in [`coverage.json`](coverage.json) and [`docs/status.md`](../docs/status.md).
 
-This report covers `ACIMA-D015` (closed-over application dependency) and `ACIMA-D016` (partial
-application of an application dependency). It is evidence about the reference implementation in
+This report covers `ACIMA-D015` (closed-over module-owned dependency) and `ACIMA-D016` (partial
+application of a module-owned dependency). It is evidence about the reference implementation in
 this repository, not a claim that an adopting application's runtime closures have been proved.
 
 ## Coverage

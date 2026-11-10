@@ -1,17 +1,17 @@
 # 16. Functional composition and dependency visibility
 
-> **Normative.** An application dependency MUST remain explicitly declared, traceable and
-> inspectable across its entire lifecycle: declaration, acquisition or construction, binding or
-> composition, transfer, invocation and consumption. That obligation does not change because the
-> dependency is supplied to a lambda, captured by a closure, bound with partial application, passed
-> to a higher-order function or registered as a callback.
+> **Normative.** A module-owned dependency MUST remain explicitly declared, traceable and inspectable
+> across its entire lifecycle: declaration, acquisition or construction, binding or composition,
+> transfer, invocation and consumption. That obligation does not change because the dependency is
+> supplied to a lambda, captured by a closure, bound with partial application, passed to a
+> higher-order function or registered as a callback.
 
 This chapter does **not** prohibit functional programming. Pure transformations, immutable data,
-higher-order functions, currying and closures are all legitimate. The rule is about application
+higher-order functions, currying and closures are all legitimate. The rule is about module-owned
 dependencies: repositories, services, clients, adapters, logging, configuration, security context,
-resource handles and mutable application state. A pure helper may close over a constant or a
-transformation; it must not silently close over a collaborator whose ownership belongs to the
-application.
+resource handles and mutable module state. A pure helper may close over a constant or a
+transformation; it must not silently close over a collaborator whose ownership belongs to a module
+or the system.
 
 ## 16.1 Why the lifecycle matters
 
@@ -47,12 +47,12 @@ export const makeHandler = (repository: IOrderRepository) =>
 
 The binding expression names the repository, but the returned handler does not. A caller sees
 `handler(request)` and cannot tell what it will write to. If this binding happened at the
-composition boundary, the application could point to it; inside a component, it is a new hidden
+composition boundary, the system could point to it; inside a component, it is a new hidden
 dependency.
 
 ## 16.2 The normative rule
 
-For every application-owned dependency, a reader MUST be able to identify:
+For every module-owned dependency, a reader MUST be able to identify:
 
 1. where it was declared;
 2. where it was constructed or acquired;
@@ -60,16 +60,16 @@ For every application-owned dependency, a reader MUST be able to identify:
 4. how it reached the operation that uses it;
 5. which component consumes it.
 
-A component MUST receive its application dependencies through one of these visible paths:
+A component MUST receive its module-owned dependencies through one of these visible paths:
 
 - a constructor or composition-function parameter;
 - an explicit function parameter at the operation's call site;
 - a declared field supplied by the framework/constructor and visible in the component's contract;
 - an explicit factory parameter at the composition boundary.
 
-A function MUST NOT introduce a new application dependency by closing over a module binding or an
-enclosing local that is not one of its declared parameters. A component MUST NOT pre-bind an
-application dependency into a function it returns; that binding belongs at the composition
+A function MUST NOT introduce a new module-owned dependency by closing over a module binding or an
+enclosing local that is not one of its declared parameters. A component MUST NOT pre-bind a
+module-owned dependency into a function it returns; that binding belongs at the composition
 boundary. These are `D015` and `D016`.
 
 ## 16.3 Closures and callbacks
@@ -80,7 +80,7 @@ Closures are the normal way to express a pure transformation:
 const withTax = (rate: number) => (amount: number) => amount * (1 + rate);
 ```
 
-`rate` is a value parameter, not an application collaborator. This is legal and should remain
+`rate` is a value parameter, not a module-owned collaborator. This is legal and should remain
 legal. A closure that captures a module-level `taxRate` is a review candidate, not because closures
 are bad, but because the rate's owner is now invisible at the call site (`A005`/`A006` may also
 apply).
@@ -91,16 +91,16 @@ The distinction is ownership, not syntax:
 |---|---|---|
 | Pure value parameter | `(rate) => (amount) => amount * rate` | allowed |
 | Pure local/constant | `const factor = 2; return (n) => n * factor` | allowed |
-| Application collaborator parameter | `(repository) => (request) => repository.save(request)` | allowed: the dependency is declared by the outer function |
+| Module-owned collaborator parameter | `(repository) => (request) => repository.save(request)` | allowed: the dependency is declared by the outer function |
 | Module-level collaborator | `const repository = new Repo(); (request) => repository.save(request)` | `D015` |
 | Enclosing local collaborator | `const repository = new Repo(); return (request) => repository.save(request)` inside a function that did not declare it | `D015` |
 | Constructor field | `this.repository.save(request)` | allowed if the field is an explicit constructor dependency (`D014` does not apply) |
 | Framework context/service locator | `container.get(Repo)` inside the callback | `L004` |
 
 A callback registered with a framework MAY close over a dependency **when the registration site is
-the composition boundary and the dependency is named there**. A callback created inside an
-application component must receive the dependency as a parameter or from an explicit constructor
-field. A callback that reads a global mutable service is `D015` plus `L004`.
+the composition boundary and the dependency is named there**. A callback created inside a module
+must receive the dependency as a parameter or from an explicit constructor field. A callback that
+reads a global mutable service is `D015` plus `L004`.
 
 ## 16.4 Currying is not the problem
 
@@ -150,8 +150,8 @@ const double = multiply.bind(null, 2);
 const withPrefix = partial(prefix, 'order-');
 ```
 
-Fixing an **application dependency** changes the dependency graph. It must happen at the
-composition boundary, where the binding is visible as application wiring:
+Fixing a **module-owned dependency** changes the dependency graph. It must happen at the composition
+boundary, where the binding is visible as explicit wiring:
 
 ```typescript
 // host/main.ts — the composition boundary names the repository and the handler.
@@ -165,9 +165,9 @@ export const makeHandler = (repository: IOrderRepository) =>
   saveOrder.bind(null, repository);
 ```
 
-`D016` reports the second form. It does not report `bind`/`partial` with pure values, and it does
-not report a host binding. The host is allowed to compose; the component is not allowed to hide a
-new collaborator in a returned function.
+`D016` reports the second form. It does not report `bind`/`partial` with pure values, and it does not
+report a composition-boundary binding. The boundary is allowed to compose; the component is not
+allowed to hide a new collaborator in a returned function.
 
 A factory is treated the same way. A factory that receives dependencies as arguments is explicit;
 a factory that closes over them must either be at the composition boundary or be refactored to take
@@ -177,7 +177,7 @@ the dependency is visible in the factory body — but its lifetime and ownership
 ## 16.6 Higher-order functions and composition
 
 `map`, `filter`, `reduce`, `compose`, `pipe` and similar combinators are encouraged when their
-arguments are pure or when every application dependency is explicit. These are fine:
+arguments are pure or when every module-owned dependency is explicit. These are fine:
 
 ```typescript
 const names = orders.map((order) => order.id);
@@ -197,7 +197,7 @@ standard does not ban side effects in a callback, but it requires the collaborat
 input or field. It also does not require replacing `compose`/`pipe` with classes; explicit function
 composition is often the clearer representation.
 
-A higher-order function that returns a function MUST make the returned function's application
+A higher-order function that returns a function MUST make the returned function's module-owned
 dependencies visible in its parameters or in the composition boundary. A returned closure over an
 undeclared collaborator is `D015`; a returned function that has already been partially applied with
 one is `D016`.
@@ -255,7 +255,7 @@ export const createOrder = (
 ) => orderRepository.save(request);
 ```
 
-The host supplies `orderRepository`; a test can supply a fake without module state.
+The composition boundary supplies `orderRepository`; a test can supply a fake without module state.
 
 ### 16.8.3 Legal currying
 
@@ -289,7 +289,7 @@ handler = functools.partial(save_order, repository)
 ```
 
 The composition boundary names both the repository and the binding. Callers receive a handler whose
-dependency was deliberately supplied by the application, not discovered inside the component.
+dependency was deliberately supplied at the composition boundary, not discovered inside the component.
 
 ### 16.8.6 Pure higher-order function
 
@@ -298,7 +298,7 @@ export const applyTwice = <T>(transform: (value: T) => T, value: T): T =>
   transform(transform(value));
 ```
 
-No application dependency is captured. This remains legal; the rule is not a ban on HOFs.
+No module-owned dependency is captured. This remains legal; the rule is not a ban on HOFs.
 
 ### 16.8.7 Manual review: dynamic callback registration
 
@@ -322,7 +322,7 @@ The same invariant applies to every architecture family, but the visible form di
 | Plugin | plugin factory receives capabilities; host registers the loader | plugin discovery may capture the plugin's own configuration, not another plugin's service |
 | Serverless | function handler parameters and explicit client construction | runtime-provided request context is infrastructure; application clients must still be visible |
 | Generated code | generated signatures must include dependencies; generated binding is reviewed | generated closure is acceptable only with deterministic, checked-in source and a boot test |
-| Framework-managed entry point | constructor parameters; host registration | framework context/authorization primitives may be injected by the framework if the application boundary is documented |
+| Framework-managed entry point | constructor parameters; host registration | framework context/authorization primitives may be injected by the framework if the module boundary is documented |
 
 An exception MUST be owned, scoped, expiring and reviewed (`G001`). It MUST preserve as much
 inspectability as possible: name the captured dependency, the binding site and the test that proves
@@ -354,7 +354,7 @@ MUST NOT say that registration presence or a clean scan proves the runtime graph
 
 ## 16.11 Review checklist
 
-- [ ] Does every operation declare each application dependency it uses, directly or through an
+- [ ] Does every operation declare each module-owned dependency it uses, directly or through an
       explicit enclosing parameter/field?
 - [ ] Does any function close over a module-level or enclosing-local repository, service, client,
       adapter, logger, configuration object or resource handle (`D015`)?

@@ -84,7 +84,7 @@ reproducible**, so the human half gets the attention.
 | Mutable contract or exposed collection | pull request | `C001`, `C002` |
 | Contract surface changed without review | pull request | `G004` |
 | Shared table or cross-module static | design / pull request | `A001`, `A003` |
-| Host opens a transaction across modules, or a read-shaped operation writes | design review | `A010`, `C008` |
+| A composition boundary opens a transaction across modules, or a read-shaped operation writes | design review | `A010`, `C008` |
 | Retry duplicates a charge, or a timeout is reported as a clean failure | failure-path review | `A011`, `A012` |
 | Critical effect has no partial-failure evidence | design / test review | `A013` |
 | Undeclared module | CI | `G005` |
@@ -138,7 +138,7 @@ Side effects to check explicitly, because they are the ones that escape tests:
 | Modules coordinate through a static | a cache or flag declared `static` | `A003` |
 | A change reaches a module through a transitive reference | a package that re-exports an implementation | `D008` |
 | An undeclared module escapes the map | a new folder outside every declared path | `G005` |
-| The host performs a module's write inside its own transaction | a shared unit of work or connection | `A010` |
+| A composition boundary performs a module's write inside its own transaction | a shared unit of work or connection | `A010` |
 | A retry repeats a non-idempotent effect | a generic retry decorator around a command | `A011` |
 | A timeout is reported as "nothing happened" | a catch block that returns a generic failure | `A012` |
 

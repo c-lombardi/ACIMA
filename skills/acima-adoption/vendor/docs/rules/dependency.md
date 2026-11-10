@@ -238,11 +238,12 @@ cycle path. A component with one module is not a cycle (self-references are lega
 
 ---
 
-## ACIMA-D006 · Contracts reference the host
+## ACIMA-D006 · Contracts reference the composition boundary
 
 **Severity** `error` · **Level** L1 · **Principle** P2, P4
 
-> A contracts unit MUST NOT reference the host, the composition root, or any delivery mechanism.
+> A contracts unit MUST NOT reference a composition boundary, including a host, or any delivery
+> mechanism.
 
 ### Violation
 
@@ -255,16 +256,16 @@ public sealed record PlaceOrder(Guid CustomerId) { public IServiceProvider Servi
 ### Finding
 
 ```
-ACIMA-D006  error  orders.contracts references the host unit; contracts must not know how they are hosted.
+ACIMA-D006  error  orders.contracts references the composition boundary; contracts must not know how they are assembled.
   src/Acima.Orders.Contracts/PlaceOrder.cs:2
   using Acima.Host.DependencyInjection;
 ```
 
 ### Why
 
-A contract that knows the host cannot be consumed by a different host — a worker, a CLI, a test
-harness, or the service the module becomes. It also makes the contract untestable without the
-composition root, which is the opposite of what a boundary is for.
+A contract that knows a composition boundary cannot be consumed by a different host, factory,
+worker, CLI or test harness. It also makes the contract untestable without that boundary, which is
+the opposite of what a boundary is for.
 
 ### Fix
 
@@ -458,7 +459,7 @@ Go and .NET report the rule `executed: false` in this revision.
 
 **Severity** `warning` → `error` at 2.0.0 · **Level** L1 · **Principle** P4
 
-> An application-owned constructor requires every input the component needs. A parameter a caller
+> A module-owned constructor requires every input the component needs. A parameter a caller
 > may omit is a second construction path with hidden behaviour.
 
 ### Violation
@@ -484,12 +485,12 @@ ACIMA-D011  warning  orders constructs with the optional input clock; a dependen
 A default in a constructor is a second signature. `OrdersModule(catalog)` and
 `OrdersModule(catalog, clock)` produce objects with different behaviour, and the type, the call site
 and most tests show only one of them. The fallback also invents a value nobody owned: the clock
-policy lives inside the class instead of the composition root, which is exactly what `L004` forbids
+policy lives inside the class instead of a composition boundary, which is exactly what `L004` forbids
 for peers and `A002` forbids for configuration.
 
 ### Fix
 
-Require the input and supply it from the composition root. If the behaviour is genuinely optional,
+Require the input and supply it from a composition boundary. If the behaviour is genuinely optional,
 model the absence: a documented no-op implementation of the port, a policy object, or a required
 value whose type says "none". A nullable parameter **without** a default is allowed — the caller must
 pass `null` explicitly, which is the decision this rule is asking for.
@@ -509,7 +510,7 @@ Go and .NET report the rule `executed: false` in this revision.
 
 **Severity** `warning` → `error` at 2.0.0 · **Level** L1 · **Principle** P4
 
-> An application-owned method or function does not use an optional or defaulted parameter to hide a
+> A module-owned method or function does not use an optional or defaulted parameter to hide a
 > decision its caller should make.
 
 ### Violation
@@ -893,13 +894,13 @@ def build():
 ### Finding
 
 ```text
-ACIMA-D013  warning  composition host discovers components with pkgutil.walk_packages; register and construct each application component explicitly.
+ACIMA-D013  warning  composition boundary discovers components with pkgutil.walk_packages; register and construct each module-owned component explicitly.
   host/main.py:7
 ```
 
 ### Why
 
-The host no longer states which application components exist. A missing package, a renamed module,
+The composition boundary no longer states which module-owned components exist. A missing package, a renamed module,
 an accidental second implementation or a constructor ambiguity becomes a startup discovery problem
 instead of a reviewable construction expression. The graph exists only in the scanner's runtime
 result, so neither a reader nor a build can answer what the application is made of.
@@ -927,7 +928,7 @@ only. A framework scan that the detector cannot see is a manual-review item, not
 
 **Severity** `warning` → `error` at 2.0.0 · **Level** L1 · **Principle** P4
 
-> An application-owned component MUST receive its dependencies through its constructor or composition
+> A module-owned component MUST receive its dependencies through its constructor or composition
 > function, not through property/field injection or post-construction assignment.
 
 ### Violation
@@ -961,7 +962,7 @@ different syntax: the object has more than one valid construction path, and one 
 ### Fix
 
 Move the dependency to the constructor and let the host supply it. If the framework owns activation,
-keep the application dependency in the declared constructor; framework infrastructure may use its own
+keep the module-owned dependency in the declared constructor; framework infrastructure may use its own
 mechanism. Do not replace the injected field with a global lookup — that is `L004`, not a fix.
 
 ### Detection
@@ -975,11 +976,11 @@ Go and .NET report `executed: false` in this revision, and Java is manual-review
 
 ---
 
-## ACIMA-D015 · Closed-over application dependency
+## ACIMA-D015 · Closed-over module-owned dependency
 
 **Severity** `warning` → `error` at 2.0.0 · **Level** L1 · **Principle** P4
 
-> An application component MUST receive an application-owned collaborator through a declared
+> A module-owned component MUST receive a module-owned collaborator through a declared
 > parameter or field. It MUST NOT capture one from a module binding or enclosing local through a
 > closure, returned function or callback.
 
@@ -995,7 +996,7 @@ export const createOrder = (request: CreateOrderRequest) =>
 ### Finding
 
 ```text
-ACIMA-D015  warning  orders captures the application dependency orderRepository from an enclosing scope; pass it as a parameter or supply it at the composition boundary.
+ACIMA-D015  warning  orders captures the module-owned dependency orderRepository from an enclosing scope; pass it as a parameter or supply it at the composition boundary.
   orders/service.ts:4
 ```
 
@@ -1009,7 +1010,7 @@ Currying is not the problem: a function that captures an explicit outer paramete
 ### Fix
 
 Take the collaborator as a parameter, or move the closure's construction to the composition
-boundary. If the closure is genuinely a pure transformation, remove the application dependency
+boundary. If the closure is genuinely a pure transformation, remove the module-owned dependency
 from it instead of hiding it.
 
 ### Detection
@@ -1023,11 +1024,11 @@ type resolution remain manual review. **Implemented for Python and TypeScript**;
 
 ---
 
-## ACIMA-D016 · Partial application of an application dependency
+## ACIMA-D016 · Partial application of a module-owned dependency
 
 **Severity** `warning` → `error` at 2.0.0 · **Level** L1 · **Principle** P4
 
-> Partial application or method binding of an application-owned dependency MUST occur at the
+> Partial application or method binding of a module-owned dependency MUST occur at the
 > composition boundary. A component MUST NOT pre-bind a collaborator into a function it returns.
 
 ### Violation
@@ -1045,7 +1046,7 @@ export const makeHandler = (repository: IOrderRepository) =>
 ### Finding
 
 ```text
-ACIMA-D016  warning  orders partially applies the application dependency repository inside a component; bind it at the composition boundary or keep it as a parameter.
+ACIMA-D016  warning  orders partially applies the module-owned dependency repository inside a component; bind it at the composition boundary or keep it as a parameter.
   orders/service.ts:2
 ```
 

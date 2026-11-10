@@ -5,9 +5,21 @@ actually have, usually in review, usually at 5pm.
 
 ---
 
+### "Does ACIMA only apply to applications and services?"
+
+No. ACIMA applies to any software composition with identifiable module ownership: a package, a
+library, a framework, an SDK, an application, a modular monolith, a service, a worker or a
+distributed system. It does not require a service, an executable, a deployment unit or a host. A
+module is an ownership boundary; a project, package, service or process is only one possible
+representation. A published library may contain several modules and declare no host at all: its
+consumer or public factory is the composition boundary. The optional profiles add requirements only
+for their own contexts, and neither service topology nor library distribution is the default.
+
+---
+
 ### "Isn't this just Clean Architecture with extra steps?"
 
-No. Clean Architecture describes *layers inside an application* — domain knows nothing, application
+No. Clean Architecture describes *layers inside a module or system* — domain knows nothing, application
 depends on domain, infrastructure depends on both. ACIMA contains that (`L001`) as one of five rule
 categories, but its subject is **ownership between modules**: contracts, zero-dependency public
 surfaces, acyclicity, and data ownership.
@@ -62,11 +74,13 @@ every consumer.
 
 - **Validation**: validate in the contract's constructor with plain code. You need `if (price.IsNegative) throw`
   far more often than you need a declarative attribute.
-- **Serialization**: configure the serializer in the host. If a serializer cannot handle your immutable
-  type, map to a transport type in the host. That mapping is one file; the dependency would be forever.
+- **Serialization**: configure the serializer at the composition boundary. If a serializer cannot
+  handle your immutable type, map to a transport type at that boundary. That mapping is one file; the
+  dependency would be forever.
 - **Enums**: plain language enums are fine — they are core language constructs, not packages.
 - **Source generators**: if a generator emits code that references a package, the generated code is a
-  dependency; put the generated types in the implementation or host, not in contracts.
+  dependency; put the generated types in the implementation or at the composition boundary, not in
+  contracts.
 
 If a contracts unit genuinely cannot exist without a package, that is a signal the type is not a
 contract — it is an implementation detail that wants to cross a boundary.

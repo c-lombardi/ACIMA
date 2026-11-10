@@ -6,7 +6,14 @@ AI is making it faster to generate, modify and ship software. It is not making i
 
 Documentation does not stop this. Review does not scale to it. ACIMA does, because an ACIMA boundary is **executable** — a rule a build can fail on.
 
-ACIMA (Autonomous, Contract-Isolated, Immutable Modular Architecture) is an architectural standard for systems built and changed by people and AI agents together. It defines how modules are structured, what they may depend on, and how those limits are checked automatically.
+ACIMA (Autonomous, Contract-Isolated, Immutable Modular Architecture) is an architectural standard for software built and changed by people and AI agents together. It defines how modules are structured, what they may depend on, and how those limits are checked automatically.
+
+ACIMA applies to any software composition with identifiable ownership: a package or library, a
+framework or SDK, an application, a modular monolith, a distributed system, a service, a worker, or a
+mixture. It does not require a service, an application entry point, a deployment unit or a single
+composition host. A module is an ownership boundary; a project, package, service, process or host is
+only one possible representation. The optional profiles add requirements for genuinely distinct
+contexts; neither service topology nor library distribution is the default.
 
 > A module owns its implementation, exposes an explicit contract, and prevents anything outside from depending on its internals.
 
@@ -70,7 +77,7 @@ The catalog also makes **instance lifetime and state ownership** explicit: share
 
 ## How it works
 
-1. **Declare the units.** A small `acima.config.json` names each module, its units, their roles (`contracts`, `implementation`, `host`, …) and their paths. This is the only thing ACIMA asks you to write.
+1. **Declare the boundaries.** A small `acima.config.json` names each module, the units that represent it, their roles (`contracts`, `implementation`, optional `host`, …) and their paths. A module may span several units; a library may declare no host.
 2. **Run an enforcer.** The reference enforcer for your language reads that map and the source, then reports violations of the portable rules: an implementation importing another implementation, a contract that has grown dependencies, a module reaching around a contract.
 3. **Read an honest report.** Every rule the run did not decide is listed as *not evaluated*. There is no health score, because a number that hides which rules were skipped is worse than no number.
 4. **Freeze, then ratchet.** In an existing codebase, existing findings become owned, expiring, fingerprinted waivers. The gate then fails on **new** violations only — so the count can only go down.

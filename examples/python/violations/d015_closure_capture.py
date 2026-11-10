@@ -1,4 +1,4 @@
-"""Deliberately broken: a function captures a module-level application dependency."""
+"""Deliberately broken: a function captures a module-level module-owned dependency."""
 
 
 class OrderRepository:

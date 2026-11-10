@@ -950,7 +950,7 @@ class Enforcer:
 
         D013 is deliberately limited to the host: that is where registration and discovery
         belong, so a dynamic scan there is the mechanism that hides the graph. D014 applies to
-        application components (implementation and adapter) and to host-defined entry points;
+        module-owned components (implementation and adapter) and to host-defined entry points;
         a framework may activate them, but their required dependencies must still be declared.
         Service-locator calls remain L004's review concern, not a duplicate D014 finding.
         """
@@ -972,7 +972,7 @@ class Enforcer:
                     evidence = lines[line - 1].strip() if 0 < line <= len(lines) else ""
                     self.add("ACIMA-D013",
                              f"composition host {unit.id} discovers components with {name}; "
-                             "register and construct each application component explicitly.",
+                             "register and construct each module-owned component explicitly.",
                              rel, line, evidence)
             if unit.role not in self.COMPOSITION_ROLES:
                 continue
@@ -1087,7 +1087,7 @@ class Enforcer:
         return "unbound"
 
     def check_functional_capture(self) -> None:
-        """D015: a closure must not silently capture an application dependency.
+        """D015: a closure must not silently capture a module-owned dependency.
 
         A dependency declared by an enclosing *parameter* is visible: that is the curried form.
         A module binding or an enclosing local is a capture. Pure closures over constants and
@@ -1120,7 +1120,7 @@ class Enforcer:
                     seen.add(key)
                     evidence = lines[load.lineno - 1].strip() if 0 < load.lineno <= len(lines) else ""
                     self.add("ACIMA-D015",
-                             f"{unit.id} captures the application dependency {name} from an "
+                             f"{unit.id} captures the module-owned dependency {name} from an "
                              "enclosing scope; pass it as a parameter or supply it at the "
                              "composition boundary.", rel, load.lineno, evidence)
 
@@ -1140,7 +1140,7 @@ class Enforcer:
                         continue
                     evidence = lines[node.lineno - 1].strip() if 0 < node.lineno <= len(lines) else ""
                     self.add("ACIMA-D016",
-                             f"{unit.id} partially applies the application dependency "
+                             f"{unit.id} partially applies the module-owned dependency "
                              f"{names[0]} inside a component; bind it at the composition "
                              "boundary or keep it as a parameter.", rel, node.lineno, evidence)
                     break
@@ -1262,7 +1262,7 @@ class Enforcer:
                 evidence = lines[line - 1].strip() if 0 < line <= len(lines) else ""
                 if lifetime == "transient" and self._class_stateless(cls):
                     self.add("ACIMA-A007",
-                             f"{unit.id} registers the stateless service {target} as transient; "
+                             f"{unit.id} registers the stateless shared service {target} as transient; "
                              "share it at the longest appropriate lifetime.", rel, line, evidence)
                 if lifetime != "shared":
                     continue
@@ -1313,7 +1313,7 @@ class Enforcer:
         return None
 
     def check_configuration(self) -> None:
-        """A005: configuration is resolved at the composition root, not discovered."""
+        """A005: configuration is resolved at a composition boundary, not discovered."""
         for rel in sorted(self.files):
             unit = self.units_of[rel]
             if unit.role not in self.CONFIG_READ_ROLES:
@@ -1378,7 +1378,7 @@ class Enforcer:
                     evidence = lines[line - 1].strip() if 0 < line <= len(lines) else ""
                     self.add("ACIMA-A006",
                              f"{unit.id} embeds an operational value in {name}; name it in its "
-                             "owner or supply it as configuration at the composition root.",
+                             "owner or supply it as configuration at a composition boundary.",
                              rel, line, evidence)
 
     def check_naming(self) -> None:

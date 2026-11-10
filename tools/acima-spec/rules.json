@@ -113,7 +113,7 @@
       "level": "L1",
       "title": "Contracts carry a third-party dependency",
       "summary": "Contracts may depend only on the language's core library. Third-party packages and framework types belong in implementations or adapters.",
-      "fix": "Replace validation attributes with constructor checks and move serializer concerns to a transport type in the host; contracts keep only the language's core library.",
+      "fix": "Replace validation attributes with constructor checks and move serializer concerns to a transport type at the composition boundary; contracts keep only the language's core library.",
       "automation": "automated"
     },
     {
@@ -129,8 +129,8 @@
       "id": "ACIMA-D006",
       "severity": "error",
       "level": "L1",
-      "title": "Contracts reference the host or composition root",
-      "summary": "Contracts must not know how they are hosted, wired or deployed.",
+      "title": "Contracts reference a composition boundary",
+      "summary": "Contracts must not know how they are assembled, hosted, wired or deployed.",
       "fix": "Remove the reference and pass what the handler needs as a contract member, or resolve it inside the implementation through a consumer-owned port.",
       "automation": "automated"
     },
@@ -316,8 +316,8 @@
       "severity": "warning",
       "level": "L3",
       "title": "Configuration read outside the composition boundary",
-      "summary": "An application component must not read deployment, operational or secret configuration from ambient environment variables or a global configuration object.",
-      "fix": "Resolve the value once at the composition root and pass it into the component constructor or composition function; the component should receive a value, not discover one.",
+      "summary": "A module-owned component must not read deployment, operational or secret configuration from ambient environment variables or a global configuration object.",
+      "fix": "Resolve the value once at a composition boundary and pass it into the component constructor or composition function; the component should receive a value, not discover one.",
       "automation": "automated",
       "severityRatchet": {
         "to": "error",
@@ -329,8 +329,8 @@
       "severity": "warning",
       "level": "L3",
       "title": "Operational value without a declared owner",
-      "summary": "A timeout, retry count, limit, rate, batch size, retention period or similar operational policy must have a named owner: a named constant, a typed configuration value supplied by the host, or a reviewed local literal.",
-      "fix": "Name the value as a constant in its owner, or resolve it from configuration at the composition root and inject it; keep only incidental literals inline.",
+      "summary": "A timeout, retry count, limit, rate, batch size, retention period or similar operational policy must have a named owner: a named constant, a typed configuration value supplied at a composition boundary, or a reviewed local literal.",
+      "fix": "Name the value as a constant in its owner, or resolve it from configuration at a composition boundary and inject it; keep only incidental literals inline.",
       "automation": "automated",
       "severityRatchet": {
         "to": "error",
@@ -449,8 +449,8 @@
       },
       "level": "L1",
       "title": "Optional construction dependency",
-      "summary": "An application-owned constructor requires every input the component needs; an optional or defaulted parameter is a second construction path with hidden behaviour.",
-      "fix": "Require the parameter at every construction site and pass it from the composition root; if the behaviour is genuinely optional, model it explicitly with a named policy or a documented no-op implementation instead of an omitted argument.",
+      "summary": "A module-owned constructor requires every input the component needs; an optional or defaulted parameter is a second construction path with hidden behaviour.",
+      "fix": "Require the parameter at every construction site and pass it from a composition boundary; if the behaviour is genuinely optional, model it explicitly with a named policy or a documented no-op implementation instead of an omitted argument.",
       "automation": "automated"
     },
     {
@@ -462,7 +462,7 @@
       },
       "level": "L1",
       "title": "Optional argument hides an operational decision",
-      "summary": "An application-owned method or function does not use an optional or defaulted parameter to hide a decision its caller should make.",
+      "summary": "A module-owned method or function does not use an optional or defaulted parameter to hide a decision its caller should make.",
       "fix": "Require the argument, or split the operation into distinct methods, or take an explicit options value whose fields are required; keep a default only where a language or framework contract needs it, and document why.",
       "automation": "automated"
     },
@@ -471,7 +471,7 @@
       "severity": "warning",
       "level": "L1",
       "title": "Implicit component registration",
-      "summary": "Application-owned components must be registered and constructed explicitly at the composition boundary; automatic scanning, convention registration and dynamic discovery must not hide the graph.",
+      "summary": "Module-owned components must be registered and constructed explicitly at a composition boundary; automatic scanning, convention registration and dynamic discovery must not hide the graph.",
       "fix": "Register each component explicitly and construct it with named dependencies; if a framework scanner is unavoidable, declare a reviewed exception and prove the discovered set.",
       "automation": "automated",
       "severityRatchet": {
@@ -484,8 +484,8 @@
       "severity": "warning",
       "level": "L1",
       "title": "Property or field injection",
-      "summary": "An application-owned component must receive dependencies through its constructor or composition function, not through property or field injection or post-construction assignment.",
-      "fix": "Move the dependency to the constructor and supply it from the host; if activation is framework-managed, keep the required dependencies in the declared constructor.",
+      "summary": "A module-owned component must receive dependencies through its constructor or composition function, not through property or field injection or post-construction assignment.",
+      "fix": "Move the dependency to the constructor and supply it at a composition boundary; if activation is framework-managed, keep the required dependencies in the declared constructor.",
       "automation": "automated",
       "severityRatchet": {
         "to": "error",
@@ -496,8 +496,8 @@
       "id": "ACIMA-D015",
       "severity": "warning",
       "level": "L1",
-      "title": "Closed-over application dependency",
-      "summary": "An application component must receive application-owned collaborators through declared parameters or fields; it must not capture them from an enclosing scope through a closure, returned function or callback.",
+      "title": "Closed-over module-owned dependency",
+      "summary": "A module-owned component must receive module-owned collaborators through declared parameters or fields; it must not capture them from an enclosing scope through a closure, returned function or callback.",
       "fix": "Pass the collaborator as a parameter or constructor field, or bind it explicitly at the composition boundary; keep closures for pure values and transformations.",
       "automation": "automated",
       "severityRatchet": {
@@ -509,9 +509,9 @@
       "id": "ACIMA-D016",
       "severity": "warning",
       "level": "L1",
-      "title": "Partial application of an application dependency",
-      "summary": "Partial application or method binding of an application-owned dependency must occur at the composition boundary; a component must not pre-bind a collaborator into a function it returns.",
-      "fix": "Move the partial application to the host and pass the resulting function in, or keep every dependency as an explicit parameter of the component's function.",
+      "title": "Partial application of a module-owned dependency",
+      "summary": "Partial application or method binding of a module-owned dependency must occur at a composition boundary; a component must not pre-bind a collaborator into a function it returns.",
+      "fix": "Move the partial application to the composition boundary and pass the resulting function in, or keep every dependency as an explicit parameter of the component's function.",
       "automation": "automated",
       "severityRatchet": {
         "to": "error",
@@ -523,8 +523,8 @@
       "severity": "warning",
       "level": "L3",
       "title": "Unnecessary transient lifetime",
-      "summary": "A stateless application service should be shared; a transient lifetime must be justified by independent identity, isolated mutable state, a short-lived resource or an operation boundary.",
-      "fix": "Register the stateless service at the longest appropriate lifetime (application/process/shared) rather than transient; keep transient only for components whose identity or state requires it.",
+      "summary": "A stateless shared service should be shared; a transient lifetime must be justified by independent identity, isolated mutable state, a short-lived resource or an operation boundary.",
+      "fix": "Register the stateless shared service at the longest appropriate lifetime (system/process/shared) rather than transient; keep transient only for components whose identity or state requires it.",
       "automation": "automated",
       "severityRatchet": {
         "to": "error",
@@ -571,7 +571,7 @@
       "severity": "warning",
       "level": "L3",
       "title": "Generic responsibility name",
-      "summary": "An application-owned type must not use a generic placeholder such as Helper, Manager, Processor, Utility, Common, Base, Default or Generic as a substitute for its actual responsibility.",
+      "summary": "A module-owned type must not use a generic placeholder such as Helper, Manager, Processor, Utility, Common, Base, Default or Generic as a substitute for its actual responsibility.",
       "fix": "Name the responsibility or domain concept directly (OrderValidator, PriceCalculator, PaymentAuthorizer), or document why the generic role is the precise abstraction in this context.",
       "automation": "automated"
     },

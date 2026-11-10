@@ -11,7 +11,7 @@ P14 is numbered after the profile so that the existing profile identifiers keep 
 
 | # | Principle | Enforced by |
 |---|-----------|-------------|
-| P1 | [Service Ownership](#p1-service-ownership) | `D001` `D009` `L003` `A001` `A002` `A003` `C008` |
+| P1 | [Module Ownership](#p1-module-ownership) | `D001` `D009` `L003` `A001` `A002` `A003` `C008` |
 | P2 | [Contract Isolation](#p2-contract-isolation) | `D002` `D006` `D009` `L003` `G003` |
 | P3 | [Zero-Dependency Contracts](#p3-zero-dependency-contracts) | `D003` `D004` `D008` `L002` `C005` |
 | P4 | [Dependency Inversion](#p4-dependency-inversion) | `D002` `D013` `D014` `D015` `D016` `L003` `L004` `G003` |
@@ -29,7 +29,7 @@ P14 is numbered after the profile so that the existing profile identifiers keep 
 
 ---
 
-## P1. Service Ownership
+## P1. Module Ownership
 
 > **Every module owns its implementation, its abstractions, its dependencies and its domain. No other
 > module may own, share or reach into them.**
@@ -37,7 +37,7 @@ P14 is numbered after the profile so that the existing profile identifiers keep 
 A module is a unit of ownership before it is a unit of code. It owns:
 
 - its **domain model** — the entities, aggregates and invariants that only it may decide;
-- its **implementation** — application services, persistence, integrations, adapters;
+- its **implementation** — handlers, services, persistence, integrations, adapters;
 - its **dependencies** — the packages it chose, at the versions it chose;
 - its **abstractions** — the interfaces through which it talks to databases, queues, clocks and peers;
 - its **data** — the tables, schemas, buckets and caches that hold its state (see P7 and `A001`).
@@ -168,8 +168,9 @@ ACIMA distinguishes two kinds of abstraction at a boundary:
   demand a new contract type.
 - **P4.4** Abstractions over infrastructure MUST live in the module that uses them, never in a
   cross-module project (`D002` if published, `L003` if leaked).
-- **P4.5** Wiring — deciding which implementation satisfies which port — MUST happen in the
-  composition root, not inside modules (`D006`).
+- **P4.5** Cross-module wiring — deciding which implementation satisfies which port — MUST happen at
+  an identifiable composition boundary, not inside a consuming module (`D006`). A module MAY publish
+  a composition function for its own internal graph.
 - **P4.6** A required input MUST be supplied explicitly at construction and at invocation. An
   optional parameter, a default value or an implicit fallback MUST NOT conceal a dependency or a
   decision the caller owns (`D011`, `D012`; chapter 13). A nullable parameter **without** a default
@@ -181,24 +182,24 @@ ACIMA distinguishes two kinds of abstraction at a boundary:
 - **P4.8** Configuration MUST be resolved and validated at the composition boundary and passed into
   the component that consumes it. A module MUST NOT read ambient environment variables or a global
   configuration object to discover a value a caller could supply (`A005`, `A002`; chapter 14).
-- **P4.9** Application-owned components MUST be registered and constructed at an identifiable
+- **P4.9** Module-owned components MUST be registered and constructed at an identifiable
   composition boundary. Automatic scanning, convention registration or dynamic discovery MUST NOT
   hide which components exist or which implementation is selected (`D013`; chapter 15).
 - **P4.10** Dependencies MUST arrive through a constructor or composition function, not through
   property/field injection, post-construction assignment or a global service locator (`D014`,
   `L004`; chapter 15). A framework MAY activate a component, but it MUST NOT conceal the
   component's declared dependencies.
-- **P4.11** A closure, lambda, callback or returned function MUST NOT capture an application-owned
+- **P4.11** A closure, lambda, callback or returned function MUST NOT capture a module-owned
   dependency from a module or enclosing local. The dependency MUST be an explicit parameter or a
   declared field; pure closures over values and transformations remain permitted (`D015`;
   chapter 16).
-- **P4.12** Currying and higher-order composition are permitted when every application dependency
-  is a parameter. Partial application or method binding of an application dependency MUST happen at
+- **P4.12** Currying and higher-order composition are permitted when every module-owned dependency
+  is a parameter. Partial application or method binding of a module-owned dependency MUST happen at
   the composition boundary, not inside a component (`D016`; chapter 16).
-- **P4.13** A stateless application service SHOULD be shared at the longest appropriate lifetime
-  rather than repeatedly constructed. A transient lifetime remains valid when per-instance
-  identity, isolated mutable state, a short-lived resource or an operation boundary requires it
-  (`A007`; chapter 17).
+- **P4.13** A stateless shared service SHOULD be shared at the longest appropriate lifetime rather
+  than repeatedly constructed. A transient lifetime remains valid when per-instance identity,
+  isolated mutable state, a short-lived resource or an operation boundary requires it (`A007`;
+  chapter 17).
 - **P4.14** A component's lifetime MUST be compatible with the lifetimes of the dependencies it
   captures. A shared/singleton component MUST NOT directly capture a scoped dependency; a
   longer-lived component that needs shorter-lived state MUST use an explicit scope, factory or
@@ -208,13 +209,13 @@ ACIMA distinguishes two kinds of abstraction at a boundary:
   initialisation, lifetime and cleanup story. Transient construction is not a substitute for state
   ownership  (`A009`; chapter 17). Thread safety, tenant isolation, resource cleanup and distributed
   consistency remain review obligations, not static-analysis claims.
-- **P4.16** A factory, higher-order function or returned component MUST NOT conceal an
-  application-owned dependency or its lifecycle ownership. A dependency is declared as a parameter
-  or field whether the component is a class, a closure or a factory product, and a factory that
-  resolves a dependency from a global container at invocation is a service locator (`D015`, `D016`,
-  `L004`; chapters 16 and 17). Framework-managed activation remains legitimate when the required
-  dependencies and activation path are inspectable (`P4.10`). Pure currying, partial application and
-  higher-order composition over values remain permitted.
+- **P4.16** A factory, higher-order function or returned component MUST NOT conceal a module-owned
+  dependency or its lifecycle ownership. A dependency is declared as a parameter or field whether
+  the component is a class, a closure or a factory product, and a factory that resolves a dependency
+  from a global container at invocation is a service locator (`D015`, `D016`, `L004`; chapters 16
+  and 17). Framework-managed activation remains legitimate when the required dependencies and
+  activation path are inspectable (`P4.10`). Pure currying, partial application and higher-order
+  composition over values remain permitted.
 
 ### The test
 
@@ -236,7 +237,7 @@ consumer change?* If yes, the boundary is leaking.
 - **P5.3** A reference MUST NOT deliver an implementation transitively (`D008`).
 - **P5.4** Inside a module, domain and application logic MUST NOT depend on infrastructure or
   delivery mechanisms (`L001`). Dependencies point inward, to the domain.
-- **P5.5** A module MUST NOT reference the host or composition root (`D006`).
+- **P5.5** A module MUST NOT reference a composition boundary, including a host (`D006`).
 
 ### Required reading of "acyclic"
 
@@ -320,7 +321,7 @@ keep domain entities mutable precisely to make this distinction visible.
 Independence is not an aesthetic goal; it is an operational one. It is the difference between
 "Catalog upgraded its ORM, so we all upgraded" and "Catalog upgraded its ORM, nothing else changed".
 It is also the precondition for extraction: a module that already owns its data and its contracts can
-become a service without redesign, because the seam already exists.
+be represented as a service, if the team chooses, without redesign, because the seam already exists.
 
 ### Evolutionary pressure this creates
 
@@ -466,7 +467,8 @@ import.
 ## P12. Absolute Contract Isolation
 
 > **Contracts reference nothing at all — no project, no package, no shared kernel, no framework. This
-> is the default for new systems.**
+> is the profile's total-isolation rule and applies only when service topology is explicitly
+> selected.**
 
 ### Obligations
 
@@ -493,7 +495,7 @@ not migrated remain governed by P3.5; new repositories MUST use absolute isolati
 > infrastructure.**
 
 > **Applicability.** P13 applies only in the `service-topology` profile and only when that profile
-> is explicitly adopted. Base ACIMA does not require every application to organise around
+> is explicitly adopted. Base ACIMA does not require every system to organise around
 > product-oriented services, to enforce UI/API workflow parity, or to apply P13.4's service-shape
 > requirement. The obligations below are checked as `ST-11`/`ST-12` when the profile is in force.
 
@@ -584,7 +586,7 @@ P7, and it does not prescribe a framework, a messaging product or a distributed 
   declared consistency guarantee on return. Atomicity is one valid strategy; a recoverable
   intermediate state, an owned compensation or reconciliation are equally valid where the domain
   requires them (`A015`; chapter 6 §6.5.1–§6.5.3).
-- **P15.7** Logging, metrics and telemetry MUST observe application behaviour without concealing it,
+- **P15.7** Logging, metrics and telemetry MUST observe system behaviour without concealing it,
   replacing a business decision or materially changing the outcome. Operational diagnostics, business
   events and required audit records MUST be distinguishable by owner and purpose (`A014`;
   chapter 6 §6.10).
@@ -597,8 +599,9 @@ P7, and it does not prescribe a framework, a messaging product or a distributed 
   possible and could affect correctness.
 - Every method does not need a cancellation parameter. Cancellation applies where the execution
   environment supports it and the operation is long-running or externally cancellable.
-- Every module does not need its own broker, outbox or saga framework. The owner may be a host policy,
-  an adapter, a library or a managed platform capability, provided the ownership is visible.
+- Every module does not need its own broker, outbox or saga framework. The owner may be a
+  composition-boundary policy, an adapter, a library or a managed platform capability, provided the
+  ownership is visible.
 - A local mutation inside an aggregate does not need a separate state-ownership mechanism. P15 is about
   observable effects and the consistency contract around them; ordinary in-memory mutation remains
   governed by the module's internal design (chapter 17).

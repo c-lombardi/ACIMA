@@ -7,12 +7,12 @@ how to live with it.
 
 `→` means "may reference". Anything not listed is forbidden.
 
-| From ↓ / To → | contracts (own) | contracts (other) | implementation (own) | implementation (other) | shared kernel | host |
+| From ↓ / To → | contracts (own) | contracts (other) | implementation (own) | implementation (other) | shared kernel | composition boundary (`host`) |
 |---|---|---|---|---|---|---|
 | **contracts (own)** | — | ❌ `D003` | ❌ `D002` | ❌ `D002` | ❌ `ST-5` (default) | ❌ `D006` |
 | **implementation** | ✅ | ✅ | — | ❌ `D001` | ✅ | ❌ `D006` |
 | **shared kernel** | ❌ `D007` | ❌ `D007` | ❌ `D007` | ❌ `D007` | — | ❌ `D007` |
-| **host** | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| **composition boundary (`host`)** | ✅ | ✅ | ✅ | ✅ | ✅ | — |
 | **test** | ✅ | ✅ | ✅ (unit under test) | ⚠️ only the module it tests | ✅ | ✅ |
 
 Three things about this table are worth stating explicitly, because they are the parts people try to
@@ -25,6 +25,10 @@ negotiate:
    inner code is free; another module's inner code is unreachable.
 3. **The kernel is a leaf.** It may reference nothing, including the language's own convenience
    packages beyond the core library. A kernel that needs a JSON library is not a kernel.
+
+A composition boundary may be a host, a library consumer, a public factory, a package initializer, a
+framework integration point, a plugin loader or a test fixture. The matrix row applies only where a
+boundary is declared; base ACIMA does not require one, and a system may declare several.
 
 ## 4.2 How a tool decides what a unit is
 
@@ -149,7 +153,7 @@ should be examined for missing concepts.
 | No implementation → implementation | no `ProjectReference`; `dotnet` forbids cycles too | `no-restricted-imports` on `*/impl/*` + `exports` map | `D001` finding | `internal/` compile error + `D001` | package-private / JPMS + `D001` |
 | Contracts zero-dependency | csproj with no `PackageReference`, enforced by a test over `Assembly.GetReferencedAssemblies()` | `D004` over package.json + import graph | `D004` over imports | `D004` over imports | `D004` over imports |
 | Contracts → contracts forbidden | `D003` | `D003` | `D003` | `D003` | `D003` |
-| No host reference | `D006` | `D006` | `D006` | `D006` | `D006` |
+| No composition-boundary reference | `D006` | `D006` | `D006` | `D006` | `D006` |
 | Transitive redaction | `PrivateAssets="all"` | `exports` map, `sideEffects:false` | n/a — graph closure only | n/a — graph closure only | JPMS `exports` |
 | Acyclicity | compiler + `D005` | `D005` | `D005` | `go list` + `D005` | `D005` |
 | Kernel is a leaf | `D007` | `D007` | `D007` | `D007` | `D007` |
@@ -229,9 +233,9 @@ disagree in review instead of discovering it in an incident.
 | **port** | — | ❌ `D010` | ❌ (`D003` for contracts) | ❌ `D010` | ❌ `D002` |
 | **implementation** | ✅ | ❌ `L005` | ✅ | ❌ `L005` | own only (`D001`) |
 | **contracts** | ❌ (`D003`) | ❌ `D004` | ❌ `D003` | ❌ `D004` | ❌ `D002` |
-| **host** | ✅ | ❌ `L005` (it names the adapter, not the vendor) | ✅ | ❌ `L005` | ✅ |
+| **composition boundary (`host`)** | ✅ | ❌ `L005` (it names the adapter, not the vendor) | ✅ | ❌ `L005` | ✅ |
 
-The host row is the one that surprises people: composition roots are allowed to know *which adapter*
+The composition-boundary row is the one that surprises people: boundaries are allowed to know *which adapter*
 implements a port, and are not allowed to know *which vendor* it wraps. That is what keeps the vendor
 choice a one-line change in one file.
 

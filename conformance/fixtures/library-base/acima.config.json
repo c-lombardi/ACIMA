@@ -1,0 +1,22 @@
+{
+  "standard": "1.4.0-draft.1",
+  "mode": "base",
+  "language": "python",
+  "level": "L1",
+  "root": ".",
+  "units": [
+    {
+      "id": "pricing.contracts",
+      "module": "pricing",
+      "role": "contracts",
+      "paths": ["src/pricing/contracts"]
+    },
+    {
+      "id": "pricing",
+      "module": "pricing",
+      "role": "implementation",
+      "paths": ["src/pricing/impl"]
+    }
+  ],
+  "exclude": ["__pycache__"]
+}

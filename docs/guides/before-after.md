@@ -54,7 +54,7 @@ has one owner.
 | Uncontrolled configuration ownership | `ACIMA-A002` (warning) | **Not evaluated by the portable runner** | Pass namespaced configuration into the module; review manually. |
 | Ambient configuration read inside a component | `ACIMA-A005` (warning) | Python/TypeScript automated; manual elsewhere | Resolve and validate it in the host; inject typed settings. |
 | Unnamed operational literal | `ACIMA-A006` (warning) | Python/TypeScript candidate scanner; manual elsewhere | Name the value in its owner or inject it from configuration. |
-| Discovery chooses application components | `ACIMA-D013` (warning) | Python/TypeScript automated; manual elsewhere | Name registrations/constructors; keep discovery only in a reviewed, proven exception. |
+| Discovery chooses module-owned components | `ACIMA-D013` (warning) | Python/TypeScript automated; manual elsewhere | Name registrations/constructors; keep discovery only in a reviewed, proven exception. |
 | Dependency injected into a property or field | `ACIMA-D014` (warning) | Python/TypeScript automated; manual elsewhere | Move the dependency to the constructor and supply it from the host. |
 | Collaborator captured by a closure or callback | `ACIMA-D015` (warning) | Python/TypeScript automated; manual elsewhere | Pass it as a parameter or declared field; keep pure closures. |
 | Dependency partially applied inside a component | `ACIMA-D016` (warning) | Python/TypeScript automated; manual elsewhere | Move `bind`/`partial` to the composition boundary or keep it as a parameter. |

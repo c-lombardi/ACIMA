@@ -45,7 +45,7 @@ The correction is not a new framework. It is to move the effect behind the owner
 the owner state the outcome and recovery semantics.
 
 ```python
-# Wrong: the host owns both effects and calls the pair "atomic".
+# Wrong: a composition boundary owns both effects and calls the pair "atomic".
 with db.transaction():
     orders_repo.save(order)
     payments.charge(order.total)
@@ -94,7 +94,8 @@ ACIMA does not claim exactly-once delivery. The obligation is explicit, owned du
 
 ## Transactions and recovery
 
-One module owns a transaction around its own state and outbox writes. The host does not open a
+One module owns a transaction around its own state and outbox writes. A composition boundary does not
+open a
 transaction across modules. Cross-module workflows use an outbox, a saga or reconciliation with an
 explicit intermediate state.
 

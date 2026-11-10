@@ -31,7 +31,7 @@ This catalog is its human-readable form; if they disagree, the JSON is authorita
 | `D003` | Contracts reference another contracts unit | error | L1 |
 | `D004` | Contracts carry a third-party dependency | error | L1 |
 | `D005` | Circular module dependency | error | L1 |
-| `D006` | Contracts reference the host | error | L1 |
+| `D006` | Contracts reference a composition boundary | error | L1 |
 | `D007` | Shared kernel violation | error | L1 |
 | `D008` | Transitive implementation leak | error | L1 |
 | `D009` | Access to another module's internals | error | L1 |
@@ -40,8 +40,8 @@ This catalog is its human-readable form; if they disagree, the JSON is authorita
 | `D012` | Optional argument hides an operational decision | warning | L1 |
 | `D013` | Implicit component registration | warning | L1 |
 | `D014` | Property or field injection | warning | L1 |
-| `D015` | Closed-over application dependency | warning | L1 |
-| `D016` | Partial application of an application dependency | warning | L1 |
+| `D015` | Closed-over module-owned dependency | warning | L1 |
+| `D016` | Partial application of a module-owned dependency | warning | L1 |
 
 ### Layering
 

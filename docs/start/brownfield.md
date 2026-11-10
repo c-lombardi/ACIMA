@@ -124,8 +124,8 @@ CI and source changes are separate approvals. Start at L1 unless the repository 
 | 3 | Freeze contracts (`C001`, `C002`) | mechanical and immediately valuable |
 | 4 | Establish persistence ownership (`A001`) | expensive; needs schema work |
 | 5 | Configuration, values and statics (`A002`, `A005`, `A006`, `A003`) | usually a small number of hot spots |
-| 6 | Explicit composition and injection (`D013`, `D014`) | needs the host; reduces hidden startup behaviour |
-| 7 | Functional capture (`D015`, `D016`) | usually follows once the host exposes the dependency graph |
+| 6 | Explicit composition and injection (`D013`, `D014`) | needs a declared composition boundary (a host, factory, consumer or test fixture); reduces hidden startup behaviour |
+| 7 | Functional capture (`D015`, `D016`) | usually follows once the composition boundary exposes the dependency graph |
 | 8 | Effect review (`C008`, `A010`–`A013`) | name critical effects, duplicate and recovery semantics before adding retries or consumers |
 
 Gate CI on **no new findings** at the declared level. Existing findings are allowed only
@@ -152,7 +152,7 @@ expired waiver is a finding (`G002`); renewal is an individual decision.
 
 ## What not to do
 
-- Do not rewrite the application to satisfy the standard.
+- Do not rewrite the software to satisfy the standard.
 - Do not declare L3 on day one because the target is small; declare what the evidence supports.
 - Do not edit `acima.config.json`, expected findings or waiver dates just to make a run pass.
 - Do not rename every project in one PR. Rename the project you are already changing.

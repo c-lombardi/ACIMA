@@ -1,7 +1,7 @@
 # Architecture compatibility
 
-ACIMA is an architectural standard with its own portable requirements. It does not choose an
-application's overall architecture, and it does not merely enforce boundaries that another
+ACIMA is an architectural standard with its own portable requirements. It does not choose a
+system's overall architecture, and it does not merely enforce boundaries that another
 architecture already defines. Module ownership, explicit contracts, dependency isolation and
 direction, data and configuration ownership, and controlled composition are ACIMA requirements.
 Existing approaches may satisfy some or all of them, but compatibility is evaluated against the
@@ -46,11 +46,41 @@ Every family below is subject to the same five obligations ([principles](../stan
 - other modules see only an explicit contracts surface;
 - contracts are dependency-free leaves, so the graph is acyclic;
 - persistence, configuration and static state belong to the module that uses them;
-- the host is the only place that composes implementations.
+- implementations are composed only at one or more explicit composition boundaries.
 
 Inside one module, four checkable edges (`L001`–`L004`) describe layering without prescribing a
 particular ring model. Between modules, the dependency rules (`D001`–`D009`) enforce ownership. The
-rules are the same whether the modules are folders, projects or services.
+rules are the same whether the modules are folders, projects, packages or services.
+
+## Same requirements, different software shapes
+
+These are illustrations, not required layouts. The same ownership and dependency rules apply in each
+case; the optional profiles are not selected merely because the software has a particular shape.
+
+**A library or package with internal modules.** One published package may contain several ACIMA
+modules with private implementations and declared contracts. The package's public API is a separate
+distribution surface, not automatically a module boundary. There is no executable host: the library
+exposes a public factory or constructor, and the consumer composes it. `D006` still prevents contracts
+from referencing that factory; `D011`–`D016` still apply to module-owned construction. The library
+profile is adopted only when the additional public-API and compatibility evidence applies.
+
+```
+pricing/                     one published package
+  src/pricing/contracts/     public contract types used by consumers
+  src/pricing/impl/          private pricing rules and adapters
+  src/pricing/public.py      factory/API facade; this is composition surface, not a host
+```
+
+**A conventional application.** An HTTP host and a background worker may be separate composition
+boundaries over the same modules. Neither is the module's owner, and there is no requirement that one
+global root knows every module. Each boundary declares the graph it assembles; the modules remain
+unaware of either host.
+
+**A distributed system.** Services may be independently deployable, but a service is not
+necessarily one module: one service can host several modules, and one module can be represented by
+several deployment units. Service-to-service contracts are still contracts, and no service reads
+another service's private data. The service-topology profile is optional and adds its own constraints
+only when explicitly adopted; independent deployment alone does not select it.
 
 ## If your team chose…
 
@@ -91,7 +121,7 @@ practical applicability. Then choose `RECOMMENDED`, `RECOMMENDED_WITH_LIMITATION
 `NOT_RECOMMENDED`, `INSUFFICIENT_EVIDENCE` or `NOT_SUPPORTED`.
 
 A clean report is one input, never a recommendation. A small utility with no meaningful ownership
-boundaries, or an application whose existing boundary checks already cover the same guarantee, can
+boundaries, or a system whose existing boundary checks already cover the same guarantee, can
 be `NOT_RECOMMENDED`. An unsupported language or service topology is `NOT_SUPPORTED`. If ownership
 is not established, use `INSUFFICIENT_EVIDENCE` and ask only the question that changes the decision.
 Benefits must be classified as available today, achievable through adoption, requiring additional

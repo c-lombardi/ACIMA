@@ -5,43 +5,62 @@ used normatively. Where a term also has a looser everyday meaning, the differenc
 
 ## 2.1 Unit
 
-A **unit** is any boundary the language's build system can see: a project, a package, a module, a
-compilation root, or a directory the architecture configuration declares.
+A **unit** is an artifact that the language's build system or repository layout can identify: a
+project, a package, a namespace, a compilation root, a directory, or an explicit source set declared
+by the architecture configuration. A unit is a representation, not an ownership boundary.
 
-Every unit has exactly one **role** and, except for the kernel and the host, exactly one **module**:
+Every unit has exactly one **role**. Every `contracts` or `implementation` unit names the module it
+represents. A module may span several units, and no unit is assumed to be a module:
 
 | Role | Meaning | May depend on |
 |------|---------|---------------|
 | `contracts` | A module's public surface | nothing (default); the shared kernel is legacy |
 | `implementation` | A module's private code | its own contracts, other modules' contracts, the kernel (legacy) |
-| `host` | The composition root and delivery mechanism | anything |
+| `host` | A declared composition boundary; it may be executable or non-executable (see §2.5) | anything |
 | `shared-kernel` | Dependency-free value types used by every module | nothing |
 | `test` | Verification of one module | anything that module may depend on, plus the module itself |
 | `tooling` | Analyzers, generators, build scripts | whatever the tool needs; never part of the product graph |
 
-> **Not to be confused with:** a *module* is the set of units sharing a module name
-> (`catalog` → `catalog.contracts` + `catalog`). A module is an ownership concept; units are how that
-> concept becomes visible to a compiler.
+> **Not to be confused with:** a *module* is the ownership boundary, not the artifact that represents
+> it. One module may be represented by a project, package, namespace, directory, assembly, library,
+> service or another suitable mechanism. Those are implementation representations; they do not define
+> what a module is, and there is no required one-to-one correspondence between modules and any of
+> them.
 
 ## 2.2 Module
 
-A **module** is the smallest part of the system that one team owns, can change without coordinating
-with another team, and could in principle be extracted. It has:
+A **module** is an identifiable architectural ownership boundary. It:
 
-- a name, used in every unit and in every finding;
-- a contracts unit in base mode, or one contracts project per outward-facing layer in service
-  mode;
-- one or more implementation units;
-- its own persistence and configuration;
-- a bounded context's worth of meaning.
+- owns its implementation;
+- owns its internal state and data;
+- exposes explicitly defined contracts;
+- controls access to its implementation;
+- declares its dependencies;
+- participates in an explicit composition model;
+- has identifiable lifecycle and side-effect responsibilities.
 
-A module is what a microservice would be if you stopped. ACIMA is deliberately neutral about whether
-it ever becomes one: a module that satisfies P1–P7 can be extracted without redesign, and one that
-does not, cannot.
+A module has a name, one or more contracts and implementation representations, its own persistence
+and configuration where applicable, and a coherent set of responsibilities. It may be represented by
+a project, package, namespace, directory, assembly, library, service or another mechanism, but it is
+defined by ownership, not by any of them.
 
-> **Not to be confused with:** an *assembly*, *jar*, *npm package* or *Go package* — those are units.
-> A module often spans several. Also not to be confused with a *layer* (domain, application,
-> infrastructure): layers live **inside** a module.
+A module is not defined by:
+
+- a programming-language construct;
+- a project or directory structure;
+- a package or distribution format;
+- a deployment unit, process boundary or runtime host;
+- an application architecture or organisational structure.
+
+A module need not be independently deployable, executable or hosted. Those are properties of a
+particular representation, not requirements of the standard. ACIMA is deliberately neutral about
+whether a module is ever extracted into a separately deployed service: a module that satisfies P1–P7
+keeps that option open, and one that does not cannot.
+
+> **Not to be confused with:** an *assembly*, *jar*, *npm package*, *Go package* or *service* — those
+> are units or deployment representations. A module often spans several. Also not to be confused
+> with a *layer* (domain, application, infrastructure): layers are internal roles inside a module or
+> a service profile, not ownership boundaries.
 
 **Modes and ownership.** `acima.config.json.mode` selects how this definition is applied. In
 `base` mode the module is the ownership unit and has exactly one contracts unit (P2.1), with the
@@ -87,20 +106,37 @@ Two invariants:
 > **Not to be confused with:** "the code that isn't an interface". A module's implementation includes
 > its domain model, which is the most important code it has. The word is structural, not pejorative.
 
-## 2.5 Host and composition root
+## 2.5 Composition boundary and host
 
-The **host** is the executable that wires modules together and adapts them to the outside world:
-process entry point, HTTP endpoints, message consumers, scheduled jobs, dependency injection
-registration, configuration binding.
+A **composition boundary** is an identifiable place where dependencies are selected and module
+graphs are assembled. It may be:
 
-The **composition root** is the one place where the object graph is assembled. It MUST live in the
-host, and modules MUST NOT know it exists (`D006`).
+- a library consumer constructing dependencies;
+- a package initialisation function or public factory;
+- an executable entry point;
+- a framework integration point;
+- a plugin host or loader;
+- a service composition mechanism;
+- a test fixture; or
+- another explicitly designated construction boundary.
 
-The host is allowed to reference everything. This is by design: the host is where knowledge of the
-whole system is allowed to concentrate, which is exactly what keeps it out of the modules.
+A **host** is one optional representation of a composition boundary: an executable or delivery unit
+that wires modules together and adapts them to the outside world. Process entry points, HTTP
+endpoints, message consumers and scheduled jobs are host concerns; they are not the only valid
+composition surfaces.
+
+There MAY be more than one composition boundary. Each MUST declare its scope, and together they MUST
+make the system's construction inspectable. There is no requirement for one global application-level
+composition root. Modules MUST NOT know a composition boundary exists (`D006`); a module MAY publish a
+composition function for its own internal graph.
+
+The `host` role in `acima.config.json` denotes a declared composition boundary. It does not imply a
+process, executable or deployment: a package initializer, library factory, plugin loader, test
+composition unit or other designated surface may use the same role.
 
 > **Not to be confused with:** a module's local `main`/`Program` file for development. If a module can
-> start by itself, that entry point is a `host`-role unit, not part of the module's implementation.
+> start by itself, that entry point is a `host`-role composition unit, not part of the module's
+> implementation.
 
 ## 2.6 Shared kernel
 
@@ -140,7 +176,8 @@ It is a boundary breach.
 - **Provided port** — an interface in the provider's contracts unit that the provider implements. A
   promise: "I will do this, with this shape, for as long as this version lives."
 - **Consumer-owned port** — an interface declared inside the consumer's implementation, shaped exactly
-  as the consumer needs, satisfied by an adapter written by the consumer or the composition root. A
+  as the consumer needs, satisfied by an adapter written by the consumer or at a composition
+  boundary. A
   need, not a promise. See [P4](01-principles.md#p4-dependency-inversion).
 
 A consumer-owned port never appears in any contracts unit. If it does, it has become a provided port
@@ -275,7 +312,7 @@ port). Tiers live in `externals` in `acima.config.json` and are reviewed, never 
 
 | Avoided | Why |
 |---------|-----|
-| "Layer" as a synonym for module | Layers are slices inside a **service** (chapter 11); modules are ownership boundaries. A layer project is never shared across services. |
+| "Layer" as a synonym for module | Layers are internal roles inside a module, or slices inside a **service** under chapter 11. A module is an ownership boundary; a layer is not. |
 | "Shared" | It names a hope, not an owner. Use *shared kernel* with its constraints, or name the owning module. |
 | "Service" used loosely | It can mean HTTP service, DI registration, domain service and business unit. Chapter 11 defines it precisely: the top-level product ownership envelope. Use *module* for the contract boundary and *provided port* for the capability. |
 | "Contract" meaning "interface" | An interface is one kind of contract type. Using the words interchangeably is how implementations end up in contracts. |
@@ -283,7 +320,7 @@ port). Tiers live in `externals` in `acima.config.json` and are reviewed, never 
 ## 2.22 Configuration category
 
 A **configuration category** is the declared nature and change model of a value: local literal, named
-constant, application constant, shared configuration, runtime-adjustable configuration,
+constant, system constant, shared configuration, runtime-adjustable configuration,
 deployment/environment configuration, or secret. The category determines who owns the value, whether
 it may change without a deployment, and what validation and audit it needs (chapter 14 §14.4).
 
@@ -308,7 +345,8 @@ ownership. The catalogue uses “effect” for the runtime consequence that must
 
 An **effect owner** is the component with authority to perform an effect and to decide its failure,
 retry, duplicate and recovery semantics. It is usually the module that owns the affected state, or a
-declared adapter or host delivery policy acting for that module. Ownership is explicit when a reader
+declared adapter or composition-boundary delivery policy acting for that module. Ownership is
+straightforward when a reader
 can name the owner and locate its boundary; it is not established by the presence of a library.
 
 ## 2.26 Execution boundary

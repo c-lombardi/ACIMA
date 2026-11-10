@@ -5,6 +5,7 @@
   "level": "L1",
   "units": [
     { "id": "host", "role": "host", "paths": ["src/host"] },
+    { "id": "worker", "role": "host", "paths": ["src/worker"] },
     { "id": "orders", "module": "orders", "role": "implementation", "paths": ["src/orders"] }
   ]
 }

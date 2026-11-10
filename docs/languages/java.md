@@ -137,7 +137,7 @@ reads the environment and validates it. This profile has no enforcer in this rev
 ### Composition and injection (`D013`, `D014`)
 
 A Spring `@Configuration` class or an explicit `Main` factory is the composition boundary; constructor
-injection is the default. Classpath scanning that selects application components, field injection
+injection is the default. Classpath scanning that selects module-owned components, field injection
 (`@Autowired` on a field) and `ApplicationContext.getBean` inside domain/application code are review
 blockers (`D013`, `D014`, `L004`). Framework-managed controllers are fine when their application
 dependencies are constructor parameters and the host declares the beans. This profile has no enforcer

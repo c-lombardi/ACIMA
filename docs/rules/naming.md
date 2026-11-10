@@ -64,7 +64,7 @@ Go, .NET and Java report `executed: false` in this revision.
 
 **Severity** `warning` · **Level** L3 · **Principle** P14.1
 
-> An application-owned type MUST NOT use a generic placeholder as a substitute for its actual
+> A module-owned type MUST NOT use a generic placeholder as a substitute for its actual
 > responsibility. A generic role is permitted when the surrounding abstraction makes it precise and
 > the decision is recorded.
 

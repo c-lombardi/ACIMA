@@ -6,13 +6,13 @@ compatibility: Python 3.9+ for the preflight script. The target language toolcha
 allowed-tools: Read Grep Glob Bash Edit Write
 metadata:
   standard: "1.9.0-draft.1"
-  skill-version: "1.18.0"
-  catalog-sha256: "084d53a04582b955a4f64f80ca41067ff609bba812f2437ff8cc5c2306454822"
+  skill-version: "1.19.0"
+  catalog-sha256: "f11f4b975760b97f854f28d1b48f872a67c9b1a021219846cf6d6b10f513e5b3"
 ---
 
 # ACIMA adoption
 
-ACIMA makes an application's module boundaries explicit and enforceable. It stops one module from
+ACIMA makes a software system's module boundaries explicit and enforceable. It stops one module from
 depending on another module's private implementation, and it turns architectural requirements into
 checks and recorded evidence instead of a document nobody reads. It can be introduced one boundary
 at a time into a running system, and it does not ask the team to replace Clean Architecture,
@@ -27,7 +27,7 @@ catalog, the levels or the command set to get value. Analysis is never authoriza
 ACIMA defines portable architectural requirements: module ownership, explicit contracts,
 dependency isolation and direction, data and configuration ownership, and controlled composition.
 Applicable lifecycle, state and effect ownership requirements also apply. It is not a template for
-the application's overall architecture, and it is not merely an enforcement layer for boundaries
+the system's overall architecture, and it is not merely an enforcement layer for boundaries
 chosen elsewhere.
 
 Existing architecture families can often satisfy these requirements, but compatibility is evaluated
@@ -50,7 +50,7 @@ in the active context is not a runnable command.
 |---|---|---|
 | ACIMA source checkout | `tools/`, `docs/`, `examples/`, the skill | `python3 tools/acima.py ...`, `python3 skills/acima-adoption/scripts/...`, `examples/<lang>/tools/...` |
 | Copied or installed skill | `skills/acima-adoption/` with its `vendor/` snapshot | `python3 <skill>/scripts/preflight.py ...`, `python3 <skill>/vendor/tools/acima.py ...`, `python3 <skill>/vendor/examples/<lang>/tools/...` |
-| A different target repository | the user's application only | run ACIMA commands from the checkout or skill directory with `--root`/`--project <target>` |
+| A different target repository | the target software only | run ACIMA commands from the checkout or skill directory with `--root`/`--project <target>` |
 
 `preflight --deep` and `acima.py verify` need the full checkout; if it is absent, say so and offer
 the read-only assessment that the skill can run. Verify a command's path and `--help` before calling
@@ -92,8 +92,8 @@ around it. Then run the read-only fit analysis and assess six dimensions indepen
 compatibility, architectural substance, existing enforcement, incremental value, adoption cost and
 practical applicability. Choose one outcome: `RECOMMENDED`, `RECOMMENDED_WITH_LIMITATIONS`,
 `NOT_RECOMMENDED`, `INSUFFICIENT_EVIDENCE` or `NOT_SUPPORTED`. A clean report is not a
-recommendation: a utility with no meaningful boundaries, or an application whose existing checks
-already cover the guarantee, is a `NOT_RECOMMENDED`. Explain the application, discovered
+recommendation: a utility with no meaningful boundaries, or a system whose existing checks already
+cover the guarantee, is a `NOT_RECOMMENDED`. Explain the target software, discovered
 boundaries, existing enforcement, what ACIMA requires and does not require, cost, confidence and
 unresolved questions. Record one compatibility outcome — compatible, compatible with adaptation,
 incompatible or insufficient evidence — against the applicable requirements. Distinguish an
@@ -132,18 +132,28 @@ Full boundary and artifact matrix: [15-consent-and-scope](references/15-consent-
 
 ## Discovery: the agent's job
 
-Inspect before asking architectural questions. Establish, with evidence and confidence: application
-purpose and type; languages, frameworks and manifests; project/package layout; entry points and
-composition roots; construction and injection patterns; existing boundaries and dependency
-direction; shared libraries; persistence and configuration ownership; external effects; tests and
-existing architecture checks; build, packaging and CI. A repository may be several kinds at once —
-say so, and never present a directory name as an ownership decision.
+Inspect before asking architectural questions. The target may be a package, library, framework,
+SDK, application, monolith, distributed system, service, worker, plugin host or a mixture; do not
+assume a type. Establish, with evidence and confidence:
+
+1. what constitutes an ownership boundary and how modules are represented;
+2. which artifacts are only distribution or deployment units;
+3. how contracts are exposed and dependencies are declared;
+4. where composition occurs, including each composition boundary and whether a host is optional;
+5. how state and configuration are owned;
+6. which requirements already hold, which need adaptation and whether ACIMA adds meaningful value.
+
+Also record languages, frameworks and manifests; project/package layout; entry points; construction
+and injection patterns; existing boundaries and dependency direction; shared libraries;
+persistence, configuration and external-effect ownership; tests and existing architecture checks;
+build, packaging and CI. A repository may be several kinds at once — say so, and never present a
+directory name as an ownership decision.
 
 For each material inference give what was found, the evidence, confidence, and what remains
-uncertain. Ask only what the repository cannot settle: shared-kernel status, host ownership,
-duplicate names, and who owns exceptions.
+uncertain. Ask only what the repository cannot settle: shared-kernel status, composition-boundary
+ownership, duplicate names, and who owns exceptions.
 
-Then explain ACIMA against the application: for each meaningful difference, the existing design, the
+Then explain ACIMA against the target system: for each meaningful difference, the existing design, the
 ACIMA expectation, why it matters, whether it is a confirmed problem, a suspected one, an acceptable
 design or insufficient evidence, what would change, and whether judgement is required. Recognise what
 already satisfies a requirement — do not sell existing good practice back as work. If ACIMA would add
@@ -215,7 +225,7 @@ Every phase ends in the same shape, in plain English:
 
 - **Current state** — where the user is, in one sentence.
 - **What happened** — the meaningful work, not a command log.
-- **What it means** — the consequence for this application.
+- **What it means** — the consequence for this software.
 - **What happens next** — the next phase and why it is needed.
 - **User involvement** — the one decision or approval required, or "none".
 - **Next action** — one action with a completion condition.
@@ -227,7 +237,7 @@ Six milestone updates at most; a blocker gets a message only when it changes the
 ## Proposal: a decision document
 
 Nine sections, in this order: **Recommendation** (`RECOMMENDED`, `RECOMMENDED_WITH_LIMITATIONS`,
-`NOT_RECOMMENDED`, `INSUFFICIENT_EVIDENCE` or `NOT_SUPPORTED`, and why); **Application
+`NOT_RECOMMENDED`, `INSUFFICIENT_EVIDENCE` or `NOT_SUPPORTED`, and why); **Software
 discovered**; **What ACIMA adds**; **Expected benefits** grounded in evidence and classified as
 available today, achievable through adoption, requiring additional work, or not applicable;
 **Recommended scope** (smallest useful, level in plain English, what is excluded and why);

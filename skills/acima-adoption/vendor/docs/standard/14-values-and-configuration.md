@@ -26,8 +26,8 @@ The seven classifications are:
 |---|---|---|---|
 | 1 | Local implementation literal | a value whose meaning is obvious at the expression | the containing function or type |
 | 2 | Named constant | a name in the component that owns the value | that component |
-| 3 | Application-level constant | a named value shared by units of one application | the composition boundary |
-| 4 | Shared configuration | configuration consumed by several units with the same meaning | the application or service that owns the concept |
+| 3 | System-level constant | a named value shared by units of one system | the composition boundary |
+| 4 | Shared configuration | configuration consumed by several units with the same meaning | the system or service that owns the concept |
 | 5 | Runtime-adjustable configuration | a value an operator may change without a deployment | the operating service, with an explicit refresh contract |
 | 6 | Deployment or environment configuration | a value that differs between development, staging and production | the deployment environment |
 | 7 | Secret | a credential or other sensitive value | the secret store, resolved at the boundary |
@@ -70,10 +70,10 @@ A meaningful value that belongs exclusively to one component MAY be a named cons
 component. It MUST have a name that states its purpose; `LIMIT = 3` in a payment module is weaker than
 `MAX_PAYMENT_ATTEMPTS = 3`.
 
-### Application-level constants
+### System-level constants
 
-When several units of one application share the same concept, the value MUST have one owner at an
-identifiable application boundary. It MUST NOT be copied into unrelated modules. Sharing the text
+When several units of one system share the same concept, the value MUST have one owner at an
+identifiable composition boundary. It MUST NOT be copied into unrelated modules. Sharing the text
 `30` is not sharing a concept: two modules using `30` may implement different policies.
 
 ### Shared values across entry points and services
@@ -97,15 +97,15 @@ default on a published library API. It is not legitimate when it silently decide
 input the caller should supply (`D011`, `D012`). The distinction is ownership, not syntax: a default
 inside a signature has no named owner, while a named policy value at the composition boundary does.
 
-Do not move a default into the host as a bare literal and call it fixed. Give it a name in its
-owner: an application constant, a typed configuration value, or a documented policy object.
+Do not move a default into a composition boundary as a bare literal and call it fixed. Give it a name
+in its owner: a system constant, a typed configuration value, or a documented policy object.
 
 ### Explicit injection
 
-Meaningful application-level values MUST be supplied to their consumers at the composition boundary.
+Meaningful system-level values MUST be supplied to their consumers at the composition boundary.
 Where several related values exist, group them into a typed settings object or value object rather
 than injecting unrelated primitives. The declaration and registration of that object MUST be visible
-in the composition root, not discovered by the component at runtime.
+at the composition boundary, not discovered by the component at runtime.
 
 ## 14.4 Configuration categories
 
@@ -127,7 +127,7 @@ it a mutable operator setting may be inappropriate.
 secret mechanism and MUST NOT be committed, logged, placed in ordinary configuration files, or read
 by a module that does not own them (`A002`).
 
-**Fixed application constants** should remain fixed within a version: protocol version numbers,
+**Fixed system constants** should remain fixed within a version: protocol version numbers,
 algorithm identifiers, invariants. They are named and versioned with the code, not exposed as runtime
 settings merely because a configuration system exists.
 
@@ -138,7 +138,7 @@ configuration changes who can change the behaviour without a review.
 
 Runtime configurability is justified when an operator can respond to production conditions faster
 than a deployment allows. It is not required for every value. When runtime changes are supported, the
-application MUST define:
+software system MUST define:
 
 1. **ownership** — which service or role owns the value;
 2. **validation** — the accepted type, range and invariants, rejected before use;
@@ -156,28 +156,29 @@ verified. Until it is, the value is deployment configuration, not runtime config
 
 ## 14.6 The composition boundary
 
-The composition root is the only place that resolves ambient configuration. It:
+A composition boundary is the place that resolves ambient configuration for the modules it
+assembles. It:
 
 - reads environment variables or the configuration platform;
 - validates and converts the values;
 - groups them into typed settings objects;
 - passes them into module constructors or composition functions;
-- owns the application-wide and shared-infrastructure namespaces.
+- owns the system-wide and shared-infrastructure namespaces in its scope.
 
 A module implementation MUST NOT read `os.environ`, `process.env`, a global configuration object or a
 service's own configuration store to obtain a value a caller could supply (`A005`). The test is
 mechanical: delete the module; the remaining configuration must still make sense.
 
-Shared infrastructure settings — log level, pool size, telemetry endpoint — belong to the host's
-namespace, not to a module's. A module receives only the values it needs.
+Shared infrastructure settings — log level, pool size, telemetry endpoint — belong to the composition
+boundary's namespace, not to a module's. A module receives only the values it needs.
 
 ## 14.7 Architectural generality
 
 | Context | Expression |
 |---|---|
-| **Modular monolith** | One composition root resolves configuration and constructs every module; application constants have one owner. |
+| **Modular monolith** | One or more composition boundaries resolve configuration and construct modules; system constants have one owner. |
 | **Microservices** | Each service owns its configuration namespace. A value is not centralized merely because two services currently use the same number. |
-| **Libraries and frameworks** | The library exposes typed options and required parameters; the consuming application resolves configuration. A published optional parameter may be a compatibility feature, but it must be documented and must not conceal a required input (`D012`). |
+| **Libraries and frameworks** | The library exposes typed options and required parameters; the consumer resolves configuration. A published optional parameter may be a compatibility feature, but it must be documented and must not conceal a required input (`D012`). |
 | **Plugin architectures** | The host supplies a typed plugin settings object through the plugin contract. A plugin must not read the host's environment directly. |
 | **Serverless** | Environment variables are resolved per invocation at the handler boundary and passed into the domain; the domain remains testable without the platform. |
 | **Distributed systems** | Shared configuration requires an explicit propagation, consistency and failure model. Cross-service coupling is a design decision, not a side effect of a shared config table. |
@@ -202,7 +203,7 @@ if order.total > MANUAL_REVIEW_THRESHOLD:
     require_manual_review(order)
 ```
 
-**3. An application constant, injected at the composition boundary.**
+**3. A system constant, injected at the composition boundary.**
 
 ```python
 # host
@@ -215,7 +216,7 @@ orders = OrdersModule(settings=OrdersSettings(manual_review_threshold=...))
 { "orders": { "review": { "threshold": "500.00" } } }
 ```
 
-The host reads `orders.review.threshold`, validates it as money, and passes it into `OrdersModule`.
+The composition boundary reads `orders.review.threshold`, validates it as money, and passes it into `OrdersModule`.
 No implementation reads the key directly.
 
 **5. A deployment-specific setting.**
@@ -268,8 +269,8 @@ not be centralized merely because the text is equal.
 | Shared values across services have an owner | §14.7 | review evidence |
 
 `A005` detects direct access to the process environment in declared `implementation` and `adapter`
-units. The host is excluded because it is the composition boundary. The finding is a confirmed
-access; whether the value belongs to that component is still an architectural judgement.
+units. A `host` unit is excluded because it is a declared composition boundary. The finding is a
+confirmed access; whether the value belongs to that component is still an architectural judgement.
 
 `A006` detects literals bound to operational names: timeouts, retries, limits, thresholds, TTLs,
 intervals, batch sizes, rates, retention periods, capacities, delays, quotas, concurrency, attempts,
@@ -285,7 +286,7 @@ silence the rule.
 
 When a language or framework requires an optional value, the exception is narrow and documented.
 Contract optional members remain governed by `C007` and the additive-evolution rules. Public library
-APIs may retain optional parameters for compatibility, but a required application input must not be
+APIs may retain optional parameters for compatibility, but a required module input must not be
 concealed by them (`D012`).
 
 ## 14.10 Checklist
@@ -294,9 +295,9 @@ concealed by them (`D012`).
       and an owner (`A006`).
 - [ ] Components receive configuration values; they do not read the environment or a global config
       object (`A005`, `A002`).
-- [ ] Application-wide values have one owner at the composition boundary; identical text is not
-      treated as identical meaning.
-- [ ] Each value is classified as local, named constant, application constant, shared config,
+- [ ] System-wide values have one owner at the composition boundary; identical text is not treated
+      as identical meaning.
+- [ ] Each value is classified as local, named constant, system constant, shared config,
       runtime config, deployment config or secret (§14.1).
 - [ ] Secrets are resolved through the secret mechanism and never committed or logged.
 - [ ] Runtime-adjustable values have validation, audit, propagation, refresh, rollback and failure

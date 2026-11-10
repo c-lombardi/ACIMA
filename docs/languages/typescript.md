@@ -156,7 +156,7 @@ when the scanner does not see it.
 
 Construct at the host with `new CatalogModule(new InMemoryProductStore())`, or use an explicit
 factory that names the implementation. `import.meta.glob` and `require.context` are `D013` candidates
-when they select application components; dynamic asset loading is not the same thing. Property
+when they select module-owned components; dynamic asset loading is not the same thing. Property
 decorators such as `@Inject` above a field are `D014` candidates. Constructor parameter decorators are
 not property injection: the dependency is still part of the declared constructor. NestJS/Angular
 controllers may be framework-activated, but their application dependencies belong in the constructor

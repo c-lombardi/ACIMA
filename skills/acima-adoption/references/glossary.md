@@ -49,8 +49,11 @@ exists.
 **Brownfield** — a repository with no ACIMA config and at least one existing source file. Adopt by
 measuring, waiving, gating and ratcheting, starting at L1.
 
-**Host / composition root** — the only place that wires implementations together. May reference
-everything; nothing may reference it.
+**Composition boundary / host** — an explicitly designated place that constructs and wires the
+modules it assembles. It may be a host, a library consumer, a public factory, a package initializer,
+a framework integration point, a plugin loader or a test fixture. There may be several, and a
+library or package may have no host. A host-role unit may reference everything in its scope; nothing
+may reference it.
 
 **Implementation unit** — everything a module keeps private: domain logic, adapters, persistence.
 Other modules may not reference it.
@@ -61,9 +64,11 @@ Other modules may not reference it.
 **Level (L1/L2/L3)** — the declared conformance level: Structural, Immutable, Autonomous. A
 repository declares one and is measured against it.
 
-**Module** — a business capability with one contracts surface in base mode (one per outward-facing
-layer in service mode) and one or more implementation units. Owns its data, its configuration and
-its vocabulary.
+**Module** — an identifiable architectural ownership boundary. It owns its implementation, state and
+data, exposes explicit contracts, controls access to its implementation, declares its dependencies,
+participates in composition and has identifiable lifecycle and effect responsibilities. It may be
+represented by one or more implementation units, but it is not defined by a project, package,
+directory, service, deployment unit or runtime process.
 
 **Portable rule** — a rule implementable in every supported language without a language-specific
 analyzer. This revision has 23; six need human or framework-specific review.
@@ -74,8 +79,9 @@ analyzer. This revision has 23; six need human or framework-specific review.
 It is not the default: each contracts project declares and owns the value types it publishes. Not
 a utility library; admission is deliberately hard.
 
-**Unit** — any declared piece of the architecture: a contracts unit, an implementation unit, the
-host, or a legacy kernel. The config declares units; the enforcer classifies files by them.
+**Unit** — an artifact representation the build or repository can identify: a contracts unit, an
+implementation unit, a composition-boundary (`host`) unit, a test unit, tooling or a legacy kernel.
+The config declares units; the enforcer classifies files by them. A module may span several units.
 
 **Waiver** — a recorded, owned, expiring exception to one exact finding fingerprint. Not a
 suppression: it carries a person, a reason, a scope, a fingerprint, an expiry and a review date.

@@ -1,9 +1,10 @@
 # 12. Library and framework profile
 
-ACIMA's base rules describe an application: a module's implementation is private, and only its
-contracts unit crosses the module boundary. A published library, framework, SDK or plugin system
+ACIMA's base rules describe any software system: a module's implementation is private, and only its
+contracts surface crosses the module boundary. A published library, framework, SDK or plugin system
 has an additional, deliberate boundary — its **public package surface** — and, often, **adapters**
-that exist precisely to depend on a driver, protocol or platform SDK.
+that exist precisely to depend on a driver, protocol or platform SDK. This profile does not define
+what a module is, and a public package boundary is not automatically an ACIMA module boundary.
 
 Applying the base rules to such a repository without a profile produces two opposite errors:
 
@@ -31,9 +32,11 @@ team's control. The evidence must come from the repository itself, not from its 
 | TypeScript | `package.json` with a `name` and without `"private": true` |
 | .NET | a project whose evaluated `IsPackable` is not `false` and whose evaluated `PackageId` is non-empty (declared, inherited, or SDK-defaulted), or an equivalent publish manifest |
 
-A repository that contains both an application and a library uses the profile for the library
-units only; the application units keep the base interpretation. A monorepo MAY contain several
-profile declarations, one per published package, but each is reviewed separately.
+A repository that contains both a software system and a library uses the profile for the library
+units only; the non-library units keep the base interpretation. A monorepo MAY contain several
+profile declarations, one per published package, but each is reviewed separately. The profile is
+available to published packages, public API surfaces, frameworks, SDKs and reusable libraries; it is
+not required merely because a package is distributed.
 
 If the evidence is ambiguous — a private package consumed only by sibling workspaces, an
 unpublished "library" directory, an internal SDK — the classification requires a named human

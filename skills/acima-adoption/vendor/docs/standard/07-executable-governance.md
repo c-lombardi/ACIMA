@@ -109,6 +109,10 @@ suites and compare them against the same expected findings.
 
 Field notes:
 
+- A **unit** is an artifact the build or repository layout can identify; a **module** is the
+  ownership boundary it represents. A module may span several units, and a `contracts` or
+  `implementation` unit names the module it represents. There is no required one-to-one mapping
+  between modules and projects, packages, services or deployment units.
 - `mode` selects the architecture mode. `base` (the default when absent) applies P1–P9, P14 and P15.
   `service-topology` applies P1–P9, P10–P15 and supersedes exactly P2.1 and P3.5 (chapter 11).
   The topology manifest cannot select a mode; a mismatch is a configuration error (exit `2`), not a
@@ -116,6 +120,10 @@ Field notes:
 - `units[].paths` are directory prefixes or globs. **The most specific match wins**, so
   `src/acima/catalog/contracts` beats `src/acima/catalog`.
 - `role` must be one of `contracts`, `implementation`, `host`, `shared-kernel`, `test`, `tooling`.
+- `host` names a declared **composition boundary**, not necessarily an executable. It may be a host
+  entry point, a package initializer, a public factory, a framework integration point, a plugin
+  loader or a test composition unit. A repository may declare zero, one or several `host` units; a
+  library or package without one is valid.
 - `module` is required for `contracts` and `implementation`, forbidden for `shared-kernel` and `host`.
 - `exclude` is applied before classification. Fixtures and tests are never part of the product graph.
 - `budgets` is optional; a breach is reported as `ACIMA-G005`-adjacent informational finding, not a

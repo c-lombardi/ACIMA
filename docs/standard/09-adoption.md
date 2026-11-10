@@ -50,19 +50,21 @@ ignored) to "did this pull request add a violation?" (answerable, therefore enfo
 Do not start with `A001`. Teams try, discover it needs a data migration, and abandon the programme.
 Start with the rules where the fix is a code change within one pull request.
 
-Once the host exists, add explicit composition as the next slice. Replace scans and convention
-registration that choose application components (`D013`), then move application dependencies out of
-properties and fields into constructors (`D014`). Do not force a container-free style on framework
-infrastructure: the test is whether the application-owned graph and its registrations are visible,
-not whether every object is written with `new`. Then review closures, callbacks and partial
-application: a dependency captured from a module or enclosing local is `D015`, and a dependency
+Once a composition boundary exists, add explicit composition as the next slice. Replace scans and
+convention registration that choose module-owned components (`D013`), then move module-owned
+dependencies out of properties and fields into constructors (`D014`). Do not force a container-free
+style on framework infrastructure: the test is whether the module-owned graph and its registrations
+are visible, not whether every object is written with `new`. A library may have no host; its public
+factory or consumer construction is the boundary. Then review closures, callbacks and partial
+module graph: a dependency captured from a module or enclosing local is `D015`, and a dependency
 pre-bound inside a component is `D016`. Pure HOFs and explicit currying stay legal (chapter 16).
 
 Then review lifetimes and state ownership before changing registrations in bulk. Identify which
-application components are stateless, which carry request or tenant state, which own resources and
+module-owned components are stateless, which carry request or tenant state, which own resources and
 which depend on a scoped component. A stateless service registered transient is `A007`; a shared
 component directly capturing a scoped dependency is `A008`; a shared component owning a mutable
-container without a stated owner, isolation key and concurrency policy is `A009` (chapter 17).Do not convert transient registrations to singletons as a migration shortcut: decide the state
+container without a stated owner, isolation key and concurrency policy is `A009` (chapter 17). Do
+not convert transient registrations to singletons as a migration shortcut: decide the state
 owner first, then choose the lifetime. Go, .NET and Java report these rules `executed: false` in
 this revision, so their lifecycle decisions need recorded manual evidence.
 
@@ -130,7 +132,7 @@ change.
 | Contracts became a dumping ground | consumers request types directly | enforce `P4.3`; consumers adapt instead |
 | One module is 80% of the code | the boundary follows the org chart, not the domain | split by concept, not by team |
 | The kernel keeps growing | `D007` is not enforced, or every convenience type is "shared" | apply the four-part admission test in `4.5` |
-| Enforcer is slow / flaky | it compiles the product instead of reading the source | read source or compiled metadata; do not execute the application |
+| Enforcer is slow / flaky | it compiles the product instead of reading the source | read source or compiled metadata; do not execute the product |
 
 ## 9.7 When to stop
 
@@ -145,9 +147,10 @@ ACIMA is a means, not a goal. Stop adding discipline when:
 
 ## 9.8 Adopting the service topology profile
 
-The service topology profile in chapter 11 is the default for new systems. It matters most when the
-product has, or is about to have, more than one service and more than one layer. A single-module
-repository can use the base module shape, but it still MUST keep contracts absolutely isolated.
+The service topology profile in chapter 11 is optional and applies only when explicitly selected. It
+matters most when the product has, or is about to have, more than one service and more than one
+layer. A single-module repository, package or library can use the base module shape; absolute
+contract isolation is a profile requirement, not a base requirement.
 
 ### Greenfield
 
@@ -157,9 +160,9 @@ repository can use the base module shape, but it still MUST keep contracts absol
 4. add the transform at the Api → Application boundary before the first endpoint;
 5. isolate the first vendor behind `<Service>.<Vendor>.Contracts` + `<Service>.<Vendor>` before the
    first call is written;
-6. add the host last, and let it be the only project that references everything.
+6. add the composition boundary last, and let it be the only project in its scope that references everything.
 
-Do not start with the host or the database. Starting there produces a service shaped by its
+Do not start with the composition boundary or the database. Starting there produces a service shaped by its
 infrastructure, which is the thing the profile exists to prevent.
 
 ### Brownfield

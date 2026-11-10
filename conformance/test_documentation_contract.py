@@ -190,6 +190,45 @@ class DocumentationContractTests(unittest.TestCase):
         self.assertIn("architecture compatibility", faq)
         self.assertNotIn("sits beside the architecture you chose", faq)
 
+    def test_core_defines_modules_as_ownership_boundaries_not_artifacts(self) -> None:
+        vocabulary = normalized("docs/standard/02-vocabulary.md")
+        self.assertIn("identifiable architectural ownership boundary", vocabulary)
+        for excluded in ("programming-language construct", "package or distribution format",
+                         "deployment unit, process boundary or runtime host"):
+            self.assertIn(excluded, vocabulary)
+        self.assertIn("there may be more than one composition boundary", vocabulary)
+        self.assertIn("library factory", vocabulary)
+
+    def test_core_does_not_require_a_host_service_or_application(self) -> None:
+        preface = normalized("docs/standard/00-preface.md")
+        self.assertIn("does not require a service, an application", preface)
+        self.assertIn("deployment unit, a runtime host or a single global composition boundary", preface)
+        composition = normalized("docs/standard/15-composition-and-injection.md")
+        self.assertIn("several composition boundaries", composition)
+        self.assertIn("library consumer constructing dependencies", composition)
+
+    def test_profiles_are_not_presented_as_defaults(self) -> None:
+        for path in ("docs/standard/08-conformance.md", "docs/standard/09-adoption.md"):
+            text = normalized(path)
+            self.assertNotIn("default for new systems", text)
+        library = normalized("docs/standard/12-library-profile.md")
+        self.assertIn("not required merely because a package is distributed", library)
+
+    def test_rule_catalog_uses_module_ownership_language(self) -> None:
+        catalog = json.loads(read("tools/acima-spec/rules.json"))
+        for rule in catalog["rules"]:
+            text = " ".join(str(rule.get(field, "")) for field in
+                            ("title", "summary", "fix")).lower()
+            for phrase in ("application-owned", "application component", "application dependency"):
+                self.assertNotIn(phrase, text, rule["id"])
+
+    def test_examples_cover_package_application_and_distributed_shapes(self) -> None:
+        guide = normalized("docs/guides/architecture-families.md")
+        for phrase in ("a library or package with internal modules",
+                       "a conventional application", "a distributed system"):
+            self.assertIn(phrase, guide)
+        self.assertIn("the service-topology profile is optional", guide)
+
     def test_skill_materials_do_not_reduce_acima_to_declared_boundaries(self) -> None:
         for path in (
             "skills/acima-adoption/references/05-architecture-families.md",

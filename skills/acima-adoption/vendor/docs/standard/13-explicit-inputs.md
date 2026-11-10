@@ -29,14 +29,14 @@ legitimate; hiding it behind an omitted argument is not.
 
 ## 13.2 Construction
 
-An application-owned constructor MUST require every dependency and configuration value the object
-needs in order to be usable. The composition root supplies them; the object never resolves them.
+A module-owned constructor MUST require every dependency and configuration value the object needs
+in order to be usable. The composition boundary supplies them; the object never resolves them.
 
 ```csharp
 // ❌ D011 — two construction paths, one of them undocumented
 public OrderService(IOrderRepository repository, IPaymentService? payments = null)
 
-// ✅ one path; every dependency is visible at the composition root
+// ✅ one path; every dependency is visible at the composition boundary
 public OrderService(IOrderRepository repository, IPaymentService payments)
 ```
 
@@ -61,8 +61,8 @@ an omitted argument.
 
 ## 13.3 Invocation
 
-An application-owned method or function MUST NOT use an optional parameter, a default value or an
-implicit fallback to conceal a decision its caller owns.
+A module-owned method or function MUST NOT use an optional parameter, a default value or an implicit
+fallback to conceal a decision its caller owns.
 
 ```typescript
 // ❌ D012 — did the caller decide not to notify, or did they not think about it?
@@ -107,7 +107,7 @@ Defaults do not disappear; they move to a place that owns them.
 
 | Default kind | Owner | Expression |
 |---|---|---|
-| Dependency | composition root | construct the concrete implementation there and pass it |
+| Dependency | composition boundary | construct the concrete implementation there and pass it |
 | Configuration value | configuration | read it once at the boundary, pass the resolved value |
 | Business rule | policy/value object | named implementation of a port, or an explicit policy type |
 | Compatibility default | the published contract | documented additive member, per chapter 5 §5.7 |
@@ -121,8 +121,8 @@ Some optional parameters are part of a contract ACIMA does not control. They are
 holes in the rule:
 
 - **Framework entry points** — lifecycle hooks, serializers, ORM constructors and callbacks whose
-  signatures the framework defines. The exception is the callback itself, not the application service
-  it calls.
+  signatures the framework defines. The exception is the callback itself, not the module-owned
+  component it calls.
 - **Generated code** — generated clients stubs, migration scaffolds, protocol buffers. Exclude the
   generated directory; do not weaken the rule for hand-written code beside it.
 - **Published compatibility APIs** — a library that already shipped `method(arg, options?)` and cannot
@@ -139,8 +139,8 @@ Two rules carry the requirement:
 
 | Rule | Detects | Severity |
 |---|---|---|
-| `D011` | an optional or defaulted parameter on an application-owned constructor | `warning`, `error` at 2.0.0 |
-| `D012` | an optional or defaulted parameter on an application-owned method or function | `warning`, `error` at 2.0.0 |
+| `D011` | an optional or defaulted parameter on a module-owned constructor | `warning`, `error` at 2.0.0 |
+| `D012` | an optional or defaulted parameter on a module-owned method or function | `warning`, `error` at 2.0.0 |
 
 Both are `automation: "automated"` and ship as warnings for one minor release, for the same reason as
 the third-party tier rules: a repository with a working build should get the finding and a migration
@@ -187,8 +187,8 @@ Where rules overlap, they are not duplicated: `D011`/`D012` judge the *shape of 
 ## 13.9 Review checklist
 
 - [ ] Does every constructor require every dependency the object uses (`D011`)?
-- [ ] Is there exactly one way to construct each application component, and does the composition root
-      use it?
+- [ ] Is there exactly one way to construct each module-owned component, and does its composition
+      boundary use it?
 - [ ] Does every method that branches on an input require that input (`D012`)?
 - [ ] Is each nullable parameter required, and does the caller knowingly pass `null`?
 - [ ] Does every retained default have a named owner — configuration, policy, framework contract or

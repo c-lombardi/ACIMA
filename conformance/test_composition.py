@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PYTHON = [sys.executable, str(ROOT / "examples/python/tools/acima_arch.py")]
 TYPESCRIPT = ["node", str(ROOT / "examples/typescript/tools/acima-arch.mjs")]
 FIXTURES = ROOT / "conformance/fixtures/composition"
+BASE_LIBRARY = ROOT / "conformance/fixtures/library-base"
 
 
 def run(command: list[str], root: Path, config: str = "acima.config.json"):
@@ -63,6 +64,20 @@ class CompositionTests(unittest.TestCase):
             self.assertEqual(report["findings"], [])
             self.assertTrue(report["execution"]["ACIMA-D013"]["executed"])
             self.assertTrue(report["execution"]["ACIMA-D014"]["executed"])
+
+    def test_base_library_is_assessable_without_a_host(self) -> None:
+        config = json.loads((BASE_LIBRARY / "acima.config.json").read_text(encoding="utf-8"))
+        self.assertFalse(any(unit.get("role") == "host" for unit in config["units"]))
+        result, report = run(PYTHON, BASE_LIBRARY)
+        self.assertEqual(result.returncode, 0, report["findings"])
+        self.assertEqual(report["findings"], [])
+
+    def test_multiple_composition_boundaries_are_supported(self) -> None:
+        result, report = run(
+            PYTHON, FIXTURES / "python", "acima.multiple-hosts.config.json"
+        )
+        self.assertEqual(result.returncode, 0, report["findings"])
+        self.assertEqual(report["findings"], [])
 
     def test_chapter_states_the_boundary_and_manual_limits(self) -> None:
         chapter = (ROOT / "docs/standard/15-composition-and-injection.md").read_text(encoding="utf-8")

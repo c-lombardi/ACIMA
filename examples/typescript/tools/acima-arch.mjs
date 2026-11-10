@@ -751,7 +751,7 @@ function checkComposition() {
           const line = lineOf(masked, match.index);
           if (seen.has(line)) continue;
           seen.add(line);
-          add('ACIMA-D013', `${unit.id} discovers components with ${match[0].replace(/\s*\($/, '')}; register and construct each application component explicitly.`,
+          add('ACIMA-D013', `${unit.id} discovers components with ${match[0].replace(/\s*\($/, '')}; register and construct each module-owned component explicitly.`,
             r, line, (lines[line - 1] || '').trim());
         }
       }
@@ -772,7 +772,7 @@ function checkComposition() {
 }
 
 // -- functional capture ---------------------------------------------------------
-// D015: a closure must not capture an application dependency from a module or enclosing
+// D015: a closure must not capture a module-owned dependency from a module or enclosing
 // local. A dependency declared by an enclosing *parameter* is the explicit curried form and
 // is allowed. D016: partial application/binding of a dependency belongs at the boundary.
 const FUNCTIONAL_ROLES = new Set(['implementation', 'adapter']);
@@ -911,7 +911,7 @@ function checkFunctionalCapture() {
         const key = `${line}:${name}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        add('ACIMA-D015', `${unit.id} captures the application dependency ${name} from an enclosing scope; pass it as a parameter or supply it at the composition boundary.`,
+        add('ACIMA-D015', `${unit.id} captures the module-owned dependency ${name} from an enclosing scope; pass it as a parameter or supply it at the composition boundary.`,
           r, line, (source.split('\n')[line - 1] || '').trim());
       }
     }
@@ -935,7 +935,7 @@ function checkPartialApplication() {
           .find((name) => functionalName(name));
         if (!dependency) continue;
         const line = lineOf(masked, match.index);
-        add('ACIMA-D016', `${unit.id} partially applies the application dependency ${dependency} inside a component; bind it at the composition boundary or keep it as a parameter.`,
+        add('ACIMA-D016', `${unit.id} partially applies the module-owned dependency ${dependency} inside a component; bind it at the composition boundary or keep it as a parameter.`,
           r, line, (source.split('\n')[line - 1] || '').trim());
       }
     }
@@ -1029,7 +1029,7 @@ function checkLifecycle() {
       const line = lineOf(masked, registration.index);
       const evidence = (lines[line - 1] || '').trim();
       if (registration.lifetime === 'transient' && classStateless(info.body)) {
-        add('ACIMA-A007', `${unit.id} registers the stateless service ${registration.target} as transient; share it at the longest appropriate lifetime.`,
+        add('ACIMA-A007', `${unit.id} registers the stateless shared service ${registration.target} as transient; share it at the longest appropriate lifetime.`,
           r, line, evidence);
       }
       if (registration.lifetime !== 'shared') continue;
@@ -1086,7 +1086,7 @@ function checkConfiguration() {
       const originalLine = source.split('\n')[line - 1] || '';
       const keyMatch = /(?:process\.env|import\.meta\.env)(?:\.([A-Za-z_$][\w$]*)|\[\s*['"]([^'"]+)['"]\s*\])/.exec(originalLine);
       const key = keyMatch ? (keyMatch[1] || keyMatch[2]) : '';
-      add('ACIMA-A005', `${unit.id} reads ${key ? `configuration key ${key}` : 'ambient configuration'} from the environment; resolve it at the composition root and pass the value into the component.`,
+      add('ACIMA-A005', `${unit.id} reads ${key ? `configuration key ${key}` : 'ambient configuration'} from the environment; resolve it at a composition boundary and pass the value into the component.`,
         r, line, originalLine.trim());
     }
   }
@@ -1117,7 +1117,7 @@ function checkOperationalValues() {
         const line = lineOf(masked, match.index);
         if (seen.has(line)) continue;
         seen.add(line);
-        add('ACIMA-A006', `${unit.id} embeds the operational value ${value} in ${name}; name it in its owner or supply it as configuration at the composition root.`,
+        add('ACIMA-A006', `${unit.id} embeds the operational value ${value} in ${name}; name it in its owner or supply it as configuration at a composition boundary.`,
           r, line, (lines[line - 1] || '').trim());
       }
     }

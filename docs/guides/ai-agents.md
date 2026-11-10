@@ -15,7 +15,7 @@ An ACIMA-aware agent **must**:
 1. Read the applicable specification and the target's `acima.config.json` when one exists.
 2. Verify the rule catalog version and hash with the adoption preflight.
 3. Inspect the target repository before editing.
-4. Identify the authorized module boundaries and allowed dependency directions, and name the team's architecture family (Clean, Hexagonal, DDD, modular monolith, microservices) — ACIMA enforces it, it does not replace it.
+4. Identify the authorized module boundaries and allowed dependency directions, and name the team's architecture family (Clean, Hexagonal, DDD, modular monolith, microservices). ACIMA evaluates the applicable requirements; it does not replace the family.
 5. Plan the change and name any published contract and externally visible effect it will alter.
 6. If the change introduces or modifies an effect, state its owner, execution boundary, duplicate
    behaviour and truthful failure outcome before implementing it.
@@ -36,7 +36,7 @@ An agent **must not**:
 - use ACIMA to argue for a different architecture; it enforces the chosen boundaries, it does not choose them;
 - import another module's implementation;
 - change a published contract without identifying the compatibility impact;
-- hide an effect behind a read-shaped method or perform a provider's effect in the host;
+- hide an effect behind a read-shaped method or perform a provider's effect at a composition boundary;
 - claim that a retry, transaction, idempotency key or cancellation token makes an effect correct;
 - claim conformance when a rule was skipped or not evaluated;
 - use a missing tool or an empty scan as evidence of a pass.

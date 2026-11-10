@@ -38,15 +38,20 @@ Identifiers never change meaning. The categories are:
 
 ## 0.3 Scope
 
-ACIMA applies to any system built from more than one team-owned part that must evolve without
-coordinating releases. In practice that means:
+ACIMA applies to any software composition with one or more identifiable module ownership boundaries.
+That includes a package, library, framework, SDK, application, modular monolith, distributed system,
+service, worker, plugin host or a mixture of these. It does not require a service, an application
+entry point, a deployment unit, a runtime host or a single global composition boundary.
 
-- **In scope:** modular monoliths, service-oriented back ends, and the internal structure of any
-  service that has grown past one team.
-- **Out of scope:** the choice of database, transport, serialization format, hosting model, or
-  front-end framework. ACIMA constrains *boundaries*, not technology. Where a technology forces a
-  decision (for example, a language with no enforced visibility), the language profile says how the
-  same obligation is met.
+In practice that means:
+
+- **In scope:** the ownership, contracts, dependency direction, state, configuration, composition,
+  lifecycle and effects of modules, however those modules are represented or deployed.
+- **Out of scope:** whether the software is organized as services, applications, packages or a
+  particular architecture family; and the choice of database, transport, serialization format,
+  hosting model or front-end framework. ACIMA constrains *boundaries*, not technology. Where a
+  technology forces a decision (for example, a language with no enforced visibility), the language
+  profile says how the same obligation is met.
 
 ACIMA is also language-neutral in intent and **per-language in expression**. A rule is defined once,
 here; how it is detected in C#, TypeScript, Python, Go or Java is defined in the
@@ -106,7 +111,7 @@ themselves, not inferred from the architecture's name.
 **What ACIMA deliberately leaves to the team:**
 
 - the overall architecture family;
-- application and system decomposition, subject to ACIMA's module requirements;
+- system decomposition and artifact layout, subject to ACIMA's module requirements;
 - internal module design;
 - language and framework;
 - database, transport and infrastructure choices;

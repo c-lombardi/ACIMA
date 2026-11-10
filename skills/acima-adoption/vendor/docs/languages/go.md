@@ -127,7 +127,7 @@ zero-value field must not stand in for a policy decision. The reference enforcer
 ### Composition and injection (`D013`, `D014`)
 
 `cmd/orders-host/main.go` constructs the graph with explicit `New...` calls. Package `init()`
-registration, a global registry or a reflection-based lookup that chooses application components is
+registration, a global registry or a reflection-based lookup that chooses module-owned components is
 `D013`; a handler receiving an application service through an unexported field set after construction
 is `D014`. Constructor functions and explicit `Deps` structs are the normal Go expression of the
 requirement. This profile has no executable `D013`/`D014` in this revision; record manual evidence

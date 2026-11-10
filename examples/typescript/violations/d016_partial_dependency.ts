@@ -1,4 +1,4 @@
-// Deliberately broken: a component pre-binds an application dependency.
+// Deliberately broken: a component pre-binds a module-owned dependency.
 function save(orderRepository: unknown, request: unknown): unknown {
   return request;
 }

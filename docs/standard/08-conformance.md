@@ -37,7 +37,7 @@ is reported.
 - [ ] Every module has a contracts unit; no module publishes implementation types (`D009`, `L003`).
 - [ ] No contracts unit references a third-party package, another contracts unit, or any
       implementation (`D002`, `D003`, `D004`).
-- [ ] No contracts unit references the host (`D006`).
+- [ ] No contracts unit references a composition boundary, including a host (`D006`).
 - [ ] No implementation references another implementation (`D001`).
 - [ ] The module graph is acyclic (`D005`).
 - [ ] No reference leaks an implementation transitively (`D008`).
@@ -45,13 +45,13 @@ is reported.
 - [ ] Domain and application code do not reference infrastructure (`L001`).
 - [ ] Contracts expose no framework or transport types (`L002`).
 - [ ] Modules receive peers through construction, not through a locator (`L004`).
-- [ ] Application-owned components are registered and constructed explicitly at the composition
+- [ ] Module-owned components are registered and constructed explicitly at a declared composition
       boundary; no scan, convention or dynamic discovery hides the graph (`D013`, warning).
 - [ ] Dependencies arrive through constructors or composition functions, not property/field
       injection or post-construction assignment (`D014`, warning).
-- [ ] Closures, callbacks and returned functions do not capture application dependencies from a
+- [ ] Closures, callbacks and returned functions do not capture module-owned dependencies from a
       module or enclosing local; pure closures remain allowed (`D015`, warning).
-- [ ] Partial application or method binding of an application dependency occurs at the composition
+- [ ] Partial application or method binding of a module-owned dependency occurs at a composition
       boundary, not inside a component (`D016`, warning).
 - [ ] Every required construction and invocation input is supplied explicitly; no dependency arrives
       through an optional parameter or a default (`D011`, `D012`, warning).
@@ -226,8 +226,8 @@ problem to fix next. The levels exist so that:
 
 ## 8.8 Service topology profile
 
-The service topology profile in chapter 11 is the default for new systems. Its twelve requirements,
-`ST-1`–`ST-12`, are implemented as `ACIMA-S001`–`ACIMA-S012` by
+The service topology profile in chapter 11 is optional and applies only when explicitly selected. Its
+twelve requirements, `ST-1`–`ST-12`, are implemented as `ACIMA-S001`–`ACIMA-S012` by
 [`conformance/topology.py`](../../conformance/topology.py). The runner reads `acima.topology.json`,
 scans the declared projects and sources, and is exercised by `conformance/test_topology.py` against a
 clean fixture and one that violates every item. A new repository reports it as:
@@ -308,7 +308,7 @@ The third-party gate is two artefacts and one experiment:
 ### The swap drill
 
 The drill answers one question: *if the vendor disappeared, what would have to change?* The answer
-must be "the adapter and the composition root", never "the application".
+must be "the adapter and the composition boundary", never "the whole system".
 
 ```bash
 python3 conformance/swap_drill.py --project conformance/fixtures/third-party/python
@@ -318,17 +318,17 @@ It copies the fixture to a disposable directory and then:
 
 1. deletes every directory owned by a declared adapter unit;
 2. writes a stub adapter that implements the port with no vendor;
-3. resolves every import of every **application** unit (`implementation`, `contracts`, `port`)
+3. resolves every import of every **module-owned** unit (`implementation`, `contracts`, `port`)
    against the remaining tree and the language core;
-4. fails when an application file imports a declared vendor, a removed adapter, or an unresolvable
+4. fails when a source file imports a declared vendor, a removed adapter, or an unresolvable
    third-party package, and fails when it never references the port at all.
 
-The last check is the one people skip: an application that compiles without the adapter because it
-never used the port has no seam, it has an unused declaration.
+The last check is the one people skip: a module that compiles without the adapter because it never
+used the port has no seam, it has an unused declaration.
 
 ### What a passing drill proves, and what it does not
 
-It proves the application units compile against the port with the vendor removed. It does **not**
+It proves the module-owned units compile against the port with the vendor removed. It does **not**
 prove the adapter is correct, that the port's vocabulary is good, or that the vendor is replaceable in
 practice (data migration, wire formats and behaviour differences are not architectural). Record the
 drill in the conformance claim next to the run artefact:

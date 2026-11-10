@@ -92,7 +92,7 @@ that **required state is obvious**:
   its shape say so (`ChangeShippingAddress`, not `Order` with nulls).
 
 `D011` and `D012` (chapter 13) apply the same principle to the objects that *use* contracts. A
-contract may carry an optional member for compatible evolution (§5.7); an application constructor or
+contract may carry an optional member for compatible evolution (§5.7); a module-owned constructor or
 method must not accept a required dependency or decision by omission.
 
 ## 5.5 Value types and where they live
@@ -152,11 +152,12 @@ Contracts must serialize *somewhere*, but they must not be owned by a serializer
 - No serializer-specific attributes in contracts where avoidable. Where unavoidable (Go struct tags),
   use the most portable form and treat it as syntax, not dependency — Go tags are strings, not imports,
   so they do not violate `D004`.
-- Configure the serializer in the **host**, with a policy that matches the contracts' shape (for
-  example: immutable objects via constructor binding, explicit `null` handling, no polymorphic type
-  names).
-- If a transport demands a different shape, define an adapter type in the **consumer or the host** and
-  map. The contracts are the domain of the boundary; the wire format is a detail of one adapter.
+- Configure the serializer at the **composition boundary or delivery adapter**, with a policy that
+  matches the contracts' shape (for example: immutable objects via constructor binding, explicit
+  `null` handling, no polymorphic type names).
+- If a transport demands a different shape, define an adapter type in the **consumer or delivery
+  adapter** and map. The contracts are the domain of the boundary; the wire format is a detail of one
+  adapter.
 
 ## 5.9 Errors are contracts too
 
@@ -164,7 +165,7 @@ A command that can fail must say how, in the contract (`C006` forbids `object`-s
 
 - Prefer a typed result: `PlaceOrderResult.Success(OrderId)` / `PlaceOrderResult.Rejected(Reason)`.
 - Model expected failures as values in the contract (out of stock, payment declined). Model unexpected
-  failures as exceptions/errors, and let the host translate them.
+  failures as exceptions/errors, and let the delivery boundary translate them.
 - Never put a `bool Succeeded` plus a `string? ErrorMessage` in a public contract: it is untyped,
   untranslatable, and forces every consumer to parse English.
 
@@ -259,7 +260,7 @@ A contract that can trigger an effect must say enough for a consumer to act safe
 
 - **Outcome** — what business result the operation produces, not merely its transport status.
 - **Preconditions** — the state or authority the caller must establish first, when they are material.
-- **Failure** — expected failures as typed values; unexpected failures as errors the host translates.
+- **Failure** — expected failures as typed values; unexpected failures as errors the delivery boundary translates.
 - **Effects** — whether the operation writes, publishes, charges, sends or calls a vendor. A
   read-shaped operation that mutates is misnamed and opaque.
 - **Duplicate and retry semantics** — whether a retry is safe, what identity defines a duplicate, and

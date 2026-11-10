@@ -2,7 +2,7 @@
 
 Chapters 1–5 constrain the compile-time graph. This chapter constrains what happens when the system
 runs: how modules call each other, what may share a transaction, who owns configuration, and what
-changes when a module becomes a service.
+changes when a team deliberately adopts the optional service-topology profile.
 
 ## 6.1 Three ways to cross a boundary
 
@@ -37,7 +37,8 @@ A retry is an effect policy, not a generic resilience decoration. Where retries 
 MUST own the decision and the caller MUST be able to tell whether it may retry (`P15.1`, `P15.2`;
 `A010`, `A011`):
 
-- the owner is the module or adapter that owns the effect, or the host's declared delivery policy;
+- the owner is the module or adapter that owns the effect, or a composition boundary's declared
+  delivery policy;
 - the policy is bounded and visible: which failures are retryable, the attempt limit, backoff,
   timeout and what happens when the budget is exhausted (`A006`);
 - a retry of a command that may already have been applied requires a duplicate-execution rule
@@ -112,7 +113,7 @@ paying for your ability to change one module without changing the other.
 | Rule | Why |
 |---|---|
 | One module, one transaction. A write never spans two modules' data. | Two-phase commit across modules reintroduces the coupling the boundary removed. |
-| A module's transaction boundary is inside its implementation, never in the host. | The host does not know the invariants; it cannot decide what is atomic. |
+| A module's transaction boundary is inside its implementation, never at a composition boundary. | The composition boundary does not know the invariants; it cannot decide what is atomic. |
 | Cross-module consistency is eventual and explicit (saga, outbox, reconciliation). | "We'll just wrap it in a transaction" is the most common boundary breach in code review, because it looks like correctness. |
 | Reads may cross modules, but only through contracts (a view). | A join is a write-shaped dependency: it makes the provider's schema part of the consumer. |
 
@@ -126,8 +127,8 @@ When a transaction is used, exactly one module owns it (`P15.1`; `A010`):
 
 - the transaction begins and commits inside the owning implementation, around the state and outbox
   writes it is responsible for;
-- the host MUST NOT open a transaction and pass it across modules, and a consumer MUST NOT enlist a
-  provider's connection or unit of work;
+- a composition boundary MUST NOT open a transaction and pass it across modules, and a consumer MUST
+  NOT enlist a provider's connection or unit of work;
 - a cross-module workflow uses an outbox, a saga or reconciliation with an explicitly owned
   intermediate state, never a distributed transaction hidden behind a shared connection;
 - the contract states whether a command is transactional, what it guarantees on return, and what a
@@ -158,8 +159,9 @@ distributed transactions, global locks or universal atomicity.
 `A015` asks a different question from §6.5.1 and §6.5.2: not *which API* opens a transaction, but
 *who owns the guarantee*. A multi-step state change MUST name one owning component and state what the
 caller can rely on when the operation returns — committed, accepted, recoverable, compensating or
-unknown. The owner is normally the module that owns the state; a host policy may own a delivery
-workflow, but it MUST NOT own a consistency decision whose invariants live inside a module.
+unknown. The owner is normally the module that owns the state; a declared delivery policy at a composition
+boundary may own a workflow, but it MUST NOT own a consistency decision whose invariants live inside
+a module.
 
 Review questions:
 
@@ -178,25 +180,25 @@ are design intent, not syntax.
 Configuration is a boundary like any other (`A002`).
 
 - Each module reads only its own namespace: `catalog:*`, `orders:*`, `payments:*`.
-- The host passes configuration **into** the module's constructor or composition function; the module
-  does not reach into a global configuration object for another module's keys.
+- The composition boundary passes configuration **into** the module's constructor or composition
+  function; the module does not reach into a global configuration object for another module's keys.
 - Secrets follow the same rule: a module never reads another module's secret.
-- Shared infrastructure settings (connection pool sizes, log level) belong to the host's own namespace,
-  not to a module's.
+- Shared infrastructure settings (connection pool sizes, log level) belong to the composition
+  boundary's own namespace, not to a module's.
 
-The host resolves and validates values once, groups related values into typed settings, and passes
-them in. A module MUST NOT read `os.environ`, `process.env` or a global configuration object for a
-value a caller could supply (`A005`), and an operational timeout, retry or limit MUST have a named
-owner (`A006`; chapter 14).
+The composition boundary resolves and validates values once, groups related values into typed
+settings, and passes them in. A module MUST NOT read `os.environ`, `process.env` or a global
+configuration object for a value a caller could supply (`A005`), and an operational timeout, retry or
+limit MUST have a named owner (`A006`; chapter 14).
 
 The test is mechanical: if you deleted a module, would the remaining configuration still make sense?
 A key like `orders.database.catalog` answers no, and `A002` flags the shape even before you find the
 reader.
 
-## 6.7 The composition root in detail
+## 6.7 The composition boundary in detail
 
 ```csharp
-// host — the only place where implementations meet ports
+// composition boundary — the only place where implementations meet ports
 var catalog  = new CatalogModule(new SqlCatalogStore(connectionString));
 var payments = new PaymentsModule(new HttpPaymentGateway(options));
 var orders   = new OrdersModule(catalog.Reader, payments.Gateway, clock);
@@ -206,19 +208,20 @@ Obligations:
 
 - **Construction order is explicit.** A module receives its dependencies; it does not discover them.
   (`L004` forbids the container-as-registry shortcut.)
-- **The graph is named at the boundary.** Register and construct application components explicitly;
+- **The graph is named at the boundary.** Register and construct module-owned components explicitly;
   a scan or convention that selects them is `D013` (chapter 15).
 - **Dependencies arrive at construction.** Property and field injection are `D014`; a framework may
   activate an entry point, but its required dependencies belong in the declared constructor.
-  Framework infrastructure registration is not application-owned construction.
+  Framework infrastructure registration is not module-owned construction.
 - **Functional composition does not erase the dependency.** A closure or callback must receive its
   collaborator as a parameter or declared field (`D015`); partial application of a collaborator is
-  host wiring, not component-internal setup (`D016`; chapter 16). Pure transformations are exempt.
+  boundary wiring, not component-internal setup (`D016`; chapter 16). Pure transformations are
+  exempt.
 - **No module is a singleton with global state** (`A003`). If two consumers need the same instance for
-  performance (a cache, a connection pool), that instance is created by the host and passed in — it is
-  a dependency, not a static.
-- **Lifetime is decided once, in the host.** A module declaring a static instance of itself is a
-  module that has decided it is a process. Stateless application services SHOULD be shared rather
+  performance (a cache, a connection pool), that instance is created at the composition boundary and
+  passed in — it is a dependency, not a static.
+- **Lifetime is decided at the composition boundary.** A module declaring a static instance of itself
+  is a module that has decided it is a process. Stateless shared services SHOULD be shared rather
   than registered transient (`A007`); a shared component MUST NOT directly capture a scoped
   dependency (`A008`); and shared mutable state MUST have an explicit owner, isolation boundary and
   concurrency policy (`A009`). Thread safety, tenant isolation, resource cleanup and distributed

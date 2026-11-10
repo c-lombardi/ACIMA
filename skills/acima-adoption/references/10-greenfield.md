@@ -20,11 +20,15 @@ Rule: the gate exists before the second module does.
 3. module B contracts                (types only, no behaviour, no imports)
 4. module A implementation           (depends on A.contracts)
 5. module B implementation           (depends on B.contracts, A.contracts)
-6. host / composition root           (depends on everything; the DI layer)
+6. composition boundary              (host, consumer or factory; optional for a library)
 7. acima.config.json + empty waivers (same commit as the skeleton)
 8. enforcer in CI                    (before module C exists)
 9. declare L3
 ```
+
+A host is one possible composition boundary, not a prerequisite. A package or library may declare no
+`host` unit at all; its consumer, public factory or package initializer is the boundary. A system with
+an API, a worker and a test harness may declare several. The config's `host` role names any of them.
 
 Steps 3 and 4 before 5 and 6 is the whole discipline. Writing both contracts first forces the
 question "what does B need from A?" while the answer is still a design decision rather than an
@@ -36,7 +40,7 @@ import statement.
 |---|---|---|
 | `<module>.contracts` | immutable messages, commands, queries, views, events, the capability interface, local value types | language core only |
 | `<module>` | aggregates, services, adapters, persistence | its own contracts, **other modules' contracts** |
-| `host` | composition root, configuration, transport, DI wiring | everything |
+| composition boundary (`host`) | configuration, transport, DI wiring; may be absent, and there may be several | everything in its scope |
 
 Nothing else. There is no shared kernel in the default: `Money` and identifiers live in the
 contracts project that publishes them and are duplicated where another contract needs the same
@@ -66,9 +70,10 @@ public interface IOrders { PlaceOrderResult Place(PlaceOrder command); }
 ```
 
 `.csproj` shape: contracts reference nothing; value types are declared locally. Implementations
-reference contracts; the host references implementations and is the only project that wires them. If a
-`PackageReference` appears in a contracts project, `ACIMA-D004` is already true even if nothing imports
-it yet.
+reference contracts; a composition boundary references implementations and wires them. A library may
+expose a public factory or package initializer to its consumer instead of declaring a host. If a
+`PackageReference` appears in a contracts project, `ACIMA-D004` is already true even if nothing
+imports it yet.
 
 ### TypeScript
 
@@ -214,7 +219,7 @@ expected number of units. A run that finds nothing exits 0 and proves nothing.
 | Day | Outcome |
 |---|---|
 | 1 | approved skeleton, two contracts, config, empty waivers — one commit |
-| 2 | first implementations, host wiring, end-to-end test |
+| 2 | first implementations, composition wiring, end-to-end test |
 | 3 | enforcer in CI, deliberately broken branch to prove the gate fails, then reverted |
 | 4–5 | second module's contract reviewed by the first module's owner |
 | week 2 | first contract evolution: add a field, deprecate one, keep consumers compiling |

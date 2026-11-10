@@ -23,7 +23,7 @@ This table maps each portable rule to the native mechanism that can also catch i
 | `ACIMA-D003` | Contracts never reference other contracts | ArchUnit / NetArchTest sibling-module isolation |
 | `ACIMA-D004` | Contracts have no third-party dependencies | .NET: `PackageReference` audit; Java: `maven-enforcer-plugin` banned dependencies; TS: `import/no-extraneous-dependencies`; Python: `import-linter` forbidden modules |
 | `ACIMA-D005` | No module cycles | ArchUnit `slices().should().beFreeOfCycles()`; NetArchTest cycle checks; `dependency-cruiser` `no-circular` |
-| `ACIMA-D006` | No unit references the host | ArchUnit layered architecture with host on top |
+| `ACIMA-D006` | No unit references the composition boundary | ArchUnit layered architecture with the boundary on top |
 | `ACIMA-D007` | The shared kernel is a leaf | .NET: kernel project has zero references; `bannedApiAnalyzers` for kernel types |
 | `ACIMA-D008` | No transitive reach into another implementation | ArchUnit `noClasses().should().dependOnClassesThat(...)` with transitive `onlyBeAccessedBy`; NetArchTest `HaveDependencyOnAny` |
 | `ACIMA-D009` | No private types crossing a boundary | Compiler visibility (`internal` in C#, package-private in Java, unexported in Go) |

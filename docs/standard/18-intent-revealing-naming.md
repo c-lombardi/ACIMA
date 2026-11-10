@@ -61,7 +61,7 @@ capability; `OrderFactory` may be the precise abstraction. The question is wheth
 vocabulary makes the responsibility unambiguous. A generic name becomes a defect when it is a
 placeholder for an undecided responsibility, or when it lets unrelated behaviour accumulate.
 
-`N002` reports application-owned types whose name is exactly `Helper`, `Manager`, `Handler`,
+`N002` reports module-owned types whose name is exactly `Helper`, `Manager`, `Handler`,
 `Processor`, `Utility`, `Service`, `Provider`, `Factory`, `Common`, `Base`, `Default` or `Generic`,
 or whose name ends in `Helper`, `Manager`, `Processor`, `Utility`, `Common`, `Default` or `Generic`.
 It is a candidate: `RequestHandler` may be the framework's precise role, and a reviewed exception is
@@ -302,7 +302,7 @@ names remain idiomatic.
 ## 18.5 Enforcement
 
 `N001` and `N002` execute in the Python and TypeScript reference enforcers. They inspect type
-declarations in application units:
+declarations in module-owned units:
 
 - **N001** reports a class, interface, type alias or enum that does not follow the language's type
   casing convention. It is a convention check, not a semantic judgement.

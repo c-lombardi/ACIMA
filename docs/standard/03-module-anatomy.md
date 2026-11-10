@@ -1,15 +1,20 @@
 # 3. Module anatomy
 
-Every module, in every language, has the same four artifacts. Only the packaging differs.
+Every module has the same four responsibilities. Only the representation differs.
 
 ```
-<Module>.Contracts     public, immutable, zero dependencies
-<Module>               private, owns domain + data + adapters
-<Module>.Tests         behaviour tests (not architecture tests)
-<host>                 composition root — references everything, publishes nothing
+contracts surface      public, immutable, zero dependencies
+implementation         private; owns domain, state, data and adapters
+verification           behaviour tests (not architecture tests)
+composition surface    optional; host, factory, package initializer, plugin loader or consumer code
 ```
 
-Plus, shared by the whole system:
+A module may use one or more units for a responsibility. A project, package, namespace, directory,
+library or service is a representation, not the definition of the module. A library may have no
+`host` unit at all; its composition surface may be a public constructor or factory used by its
+consumer. A system with several composition boundaries is valid.
+
+Plus, shared by the whole system where applicable:
 
 ```
 <SharedKernel>         legacy compatibility value types (not referenced by default contracts)
@@ -23,8 +28,9 @@ Plus, shared by the whole system:
 | Aggregates, entities, invariants | implementation (`domain/`) | contracts |
 | Application services, handlers, orchestration | implementation (`application/`) | contracts |
 | Repositories, DB context, migrations, ORM mapping | implementation (`infrastructure/`) | contracts |
-| HTTP endpoints, message consumers, schedulers | host | implementation |
-| DI registration / object graph assembly | host | implementation |
+| Delivery endpoints, message consumers, schedulers | composition boundary (host, framework entry point or adapter) | implementation |
+| DI registration / object graph assembly | composition boundary | implementation |
+| Public factory, package initializer or plugin loader | composition boundary or contracts surface | another module's implementation |
 | Commands, queries, events, views | contracts | implementation |
 | Provided ports (what the module promises) | contracts | implementation |
 | Consumer-owned ports (what this module needs) | implementation | contracts |
@@ -37,23 +43,23 @@ table.**
 
 ## 3.2 The shape of a module's implementation
 
-ACIMA does not mandate a folder scheme, but it does mandate the direction of dependencies inside a
-module (`L001`):
+ACIMA does not mandate a folder scheme, artifact type or layer count. It mandates the direction of
+dependencies inside a module (`L001`). The following layout is illustrative, not required:
 
 ```
 <Module>/
   domain/          aggregates, entities, value objects, domain events, domain policies
   application/     use cases, command/query handlers, ports (consumer-owned), transactions
   infrastructure/  database, messaging, HTTP clients, file storage, adapters
-  Composition.cs|ts|py|go|java   the module's own registration function (no peer wiring)
+  Composition.cs|ts|py|go|java   optional: the module's own registration function (no peer wiring)
 ```
 
 - `domain/` depends on nothing except the language core (or the legacy shared kernel during migration).
 - `application/` depends on `domain/` and on its own ports.
 - `infrastructure/` implements those ports and may depend on anything.
 - The wiring that connects `infrastructure/` to `application/` happens either inside a module
-  composition function (allowed: it is the module's own graph) or in the host. It MUST NOT be
-  resolved lazily at call time (`L004`).
+  composition function (allowed: it is the module's own graph) or at a composition boundary. It MUST
+  NOT be resolved lazily at call time (`L004`).
 
 Layer count is not the point. What matters is that **the inner code never names an outer type**, so
 the domain can be tested without a database, a broker or a web server. Three folders are enough; five
@@ -92,44 +98,51 @@ The rule (`L003`) is: *nothing outside contracts is public outside the module.*
 Python is the honest case: there is no mechanism, only the test. That is precisely why
 `D009` exists and why its finding message names the import that broke the boundary.
 
-## 3.5 The host
+## 3.5 The composition boundary and optional host
 
-A host does four things and nothing else:
+A composition boundary does four things and nothing else for the scope it declares:
 
-1. reads and validates configuration, then constructs the modules;
+1. reads and validates the configuration it owns, then constructs the modules it assembles;
 2. satisfies provided ports with implementations (the object graph);
-3. adapts the outside world to commands/queries (HTTP, messages, CLI, jobs);
-4. starts and stops.
+3. adapts the outside world to commands/queries where it is also a delivery boundary;
+4. initialises and, where applicable, disposes the graph.
 
 ```python
-# src/acima/host/main.py  — the one place where every module is known
+# src/acima/host/main.py — a composition boundary that knows these modules
 catalog = CatalogModule(products=InMemoryProductStore())
 payments = PaymentsModule(gateway=FakeGateway())
 orders = OrdersModule(catalog=catalog.reader(), payments=payments.gateway())
 ```
 
-Rules for hosts:
+A library or package may instead expose a public factory, constructor or initializer; its consumer is
+the composition boundary. A test fixture may compose the same modules for a test. There is no
+requirement for one global host.
 
-- A host MAY reference every module. It is the only unit with that right.
-- A host MUST NOT contain business rules. If it does, they are unreachable by the module's tests and
-  invisible to its contracts — which is the same mistake as putting them in a controller.
-- A module MUST NOT reference a host (`D006`). This is what allows one module to be hosted by many
-  applications (an API, a worker, a test harness) unchanged.
-- Configuration values are resolved once here and passed in as typed settings. A module MUST NOT read
-  ambient configuration itself (`A005`); operational literals belong to a named owner (`A006`;
-  chapter 14).
-- The host MUST name the application components it registers and construct them explicitly. A scan
-  or convention that selects application-owned components is `D013` unless it is a reviewed,
-  proven exception. Constructor dependencies MUST be supplied, not injected into properties after
+Rules for composition boundaries:
+
+- A composition boundary MAY reference every module in its scope. It is the only unit with that
+  right.
+- A composition boundary MUST NOT contain business rules. If it does, they are unreachable by the
+  module's tests and invisible to its contracts — which is the same mistake as putting them in a
+  controller.
+- A module MUST NOT reference a composition boundary (`D006`). This is what allows one module to be
+  hosted by many representations (an API, a worker, a library consumer, a test harness) unchanged.
+- Configuration values are resolved once at the boundary and passed in as typed settings. A module
+  MUST NOT read ambient configuration itself (`A005`); operational literals belong to a named owner
+  (`A006`; chapter 14).
+- The boundary MUST name the module-owned components it registers and construct them explicitly. A
+  scan or convention that selects module-owned components is `D013` unless it is a reviewed, proven
+  exception. Constructor dependencies MUST be supplied, not injected into properties after
   construction (`D014`; chapter 15).
-- A closure, callback or curried function the module returns MUST declare its application
+- A closure, callback or curried function the module returns MUST declare its module-owned
   dependencies as parameters or fields; it MUST NOT capture them from module or enclosing-local
-  state (`D015`). Partial application of a dependency belongs at the host (`D016`; chapter 16).
-- The host MUST make each application component's lifetime visible: stateless services shared,
+  state (`D015`). Partial application of a dependency belongs at the composition boundary (`D016`;
+  chapter 16).
+- The boundary MUST make each module-owned component's lifetime visible: stateless components shared,
   scoped dependencies never captured by a shared component, and shared mutable state explicitly
   owned (`A007`–`A009`; chapter 17). A transient registration is valid only when identity, isolated
   state, a short-lived resource or an operation boundary requires it.
-- The host MUST NOT open a transaction across modules, perform a module's external effect on its
+- The boundary MUST NOT open a transaction across modules, perform a module's external effect on its
   behalf, or decide that a failed effect is safe to retry. It may own a declared delivery policy;
   otherwise the effect owner is the module that owns the affected state (`A010`–`A012`; chapter 6).
 
@@ -141,7 +154,8 @@ Adding a module is the moment to get all of this right, because afterwards it is
       not a technical grouping (`core`, `shared`, `data`, `services`).
 - [ ] Create `<module>.contracts` with zero dependencies.
 - [ ] Name the effects the module owns, and state where retries, duplicate handling, transactions and
-      partial completion are decided (`P15`; chapter 6). Do not defer these decisions to the host.
+      partial completion are decided (`P15`; chapter 6). Do not leave these decisions to a
+      composition boundary.
 - [ ] Create `<module>` implementation, referencing its own contracts **only as a private
       dependency** so it is not transitively exported.
 - [ ] Create `<module>.tests` (behaviour) and add the module to the architecture configuration.

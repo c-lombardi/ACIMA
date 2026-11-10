@@ -194,9 +194,9 @@ product graph.
 
 **Severity** `warning` · **Level** L3 · **Principle** P4.8, P7.2
 
-> An application component MUST NOT read deployment, operational or secret configuration from ambient
-> environment variables or a global configuration object. The composition root resolves it and passes
-> the value in.
+> A module-owned component MUST NOT read deployment, operational or secret configuration from ambient
+> environment variables or a global configuration object. A composition boundary resolves it and
+> passes the value in.
 
 ### Violation
 
@@ -215,7 +215,7 @@ export const ratesUrl = process.env.ORDERS_RATES_URL;   // ❌ resolved inside t
 ### Finding
 
 ```
-ACIMA-A005  warning  orders reads the process environment directly; resolve it at the composition root and pass the value into the component.
+ACIMA-A005  warning  orders reads the process environment directly; resolve it at a composition boundary and pass the value into the component.
   src/orders/impl/shipping.py:4
 ```
 
@@ -224,11 +224,11 @@ ACIMA-A005  warning  orders reads the process environment directly; resolve it a
 A module that reads the environment is not constructible from its declared inputs. Its behaviour
 changes with the process it happens to run in, its tests need ambient state, and the value has no
 visible owner. In a monolith the coupling is hidden; after extraction it becomes a deployment
-failure. Hosts are the composition boundary and are exempt by design.
+failure. A declared `host` unit is a composition boundary and is exempt by design.
 
 ### Fix
 
-Resolve and validate the value once in the host, group related values into a typed settings object,
+Resolve and validate the value once at the composition boundary, group related values into a typed settings object,
 and require that object in the module constructor or composition function. If the value belongs to
 another module, ask for it through that module's port (`A002`).
 
@@ -246,8 +246,8 @@ require manual evidence.
 **Severity** `warning` · **Level** L3 · **Principle** P4.7
 
 > A timeout, retry count, limit, rate, batch size, retention period or similar operational policy
-> MUST be a named constant, a typed configuration value supplied by the host, or a reviewed local
-> literal.
+> MUST be a named constant, a typed configuration value supplied at a composition boundary, or a
+> reviewed local literal.
 
 ### Violation
 
@@ -269,7 +269,7 @@ export function submit(order: Order): void {
 ### Finding
 
 ```
-ACIMA-A006  warning  orders embeds an operational value in retry_limit; name it in its owner or supply it as configuration at the composition root.
+ACIMA-A006  warning  orders embeds an operational value in retry_limit; name it in its owner or supply it as configuration at a composition boundary.
   src/orders/impl/submission.py:3
 ```
 
@@ -328,7 +328,7 @@ container.add_transient(OrderValidator)                 # ❌ rebuilt for every 
 ### Finding
 
 ```
-ACIMA-A007  warning  lifecycle.host registers the stateless service OrderValidator as transient;
+ACIMA-A007  warning  lifecycle.host registers the stateless shared service OrderValidator as transient;
                      share it at the longest appropriate lifetime.
   src/host/registrations.ts:14
   register(OrderValidator, { lifetime: 'transient' });
@@ -415,7 +415,8 @@ Choose the correction that matches the state:
 
 - make the consumer scoped when its own behaviour is request-bound;
 - pass the scoped value as an operation parameter instead of storing it;
-- resolve the dependency inside the scope through an explicit factory/provider that the host wires;
+- resolve the dependency inside the scope through an explicit factory/provider that the composition
+  boundary wires;
 - split a shared stateless part from a scoped stateful part.
 
 Do not replace the constructor with a service locator. A global `get()` hides the lifecycle mismatch

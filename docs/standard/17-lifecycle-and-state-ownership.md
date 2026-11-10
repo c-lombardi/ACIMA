@@ -1,7 +1,7 @@
 # 17. Lifecycle and state ownership
 
-> **Normative.** An application component MUST have a lifecycle appropriate to its responsibilities.
-> A stateless application service SHOULD be shared rather than repeatedly constructed. A component's
+> **Normative.** A module-owned component MUST have a lifecycle appropriate to its responsibilities.
+> A stateless shared service SHOULD be shared rather than repeatedly constructed. A component's
 > lifetime MUST be compatible with the lifetimes of the dependencies it captures. Shared mutable
 > state MUST have an explicit owner, isolation boundary and concurrency policy, and a component that
 > owns a resource MUST have an explicit initialisation, lifetime and cleanup story.
@@ -18,7 +18,7 @@ Three portable rules carry the mechanically decidable part of this obligation:
 
 | Rule | Finding | Default severity |
 |---|---|---|
-| `A007` | A stateless application service is registered as transient | warning, `error` at `2.0.0` |
+| `A007` | A stateless shared service is registered as transient | warning, `error` at `2.0.0` |
 | `A008` | A shared/singleton component directly captures a scoped dependency | warning, `error` at `2.0.0` |
 | `A009` | A shared component owns an unowned mutable container | warning, `error` at `2.0.0` |
 
@@ -48,7 +48,7 @@ container.add_transient(PriceCalculator)
 
 Neither line says anything false. The defect appears later: an expensive validator is rebuilt for
 every request, a "stateless" service accumulates a request id in a field, a singleton holds the
-first tenant's currency, or a scoped repository is stored on an application-wide object. None of
+first tenant's currency, or a scoped repository is stored on a system-wide object. None of
 those changes a constructor signature, so the dependency graph looks correct while the runtime
 graph is not.
 
@@ -96,7 +96,7 @@ resolve the state at the boundary and pass it down. Making the service transient
 the state appropriately scoped if the service still writes it to a shared object.
 
 A request id, current user, correlation token, tenant identifier, unit of work, open transaction or
-per-call cancellation token belongs to a boundary. An application-wide service must receive it as a
+per-call cancellation token belongs to a boundary. A shared service must receive it as a
 parameter or resolve it inside the scoped operation; it must not retain it in a field.
 
 ### 17.2.3 Does the component own a resource?
@@ -113,36 +113,36 @@ responsibility to code that has no way to perform it.
 Transient remains correct when each instance has independent identity, when a caller intentionally
 constructs a fresh value object, when the object represents one operation, or when the object is a
 short-lived resource whose disposal is part of its contract. A domain entity, command, event,
-value object or job descriptor is not an application service and is outside this rule.
+value object or job descriptor is not a shared service and is outside this rule.
 
 ## 17.3 The normative obligations
 
 ### R1 — Prefer shared instances for stateless services
 
-Validators, calculators, mappers, domain policies, stateless application services, stateless
+Validators, calculators, mappers, domain policies, stateless shared services, stateless
 infrastructure adapters and pure behaviour wrapped in a service abstraction SHOULD be shared at the
 longest appropriate lifetime. A transient registration is a claim that per-instance identity or
 state matters; when it does not, the claim is false and the construction cost is unnecessary.
 
 This is a preference, not a prohibition. A stateless object may be transient because a framework
-requires it, because the object is a short-lived value rather than an application component, or
+requires it, because the object is a short-lived value rather than a module-owned component, or
 because construction is part of an intentional operation boundary. The reason must be defensible,
 not merely "transient is the default".
 
 ### R2 — Justify the instance lifecycle
 
-Every application-owned component MUST have an identifiable lifecycle appropriate to its
-responsibilities. Acceptable boundaries include application, process, request, transaction, tenant,
+Every module-owned component MUST have an identifiable lifecycle appropriate to its
+responsibilities. Acceptable boundaries include system, process, request, transaction, tenant,
 operation, individual use and resource lifetime. A repository MUST NOT introduce repeated
-construction of an application component without a reason that survives review.
+construction of a module-owned component without a reason that survives review.
 
 This does not require documenting every `new` expression or every value object. It applies to
-application components: services, adapters, repositories, handlers, workers, caches and
+module-owned components: services, adapters, repositories, handlers, workers, caches and
 resource-owning objects.
 
 ### R3 — Separate behaviour from mutable state
 
-Application services SHOULD implement behaviour and delegate state ownership to explicitly
+Shared services SHOULD implement behaviour and delegate state ownership to explicitly
 identified components: repositories, request or operation contexts, explicit state stores,
 transaction boundaries, tenant state providers, dedicated caches or resource owners. A service that
 accumulates incidental state is a service whose correctness depends on how often it is constructed
@@ -178,7 +178,7 @@ failures:
 
 - a singleton stores the current request id, user or cancellation token;
 - a shared service keeps tenant-specific mutable data in an instance field or module-level map;
-- an application-wide cache has no tenant key and no eviction policy;
+- a system-wide cache has no tenant key and no eviction policy;
 - a background worker holds a stale request context after the request ends;
 - a transient object captures a scoped dependency and is stored somewhere longer-lived.
 
@@ -238,14 +238,14 @@ depends on, where it comes from and how it is constructed. Lifecycle extends tha
 7. Whether sharing it is safe.
 8. How its resources are released.
 
-For every application component, these answers must be available from the composition boundary,
+For every module-owned component, these answers must be available from the composition boundary,
 the component's constructor and its registration — not inferred from a container's default
 convention. "It is a singleton because that is the default" and "it is transient because that is
 the default" are both failures of visibility.
 
 The same obligation applies to functional construction. A long-lived closure that captures a
 short-lived request object, a shared delegate that captures mutable tenant data, a factory that
-retains a scoped component, a curried function that keeps application state between invocations and
+retains a scoped component, a curried function that keeps module state between invocations and
 a callback registration that retains a resource past its intended lifetime are all lifecycle
 defects even though no class field is involved. Chapter 16 defines the dependency-visibility rules;
 this chapter adds the lifetime question: *how long does the captured value live, and who owns it
@@ -309,7 +309,7 @@ independent review. The report MUST NOT say "tenant-safe" because no finding fir
 
 ## 17.7 Distributed systems: a singleton is process-local
 
-An application singleton is local to one process, worker or container replica. It is not a
+A process singleton is local to one process, worker or container replica. It is not a
 distributed singleton, a cluster-wide lock, a shared cache or a single source of truth. In a
 multi-replica deployment, each replica gets its own instance, so:
 
@@ -332,7 +332,7 @@ must be documented as such and must not be described as globally shared.
 | Database connection | Pooled and shared; transaction scoped per unit of work | transient connection per call, never disposed |
 | HTTP client | Shared/pooled, long-lived | new client per request, socket exhaustion |
 | File handle / stream | Operation scoped, disposed on every path | shared handle with interleaved readers |
-| Background worker | Application lifetime, explicit start/stop | request-scoped worker that outlives the request |
+| Background worker | Process lifetime, explicit start/stop | request-scoped worker that outlives the request |
 | Subscription / callback | Registered for a defined lifetime, unsubscribed on shutdown | registration retains a scoped object |
 | Cache | Shared with eviction and isolation policy | unbounded map, no tenant key, no expiry |
 | Unit of work | Transaction or request scoped, explicitly completed | stored on a singleton |
@@ -370,7 +370,7 @@ dependency is visible; this chapter asks how long the capture lives.
 ### 17.9.2 Python
 
 A module-level object is a process singleton for practical purposes. A decorator such as
-`@lru_cache` on an application service creates a shared cache with an implicit lifetime and no
+`@lru_cache` on a shared service creates a cache with an implicit lifetime and no
 tenant boundary. A default argument such as `def handle(order, context=RequestContext())` creates
 one mutable object shared by every call. Context managers are the normal resource-ownership
 mechanism; an object that opens a resource in `__init__` and has no `close`/`__exit__` path needs a
@@ -422,7 +422,7 @@ rule says otherwise:
 - domain entities, value objects, commands, events, jobs and other short-lived data carriers;
 - immutable objects with harmless independent allocation;
 - per-operation objects whose identity or isolated mutable state is meaningful;
-- framework-required lifetimes that the application documents and tests;
+- framework-required lifetimes that the system documents and tests;
 - scoped services that are used within their scope and not captured;
 - shared state that is explicitly owned, synchronised and isolated;
 - resource-owning components with a documented acquisition and cleanup path.
@@ -573,14 +573,14 @@ class OrderLine {
 }
 ```
 
-A value object constructed per use is not an application service. `A007` does not apply, even if the
-class has no mutable fields, because it is not registered as an application component.
+A value object constructed per use is not a shared service. `A007` does not apply, even if the class
+has no mutable fields, because it is not registered as a module-owned component.
 
 ## 17.13 Generality across architecture families
 
 | Architecture | Shared form | Scope form | Watch for |
 |---|---|---|---|
-| Modular monolith | application service, stateless adapter | request/transaction context | singleton retaining a request context |
+| Modular monolith | shared service, stateless adapter | request/transaction context | singleton retaining a request context |
 | Microservices | per-service client/pool | per-request handler state | replica-local cache presented as global |
 | Event-driven | consumer/adapter shared | message or transaction scope | callback retaining a consumed message |
 | Functional | partially applied function with explicit dependencies | per-invocation context | closure retaining request data |
@@ -598,7 +598,7 @@ what state does it retain?
 
 ## 17.14 Review checklist
 
-- [ ] Is every application component stateless, stateful, resource-owning or scope-dependent — and
+- [ ] Is every module-owned component stateless, stateful, resource-owning or scope-dependent — and
       is that classification stated?
 - [ ] Is a stateless service shared at the longest appropriate lifetime (`A007`)?
 - [ ] Is a transient registration justified by identity, isolated state, a short-lived resource or an

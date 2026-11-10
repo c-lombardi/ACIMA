@@ -64,7 +64,7 @@ the approved paths and level, then state the capability and the gap of what was 
 
 Implement the approved paths and level. Routine choices inside that scope are allowed. Do not create
 optional artifacts that were not in the approved list. Stop and ask before adding a path, changing
-application source or build configuration, adding CI, raising the level, or introducing a boundary
+target source or build configuration, adding CI, raising the level, or introducing a boundary
 that was not in the proposal. If implementation reveals that the proposal was wrong, say what
 changed, why the approved scope cannot deliver the stated result, and what new approval is needed.
 
@@ -127,7 +127,7 @@ requirement.
 | Add or copy enforcement tooling, scripts or dependencies | required |
 | Add or modify CI workflows | required |
 | Modify build, test or packaging configuration | required |
-| Modify application source or existing repository documentation | required |
+| Modify target source or existing repository documentation | required |
 | Declare, split or merge architectural units or change their roles | required |
 | Merge, publish, release or push | separate explicit approval |
 
@@ -234,7 +234,7 @@ Discovery is heuristic. It is not an authoritative architecture.
 | Confirmed module | an owner has accepted the boundary and role | explicit owner decision | yes |
 | Supporting library | code shared without being a domain module | package metadata, no entry point, many consumers | only with an owner decision |
 | Shared kernel | a deliberately shared model depended on by many modules | ubiquitous types, high fan-in | only as a declared exception or redesign decision |
-| Host / composition root | wires implementations; not a domain module | entry point, DI registration, deployment manifest | usually yes, after review |
+| Composition boundary (`host`) | wires implementations; not a module | entry point, DI registration, public factory or consumer code | optional; declare each, after review |
 | Test project | verifies other units | test framework, naming, build metadata | normally excluded, not a domain unit |
 | Tooling project | builds, deploys or analyzes | scripts, generators, analyzers | normally excluded or declared separately |
 | Uncertain | evidence conflicts or is missing | duplicate names, generated code, ambiguous manifests | no; ask first |

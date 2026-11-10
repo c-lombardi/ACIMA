@@ -129,7 +129,7 @@ def test_proposal_contract_is_reviewable() -> None:
     skill = SKILL.read_text(encoding="utf-8")
     reference = CONSENT_REF.read_text(encoding="utf-8")
 
-    for heading in ("## 1. Recommendation", "## 2. Application discovered",
+    for heading in ("## 1. Recommendation", "## 2. Software discovered",
                     "## 3. What ACIMA adds", "## 4. Expected benefits",
                     "## 5. Recommended adoption scope", "## 6. Proposed changes",
                     "## 7. Tradeoffs and risks", "## 8. Next steps", "## 9. Approval"):
@@ -200,7 +200,7 @@ def test_ambiguous_mapping_stays_a_proposal() -> None:
         assert "Review module names" in config["_note"]
         reference = CONSENT_REF.read_text(encoding="utf-8")
         for word in ("Discovered project", "Confirmed module", "Supporting library",
-                     "Shared kernel", "Host / composition root", "Test project", "Uncertain"):
+                     "Shared kernel", "Composition boundary (`host`)", "Test project", "Uncertain"):
             assert word in reference, word
 
 

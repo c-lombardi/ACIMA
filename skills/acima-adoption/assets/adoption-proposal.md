@@ -24,14 +24,14 @@ Key findings that drive the recommendation:
 - `<consequence in the team's terms>` (`ACIMA-...`, N occurrences, `<path or module>`)
 - `<what could not be checked>` — see limitations below
 
-## 2. Application discovered
+## 2. Software discovered
 
-What this application does, in plain language, and what the inspection established:
+What this software does, in plain language, and what the inspection established:
 
 - **Type:** application / modular monolith / multi-service / library / framework / plugin system.
 - **Languages and frameworks:** `<...>`, from `<manifest evidence>`.
 - **Structure:** `<projects/packages and their roles>`.
-- **Composition roots and entry points:** `<paths>`.
+- **Composition boundaries and entry points:** `<paths; say whether any host exists>`.
 - **Existing boundaries:** `<what already separates modules, and the evidence>`.
 - **Persistence, configuration and external effects:** `<owners and gaps>`.
 - **Existing architecture checks:** `<none | tests | linters | CI>`.
@@ -136,7 +136,7 @@ The implementation sequence, and what the user should expect at each stage:
 2. `<measurement>` — the artefact produced and what it proves.
 3. `<gate or slice>` — how it is observed and who owns the merge.
 
-End with the decisions only the owner can make: shared-kernel status, host ownership, exception
+End with the decisions only the owner can make: shared-kernel status, composition-boundary ownership, exception
 owner, and whether integration blocking is approved. Recommend an answer for each with its evidence.
 
 ## 9. Approval

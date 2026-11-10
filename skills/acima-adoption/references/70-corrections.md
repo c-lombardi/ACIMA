@@ -58,9 +58,9 @@ Never bulk-rename to reduce the count, and never treat a preferred synonym as a 
 | `D001` impl → impl | Import the provider's contracts port. If the port lacks the operation, request an additive contract change from its owner — the import is the conversation, not the solution. | Reaching into the provider's repository "just for a read" keeps its store in your build. |
 | `D002` contracts → impl | Define the contract shape on its own terms; map inside the implementation, which already knows both types. | Reusing an entity in the contract to avoid writing a mapper. |
 | `D003` contracts → contracts | Local value, carry identity (`ProductId`, price, quantity), or duplicate the shape. | Moving the shared type to a "shared kernel" — legal only as a legacy allowance, never as a new contract. |
-| `D004` contracts → third party | Constructor checks instead of validation attributes; serializer attributes on a transport type in the host, or a convention-based serializer. | Keeping the package "because the contract needs JSON" — the boundary's adapter owns serialization. |
+| `D004` contracts → third party | Constructor checks instead of validation attributes; serializer attributes on a transport type at the composition boundary, or a convention-based serializer. | Keeping the package "because the contract needs JSON" — the boundary's adapter owns serialization. |
 | `D005` cycle | In order: a process manager that owns the workflow, an event replacing one direction, or a merge if both are one bounded context. | Breaking the cycle with a shared kernel — the cycle becomes `D007` next month. |
-| `D006` contracts → host | Delete the reference. Composition happens in the host; the contract must not know it exists. | Passing `IServiceProvider` or a logger into a message. |
+| `D006` contracts → composition boundary | Delete the reference. Composition happens at the boundary; the contract must not know it exists. | Passing `IServiceProvider` or a logger into a message. |
 | `D007` shared kernel | Give the type an owner and move it there; consumers take a contracts reference to that owner. | Growing the kernel "temporarily" — it has no owner, so nothing ever removes it. |
 | `D008` transitive leak | Remove the direct reference that makes the implementation transitive; check package and project references, not only imports. | Adding a direct reference to "make the type visible", which is `D001` again. |
 | `D009` internals access | Publish a port in contracts; make the implementation type internal or unexported. | Widening visibility until the rule stops seeing it. |
@@ -101,16 +101,16 @@ green run decided them.
 
 - **`A001` shared table** — call the owner's port for reads; subscribe to its events for data you keep,
   into your own schema. Never "just read" another module's table, even read-only.
-- **`A002` foreign config key** — move the key under your own namespace, supplied by the host; if the
+- **`A002` foreign config key** — move the key under your own namespace, supplied at the composition boundary; if the
   value belongs to the provider, ask through a port.
-- **`A003` shared static state** — make it an instance owned by the module; the host constructs one and
+- **`A003` shared static state** — make it an instance owned by the module; the composition boundary constructs one and
   injects it if several modules need it.
 - **`A004` version lock** — depend on `X.Contracts` with a range. Needing the implementation's version
   means `D001` is still present.
 - **`A007` unnecessary transient** — first confirm the component has no mutable state and is safe for
   concurrent calls. Then share it at the longest appropriate lifetime. Do **not** promote it to a
   singleton merely to silence the finding if it owns state: fix `A009` first. A domain object,
-  value object or per-operation object is not an application service and should not be registered.
+  value object or per-operation object is not a shared service and should not be registered.
 - **`A008` captive scoped dependency** — choose the state boundary. If the consumer itself holds
   request/tenant state, make it scoped. If only one operation needs the value, pass it as a
   parameter. If the consumer genuinely needs to create shorter-lived work, inject an explicit

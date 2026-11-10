@@ -1,5 +1,5 @@
 {
-  "_comment": "Copy to <repo>/acima.config.json. Replace the units with your own; every source file must belong to exactly one. Contract units never reference implementations and own their value types.",
+  "_comment": "Copy to <repo>/acima.config.json. Replace the units with your own; every source file must belong to exactly one. Contract units never reference implementations and own their value types. A host unit is optional: omit it for a library and declare one per composition boundary in a larger system.",
   "standard": "1.0.0-draft.1",
   "language": "dotnet",
   "level": "L1",

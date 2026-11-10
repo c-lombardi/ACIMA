@@ -57,7 +57,7 @@ an unqualified wrapper.
 
 ## Remaining manual checks
 
-- Confirm every application-owned component has an explicit registration or construction expression;
+- Confirm every module-owned component has an explicit registration or construction expression;
   a missing registration cannot be inferred from the absence of a scan.
 - Confirm a framework-managed controller/handler's activation contract and constructor dependencies,
   including that it cannot fall back to a default implementation.
