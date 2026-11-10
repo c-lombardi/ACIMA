@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "experimentId": "portfolio-2026-11-10",
+  "id": "httpx",
+  "repository": {
+    "url": "https://github.com/encode/httpx",
+    "commit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+    "license": "BSD-3-Clause",
+    "language": "python"
+  },
+  "softwareCategory": "small-library",
+  "architectureFamily": "library: client/transport layers",
+  "applicableProfiles": [
+    "base"
+  ],
+  "profileSource": "reviewed unit map declares no optional profile",
+  "expectedBoundaries": [
+    {
+      "id": "httpx",
+      "module": "httpx",
+      "role": "implementation",
+      "evidencePaths": [
+        "httpx"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    }
+  ],
+  "boundaryGroundTruth": {
+    "status": "adjudicated-unit-map",
+    "note": "Author-adjudicated unit map, reused from the enforcer run; not independently reviewed and not given to the executing agent."
+  },
+  "knownViolations": [],
+  "preservedChoices": [],
+  "enforcerArtefacts": [],
+  "findingGroundTruth": {
+    "status": "none",
+    "precisionRecall": "unavailable",
+    "note": "Adjudication is per rule and count, not per source location, so precision and recall are reported unavailable rather than estimated."
+  },
+  "enforcerRun": {
+    "findings": 0,
+    "executed": true,
+    "sourceFilesReported": 23,
+    "rulesPortable": 23
+  },
+  "baselineVerification": {
+    "state": "pass-with-upstream-failure",
+    "detail": "1,416 passed / 1 failed / 1 skipped"
+  },
+  "dimensionAvailability": {
+    "boundaryAccuracy": "available",
+    "requirementInterpretation": "available",
+    "profileSelection": "available",
+    "findingAccuracy": "unavailable",
+    "evidenceQuality": "available",
+    "architecturalPreservation": "unavailable",
+    "scopeAndConsent": "available"
+  },
+  "limitations": [],
+  "provenance": {
+    "pinSource": "benchmark-evidence/rw-2026-11-08-01/aggregate/portfolio.json",
+    "unitMapSource": "benchmark-evidence/rw-2026-11-08-02/configs/httpx.acima.config.json",
+    "unitMapSha256": "d2910fdeea07a5b7b0c6fe7fe19efe0e7addfb609118aaad7f7cf91bcac9340f",
+    "classificationSource": "benchmark-evidence/rw-2026-11-08-01/ground-truth/classifications.json",
+    "method": "derived from adjudicated evidence; no repository content was re-classified",
+    "derivedOn": "2026-11-10",
+    "independentReview": false,
+    "givenToAgent": false
+  }
+}

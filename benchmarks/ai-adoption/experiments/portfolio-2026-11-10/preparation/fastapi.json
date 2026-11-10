@@ -1,0 +1,16 @@
+{
+  "id": "fastapi",
+  "repo": "fastapi/fastapi",
+  "commit": "8f9f47de69982705d96e4165a9f03c6537e8c9fe",
+  "language": "python",
+  "workspace": "G:\\Code Repository\\ACIMA\\benchmarks\\ai-adoption\\experiments\\portfolio-2026-11-10\\workspaces\\fastapi",
+  "preparedAt": "2026-11-10T03:17:24Z",
+  "status": "verified",
+  "verifiedCommit": "8f9f47de69982705d96e4165a9f03c6537e8c9fe",
+  "treeSha256": "296719ca80b1debe50185431a2b245cfc22d3175",
+  "manifestSha256": "c0f3790f28cad023f6a60d41ad3ea1826e4f06d72aabc0e8e1dedc5a4be28f08",
+  "fileCount": 3239,
+  "bytes": 35693071,
+  "snapshotVerified": true,
+  "missingEvidencePaths": []
+}

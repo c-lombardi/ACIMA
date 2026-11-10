@@ -1,0 +1,16 @@
+{
+  "id": "spectre-console",
+  "repo": "spectreconsole/spectre.console",
+  "commit": "e8045f7c53c3c217a7f93f362f5256f1fadc0020",
+  "language": "dotnet",
+  "workspace": "G:\\Code Repository\\ACIMA\\benchmarks\\ai-adoption\\experiments\\portfolio-2026-11-10\\workspaces\\spectre-console",
+  "preparedAt": "2026-11-10T03:19:58Z",
+  "status": "verified",
+  "verifiedCommit": "e8045f7c53c3c217a7f93f362f5256f1fadc0020",
+  "treeSha256": "fab1ef56162ddc7174dcab26fab9cd23720c77db",
+  "manifestSha256": "3982c7747078e11bc7a18ca9b4ada96209d8c53211094fad280afa39bfdc0a43",
+  "fileCount": 871,
+  "bytes": 7022275,
+  "snapshotVerified": true,
+  "missingEvidencePaths": []
+}

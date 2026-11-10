@@ -1,0 +1,16 @@
+{
+  "id": "gson",
+  "repo": "google/gson",
+  "commit": "65df6e5a99747f73d386f3a61d887a0257255e0f",
+  "language": "java",
+  "workspace": "G:\\Code Repository\\ACIMA\\benchmarks\\ai-adoption\\experiments\\portfolio-2026-11-10\\workspaces\\gson",
+  "preparedAt": "2026-11-10T03:18:48Z",
+  "status": "verified",
+  "verifiedCommit": "65df6e5a99747f73d386f3a61d887a0257255e0f",
+  "treeSha256": "4ab445c660e8e8c98b8f5d61b709943faa4d323b",
+  "manifestSha256": "39ec1c8d6cf475a588ba214cd3767e1705020d628d866d306094469a2be894f4",
+  "fileCount": 315,
+  "bytes": 2371655,
+  "snapshotVerified": true,
+  "missingEvidencePaths": []
+}

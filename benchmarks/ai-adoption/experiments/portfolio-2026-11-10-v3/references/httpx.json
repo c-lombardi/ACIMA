@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "experimentId": "portfolio-2026-11-10-v2",
+  "id": "httpx",
+  "repository": {
+    "url": "https://github.com/encode/httpx",
+    "commit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+    "license": "BSD-3-Clause",
+    "language": "python"
+  },
+  "softwareCategory": "small-library",
+  "architectureFamily": "single-package, single-ACIMA-module reference with internal component seams",
+  "applicableProfiles": [
+    "base"
+  ],
+  "profileSource": "reviewed unit map declares no optional profile",
+  "expectedBoundaries": [
+    {
+      "id": "httpx",
+      "module": "httpx",
+      "role": "implementation",
+      "evidencePaths": [
+        "httpx"
+      ],
+      "required": true,
+      "confidence": "author-adjudicated",
+      "source": "benchmark-evidence/rw-2026-11-08-02/configs/httpx.acima.config.json",
+      "rationale": "Prior operator-reviewed ACIMA unit map declares httpx/ as one implementation module. Public API, client, transports, models, auth, and content are component candidates, not independently adjudicated modules."
+    }
+  ],
+  "boundaryGroundTruth": {
+    "status": "author-adjudicated-module-map",
+    "measurement": "ACIMA module ownership",
+    "note": "Derived from an operator-reviewed ACIMA unit map. Map existence and name/path matching do not prove correctness; reviewers must verify contracts, implementation ownership, dependency isolation, data/configuration ownership, and composition.",
+    "independentReviewRequired": true
+  },
+  "knownViolations": [],
+  "preservedChoices": [],
+  "enforcerArtefacts": [],
+  "findingGroundTruth": {
+    "status": "none",
+    "precisionRecall": "unavailable",
+    "note": "Adjudication is per rule and count, not per source location, so precision and recall are reported unavailable rather than estimated."
+  },
+  "enforcerRun": {
+    "findings": 0,
+    "executed": true,
+    "sourceFilesReported": 23,
+    "rulesPortable": 23
+  },
+  "baselineVerification": {
+    "state": "pass-with-upstream-failure",
+    "detail": "1,416 passed / 1 failed / 1 skipped"
+  },
+  "dimensionAvailability": {
+    "boundaryAccuracy": "available",
+    "requirementInterpretation": "available",
+    "profileSelection": "available",
+    "findingAccuracy": "unavailable",
+    "evidenceQuality": "available",
+    "architecturalPreservation": "unavailable",
+    "scopeAndConsent": "available"
+  },
+  "limitations": [
+    "Internal components are not separate ACIMA modules solely because they have distinct responsibilities or paths.",
+    "The one-module map is author-adjudicated and requires independent qualitative review."
+  ],
+  "provenance": {
+    "pinSource": "benchmark-evidence/rw-2026-11-08-01/aggregate/portfolio.json",
+    "unitMapSource": "benchmark-evidence/rw-2026-11-08-02/configs/httpx.acima.config.json",
+    "unitMapSha256": "d2910fdeea07a5b7b0c6fe7fe19efe0e7addfb609118aaad7f7cf91bcac9340f",
+    "classificationSource": "benchmark-evidence/rw-2026-11-08-01/ground-truth/classifications.json",
+    "method": "derived from adjudicated evidence; no repository content was re-classified",
+    "derivedOn": "2026-11-10",
+    "independentReview": false,
+    "givenToAgent": false,
+    "boundarySemantics": "ACIMA module ownership, not component discovery"
+  },
+  "componentCandidates": [
+    {
+      "id": "public-api",
+      "paths": [
+        "httpx/__init__.py"
+      ],
+      "classification": "component-not-adjudicated-as-module"
+    },
+    {
+      "id": "client",
+      "paths": [
+        "httpx/_client.py",
+        "httpx/_api.py"
+      ],
+      "classification": "component-not-adjudicated-as-module"
+    },
+    {
+      "id": "transports",
+      "paths": [
+        "httpx/_transports"
+      ],
+      "classification": "component-not-adjudicated-as-module"
+    },
+    {
+      "id": "models",
+      "paths": [
+        "httpx/_models.py",
+        "httpx/_urls.py"
+      ],
+      "classification": "component-not-adjudicated-as-module"
+    },
+    {
+      "id": "auth",
+      "paths": [
+        "httpx/_auth.py"
+      ],
+      "classification": "component-not-adjudicated-as-module"
+    },
+    {
+      "id": "content",
+      "paths": [
+        "httpx/_content.py",
+        "httpx/_decoders.py",
+        "httpx/_multipart.py"
+      ],
+      "classification": "component-not-adjudicated-as-module"
+    }
+  ],
+  "boundaryMeasurement": {
+    "target": "ACIMA module ownership",
+    "notTarget": "component discovery or package/folder enumeration",
+    "moduleEvidence": [
+      "explicit contract ownership",
+      "implementation ownership",
+      "dependency isolation and permitted dependency edges",
+      "data/configuration ownership",
+      "controlled composition"
+    ],
+    "principle": "Build/package/service/deployment boundaries and internal components are evidence, not automatic ACIMA modules."
+  }
+}

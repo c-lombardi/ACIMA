@@ -1,0 +1,185 @@
+{
+  "schemaVersion": 1,
+  "id": "library-python-httpx",
+  "name": "httpx \u2014 published Python HTTP client library",
+  "description": "Published Python HTTP client. Benchmark target is actual ACIMA module ownership, not internal component discovery.",
+  "category": "small-library",
+  "repository": {
+    "url": "https://github.com/encode/httpx",
+    "commit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+    "license": "BSD-3-Clause",
+    "retrievedOn": "2026-11-10"
+  },
+  "softwareCategory": "Reusable HTTP client library (PUBLISHED; no application or service host)",
+  "architectureFamily": "Layered library with an explicit transport interface and interchangeable default, ASGI, WSGI and mock transports",
+  "expectedCharacteristics": [
+    "Installable package declared in pyproject.toml with a public re-export surface in httpx/__init__.py",
+    "Client and request API layer in httpx/_client.py and httpx/_api.py",
+    "Transport seam in httpx/_transports: an abstract interface plus concrete transports",
+    "Shared request/response models in httpx/_models.py and URL handling in httpx/_urls.py",
+    "No application entry point, dependency-injection container or deployment topology",
+    "Lint and type checking plus a test workflow, but no architecture dependency rules"
+  ],
+  "applicableProfiles": [
+    "base"
+  ],
+  "profileNotes": "The library profile would be the natural fit for a published surface, but it is implemented only by the TypeScript and .NET reference enforcers in this ACIMA revision. Asserting the profile here would claim enforcement that does not exist.",
+  "executionModes": [
+    "read-only",
+    "authorized-adoption"
+  ],
+  "expectedBoundaries": [
+    {
+      "id": "httpx",
+      "module": "httpx",
+      "evidencePaths": [
+        "httpx"
+      ],
+      "required": true,
+      "confidence": "high",
+      "rationale": "The prior operator-reviewed ACIMA unit map declares httpx/ as one implementation module. Internal API/client/transport/model/auth/content areas are components, not independently adjudicated ACIMA modules. Reviewers may challenge this reference only with evidence against explicit contracts, implementation ownership, dependency isolation, data/configuration ownership, and controlled composition."
+    }
+  ],
+  "acceptableAdditionalModules": [
+    "config",
+    "exceptions",
+    "utils",
+    "status-codes",
+    "status_codes",
+    "types",
+    "urlparse",
+    "main",
+    "version"
+  ],
+  "expectedObservations": [
+    {
+      "id": "O1",
+      "type": "applicability",
+      "statement": "There is no ACIMA unit map or enforcer in the repository, so a base-profile assessment begins at NEEDS_UNIT_MAP rather than at a conformance claim.",
+      "evidence": [
+        "pyproject.toml",
+        "httpx/__init__.py"
+      ],
+      "required": true
+    },
+    {
+      "id": "O2",
+      "type": "limitation",
+      "statement": "The library profile is not implemented for Python, so the published public surface cannot be classified by this revision's enforcer.",
+      "evidence": [
+        "docs/standard/12-library-profile.md"
+      ],
+      "required": true
+    },
+    {
+      "id": "O3",
+      "type": "enforcement",
+      "statement": "Existing automation covers linting, type checking and tests, not architectural dependency rules.",
+      "evidence": [
+        "pyproject.toml",
+        ".github/workflows/test-suite.yml"
+      ],
+      "required": true
+    },
+    {
+      "id": "O4",
+      "type": "boundary",
+      "statement": "The transport layer has an explicit interface and interchangeable implementations, a component-level port/adapter seam; this alone does not establish a separate ACIMA module ownership boundary.",
+      "evidence": [
+        "httpx/_transports/base.py",
+        "httpx/_transports/default.py"
+      ],
+      "required": true
+    }
+  ],
+  "expectedFindings": [],
+  "acceptableCompatibility": [
+    "compatible-with-adaptation",
+    "insufficient-evidence"
+  ],
+  "acceptableRecommendations": [
+    "RECOMMENDED_WITH_LIMITATIONS",
+    "NOT_RECOMMENDED",
+    "INSUFFICIENT_EVIDENCE"
+  ],
+  "expectedProposedChangeKinds": [
+    "config",
+    "tooling",
+    "ci",
+    "docs"
+  ],
+  "knownLimitations": [
+    "No violation-level ground truth is recorded for this scenario, so finding precision and recall are reported unavailable rather than estimated.",
+    "The unit-map a correct assessment proposes is not unique; several defensible maps exist.",
+    "httpx does not run the ACIMA enforcer on itself, so no independent finding set exists to compare against.",
+    "Java and .NET are irrelevant here; Python coverage includes 41 automated rules and 14 manual-evidence rules."
+  ],
+  "groundTruth": {
+    "establishedBy": "harness author",
+    "establishedOn": "2026-11-10",
+    "method": "Manual inspection of the pinned checkout and prior operator-reviewed ACIMA unit map benchmark-evidence/rw-2026-11-08-02/configs/httpx.acima.config.json, which declares one implementation module covering httpx/. The map is a reference hypothesis requiring independent qualitative review.",
+    "blind": false,
+    "independentReview": false,
+    "notes": "Benchmark target is ACIMA module ownership. Component discovery is supporting evidence only. The one-module reference is author-adjudicated and has not received independent second-reviewer adjudication."
+  },
+  "componentCandidates": [
+    {
+      "id": "public-api",
+      "paths": [
+        "httpx/__init__.py"
+      ],
+      "classification": "component-not-adjudicated-as-module"
+    },
+    {
+      "id": "client",
+      "paths": [
+        "httpx/_client.py",
+        "httpx/_api.py"
+      ],
+      "classification": "component-not-adjudicated-as-module"
+    },
+    {
+      "id": "transports",
+      "paths": [
+        "httpx/_transports"
+      ],
+      "classification": "component-not-adjudicated-as-module"
+    },
+    {
+      "id": "models",
+      "paths": [
+        "httpx/_models.py",
+        "httpx/_urls.py"
+      ],
+      "classification": "component-not-adjudicated-as-module"
+    },
+    {
+      "id": "auth",
+      "paths": [
+        "httpx/_auth.py"
+      ],
+      "classification": "component-not-adjudicated-as-module"
+    },
+    {
+      "id": "content",
+      "paths": [
+        "httpx/_content.py",
+        "httpx/_decoders.py",
+        "httpx/_multipart.py"
+      ],
+      "classification": "component-not-adjudicated-as-module"
+    }
+  ],
+  "boundaryMeasurement": {
+    "target": "ACIMA module ownership",
+    "notTarget": "component/folder/package/class/responsibility discovery",
+    "ownershipEvidence": [
+      "explicit contract ownership",
+      "implementation ownership",
+      "dependency isolation and permitted dependency edges",
+      "data/configuration ownership",
+      "controlled composition"
+    ],
+    "rule": "A candidate is not an ACIMA module solely because it has a name, directory, package, class, interface, or distinct responsibility."
+  }
+}

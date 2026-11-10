@@ -1,0 +1,16 @@
+{
+  "id": "fluentvalidation",
+  "repo": "FluentValidation/FluentValidation",
+  "commit": "a8ca6ac3e7f35da9448a28e0ab84ae914cca4fb1",
+  "language": "dotnet",
+  "workspace": "G:\\Code Repository\\ACIMA\\benchmarks\\ai-adoption\\experiments\\portfolio-2026-11-10\\workspaces\\fluentvalidation",
+  "preparedAt": "2026-11-10T03:18:37Z",
+  "status": "verified",
+  "verifiedCommit": "a8ca6ac3e7f35da9448a28e0ab84ae914cca4fb1",
+  "treeSha256": "b979c902803541d8480946fabaf3037ab15db140",
+  "manifestSha256": "59bf0b84ec35067c20b43199e95c0f4d368956cb7967fb0a01e8b0c48878841e",
+  "fileCount": 296,
+  "bytes": 1539212,
+  "snapshotVerified": true,
+  "missingEvidencePaths": []
+}

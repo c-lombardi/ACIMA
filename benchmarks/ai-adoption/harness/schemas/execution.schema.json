@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://acima.dev/schemas/benchmarks/ai-adoption/execution.schema.json",
+  "title": "ACIMA AI adoption benchmark execution record",
+  "description": "What the controller did, what it supplied, and what it captured. Raw evidence lives beside this record; this document is the normalised execution account.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "runId",
+    "scenarioId",
+    "mode",
+    "status",
+    "startedAt",
+    "updatedAt",
+    "provenance",
+    "adapter",
+    "limits",
+    "repository",
+    "sandbox",
+    "agent",
+    "stateHistory",
+    "success"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "schemaVersion": {"type": "integer", "const": 1},
+    "runId": {"type": "string", "minLength": 3},
+    "scenarioId": {"type": "string", "minLength": 1},
+    "mode": {"type": "string", "enum": ["read-only", "authorized-adoption"]},
+    "status": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "RepositoryPrepared",
+        "EnvironmentProvisioned",
+        "AgentExecuting",
+        "ExecutionCaptured",
+        "EvaluationPending",
+        "Evaluating",
+        "Completed",
+        "Failed",
+        "TimedOut",
+        "Cancelled",
+        "InvalidConfiguration",
+        "InfrastructureFailure",
+        "EvaluationFailure"
+      ]
+    },
+    "startedAt": {"type": "string"},
+    "updatedAt": {"type": "string"},
+    "finishedAt": {"type": ["string", "null"]},
+    "provenance": {
+      "type": "object",
+      "required": ["skill", "standard", "catalog", "instructions", "harness"],
+      "additionalProperties": true,
+      "properties": {
+        "skill": {
+          "type": "object",
+          "required": ["name", "version", "contentSha256"],
+          "properties": {
+            "name": {"type": "string"},
+            "version": {"type": "string"},
+            "contentSha256": {"type": "string", "pattern": "^([0-9a-f]{64})?$"},
+            "path": {"type": "string"}
+          }
+        },
+        "standard": {
+          "type": "object",
+          "required": ["version"],
+          "properties": {"version": {"type": "string"}}
+        },
+        "catalog": {
+          "type": "object",
+          "required": ["version", "sha256", "rules"],
+          "properties": {
+            "version": {"type": "string"},
+            "sha256": {"type": "string", "pattern": "^([0-9a-f]{64})?$"},
+            "rules": {"type": "integer", "minimum": 0},
+            "portable": {"type": "integer", "minimum": 0}
+          }
+        },
+        "instructions": {
+          "type": "object",
+          "required": ["id", "sha256"],
+          "properties": {"id": {"type": "string"}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+        },
+        "harness": {
+          "type": "object",
+          "required": ["version"],
+          "properties": {"version": {"type": "string"}}
+        },
+        "approval": {
+          "type": ["object", "null"],
+          "properties": {
+            "approvedBy": {"type": "string"},
+            "approvedOn": {"type": "string"},
+            "approvedPaths": {"type": "array", "items": {"type": "string"}},
+            "level": {"type": "string"},
+            "sha256": {"type": "string"}
+          }
+        }
+      }
+    },
+    "adapter": {
+      "type": "object",
+      "required": ["provider", "model"],
+      "additionalProperties": true,
+      "properties": {
+        "provider": {"type": "string"},
+        "model": {"type": "string"},
+        "modelConfig": {"type": ["object", "null"]},
+        "capabilities": {"type": "object"}
+      }
+    },
+    "limits": {"type": "object"},
+    "repository": {
+      "type": "object",
+      "required": ["url", "commit"],
+      "additionalProperties": true,
+      "properties": {
+        "url": {"type": "string"},
+        "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "verifiedCommit": {"type": ["string", "null"]},
+        "treeSha256": {"type": ["string", "null"]},
+        "fileCount": {"type": ["integer", "null"]},
+        "bytes": {"type": ["integer", "null"]},
+        "manifestSha256": {"type": ["string", "null"]}
+      }
+    },
+    "sandbox": {
+      "type": "object",
+      "required": ["backend", "enforced"],
+      "additionalProperties": true,
+      "properties": {
+        "backend": {"type": "string", "enum": ["docker", "local-process", "not-selected"]},
+        "enforced": {"type": "array", "items": {"type": "string"}},
+        "notEnforced": {"type": "array", "items": {"type": "string"}},
+        "network": {"type": "string"},
+        "readOnlyMount": {"type": "boolean"}
+      }
+    },
+    "agent": {
+      "type": "object",
+      "required": ["status"],
+      "additionalProperties": true,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["completed", "failed", "timed_out", "cancelled", "unsupported", "unauthenticated", "not_run"]
+        },
+        "exitCode": {"type": ["integer", "null"]},
+        "durationSeconds": {"type": ["number", "null"]},
+        "messages": {"type": "array"},
+        "toolCalls": {"type": "array"},
+        "commands": {"type": "array"},
+        "filesRead": {"type": "array", "items": {"type": "string"}},
+        "filesModified": {"type": "array", "items": {"type": "string"}},
+        "tests": {"type": "array"},
+        "tokenUsage": {"type": ["object", "null"]},
+        "errors": {"type": "array", "items": {"type": "string"}},
+        "terminationReason": {"type": ["string", "null"]}
+      }
+    },
+    "artifacts": {"type": "object"},
+    "changes": {
+      "type": "object",
+      "properties": {
+        "added": {"type": "array", "items": {"type": "string"}},
+        "removed": {"type": "array", "items": {"type": "string"}},
+        "modified": {"type": "array", "items": {"type": "string"}},
+        "unauthorized": {"type": "array", "items": {"type": "string"}},
+        "worktreeRetained": {"type": "boolean"}
+      }
+    },
+    "stateHistory": {"type": "array", "items": {"type": "object"}},
+    "success": {"type": "boolean"},
+    "errors": {"type": "array", "items": {"type": "string"}},
+    "limitations": {"type": "array", "items": {"type": "string"}}
+  }
+}

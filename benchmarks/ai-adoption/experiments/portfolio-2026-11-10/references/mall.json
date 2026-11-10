@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "experimentId": "portfolio-2026-11-10",
+  "id": "mall",
+  "repository": {
+    "url": "https://github.com/macrozheng/mall",
+    "commit": "dcaa93b3150352e5044708d7211b5bed0af4509f",
+    "license": "Apache-2.0",
+    "language": "java"
+  },
+  "softwareCategory": "e-commerce-platform",
+  "architectureFamily": "layered multi-module application",
+  "applicableProfiles": [
+    "base"
+  ],
+  "profileSource": "no reviewed unit map exists, so only the base profile is established",
+  "expectedBoundaries": [],
+  "boundaryGroundTruth": {
+    "status": "unavailable",
+    "note": "No unit map was adjudicated for this repository; boundary matching stays unavailable and requires human adjudication."
+  },
+  "knownViolations": [],
+  "preservedChoices": [],
+  "enforcerArtefacts": [],
+  "findingGroundTruth": {
+    "status": "none",
+    "precisionRecall": "unavailable",
+    "note": "Adjudication is per rule and count, not per source location, so precision and recall are reported unavailable rather than estimated."
+  },
+  "enforcerRun": {
+    "findings": null,
+    "executed": false,
+    "sourceFilesReported": null,
+    "rulesPortable": 23
+  },
+  "baselineVerification": {
+    "state": "blocked",
+    "detail": "mvn -DskipTests package timed out at 295s"
+  },
+  "dimensionAvailability": {
+    "boundaryAccuracy": "unavailable",
+    "requirementInterpretation": "available",
+    "profileSelection": "partial",
+    "findingAccuracy": "unavailable",
+    "evidenceQuality": "available",
+    "architecturalPreservation": "unavailable",
+    "scopeAndConsent": "available"
+  },
+  "limitations": [
+    "No ACIMA unit map was reviewed for java, so boundary-level ground truth is unavailable rather than assumed.",
+    "Java has no ACIMA reference enforcer in this revision; no execution-level assessment exists to compare an agent against.",
+    "The baseline enforcer run did not execute for this repository.",
+    "Baseline verification is not clean (blocked: mvn -DskipTests package timed out at 295s); regression measurement would need that recorded before any authorized change."
+  ],
+  "provenance": {
+    "pinSource": "benchmark-evidence/rw-2026-11-08-01/aggregate/portfolio.json",
+    "unitMapSource": null,
+    "unitMapSha256": null,
+    "classificationSource": "benchmark-evidence/rw-2026-11-08-01/ground-truth/classifications.json",
+    "method": "derived from adjudicated evidence; no repository content was re-classified",
+    "derivedOn": "2026-11-10",
+    "independentReview": false,
+    "givenToAgent": false
+  }
+}

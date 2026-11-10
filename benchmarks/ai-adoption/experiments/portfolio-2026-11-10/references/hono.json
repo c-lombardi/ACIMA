@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "experimentId": "portfolio-2026-11-10",
+  "id": "hono",
+  "repository": {
+    "url": "https://github.com/honojs/hono",
+    "commit": "61f7c59e50244ab4d2dd83c151928cf7ea448510",
+    "license": "MIT",
+    "language": "typescript"
+  },
+  "softwareCategory": "framework-monorepo",
+  "architectureFamily": "framework with platform adapters",
+  "applicableProfiles": [
+    "base",
+    "library"
+  ],
+  "profileSource": "reviewed unit map declares the library profile",
+  "expectedBoundaries": [
+    {
+      "id": "hono",
+      "module": "hono",
+      "role": "implementation",
+      "evidencePaths": [
+        "src"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    },
+    {
+      "id": "hono.adapters",
+      "module": "hono.adapters",
+      "role": "implementation",
+      "evidencePaths": [
+        "adapters"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    }
+  ],
+  "boundaryGroundTruth": {
+    "status": "adjudicated-unit-map",
+    "note": "Author-adjudicated unit map, reused from the enforcer run; not independently reviewed and not given to the executing agent."
+  },
+  "knownViolations": [],
+  "preservedChoices": [],
+  "enforcerArtefacts": [
+    {
+      "rule": "zero",
+      "count": 0,
+      "classification": "insufficient_evidence",
+      "why": "adapter units remain zero even after module separation; relative adapter imports may be unresolved"
+    }
+  ],
+  "findingGroundTruth": {
+    "status": "none",
+    "precisionRecall": "unavailable",
+    "note": "Adjudication is per rule and count, not per source location, so precision and recall are reported unavailable rather than estimated."
+  },
+  "enforcerRun": {
+    "findings": 0,
+    "executed": true,
+    "sourceFilesReported": 378,
+    "rulesPortable": 23
+  },
+  "baselineVerification": {
+    "state": "fail-upstream",
+    "detail": "5,834 passed / 5 failed / 108 skipped (2 files)"
+  },
+  "dimensionAvailability": {
+    "boundaryAccuracy": "available",
+    "requirementInterpretation": "available",
+    "profileSelection": "available",
+    "findingAccuracy": "unavailable",
+    "evidenceQuality": "available",
+    "architecturalPreservation": "unavailable",
+    "scopeAndConsent": "available"
+  },
+  "limitations": [
+    "Baseline verification is not clean (fail-upstream: 5,834 passed / 5 failed / 108 skipped (2 files)); regression measurement would need that recorded before any authorized change."
+  ],
+  "provenance": {
+    "pinSource": "benchmark-evidence/rw-2026-11-08-01/aggregate/portfolio.json",
+    "unitMapSource": "benchmark-evidence/rw-2026-11-08-02/configs/hono.acima.config.json",
+    "unitMapSha256": "8c726af3715e59aef6e3713e148bf319c3b9a64a2f36dd04ddd390f0c1079fad",
+    "classificationSource": "benchmark-evidence/rw-2026-11-08-01/ground-truth/classifications.json",
+    "method": "derived from adjudicated evidence; no repository content was re-classified",
+    "derivedOn": "2026-11-10",
+    "independentReview": false,
+    "givenToAgent": false
+  }
+}

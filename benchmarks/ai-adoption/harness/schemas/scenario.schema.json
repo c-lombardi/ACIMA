@@ -1,0 +1,498 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://acima.dev/schemas/benchmarks/ai-adoption/scenario.schema.json",
+  "title": "ACIMA AI adoption benchmark scenario",
+  "description": "Declarative scenario definition. Ground truth is established independently of the executing agent; it is never given to the agent as an expected answer.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "name",
+    "description",
+    "category",
+    "repository",
+    "softwareCategory",
+    "architectureFamily",
+    "expectedCharacteristics",
+    "applicableProfiles",
+    "executionModes",
+    "expectedBoundaries",
+    "expectedObservations",
+    "acceptableRecommendations",
+    "knownLimitations",
+    "groundTruth"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 3
+    },
+    "description": {
+      "type": "string",
+      "minLength": 20
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "small-library",
+        "published-package",
+        "clean-architecture",
+        "hexagonal",
+        "modular-monolith",
+        "distributed-system",
+        "legacy",
+        "poorly-structured"
+      ]
+    },
+    "repository": {
+      "type": "object",
+      "required": [
+        "url",
+        "commit",
+        "license"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "type": "string",
+          "pattern": "^(https://|file://)"
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "license": {
+          "type": "string",
+          "minLength": 2
+        },
+        "retrievedOn": {
+          "type": "string"
+        }
+      }
+    },
+    "softwareCategory": {
+      "type": "string",
+      "minLength": 3
+    },
+    "architectureFamily": {
+      "type": "string",
+      "minLength": 3
+    },
+    "expectedCharacteristics": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "applicableProfiles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "base",
+          "library",
+          "service-topology"
+        ]
+      },
+      "minItems": 1
+    },
+    "profileNotes": {
+      "type": "string"
+    },
+    "executionModes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "read-only",
+          "authorized-adoption"
+        ]
+      },
+      "minItems": 1
+    },
+    "expectedBoundaries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "module",
+          "evidencePaths",
+          "required",
+          "confidence"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "module": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidencePaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "rationale": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "acceptableAdditionalModules": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Extra module names a correct assessment may legitimately report without being scored as noise."
+    },
+    "expectedObservations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "statement",
+          "evidence",
+          "required"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "applicability",
+              "boundary",
+              "enforcement",
+              "limitation",
+              "violation",
+              "uncertainty",
+              "compatibility",
+              "recommendation"
+            ]
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 10
+          },
+          "rule": {
+            "type": "string",
+            "pattern": "^ACIMA-[A-Z][0-9]{3}$"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Case-insensitive phrases; at least one must appear in the agent's own words for the observation to count as reported."
+          }
+        }
+      }
+    },
+    "expectedFindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "rule",
+          "path",
+          "kind",
+          "rationale"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rule": {
+            "type": "string",
+            "pattern": "^ACIMA-[A-Z][0-9]{3}$"
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "confirmed-violation",
+              "implementation-difference",
+              "manual-evidence-required"
+            ]
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 5
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "acceptableCompatibility": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "compatible",
+          "compatible-with-adaptation",
+          "incompatible",
+          "insufficient-evidence"
+        ]
+      },
+      "description": "Compatibility outcomes a correct assessment may reach for this repository."
+    },
+    "acceptableRecommendations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "RECOMMENDED",
+          "RECOMMENDED_WITH_LIMITATIONS",
+          "NOT_RECOMMENDED",
+          "INSUFFICIENT_EVIDENCE",
+          "NOT_SUPPORTED"
+        ]
+      },
+      "minItems": 1
+    },
+    "expectedProposedChangeKinds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "config",
+          "tooling",
+          "ci",
+          "baseline",
+          "waivers",
+          "docs",
+          "source",
+          "restructure"
+        ]
+      }
+    },
+    "authorizedChanges": {
+      "type": "object",
+      "description": "Only used by authorized-adoption mode. The controller additionally requires an approval record.",
+      "additionalProperties": false,
+      "properties": {
+        "approvedPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "level": {
+          "type": "string",
+          "enum": [
+            "L1",
+            "L2",
+            "L3"
+          ]
+        },
+        "verificationCommands": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "argv"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "argv": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              },
+              "regression": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    "controlledViolations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "rule",
+          "path",
+          "injection"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "rule": {
+            "type": "string",
+            "pattern": "^ACIMA-[A-Z][0-9]{3}$"
+          },
+          "path": {
+            "type": "string"
+          },
+          "injection": {
+            "type": "string"
+          },
+          "blind": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "knownLimitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "groundTruth": {
+      "type": "object",
+      "required": [
+        "establishedBy",
+        "establishedOn",
+        "method",
+        "blind",
+        "independentReview"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "establishedBy": {
+          "type": "string",
+          "minLength": 2
+        },
+        "establishedOn": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string",
+          "minLength": 5
+        },
+        "blind": {
+          "type": "boolean"
+        },
+        "independentReview": {
+          "type": "boolean"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "componentCandidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "paths",
+          "classification"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "classification": {
+            "type": "string",
+            "const": "component-not-adjudicated-as-module"
+          }
+        }
+      }
+    },
+    "boundaryMeasurement": {
+      "type": "object",
+      "required": [
+        "target",
+        "notTarget",
+        "ownershipEvidence",
+        "rule"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "type": "string",
+          "const": "ACIMA module ownership"
+        },
+        "notTarget": {
+          "type": "string"
+        },
+        "ownershipEvidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "rule": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

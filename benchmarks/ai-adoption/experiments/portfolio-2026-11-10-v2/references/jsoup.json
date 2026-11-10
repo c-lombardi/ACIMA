@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "experimentId": "portfolio-2026-11-10-v2",
+  "id": "jsoup",
+  "repository": {
+    "url": "https://github.com/jhy/jsoup",
+    "commit": "d90d57521d931db7bf7ee464a4c0a1a9293db088",
+    "license": "MIT",
+    "language": "java"
+  },
+  "softwareCategory": "html-parser",
+  "architectureFamily": "HTML parser library",
+  "applicableProfiles": [
+    "base"
+  ],
+  "profileSource": "no reviewed unit map exists, so only the base profile is established",
+  "expectedBoundaries": [],
+  "boundaryGroundTruth": {
+    "status": "unavailable",
+    "measurement": "ACIMA module ownership",
+    "note": "No adjudicated ACIMA module map exists; boundary accuracy remains unavailable pending human assessment."
+  },
+  "knownViolations": [],
+  "preservedChoices": [],
+  "enforcerArtefacts": [],
+  "findingGroundTruth": {
+    "status": "none",
+    "precisionRecall": "unavailable",
+    "note": "Adjudication is per rule and count, not per source location, so precision and recall are reported unavailable rather than estimated."
+  },
+  "enforcerRun": {
+    "findings": null,
+    "executed": false,
+    "sourceFilesReported": null,
+    "rulesPortable": 23
+  },
+  "baselineVerification": {
+    "state": "pass",
+    "detail": "mvn test pass"
+  },
+  "dimensionAvailability": {
+    "boundaryAccuracy": "unavailable",
+    "requirementInterpretation": "available",
+    "profileSelection": "partial",
+    "findingAccuracy": "unavailable",
+    "evidenceQuality": "available",
+    "architecturalPreservation": "unavailable",
+    "scopeAndConsent": "available"
+  },
+  "limitations": [
+    "No ACIMA unit map was reviewed for java, so boundary-level ground truth is unavailable rather than assumed.",
+    "Java has no ACIMA reference enforcer in this revision; no execution-level assessment exists to compare an agent against.",
+    "The baseline enforcer run did not execute for this repository."
+  ],
+  "provenance": {
+    "pinSource": "benchmark-evidence/rw-2026-11-08-01/aggregate/portfolio.json",
+    "unitMapSource": null,
+    "unitMapSha256": null,
+    "classificationSource": "benchmark-evidence/rw-2026-11-08-01/ground-truth/classifications.json",
+    "method": "derived from adjudicated evidence; no repository content was re-classified",
+    "derivedOn": "2026-11-10",
+    "independentReview": false,
+    "givenToAgent": false,
+    "boundarySemantics": "ACIMA module ownership, not component discovery"
+  }
+}

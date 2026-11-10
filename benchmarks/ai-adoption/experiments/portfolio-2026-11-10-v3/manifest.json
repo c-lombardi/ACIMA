@@ -1,0 +1,198 @@
+{
+  "schemaVersion": 1,
+  "experimentId": "portfolio-2026-11-10-v3",
+  "description": "Corrected read-only experiment measuring ACIMA module ownership, with qualitative semantic review.",
+  "executionMode": "read-only",
+  "modelUnderTest": {
+    "provider": "freebuff",
+    "model": "deepseek-v4.1-flash",
+    "verificationStatus": "unverified",
+    "note": "The exact provider model identifier has not been observed through a supported interface. Do not substitute another model or provider."
+  },
+  "pinSource": "benchmark-evidence/rw-2026-11-08-01/aggregate/portfolio.json",
+  "unitMapSource": "benchmark-evidence/rw-2026-11-08-02/configs",
+  "classificationSource": "benchmark-evidence/rw-2026-11-08-01/ground-truth/classifications.json",
+  "rubric": "rubric.v1.2.json",
+  "repositories": [
+    {
+      "id": "httpx",
+      "repo": "encode/httpx",
+      "url": "https://github.com/encode/httpx",
+      "commit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+      "language": "python",
+      "category": "small-library",
+      "reviewedConfig": "benchmark-evidence/rw-2026-11-08-02/configs/httpx.acima.config.json"
+    },
+    {
+      "id": "flask",
+      "repo": "pallets/flask",
+      "url": "https://github.com/pallets/flask",
+      "commit": "49943b5a94413a530761350f04e896f76e8d620e",
+      "language": "python",
+      "category": "web-framework",
+      "reviewedConfig": "benchmark-evidence/rw-2026-11-08-02/configs/flask.acima.config.json"
+    },
+    {
+      "id": "fastapi",
+      "repo": "fastapi/fastapi",
+      "url": "https://github.com/fastapi/fastapi",
+      "commit": "8f9f47de69982705d96e4165a9f03c6537e8c9fe",
+      "language": "python",
+      "category": "web-framework",
+      "reviewedConfig": "benchmark-evidence/rw-2026-11-08-02/configs/fastapi.acima.config.json"
+    },
+    {
+      "id": "hono",
+      "repo": "honojs/hono",
+      "url": "https://github.com/honojs/hono",
+      "commit": "61f7c59e50244ab4d2dd83c151928cf7ea448510",
+      "language": "typescript",
+      "category": "framework-monorepo",
+      "reviewedConfig": "benchmark-evidence/rw-2026-11-08-02/configs/hono.acima.config.json"
+    },
+    {
+      "id": "drizzle-orm",
+      "repo": "drizzle-team/drizzle-orm",
+      "url": "https://github.com/drizzle-team/drizzle-orm",
+      "commit": "eab8bedbb65d5429c54e612ddbd88aa23091d398",
+      "language": "typescript",
+      "category": "orm-monorepo",
+      "reviewedConfig": "benchmark-evidence/rw-2026-11-08-02/configs/drizzle-orm.acima.config.json"
+    },
+    {
+      "id": "trpc",
+      "repo": "trpc/trpc",
+      "url": "https://github.com/trpc/trpc",
+      "commit": "c7ae414970de8e8de4fb252a4e2eed2a9f41c759",
+      "language": "typescript",
+      "category": "framework-monorepo",
+      "reviewedConfig": "benchmark-evidence/rw-2026-11-08-02/configs/trpc.acima.config.json"
+    },
+    {
+      "id": "cobra",
+      "repo": "spf13/cobra",
+      "url": "https://github.com/spf13/cobra",
+      "commit": "adbc8813901bba65827259daa8e22ff94ec1f30e",
+      "language": "go",
+      "category": "cli-library",
+      "reviewedConfig": "benchmark-evidence/rw-2026-11-08-02/configs/cobra.acima.config.json"
+    },
+    {
+      "id": "bubbletea",
+      "repo": "charmbracelet/bubbletea",
+      "url": "https://github.com/charmbracelet/bubbletea",
+      "commit": "67b4c7a8a2b34a0b1ce15261b0c705bc7e1a04b7",
+      "language": "go",
+      "category": "tui-framework",
+      "reviewedConfig": "benchmark-evidence/rw-2026-11-08-02/configs/bubbletea.acima.config.json"
+    },
+    {
+      "id": "gin",
+      "repo": "gin-gonic/gin",
+      "url": "https://github.com/gin-gonic/gin",
+      "commit": "0f09c3a9b4626d9fe9979cf4d0521d6ae32ab646",
+      "language": "go",
+      "category": "web-framework",
+      "reviewedConfig": "benchmark-evidence/rw-2026-11-08-02/configs/gin.acima.config.json"
+    },
+    {
+      "id": "fluentvalidation",
+      "repo": "FluentValidation/FluentValidation",
+      "url": "https://github.com/FluentValidation/FluentValidation",
+      "commit": "a8ca6ac3e7f35da9448a28e0ab84ae914cca4fb1",
+      "language": "dotnet",
+      "category": "validation-library",
+      "reviewedConfig": "benchmark-evidence/rw-2026-11-08-02/configs/fluentvalidation.acima.config.json"
+    },
+    {
+      "id": "serilog",
+      "repo": "serilog/serilog",
+      "url": "https://github.com/serilog/serilog",
+      "commit": "43105b35095337d77f022561a8f2d3db2f9a7937",
+      "language": "dotnet",
+      "category": "logging-library",
+      "reviewedConfig": "benchmark-evidence/rw-2026-11-08-02/configs/serilog.acima.config.json"
+    },
+    {
+      "id": "spectre-console",
+      "repo": "spectreconsole/spectre.console",
+      "url": "https://github.com/spectreconsole/spectre.console",
+      "commit": "e8045f7c53c3c217a7f93f362f5256f1fadc0020",
+      "language": "dotnet",
+      "category": "console-library",
+      "reviewedConfig": "benchmark-evidence/rw-2026-11-08-02/configs/spectre-console.acima.config.json"
+    },
+    {
+      "id": "jsoup",
+      "repo": "jhy/jsoup",
+      "url": "https://github.com/jhy/jsoup",
+      "commit": "d90d57521d931db7bf7ee464a4c0a1a9293db088",
+      "language": "java",
+      "category": "html-parser",
+      "reviewedConfig": null
+    },
+    {
+      "id": "gson",
+      "repo": "google/gson",
+      "url": "https://github.com/google/gson",
+      "commit": "65df6e5a99747f73d386f3a61d887a0257255e0f",
+      "language": "java",
+      "category": "json-library",
+      "reviewedConfig": null
+    },
+    {
+      "id": "mall",
+      "repo": "macrozheng/mall",
+      "url": "https://github.com/macrozheng/mall",
+      "commit": "dcaa93b3150352e5044708d7211b5bed0af4509f",
+      "language": "java",
+      "category": "e-commerce-platform",
+      "reviewedConfig": null
+    }
+  ],
+  "sourceExperiment": "portfolio-2026-11-10",
+  "boundaryMeasurement": {
+    "target": "ACIMA module ownership",
+    "notTarget": "component discovery or package/folder enumeration",
+    "moduleEvidence": [
+      "explicit contract ownership",
+      "implementation ownership",
+      "dependency isolation and permitted dependency edges",
+      "data/configuration ownership",
+      "controlled composition"
+    ],
+    "principle": "Build/package/service/deployment boundaries and internal components are evidence, not automatic ACIMA modules."
+  },
+  "preparationReuse": {
+    "sourceExperiment": "portfolio-2026-11-10",
+    "verifiedRepositories": 15,
+    "reusePolicy": "Reuse exact pinned source snapshots and verification records; do not redownload or mutate them."
+  },
+  "scenarioReferences": [
+    {
+      "id": "library-python-httpx",
+      "path": "scenarios/repositories/library-python-httpx.json"
+    }
+  ],
+  "evaluator": {
+    "path": "harness/evaluators/architectural.py",
+    "version": "1.2.0"
+  },
+  "measurementExtensions": {
+    "valueOwnership": {
+      "dimension": "D8",
+      "criteria": [
+        "D8.1",
+        "D8.2",
+        "D8.3",
+        "D8.4",
+        "D8.5",
+        "D8.6",
+        "D8.7"
+      ],
+      "method": "qualitative independent review; no keyword, literal-count, identifier-match, or extraction-count score",
+      "agentOutputField": "valueOwnership",
+      "status": "review-required"
+    }
+  }
+}

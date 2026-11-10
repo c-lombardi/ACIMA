@@ -1,0 +1,16 @@
+{
+  "id": "drizzle-orm",
+  "repo": "drizzle-team/drizzle-orm",
+  "commit": "eab8bedbb65d5429c54e612ddbd88aa23091d398",
+  "language": "typescript",
+  "workspace": "G:\\Code Repository\\ACIMA\\benchmarks\\ai-adoption\\experiments\\portfolio-2026-11-10\\workspaces\\drizzle-orm",
+  "preparedAt": "2026-11-10T03:17:59Z",
+  "status": "verified",
+  "verifiedCommit": "eab8bedbb65d5429c54e612ddbd88aa23091d398",
+  "treeSha256": "7bbaadd5bb190f4aa92ae1c81b538caf89019ab2",
+  "manifestSha256": "4da86418e4082fe1215d58946d32ddf4d3552bc3a22c3636e3da2cad52d4fa7c",
+  "fileCount": 1392,
+  "bytes": 18295844,
+  "snapshotVerified": true,
+  "missingEvidencePaths": []
+}

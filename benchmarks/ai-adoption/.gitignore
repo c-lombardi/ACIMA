@@ -1,0 +1,28 @@
+# Generated execution output
+/results/
+**/results/
+**/workspaces/
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local environments and machine-specific overrides
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+config.local.json
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
