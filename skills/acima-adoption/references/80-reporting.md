@@ -136,11 +136,14 @@ Short examples of the interaction contract. Adapt the facts; keep the shape.
 **Initial explanation (first-time user).**
 
 > **Where you are:** this is a read-only look; nothing has been changed.
-> **What ACIMA is:** a way to make the boundaries between parts of your application explicit and
-> check them automatically. It does not prescribe Clean Architecture, DDD, microservices or a
-> rewrite. It enforces the boundaries your team declares, one at a time.
-> **What it is not:** a code-quality score, a migration project or a claim that your current design
-> is wrong. Existing good boundaries are recognised, not replaced.
+> **What ACIMA is:** a standard with its own portable architectural requirements: module ownership,
+> explicit contracts, dependency isolation, data and configuration ownership, and controlled
+> composition. Existing approaches can often satisfy them, but compatibility is assessed against the
+> requirements, not assumed; some are deliberately stricter. It does not prescribe Clean
+> Architecture, DDD, microservices or a rewrite, and it does not replace your overall architecture.
+> **What it is not:** a promise that every architecture is compatible, a code-quality score, a
+> migration project or a claim that your current design is wrong. Existing good boundaries are
+> recognised, not replaced.
 > **Limits:** a static check cannot prove runtime behaviour or business correctness.
 > **Next:** I will inspect the repository and tell you where ACIMA would help, where it would not,
 > and what the smallest useful adoption would cost. No files will be written.
@@ -157,7 +160,7 @@ Short examples of the interaction contract. Adapt the facts; keep the shape.
 > **Next:** if this is useful, I will propose the smallest adoption — a unit map and a local check.
 > No files will be created without your approval.
 
-**Proposal.** Recommendation first, then discovery, what ACIMA adds, evidence-grounded benefits,
+**Proposal.** Recommendation first, then discovery, what ACIMA requires here, evidence-grounded benefits,
 scope in plain English, the exact path table with required/conditional/optional status, tradeoffs,
 sequence, and one question: "Would you like me to proceed with the listed files and scope?"
 

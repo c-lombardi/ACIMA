@@ -482,8 +482,8 @@ import.
 ### Relationship to P3
 
 Base ACIMA permits the shared kernel in contracts (P3.5) as a legacy compatibility allowance. The
-default removes that exception because absolute isolation is checkable in one line and because a
-kernel reference makes every contract release depend on the kernel's release. Repositories that have
+service-topology profile removes that exception because absolute isolation is checkable in one line
+and because a kernel reference makes every contract release depend on the kernel's release. Repositories that have
 not migrated remain governed by P3.5; new repositories MUST use absolute isolation.
 
 ## P13. Product-Oriented Services
@@ -491,6 +491,11 @@ not migrated remain governed by P3.5; new repositories MUST use absolute isolati
 > **Services serve product outcomes: UI and API enforce the same workflow, core rules live in the API
 > domain, and service shape follows the user experience and scaling needs rather than the
 > infrastructure.**
+
+> **Applicability.** P13 applies only in the `service-topology` profile and only when that profile
+> is explicitly adopted. Base ACIMA does not require every application to organise around
+> product-oriented services, to enforce UI/API workflow parity, or to apply P13.4's service-shape
+> requirement. The obligations below are checked as `ST-11`/`ST-12` when the profile is in force.
 
 ### Obligations
 

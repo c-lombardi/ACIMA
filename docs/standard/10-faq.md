@@ -15,24 +15,26 @@ surfaces, acyclicity, and data ownership.
 You can have a textbook Clean Architecture solution that violates ACIMA completely by having one
 `Domain` project every feature references. And you can satisfy ACIMA's dependency rules with a
 three-folder module. The subject matter is different: Clean Architecture is about *direction*, ACIMA is
-about *ownership and surface*. They compose: keep Clean Architecture inside a module, and let ACIMA
-enforce the module boundaries the rings do not express.
+about *ownership and surface*. They can compose: keep Clean Architecture inside a module, and assess
+whether its boundaries and ACIMA's ownership requirements are met.
 
 ---
 
 ### "Do we have to abandon Clean Architecture, Hexagonal, DDD or microservices to adopt ACIMA?"
 
-No. ACIMA is an enforcement standard that sits beside the architecture you chose. It does not
-replace Clean Architecture, Hexagonal Architecture, domain-driven design, a modular monolith or
-microservices; it makes the boundaries that choice declares executable, in your language, on every
-commit. Keep your layers, ports, contexts or services, declare the units and contracts, and let the
-gate fail when a boundary is crossed.
+No. ACIMA defines portable architectural requirements that sit alongside the architecture you
+chose; it does not replace Clean Architecture, Hexagonal Architecture, domain-driven design, a
+modular monolith or microservices. Compatibility is evaluated against those requirements, not
+assumed from the family's name. Existing families can often satisfy them, sometimes with limited
+adaptation; some ACIMA requirements are deliberately stricter, and those are named below. Keep your
+layers, ports, contexts or services, and check the actual boundary obligations rather than relying
+on the label.
 
 ACIMA is more prescriptive than some families in specific places — contracts may not reference
 other contracts, a cross-module in-process transaction is forbidden, contracts carry no third-party
 dependencies. Each is justified independently and scoped to boundaries, not internal design;
-departures are owned waivers. [Your architecture, enforced](../guides/architecture-families.md) has
-the per-family mapping and the qualification.
+departures are owned waivers. [Architecture compatibility](../guides/architecture-families.md) has
+the per-family mapping, outcomes and qualification.
 
 ---
 

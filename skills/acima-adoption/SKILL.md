@@ -24,10 +24,22 @@ catalog, the levels or the command set to get value. Analysis is never authoriza
 
 ## Positioning
 
-ACIMA is not an architecture. The team's choice decides the shape; ACIMA enforces the boundaries
-that shape declares. Never propose replacing it, relabel its concepts, or use a finding as an argu-
-ment for a different family. Name the family you detected from evidence and say what ACIMA adds in
-the team's own vocabulary — [05-architecture-families](references/05-architecture-families.md).
+ACIMA defines portable architectural requirements: module ownership, explicit contracts,
+dependency isolation and direction, data and configuration ownership, and controlled composition.
+Applicable lifecycle, state and effect ownership requirements also apply. It is not a template for
+the application's overall architecture, and it is not merely an enforcement layer for boundaries
+chosen elsewhere.
+
+Existing architecture families can often satisfy these requirements, but compatibility is evaluated
+against the actual requirements, not assumed from the family's name. Some requirements are
+intentionally stricter than common practice; name them and explain why. A compatible family may need
+a limited boundary adaptation. A fundamental conflict is incompatibility, not a violation to
+refactor away. Distinguish incompatibility from insufficient evidence.
+
+Never propose replacing or relabelling the team's architecture, or use a finding as an argument for
+a different family. Never suggest that adopting ACIMA requires the `service-topology` profile. Name
+the family you detected from evidence and state which ACIMA requirements it already satisfies, which
+need adaptation, and which are not established — [05-architecture-families](references/05-architecture-families.md).
 
 ## Where you are running
 
@@ -82,14 +94,19 @@ practical applicability. Choose one outcome: `RECOMMENDED`, `RECOMMENDED_WITH_LI
 `NOT_RECOMMENDED`, `INSUFFICIENT_EVIDENCE` or `NOT_SUPPORTED`. A clean report is not a
 recommendation: a utility with no meaningful boundaries, or an application whose existing checks
 already cover the guarantee, is a `NOT_RECOMMENDED`. Explain the application, discovered
-boundaries, existing enforcement, what ACIMA adds and does not add, cost, confidence and unresolved
-questions. No config, waivers, baselines, CI, docs or source changes. `NEEDS_UNIT_MAP` means
+boundaries, existing enforcement, what ACIMA requires and does not require, cost, confidence and
+unresolved questions. Record one compatibility outcome — compatible, compatible with adaptation,
+incompatible or insufficient evidence — against the applicable requirements. Distinguish an
+implementation difference from a genuine conflict, and never treat missing evidence as
+incompatibility. Name any requirement that is stricter than the team's current practice and why it
+exists. No config, waivers, baselines, CI, docs or source changes. `NEEDS_UNIT_MAP` means
 unassessed, never clean.
 
 **Phase 2 — Proposal.** Present [the proposal](assets/adoption-proposal.md) as a decision document:
-recommendation first, then the evidence, the smallest useful scope, exact paths with
-required/conditional/optional status, tradeoffs, and the one approval question. Do not write files
-"so the user can see them".
+recommendation first, then the compatibility outcome and evidence, requirements already satisfied,
+the smallest useful scope, exact paths with required/conditional/optional status, stricter
+constraints and tradeoffs, and the one approval question. Do not write files "so the user can see
+them".
 
 **Phase 3 — Explicit authorization.** Approval covers the listed scope only — the named paths,
 level and changes. Partial approval
@@ -322,7 +339,7 @@ build or CI change outside the approved list; or the module map still has a mate
 |---|---|
 | [00-preflight](references/00-preflight.md) | check ids, blockers, remedies |
 | [15-consent-and-scope](references/15-consent-and-scope.md) | phases, approval boundary, partial approval, artifact statuses |
-| [05-architecture-families](references/05-architecture-families.md) | placing ACIMA beside the team's architecture |
+| [05-architecture-families](references/05-architecture-families.md) | assessing compatibility with the team's architecture |
 | [10-greenfield](references/10-greenfield.md) / [20-brownfield](references/20-brownfield.md) | approved implementation sequences |
 | [70-corrections](references/70-corrections.md) | per-rule remedy, traps, effect and lifecycle review |
 | [30-adoption-for-newcomers](references/30-adoption-for-newcomers.md) | teaching someone with no background |

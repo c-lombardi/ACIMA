@@ -12,8 +12,8 @@
       "bytes": 19004
     },
     "docs/guides/architecture-families.md": {
-      "sha256": "1cf4b53f5251e1bc36fa6339a0aab394e99b4158c0b518ea1bb9fc4078100325",
-      "bytes": 8756
+      "sha256": "2423ce319e8420f91667fcbeb93752460fd4f2589da930dea15a12ed846aab0c",
+      "bytes": 11188
     },
     "docs/guides/architecture-tests.md": {
       "sha256": "366bc3dd0d9dee927df997d347e47e101e5bd4f698057a667d53d6c6d036f66f",
@@ -92,8 +92,8 @@
       "bytes": 13812
     },
     "docs/standard/11-service-topology.md": {
-      "sha256": "366c6958e59aa295c1d3acab057e1459bdd85252c4b6c4a5dfce3d26af9515e8",
-      "bytes": 19991
+      "sha256": "263d616de4b7a173857a49c7deeaad43247e30a49ba9dd8c55d5e811600bd1c3",
+      "bytes": 20517
     },
     "docs/standard/12-library-profile.md": {
       "sha256": "1a23869bd75e78d2bed5af0acd4ea075eb6a888ac7959e59cccb345aed385347",

@@ -24,40 +24,47 @@ AI agents accelerate exactly this. An agent optimising for a passing test will i
 | Executable: reference enforcers produce findings with rule IDs, evidence and remediation | A linter for style; it does not care about formatting or naming taste |
 | Incrementally adoptable in an existing codebase, starting with a measurement | A rewrite, a migration programme, or a mandate to restructure |
 | Explicit about which rules are automated and which need human judgement | A promise that a clean run means the architecture is correct |
-| Independent of framework, deployment model and domain methodology | A replacement for your architecture — it enforces the boundaries Clean Architecture, Hexagonal Architecture, DDD, modular monoliths or microservices define |
+| An architectural standard with its own portable boundary requirements; independent of framework, deployment model and domain methodology | A replacement for your architecture, or a guarantee that every existing architecture already satisfies it |
 
-## Your architecture, enforced
+## What ACIMA requires — and what stays yours
 
-ACIMA is not a competing architecture. Your team still chooses Clean Architecture, Hexagonal
-Architecture, domain-driven design, a modular monolith or microservices; ACIMA makes the boundaries
-that choice declares executable.
+ACIMA defines portable architectural requirements: module ownership, explicit contracts,
+dependency isolation and direction, data and configuration ownership, and controlled composition.
+Applicable lifecycle, state and effect ownership requirements apply as well. Those requirements
+belong to ACIMA; they are not derived from whatever architecture a team has already chosen.
+
+Clean Architecture, Hexagonal Architecture, domain-driven design, a modular monolith and
+microservices can often satisfy them, but compatibility is evaluated against the actual
+requirements, not assumed from the architecture's name. Some ACIMA requirements are intentionally
+stricter than common guidance in those approaches, and a compatible design may need a limited
+boundary adaptation. ACIMA complements them rather than replacing or ranking them.
+
+ACIMA deliberately leaves the overall architecture family, decomposition above its module
+requirements, internal module design, language and framework, database, transport, infrastructure,
+deployment topology, team structure and folder layout to the team. That freedom is not an exemption
+from the normative requirements: a design that conflicts with one must adapt, use the standard's
+exception process, or conclude that ACIMA is not a fit.
 
 ```
-Your team chooses                    Clean Architecture · Hexagonal Architecture
-                                     Domain-Driven Design · Modular monolith
-                                     Microservices
+Your team decides                    architecture family · language and framework
+                                     database, transport and infrastructure
+                                     deployment · internal module design · layout
 
-ACIMA defines and enforces           the boundaries that choice declares:
-                                     ownership, contracts, dependency direction
+ACIMA requires                       ownership · contracts · dependency isolation
+                                     data and configuration ownership
+                                     controlled composition · lifecycle and effects
 
-Language-specific enforcement        analyzers · architecture tests · CI gate
+Language support                     analyzers · architecture tests · CI gate
                                      · AI adoption guidance
 ```
-
-Each family contributes something ACIMA does not replace: Clean's dependency direction, Hexagonal's
-ports and adapters, DDD's bounded contexts and aggregates, the modular monolith's deployment
-simplicity, microservices' independent deployability. ACIMA adds the same thing to all of them: a
-build that fails when a module crosses its declared boundary, with findings, owned waivers and a
-CI gate. They are pillars in their own right: mature practices a team may adopt for reasons that have
-nothing to do with ACIMA, and ACIMA does not rank them.
 
 Where ACIMA is stricter — contracts that cannot reference other contracts, no cross-module
 in-process transaction, zero-dependency contracts — the requirement is stated, justified
 independently, and scoped to boundaries rather than internal design. A departure is an owned
 waiver, never a silent exception. The full mapping, including what ACIMA does not decide, is in
-[Your architecture, enforced](docs/guides/architecture-families.md).
+[Architecture compatibility](docs/guides/architecture-families.md).
 
-Five obligations carry the standard: **module ownership**, **explicit contracts**, **dependency isolation**, **data and configuration ownership**, and **controlled composition**. They are expressed as eleven base principles and a 55-rule catalog — 41 of which the reference enforcers decide from source (eighteen of those in Python and TypeScript only, in this revision), and fourteen of which require recorded human evidence. P15 adds **owned effects**: every externally visible effect has an owner, visible semantics, a truthful outcome and evidence proportionate to its criticality. It also makes state mutation, consistency and observability explicit: one owner per consistency boundary, a declared guarantee instead of assumed atomicity, and telemetry that observes behaviour rather than replacing it. The obligations are conditional on the design: retries, transactions, idempotency keys and cancellation are required only where the operation's contract makes them applicable.
+These obligations are expressed as eleven base principles and a 55-rule catalog — 41 of which the reference enforcers decide from source (eighteen of those in Python and TypeScript only, in this revision), and fourteen of which require recorded human evidence. P15 adds **owned effects**: every externally visible effect has an owner, visible semantics, a truthful outcome and evidence proportionate to its criticality. It also makes state mutation, consistency and observability explicit: one owner per consistency boundary, a declared guarantee instead of assumed atomicity, and telemetry that observes behaviour rather than replacing it. The obligations are conditional on the design: retries, transactions, idempotency keys and cancellation are required only where the operation's contract makes them applicable.
 
 The catalog also makes **instance lifetime and state ownership** explicit: share stateless services, keep request- and tenant-bound state inside its boundary, never let a longer-lived component retain a shorter-lived one, and give shared mutable state an owner and a concurrency policy. It is not a requirement to register everything as a singleton.
 
@@ -115,6 +122,9 @@ handoff. Partial approval is supported, and plans and communication documents ar
 you ask for them. Merging and releasing always remain yours.
 
 ## Language support
+
+ACIMA's requirements are language-neutral; what a given enforcer can decide automatically varies.
+Missing language coverage is reported as not executed, never as a pass.
 
 | Language | Enforcement | Status |
 |---|---|---|

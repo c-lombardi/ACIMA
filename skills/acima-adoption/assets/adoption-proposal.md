@@ -12,7 +12,8 @@ In two or three sentences: whether ACIMA fits this repository, the single strong
 main limitation. Use the evidence gathered in the read-only assessment. A clean report is not a
 recommendation: no meaningful boundaries, or existing checks that already cover the guarantee, can
 make adoption not recommended. Do not argue for a different architecture and do not open with rule
-ids, levels or catalog terminology.
+ids, levels or catalog terminology. Never imply that every architecture is compatible, or that ACIMA
+merely enforces boundaries the team already chose.
 
 **Dimensions assessed:** technical compatibility; architectural substance; existing enforcement;
 incremental value; adoption cost; practical applicability. Each has a status, evidence and
@@ -36,6 +37,9 @@ What this application does, in plain language, and what the inspection establish
 - **Existing architecture checks:** `<none | tests | linters | CI>`.
 - **Architecture family:** `<Clean | Hexagonal | DDD | modular monolith | microservices | mixed>`,
   with the evidence that supports it.
+- **Compatibility:** `compatible` / `compatible with adaptation` / `incompatible` /
+  `insufficient evidence`, against the applicable ACIMA requirements, with the evidence. This is an
+  explanatory assessment category, not a conformance level.
 
 State confidence for each material inference and name what remains uncertain. Never present a
 directory-name guess as an ownership decision.
@@ -46,9 +50,11 @@ The practical difference between the current repository and the proposed enforce
 example: "today `Orders` reads `Billing`'s internal model directly, so a Billing refactor can break
 Orders; the proposed contract makes that dependency explicit and the gate rejects a new one."
 
-For each meaningful difference, give the existing design, the ACIMA expectation, why it matters,
+For each meaningful difference, give the existing design, the ACIMA requirement, why it matters,
 and whether it is a confirmed problem, a suspected one, an acceptable design, or insufficient
-evidence. Recognise requirements the repository already satisfies.
+evidence. State which applicable requirements the repository already satisfies and which are not
+established. A different implementation is not automatically a violation; reserve "incompatible"
+for a fundamental conflict, and use "insufficient evidence" when inspection cannot decide.
 
 ## 4. Expected benefits
 

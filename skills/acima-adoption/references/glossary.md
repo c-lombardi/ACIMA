@@ -4,20 +4,23 @@ Plain-language definitions, written to be reused verbatim in onboarding material
 definitions are in `docs/standard/02-vocabulary.md`; if the two disagree, the standard wins and
 this file should be corrected.
 
-**ACIMA** — Autonomous, Contract-Isolated, Immutable Modular Architecture. A set of rules for
-keeping modules independently changeable, enforced by a machine.
+**ACIMA** — Autonomous, Contract-Isolated, Immutable Modular Architecture. An architectural standard
+with portable requirements for module ownership, contracts, dependency isolation, data and
+configuration ownership, and controlled composition, enforced by a machine where supported.
 
 **Architecture family** — the shape the team chose: Clean Architecture, Hexagonal (ports and
-adapters), domain-driven design, a modular monolith, microservices, or a mix. ACIMA enforces the
-boundaries it declares; it does not replace it.
+adapters), domain-driven design, a modular monolith, microservices, or a mix. ACIMA does not replace
+it; compatibility is assessed against ACIMA's own requirements, some of which may require adaptation.
 
-**Enforcement standard** — checkable boundary obligations that sit beside an architecture. ACIMA is
-one: it decides whether the declared boundaries are crossed, not which architecture to choose.
+**Architectural standard** — a standard that defines its own checkable boundary requirements. ACIMA
+is one: it decides what a conforming system must satisfy, not which overall architecture to choose.
+Automated coverage varies by language; missing coverage is reported as not executed, never as a pass.
 
 **Architecture mode** — `base` or `service-topology`, selected by `acima.config.json.mode`.
-Base applies P1–P9 and P14. Service topology applies P1–P9, P10–P13 and P14 and supersedes exactly P2.1
+Base applies P1–P9, P14 and P15. Service topology applies P1–P9, P10–P15 and supersedes exactly P2.1
 (one contracts unit per module) and P3.5 (shared-kernel allowance). The topology manifest is
-evidence, not a selector.
+evidence, not a selector. The service-topology profile is optional and applies only when explicitly
+selected; the base mode remains the foundation.
 
 **Autonomous** — a module can change, deploy and fail without requiring coordinated changes in
 other modules. Depends on owning its data and configuration.

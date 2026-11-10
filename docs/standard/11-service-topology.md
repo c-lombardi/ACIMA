@@ -9,10 +9,14 @@ The profile is domain-agnostic. The examples use orders and payments because thi
 not because the standard assumes commerce. A service may model a hospital ward, a shipping route, a
 game session or a billing run; the obligations are the same.
 
-> **Status.** This is the default architecture for new systems. The base module rules remain the
-> compatibility path for existing systems; their shared-kernel allowance is legacy. These requirements
-> are checked by [`conformance/topology.py`](../../conformance/topology.py) as `ACIMA-S001`–`S012`,
-> against the manifest described in §11.10. A conformance claim MUST cite the JSON run, per §8.8.
+> **Status.** This is an optional, opinionated architectural profile, not ACIMA's default
+> architecture. It is appropriate when its service ownership, layering, project organization and
+> contract model fit the product's actual requirements. Adopting ACIMA does not automatically adopt
+> this profile: the base requirements remain the foundation, and these stricter structural
+> requirements apply only when the profile is explicitly selected in `acima.config.json`. Repositories
+> that do not select it remain governed by the base standard. These requirements are checked by
+> [`conformance/topology.py`](../../conformance/topology.py) as `ACIMA-S001`–`S012`, against the
+> manifest described in §11.10. A conformance claim MUST cite the JSON run, per §8.8.
 
 ## 11.1 The service is the unit of ownership
 
@@ -65,7 +69,7 @@ decided who owns the message.
 |---|---|---|---|
 | **Api** | Transport: endpoints, authentication, request validation, mapping to application | `Api.Contracts` | `Application.Contracts` (to call), inter-service contracts it sends, mapping code |
 | **Application** | Use cases, orchestration, transaction boundaries, policy | `Application.Contracts` | `Domain`, `Application.Contracts`, vendor contracts, inter-service contracts it sends |
-| **Domain** | Entities, aggregates, invariants, domain services, ports | no contracts project | the language core only (the shared kernel is legacy and not used in the default) |
+| **Domain** | Entities, aggregates, invariants, domain services, ports | no contracts project | the language core only (the shared kernel is a base compatibility allowance, not used in this profile) |
 | **Infrastructure** | Persistence, messaging, filesystem, clocks, adapters for domain ports | persistence models (internal) | `Domain`, `Application` ports, infrastructure libraries |
 | **Integrations.\<Vendor\>** | One third-party integration, isolated | `<Service>.<Vendor>.Contracts` | that contracts project and the vendor SDK |
 | **Host** | Composition root, configuration, process entry point | — | everything |
@@ -114,9 +118,9 @@ immutable (`C001`, `C002`). This is what lets the layers stay isolated while the
 > **A contracts project references nothing: no other project, no package, no shared kernel, no
 > framework. Only the language's core library.**
 
-This is the default. Base P3.5 permits the shared kernel inside contracts as a legacy compatibility
-allowance; the default removes that exception. The reasons are the same ones P3 gives, taken to their
-conclusion:
+Within this profile, this is required. Base P3.5 permits the shared kernel inside contracts as a
+legacy compatibility allowance; this profile removes that exception. The reasons are the same ones P3
+gives, taken to their conclusion:
 
 - a kernel reference makes every contract release depend on the kernel's release;
 - a kernel value type in a contract is a type every consumer must share, which is the definition of
@@ -321,7 +325,8 @@ Claim format:
 ## 11.12 Relationship to base ACIMA
 
 `acima.config.json` selects the mode. `"mode": "service-topology"` puts the profile in force;
-`"mode": "base"` or an absent field keeps only P1–P9. `acima.topology.json` is the profile's
+`"mode": "base"` or an absent field keeps P1–P9, P14 and P15 in force. The profile is never applied
+by implication: it requires the explicit mode declaration. `acima.topology.json` is the profile's
 evidence manifest and does not select anything by itself. The runner rejects an inconsistent
 declaration with exit `2`: a topology manifest without `mode: service-topology`, a service mode
 without the manifest, an unknown mode, or a manifest whose `profile` is not `service-topology`.
@@ -329,9 +334,9 @@ without the manifest, an unknown mode, or a manifest whose `profile` is not `ser
 Precedence is deliberately narrow. The profile refines, and in exactly two places tightens, the base
 standard:
 
-| Compatibility (legacy) | Default |
+| Base compatibility | Profile requirement |
 |---|---|
-| P3.5: contracts may reference the shared kernel (legacy compatibility) | ST-5 (default): contracts reference nothing; the kernel is not permitted inside contracts |
+| P3.5: contracts may reference the shared kernel (legacy compatibility) | ST-5 (this profile): contracts reference nothing; the kernel is not permitted inside contracts |
 | A module has one contracts unit | A service has one contracts unit **per outward-facing layer**, each zero-reference |
 | Boundary crossings are module-to-module | Boundary crossings are layer-to-layer **and** service-to-service, each with an explicit transform |
 | Conformance is L1–L3, machine-checked | Profile conformance is automated by `conformance/topology.py` as `ACIMA-S001`–`S012` (§8.8) |

@@ -1,33 +1,44 @@
-# Your architecture, enforced
+# Architecture compatibility
 
-ACIMA is an **architectural enforcement standard**, not an architecture. It does not ask a team to
-abandon Clean Architecture, Hexagonal Architecture, domain-driven design, a modular monolith or a
-microservices architecture. Those choices answer *how the system is shaped*. ACIMA answers a
-different question: **which of the boundary properties that shape implies can a build verify, on
-every commit, in the team's language?**
+ACIMA is an architectural standard with its own portable requirements. It does not choose an
+application's overall architecture, and it does not merely enforce boundaries that another
+architecture already defines. Module ownership, explicit contracts, dependency isolation and
+direction, data and configuration ownership, and controlled composition are ACIMA requirements.
+Existing approaches may satisfy some or all of them, but compatibility is evaluated against the
+requirements, not assumed from the family's name.
+
+ACIMA does not ask a team to abandon Clean Architecture, Hexagonal Architecture, domain-driven
+design, a modular monolith or microservices. Those choices answer *how the system is shaped*. ACIMA
+defines portable boundary requirements and, in specific places, intentionally stricter constraints.
+A team may need to adapt selected boundaries or implementation details; it does not need to replace
+its overall architecture.
 
 ```
-Your team chooses                    Clean Architecture · Hexagonal Architecture
+Your team decides                    Clean Architecture · Hexagonal Architecture
                                      Domain-Driven Design · Modular monolith
-                                     Microservices
+                                     Microservices · language and framework
+                                     database, transport and infrastructure
 
-ACIMA defines and enforces           the boundaries that choice declares:
-                                     ownership, contracts, dependency direction
+ACIMA requires                       ownership · contracts · dependency isolation
+                                     data and configuration ownership
+                                     controlled composition · lifecycle and effects
 
 Language-specific enforcement        analyzers · architecture tests · CI gate
                                      · AI adoption guidance
 ```
 
-Each of these is a mature practice with value independent of ACIMA. ACIMA does not rank them,
-require one, or treat one as a prerequisite — it only asks that the boundaries the team already
-believes in are made checkable.
+ACIMA does not rank these approaches, require one, or treat one as a prerequisite. Each is a mature
+practice with value independent of ACIMA. The question is not "which family is approved?" but "does
+this system meet the applicable ACIMA requirements, and what would have to change if it does not?"
 
 The two layers compose. A team keeps the vocabulary and structure it already uses, declares its
-units and contracts in `acima.config.json`, and lets the enforcer fail the build when the declared
-boundary is crossed. Nothing in ACIMA requires a particular folder layout, framework, transport,
-database or deployment model.
+units and contracts in `acima.config.json`, and lets the enforcer fail the build when an ACIMA
+requirement is violated. Outside an explicitly adopted profile, nothing in ACIMA requires a
+particular folder layout, framework, transport, database or deployment model — those remain team
+choices within the freedom described in the [preface](../standard/00-preface.md). The boundary
+requirements do apply: a family name is not evidence that they are met.
 
-## What ACIMA enforces regardless of architecture
+## What ACIMA requires regardless of architecture
 
 Every family below is subject to the same five obligations ([principles](../standard/01-principles.md)):
 
@@ -43,7 +54,7 @@ rules are the same whether the modules are folders, projects or services.
 
 ## If your team chose…
 
-| Family | Valuable when | What ACIMA adds | Where ACIMA is more prescriptive |
+| Family | Valuable when | What ACIMA requires here | Where ACIMA is more prescriptive |
 |---|---|---|---|
 | **Clean Architecture** | Domain logic is complex and must not depend on frameworks, databases or delivery. | Module ownership *across* the rings: each module has its own contracts, and `D001` stops one module reaching into another's use cases or adapters, which layering alone does not see. | It reduces layering to four checkable edges rather than mandating all rings, and it forbids implementation-to-implementation references between modules even when both sit in a "clean" layer. |
 | **Hexagonal Architecture** (ports and adapters) | Many external systems, and tests need seams around them. | Ports are owned by the module that uses them (`P1.6`), contracts stay dependency-free, and adapter edges are reported rather than hidden. A declared adapter is classified only with publishable evidence (library profile), never silenced. | A single cross-module "core" that owns everyone's ports is the `Common`/`Core` failure P1 exists to prevent. Adapters may not become a shared kernel. |
@@ -51,12 +62,33 @@ rules are the same whether the modules are folders, projects or services.
 | **Modular monolith** | One deployable, several team-owned capabilities, and a need for independent change. | This is ACIMA's home ground: it turns the seams from a folder convention into a gate (`D001`, `L003`, `A001`–`A006`), so the "modular" part does not decay. | In-process transactions across modules are forbidden even when technically possible; they are the coupling that prevents later extraction. Configuration and static state are owned per module. |
 | **Microservices** | Independent deployment, scaling and ownership are the dominant constraint. | The service-topology profile (P10–P13) applies the same ownership and isolation obligations per service layer, with per-layer contracts and zero-reference contracts; `D001` becomes "no service reads another service's database". | Contracts may not reference other contracts at all, and a service boundary must be declared as evidence, not inferred from folder names. The adoption skill this revision ships does not implement the service workflow; it stops rather than forcing the base unit model. |
 
+## Four compatibility outcomes
+
+These are explanatory assessment categories, not conformance levels or rule outcomes. Record one
+when explaining compatibility, with the evidence behind it.
+
+1. **Compatible** — the available evidence shows that the applicable ACIMA requirements are met.
+2. **Compatible with adaptation** — the overall architecture can remain, but named boundaries or
+   implementation details must change to satisfy specific requirements.
+3. **Incompatible** — a fundamental architectural decision conflicts with an ACIMA requirement.
+   Name the conflict. If the team still wants ACIMA, that is a design decision or an owned exception
+   where the standard permits one, never a silent rewrite.
+4. **Insufficient evidence** — available information does not establish whether the requirements are
+   met. This is not incompatibility; ask only the question that changes the decision, or stop
+   without a compatibility verdict.
+
+Compatibility is not a claim that every architecture can satisfy every requirement without
+tradeoffs. The outcomes allow a family to be compatible in part, require adaptation, or be
+incompatible.
+
 ## Fit is not a family judgement
 
-Before recommending adoption, assess six dimensions independently: technical compatibility,
-architectural substance, existing enforcement, incremental value, adoption cost and practical
-applicability. Then choose `RECOMMENDED`, `RECOMMENDED_WITH_LIMITATIONS`, `NOT_RECOMMENDED`,
-`INSUFFICIENT_EVIDENCE` or `NOT_SUPPORTED`.
+Compatibility and the adoption recommendation are separate judgements. A `Compatible` result does
+not by itself make adoption worthwhile, and `Compatible with adaptation` may still be the smallest
+useful scope. Before recommending adoption, assess six dimensions independently: technical
+compatibility, architectural substance, existing enforcement, incremental value, adoption cost and
+practical applicability. Then choose `RECOMMENDED`, `RECOMMENDED_WITH_LIMITATIONS`,
+`NOT_RECOMMENDED`, `INSUFFICIENT_EVIDENCE` or `NOT_SUPPORTED`.
 
 A clean report is one input, never a recommendation. A small utility with no meaningful ownership
 boundaries, or an application whose existing boundary checks already cover the same guarantee, can
@@ -86,9 +118,10 @@ a different family.
 
 ## What ACIMA does not decide
 
-Deployment topology, database or transport choice, serialization, framework, folder names, the
-number of modules, or whether the domain is modelled with aggregates. It also does not require a
-rewrite: brownfield adoption measures the existing boundaries and ratchets.
+Outside an explicitly adopted profile, ACIMA does not decide deployment topology, database or
+transport choice, serialization, framework, folder names, the number of modules, or whether the
+domain is modelled with aggregates. It also does not require a rewrite: brownfield adoption measures
+the existing boundaries and ratchets.
 
 ## The qualification: ACIMA can be stricter
 

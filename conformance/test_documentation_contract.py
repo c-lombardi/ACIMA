@@ -13,6 +13,11 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
+def normalized(path: str) -> str:
+    text = "\n".join(line.lstrip("> ") for line in read(path).lower().splitlines())
+    return " ".join(text.split())
+
+
 class DocumentationContractTests(unittest.TestCase):
     def test_rule_index_names_every_non_executed_rule(self) -> None:
         coverage = json.loads(read("conformance/coverage.json"))
@@ -125,6 +130,76 @@ class DocumentationContractTests(unittest.TestCase):
         self.assertIn("no source files", glossary)
         self.assertIn("one or more implementation units", glossary)
         self.assertIn("one exact finding fingerprint", glossary)
+
+    def test_readme_states_own_requirements_and_preserves_design_freedom(self) -> None:
+        readme = normalized("README.md")
+        self.assertIn("portable architectural requirements", readme)
+        self.assertIn("module ownership", readme)
+        self.assertIn("compatibility is evaluated against the actual requirements", readme)
+        self.assertIn("complements them rather than replacing or ranking them", readme)
+        self.assertIn("language-neutral", readme)
+        self.assertIn("not an exemption", readme)
+        self.assertNotIn("it enforces the boundaries clean architecture", readme)
+        self.assertNotIn("the boundaries that choice declares", readme)
+        self.assertNotIn("your architecture, enforced", readme)
+
+    def test_service_topology_is_optional_not_a_default_architecture(self) -> None:
+        profile = normalized("docs/standard/11-service-topology.md")
+        self.assertIn("optional, opinionated architectural profile", profile)
+        self.assertIn("not acima's default architecture", profile)
+        self.assertIn("only when the profile is explicitly selected", profile)
+        self.assertIn("stricter structural requirements", profile)
+        self.assertNotIn("default architecture for new systems", profile)
+
+    def test_preface_separates_requirements_from_architectural_freedom(self) -> None:
+        preface = normalized("docs/standard/00-preface.md")
+        self.assertIn("what acima governs", preface)
+        self.assertIn("what acima deliberately leaves to the team", preface)
+        self.assertIn("architectural freedom is not an exemption", preface)
+        self.assertIn("`base` is the default **mode**, not a default architecture", preface)
+        self.assertIn("only when explicitly selected", preface)
+
+    def test_p13_applicability_is_scoped_to_the_service_profile(self) -> None:
+        principles = normalized("docs/standard/01-principles.md")
+        self.assertIn("p13 applies only in the `service-topology` profile", principles)
+        self.assertIn("base acima does not require", principles)
+
+    def test_architecture_guide_explains_compatibility_outcomes(self) -> None:
+        guide = normalized("docs/guides/architecture-families.md")
+        for outcome in ("**compatible**", "**compatible with adaptation**", "**incompatible**",
+                        "**insufficient evidence**"):
+            self.assertIn(outcome, guide)
+        self.assertIn("not conformance levels", guide)
+        self.assertIn("intentionally", guide)
+        self.assertIn("stricter", guide)
+
+    def test_adoption_skill_requires_honest_compatibility_assessment(self) -> None:
+        skill = normalized("skills/acima-adoption/SKILL.md")
+        self.assertIn("defines portable architectural requirements", skill)
+        self.assertIn("compatibility is evaluated against the actual requirements", skill)
+        self.assertIn("compatible with adaptation", skill)
+        self.assertIn("insufficient evidence", skill)
+        self.assertIn("never suggest that adopting acima requires the `service-topology` profile", skill)
+        self.assertIn("analysis is never authorization", skill)
+        self.assertNotIn("the team's choice decides the shape", skill)
+        self.assertNotIn("enforces the boundaries that shape declares", skill)
+
+    def test_faq_assesses_compatibility_instead_of_assuming_it(self) -> None:
+        faq = normalized("docs/standard/10-faq.md")
+        self.assertIn("compatibility is evaluated against those requirements", faq)
+        self.assertIn("architecture compatibility", faq)
+        self.assertNotIn("sits beside the architecture you chose", faq)
+
+    def test_skill_materials_do_not_reduce_acima_to_declared_boundaries(self) -> None:
+        for path in (
+            "skills/acima-adoption/references/05-architecture-families.md",
+            "skills/acima-adoption/references/80-reporting.md",
+            "skills/acima-adoption/assets/adoption-proposal.md",
+        ):
+            text = normalized(path)
+            self.assertIn("compatibility", text)
+            self.assertNotIn("enforces the boundaries that shape declares", text)
+            self.assertNotIn("enforces the boundaries your team declares", text)
 
 
 if __name__ == "__main__":

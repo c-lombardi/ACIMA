@@ -18,9 +18,12 @@ handoff close each one. Only the approved paths are created; plans and communica
 optional.
 
 Adoption does not replace the architecture the team already chose. Clean Architecture, Hexagonal,
-DDD, a modular monolith and microservices all remain valid shapes; ACIMA measures and enforces the
-boundaries inside the chosen shape. Read [Your architecture, enforced](../guides/architecture-families.md)
-before proposing units, and do not present ACIMA as a reason to restructure.
+DDD, a modular monolith and microservices all remain valid shapes, but ACIMA defines its own
+portable boundary requirements; compatibility is assessed against them, not assumed from the shape.
+A family may satisfy some requirements and need limited adaptation for others; a fundamental
+conflict is not a reason to restructure silently. Read
+[Architecture compatibility](../guides/architecture-families.md) before proposing units, and do not
+present ACIMA as a reason to restructure.
 
 ## Phase 1 — Discovery
 

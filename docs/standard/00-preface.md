@@ -60,7 +60,7 @@ not yet ratified by any standards body, and no such ratification is claimed.
 
 The original nine principles and the name ACIMA were proposed by the framework's author; this
 specification is the attempt to turn them into something a build can enforce, and
-[chapter 11](11-service-topology.md) extends them with a service topology profile.
+[chapter 11](11-service-topology.md) extends them with an optional service topology profile.
 
 ## 0.5 Why a standard and not a template
 
@@ -87,18 +87,45 @@ checkable:
 | Module autonomy | Microservice / bounded-context thinking | Extended to persistence, configuration, values, static state, lifetime and state ownership (`A001`–`A009`) |
 | Layering | Clean / Hexagonal architecture | Reduced to four checkable edges (`L001`–`L004`) |
 
-ACIMA is an **enforcement standard, not an architecture**. Clean Architecture, Hexagonal
-Architecture, domain-driven design, a modular monolith and a microservices architecture each define
-how a system is shaped; ACIMA defines which boundary properties a build can verify. A team keeps its
-chosen shape, declares its units and contracts, and ACIMA enforces the edges between them. The scope
-in §0.3 is deliberate: boundaries, not technology and not domain methodology.
+ACIMA defines its own architectural requirements. It is not a template, and it is not merely an
+enforcement layer for boundaries chosen elsewhere. The requirements cover module ownership, explicit
+contracts, dependency isolation and direction, data and configuration ownership, controlled
+composition, and the applicable lifecycle, state and effect ownership requirements. Existing
+approaches can often satisfy them, but compatibility is evaluated against the requirements
+themselves, not inferred from the architecture's name.
+
+**What ACIMA governs:**
+
+- module ownership;
+- explicit contracts;
+- dependency isolation and direction;
+- data and configuration ownership;
+- controlled composition;
+- applicable lifecycle, state and effect ownership requirements.
+
+**What ACIMA deliberately leaves to the team:**
+
+- the overall architecture family;
+- application and system decomposition, subject to ACIMA's module requirements;
+- internal module design;
+- language and framework;
+- database, transport and infrastructure choices;
+- deployment topology;
+- team and organisational structure;
+- project and folder layout, except where an explicitly adopted profile requires otherwise.
+
+Architectural freedom is not an exemption from the normative requirements. Where a design conflicts
+with a requirement, the team must adapt the boundary or use the standard's normal exception process;
+if neither is acceptable, ACIMA is not a fit. This division is what lets ACIMA sit beside Clean
+Architecture, Hexagonal Architecture, domain-driven design, a modular monolith or microservices
+without replacing or ranking them.
 
 Where a requirement here is more prescriptive than a chosen family — contracts that cannot reference
 other contracts (P3), no cross-module in-process transaction (P7), zero-dependency contracts (P3) —
 the obligation is stated and justified in the chapter that introduces it, and its scope is limited to
 boundaries between units and the four edges inside a unit. A departure is an owned waiver (P9), never
-a silent exception. [Your architecture, enforced](../guides/architecture-families.md) maps each
-family to the rules that enforce it.
+a silent exception. [Architecture compatibility](../guides/architecture-families.md) maps each
+family to the applicable requirements and explains where adaptation may be needed.
 
 ## 0.7 How this specification is versioned
 
@@ -113,9 +140,13 @@ A repository records the version it targets in `acima.config.json` (see
 
 ## 0.8 Two architecture modes
 
-ACIMA has one base standard and one profile. `acima.config.json.mode` selects which obligations
-govern a repository; it is the **only** selector. `acima.topology.json` is profile evidence, not a
-mode selector.
+ACIMA has one base standard and one optional profile. `acima.config.json.mode` selects which
+obligations govern a repository; it is the **only** selector. `acima.topology.json` is profile
+evidence, not a mode selector.
+
+`base` is the default **mode**, not a default architecture. The `service-topology` profile is an
+optional, opinionated architecture and applies only when explicitly selected; adopting ACIMA does
+not select it.
 
 | Mode | Obligations in force | Superseded base obligations |
 |---|---|---|
