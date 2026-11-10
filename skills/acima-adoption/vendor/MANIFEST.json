@@ -84,8 +84,8 @@
       "bytes": 14055
     },
     "docs/standard/08-conformance.md": {
-      "sha256": "4ac969e2ef1ae1a2094878f995805b48231739332e98e049939452dade5e739e",
-      "bytes": 19675
+      "sha256": "47f2d81eb2c66e7961a92c32d2e4dd1e322b9c27b5c2f878ca72b24d3795e0f9",
+      "bytes": 21465
     },
     "docs/standard/09-adoption.md": {
       "sha256": "7307ee1a9bbee1d0a2a150770d482020db123be3f90d9251cb20632bb90d7e6b",
@@ -172,8 +172,8 @@
       "bytes": 34422
     },
     "tools/acima.py": {
-      "sha256": "77954b58c7ec2f50564240d965bf2f28f6f8dab69ddbabe18ec8ead77e8797ba",
-      "bytes": 206227
+      "sha256": "ade2d260609fad6cf3b98754698c5a3ae1c7a24da4fd34bb81be8818edf85a19",
+      "bytes": 219926
     }
   }
 }
