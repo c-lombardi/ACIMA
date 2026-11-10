@@ -183,13 +183,15 @@ function findingFingerprint(rule, path, evidence) {
     .digest('hex').slice(0, 16);
 }
 
-function add(rule, message, path, line, evidence = '') {
+function add(rule, message, path, line, evidence = '', classification = '') {
   if (!CATALOG[rule]) return;
   const [severity, required] = CATALOG[rule];
   if (RANK[required] > RANK[level]) return;
   const trimmed = evidence.slice(0, 200);
-  findings.push({ rule, severity, message, path, line: Math.max(line, 1),
-    evidence: trimmed, fingerprint: findingFingerprint(rule, path, trimmed) });
+  const finding = { rule, severity, message, path, line: Math.max(line, 1),
+    evidence: trimmed, fingerprint: findingFingerprint(rule, path, trimmed) };
+  if (classification) finding.classification = classification;
+  findings.push(finding);
 }
 
 function pathDeclared(adapter, path) {
@@ -699,19 +701,84 @@ function vendorTokens(name, entry) {
 const EXPLICIT_ROLES = new Set(['implementation', 'host', 'adapter', 'port']);
 // Values and configuration: a component receives resolved values; it does not discover them.
 const CONFIG_ROLES = new Set(['implementation', 'adapter']);
-const OPERATIONAL_ROLES = new Set(['implementation', 'adapter']);
+const VALUE_ROLES = new Set(['implementation', 'adapter', 'host']);
 const OPERATIONAL_TOKENS = new Set([
   'timeout', 'timeouts', 'retry', 'retries', 'limit', 'limits',
   'threshold', 'thresholds', 'ttl', 'interval', 'intervals', 'batch',
   'rate', 'rates', 'retention', 'capacity', 'delay', 'quota',
   'backoff', 'concurrency', 'attempts', 'workers', 'pagesize',
   'endpoint', 'endpoints', 'url', 'urls', 'uri', 'host', 'hostname',
-  'port', 'queue', 'topic', 'bucket',
+  'port', 'queue', 'topic', 'bucket', 'minimum', 'minimums',
+  'maximum', 'maximums', 'duration', 'durations', 'expiry', 'expiration',
+  'deadline', 'window', 'windows', 'grace', 'heartbeat', 'poll',
+  'discount', 'tax', 'fee', 'fees', 'eligibility', 'nonce', 'salt',
+  'signature', 'secret', 'secrets', 'password', 'passwords',
+  'credential', 'credentials',
+]);
+const CONFIGURATION_TOKENS = new Set([
+  'endpoint', 'endpoints', 'url', 'urls', 'uri', 'host', 'hostname',
+  'port', 'queue', 'topic', 'bucket', 'region', 'environment', 'deployment',
+]);
+const SAFE_VALUE_CALLS = new Set([
+  'if', 'for', 'while', 'switch', 'catch', 'function', 'constructor', 'return',
+  'typeof', 'new', 'super', 'class', 'import', 'require', 'parseInt', 'parseFloat',
+  'Number', 'String', 'Boolean', 'Array', 'Object', 'Promise', 'console',
 ]);
 
 function operationalName(name) {
   const snake = name.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
   return snake.split(/[^a-z0-9]+/).some((token) => OPERATIONAL_TOKENS.has(token));
+}
+
+function valueCategory(name) {
+  const snake = name.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+  if (/(?:^|_)(?:secret|password|passwd|credential|credentials|nonce|salt)(?:_|$)/.test(snake)
+      || /(?:private|api|signing|access)_key(?:_|$)/.test(snake)
+      || /(?:auth|access|refresh)_token(?:_|$)/.test(snake)) return 'secret';
+  const tokens = snake.split(/[^a-z0-9]+/);
+  if (tokens.some((token) => CONFIGURATION_TOKENS.has(token))) return 'configuration';
+  return 'value';
+}
+
+function literalPrefix(text) {
+  const match = /^(?:[-+]?\d+(?:\.\d+)?|'[^']*'|"[^"]*"|`[^`]*`)/.exec(text.trim());
+  return match ? match[0].slice(0, 80) : null;
+}
+
+function calleeParameterNames(text) {
+  return splitTopLevel(text).map((part) => part.trim()).filter(Boolean).map((part) => {
+    const cleaned = part.replace(/^(?:(?:public|private|protected|readonly|static|override|async|declare)\s+)+/, '')
+      .replace(/^\.\.\./, '');
+    return cleaned.split(/[:=]/)[0].trim();
+  }).filter((name) => name && name !== 'this');
+}
+
+function localCallables(source) {
+  const masked = maskSource(source);
+  const result = new Map();
+  const remember = (name, params) => {
+    if (!name || SAFE_VALUE_CALLS.has(name)) return;
+    if (!result.has(name)) result.set(name, params);
+    else if (JSON.stringify(result.get(name)) !== JSON.stringify(params)) result.set(name, null);
+  };
+  const patterns = [
+    /\bfunction\s+([A-Za-z_$][\w$]*)\s*\(([^)]*)\)/g,
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?\(([^)]*)\)\s*=>/g,
+    /^\s*(?:(?:public|private|protected|static|async|readonly|override|declare)\s+)*([A-Za-z_$][\w$]*)\s*\(([^)]*)\)\s*(?::[^={]+)?\{/gm,
+  ];
+  for (const pattern of patterns) {
+    pattern.lastIndex = 0;
+    let match;
+    while ((match = pattern.exec(masked)) !== null) {
+      remember(match[1], calleeParameterNames(match[2]));
+    }
+  }
+  return result;
+}
+
+function isDefinitionPrefix(source, index) {
+  const prefix = source.slice(Math.max(0, index - 24), index);
+  return /\b(?:function|class|interface|type|new)\s+$/.test(prefix);
 }
 
 function literalAt(source, index) {
@@ -1093,33 +1160,137 @@ function checkConfiguration() {
 }
 
 function checkOperationalValues() {
-  const patterns = [
-    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=\n;]+)?=\s*/g,
-    /\bthis\.([A-Za-z_$][\w$]*)\s*=\s*/g,
-    /\b([A-Za-z_$][\w$]*)\s*:\s*/g,
-    /\b([A-Za-z_$][\w$]*)\s*(?:>=|<=|>|<|===|!==|==|!=)\s*/g,
-  ];
+  const allDeclarations = [];
+  const linesByPath = new Map();
   for (const [r, source] of files) {
     const unit = unitsOf.get(r);
-    if (!OPERATIONAL_ROLES.has(unit.role)) continue;
+    if (!VALUE_ROLES.has(unit.role)) continue;
     const masked = maskSource(source);
     const lines = source.split('\n');
+    const maskedLines = masked.split('\n');
+    linesByPath.set(r, lines);
     const seen = new Set();
-    for (const pattern of patterns) {
-      pattern.lastIndex = 0;
-      let match;
-      while ((match = pattern.exec(masked)) !== null) {
-        const name = match[1];
-        if (name === name.toUpperCase()) continue;
-        if (!operationalName(name)) continue;
-        const value = literalAt(source, match.index + match[0].length);
-        if (value === null) continue;
-        const line = lineOf(masked, match.index);
-        if (seen.has(line)) continue;
-        seen.add(line);
-        add('ACIMA-A006', `${unit.id} embeds the operational value ${value} in ${name}; name it in its owner or supply it as configuration at a composition boundary.`,
-          r, line, (lines[line - 1] || '').trim());
+    const declarations = [];
+
+    const addValue = (name, line, kind) => {
+      if (!name || !operationalName(name) || line < 1 || line > lines.length) return;
+      if (seen.has(line)) return;
+      seen.add(line);
+      const category = valueCategory(name);
+      let message;
+      if (category === 'secret') {
+        message = `${unit.id} declares a secret-looking literal in ${name}; resolve it through the secret mechanism and never commit or log the value.`;
+      } else if (category === 'configuration') {
+        message = `${unit.id} declares ${name} as a source literal; classify it as a stable code-owned constant or as deployment/runtime configuration resolved and validated at a composition boundary.`;
+      } else if (kind === 'mutable') {
+        message = `${unit.id} declares the meaningful value ${name} mutably; use an immutable constant, readonly field or immutable value object, or document why mutation is genuinely required.`;
+      } else if (kind === 'property') {
+        message = `${unit.id} assigns the meaningful value ${name} through a mutable property; prefer an immutable declaration or a readonly value object owned by the type.`;
+      } else {
+        message = `${unit.id} embeds a meaningful value in ${name}; declare it once as an immutable constant in the owning file or type, or supply it explicitly from the appropriate configuration boundary.`;
       }
+      add('ACIMA-A006', message, r, line, (lines[line - 1] || '').trim(), 'candidate');
+    };
+
+    // Named declarations: const/readonly are immutable; let/var and writable fields are candidates.
+    for (let index = 0; index < lines.length; index++) {
+      const original = lines[index];
+      const maskedLine = maskedLines[index] || '';
+      let match;
+      if ((match = /^\s*(?:export\s+)?(const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;\n]+)?=\s*(.+?)\s*;?\s*$/.exec(original))) {
+        const kind = match[1];
+        const name = match[2];
+        if (!operationalName(name)) continue;
+        const literal = literalPrefix(match[3]);
+        if (!literal) continue;
+        if (kind !== 'const') {
+          addValue(name, index + 1, 'mutable');
+          continue;
+        }
+        if (valueCategory(name) === 'value') declarations.push({ name, literal, line: index + 1 });
+        else addValue(name, index + 1, 'inline');
+        continue;
+      }
+      if ((match = /^\s*(?:(?:public|private|protected|static|readonly|override|declare)\s+)+([A-Za-z_$][\w$]*)\s*(?::[^=;\n]+)?=\s*(.+?)\s*;?\s*$/.exec(original))) {
+        const name = match[1];
+        if (!operationalName(name)) continue;
+        const literal = literalPrefix(match[2]);
+        if (!literal) continue;
+        if (/\breadonly\b/.test(match[0].split(name)[0])) {
+          if (valueCategory(name) === 'value') declarations.push({ name, literal, line: index + 1 });
+          else addValue(name, index + 1, 'inline');
+        } else {
+          addValue(name, index + 1, 'property');
+        }
+        continue;
+      }
+      if ((match = /\bthis\.([A-Za-z_$][\w$]*)\s*=\s*(.+?)\s*;?\s*$/.exec(original))) {
+        const name = match[1];
+        const literal = literalPrefix(match[2]);
+        if (!name || !literal || !operationalName(name)) continue;
+        const readonly = new RegExp(`\\breadonly\\s+${name.replace(/[$]/g, '\\$&')}\\b`).test(source);
+        if (!readonly) addValue(name, index + 1, 'property');
+        continue;
+      }
+      if ((match = /^\s*([A-Za-z_$][\w$]*)\s*:\s*(.+?)\s*,?\s*$/.exec(original))) {
+        const name = match[1];
+        const literal = literalPrefix(match[2]);
+        if (!name || !literal || !operationalName(name) || SAFE_VALUE_CALLS.has(name)) continue;
+        addValue(name, index + 1, 'property');
+      }
+    }
+
+    // Local calls: the callee's positional parameter supplies the receiving name.
+    const callables = localCallables(source);
+    const callPattern = /\b([A-Za-z_$][\w$]*)\s*\(/g;
+    let call;
+    while ((call = callPattern.exec(masked)) !== null) {
+      const name = call[1];
+      if (!name || isDefinitionPrefix(source, call.index) || !callables.has(name)) continue;
+      const params = callables.get(name);
+      if (!params) continue;
+      const open = call.index + call[0].length - 1;
+      const close = matchingIndex(masked, open, '(', ')');
+      if (close < 0) continue;
+      const after = masked.slice(close + 1).match(/^\s*(.)/);
+      if (after && (after[1] === '{' || after[1] === ':')) continue;
+      const argsText = source.slice(open + 1, close);
+      const args = splitTopLevel(argsText);
+      const line = lineOf(masked, call.index);
+      args.forEach((argument, index) => {
+        const receiving = params[index];
+        if (!receiving || !literalPrefix(argument)) return;
+        addValue(receiving, line, 'inline');
+      });
+    }
+
+    // Comparisons against a meaningful receiving identifier remain review candidates.
+    for (let index = 0; index < lines.length; index++) {
+      const match = /\b([A-Za-z_$][\w$]*)\s*(?:>=|<=|>|<|===|!==|==|!=)\s*([-+]?\d+(?:\.\d+)?|'[^']*'|"[^"]*"|`[^`]*`)/.exec(lines[index]);
+      if (!match || match[1] === match[1].toUpperCase()) continue;
+      addValue(match[1], index + 1, 'inline');
+    }
+
+    for (const declaration of declarations) allDeclarations.push({ ...declaration, path: r, unit });
+  }
+
+  // Duplicate immutable declarations are candidates within one module, never cross-module merges.
+  const groups = new Map();
+  for (const declaration of allDeclarations) {
+    const key = `${declaration.unit.module || declaration.path}|${declaration.name.replace(/[^a-z0-9]/gi, '').toLowerCase()}|${declaration.literal}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(declaration);
+  }
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    group.sort((a, b) => a.path.localeCompare(b.path) || a.line - b.line);
+    const first = group[0];
+    for (const duplicate of group.slice(1)) {
+      const lines = linesByPath.get(duplicate.path) || [];
+      const owner = duplicate.path === first.path ? 'the owning type or file'
+        : `the highest common owner in module ${duplicate.unit.module || 'this scope'}`;
+      add('ACIMA-A006', `${duplicate.unit.id} declares ${duplicate.name} with the same apparent meaning and literal value as ${first.path}:${first.line}; confirm semantic identity and one declaration at ${owner} before consolidating.`,
+        duplicate.path, duplicate.line, (lines[duplicate.line - 1] || '').trim(), 'candidate');
     }
   }
 }

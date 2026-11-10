@@ -131,8 +131,12 @@ profile has no enforcer in this revision, so `D011`/`D012` are manual-review req
 
 Java has no optional parameters, but a constructor overload or a `System.getenv` call can reproduce
 the same hidden configuration. Require a typed `OrdersSettings` record in the constructor; the host
-reads the environment and validates it. This profile has no enforcer in this revision, so `A005` and
-`A006` are manual-review requirements here (chapter 14, chapter 8 §8.9).
+reads the environment and validates it. Stable policy belongs in `static final` constants or an
+immutable value object; environment values belong in validated configuration; credentials belong in
+a secret store. Equal literals with different receiving identifiers, or matching identifiers with
+different units, remain separate until review establishes semantic identity. This profile has no
+enforcer in this revision, so `A005` and `A006` are manual-review requirements here (chapter 14,
+chapter 8 §8.9).
 
 ### Composition and injection (`D013`, `D014`)
 

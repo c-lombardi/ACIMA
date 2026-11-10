@@ -59,7 +59,21 @@ may reference it.
 Other modules may not reference it.
 
 **Immutable** — a contract member cannot change after construction. In practice: `readonly`,
-`final`, frozen dataclasses, value semantics, immutable collections.
+`final`, frozen dataclasses, value semantics, immutable collections. An immutable binding prevents
+rebinding; it does not by itself make a referenced mutable object immutable.
+
+**Meaningful value** — a primitive whose exact content influences behaviour, a business or security
+decision, an operational limit, an integration identity or a protocol. It needs one identifiable
+immutable declaration at its highest appropriate owner, or an explicit configuration source
+(`A006`). Equal literals do not make two values semantically identical.
+
+**Semantic identity** — the meaning of a value in its domain: units, type, ownership, downstream use
+and whether it must change with another value. It is not established by matching literals or names.
+
+**Value ownership** — the boundary that genuinely decides a meaningful value's content and change
+process. A source constant is code-owned; environment or deployment values belong to the host;
+runtime configuration needs validation, authorization, audit and rollback; secrets never become
+ordinary constants.
 
 **Level (L1/L2/L3)** — the declared conformance level: Structural, Immutable, Autonomous. A
 repository declares one and is measured against it.

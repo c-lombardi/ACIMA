@@ -106,7 +106,7 @@ the repository still has to review configuration ownership manually.
 | Shared contracts | `ACIMA-D003`; decide which value types are local. |
 | Mutable contracts | `ACIMA-C001`, `C002`. |
 | Shared persistence | `ACIMA-A001`; inspect SQL and schema ownership. |
-| Configuration and values | `ACIMA-A002` is manual; `A005`/`A006` are automated candidates in Python/TypeScript and manual elsewhere. |
+| Configuration and values | `ACIMA-A002` is manual; `A005`/`A006` are automated candidates in Python/TypeScript and manual elsewhere. `A006` reviews immutable value ownership, semantic duplicates and constant-versus-configuration classification. |
 | Composition and injection | `ACIMA-D013`/`D014` are automated candidates in Python/TypeScript; inspect scans, conventions and property injection manually elsewhere. |
 | Functional capture | `ACIMA-D015`/`D016` are automated candidates in Python/TypeScript; inspect closures, callbacks and `bind`/`partial` manually elsewhere. |
 | Effects and consistency | `ACIMA-C008` and `A010`–`A013` are manual everywhere: name the effect owners, transactions, retries, duplicate handling, truthful outcomes and recovery evidence where they apply. |

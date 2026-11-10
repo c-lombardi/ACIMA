@@ -188,8 +188,9 @@ Configuration is a boundary like any other (`A002`).
 
 The composition boundary resolves and validates values once, groups related values into typed
 settings, and passes them in. A module MUST NOT read `os.environ`, `process.env` or a global
-configuration object for a value a caller could supply (`A005`), and an operational timeout, retry or
-limit MUST have a named owner (`A006`; chapter 14).
+configuration object for a value a caller could supply (`A005`). A meaningful timeout, retry, limit
+or similar policy MUST have one identifiable, immutable declaration at its appropriate owner, or an
+explicit configuration source (`A006`; chapter 14); equal literals do not establish equal meaning.
 
 The test is mechanical: if you deleted a module, would the remaining configuration still make sense?
 A key like `orders.database.catalog` answers no, and `A002` flags the shape even before you find the

@@ -120,9 +120,12 @@ manual evidence for them (chapter 8 §8.9).
 ### Values and configuration (`A005`, `A006`)
 
 Pass a typed `Settings` struct into the module constructor; do not call `os.Getenv` inside the module.
-Go has no named-constant enforcement for struct fields, so review operational values explicitly: a
-zero-value field must not stand in for a policy decision. The reference enforcer reports `A005` and
-`A006` `executed: false`; a Go repository records manual evidence for them (chapter 8 §8.9).
+Go has no named-constant enforcement for struct fields, so review meaningful values explicitly: a
+zero-value field must not stand in for a policy decision. Name stable policy in `const` blocks; use a
+validated settings struct for deployment values; keep secrets out of both. Report equal values with
+different receivers as separate until a reviewer establishes semantic identity. The reference
+enforcer reports `A005` and `A006` `executed: false`; a Go repository records manual evidence for
+them with file and line citations (chapter 8 §8.9).
 
 ### Composition and injection (`D013`, `D014`)
 

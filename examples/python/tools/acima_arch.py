@@ -109,11 +109,15 @@ class Finding:
     line: int
     evidence: str = ""
     fingerprint: str = ""
+    classification: str = ""
 
     def as_dict(self) -> dict:
-        return {"rule": self.rule, "severity": self.severity, "message": self.message,
+        data = {"rule": self.rule, "severity": self.severity, "message": self.message,
                 "path": self.path, "line": self.line, "evidence": self.evidence,
                 "fingerprint": self.fingerprint}
+        if self.classification:
+            data["classification"] = self.classification
+        return data
 
 
 def finding_fingerprint(rule: str, path: str, evidence: str) -> str:
@@ -194,13 +198,14 @@ class Enforcer:
     def unit_for(self, rel: str, source: str) -> Unit | None:
         return self.override_unit(source) or self.unit_by_path(rel)
 
-    def add(self, rule: str, message: str, rel: str, line: int, evidence: str = "") -> None:
+    def add(self, rule: str, message: str, rel: str, line: int, evidence: str = "",
+            classification: str = "") -> None:
         severity, required = CATALOG[rule]
         if RANK[required] > RANK[self.level]:
             return
         evidence = evidence.strip()[:200]
         self.findings.append(Finding(rule, severity, message, rel, max(line, 1), evidence,
-                                     finding_fingerprint(rule, rel, evidence)))
+                                     finding_fingerprint(rule, rel, evidence), classification))
 
     # -- parsing -----------------------------------------------------------
     def collect(self) -> None:
@@ -1280,14 +1285,28 @@ class Enforcer:
 
     # -- values and configuration ------------------------------------------
     CONFIG_READ_ROLES = ("implementation", "adapter")
-    OPERATIONAL_ROLES = ("implementation", "adapter")
+    VALUE_ROLES = ("implementation", "adapter", "host")
     OPERATIONAL_TOKENS = frozenset({
         "timeout", "timeouts", "retry", "retries", "limit", "limits",
         "threshold", "thresholds", "ttl", "interval", "intervals", "batch",
         "rate", "rates", "retention", "capacity", "delay", "quota",
         "backoff", "concurrency", "attempts", "workers", "pagesize",
         "endpoint", "endpoints", "url", "urls", "uri", "host", "hostname",
-        "port", "queue", "topic", "bucket",
+        "port", "queue", "topic", "bucket", "minimum", "minimums",
+        "maximum", "maximums", "duration", "durations", "expiry", "expiration",
+        "deadline", "window", "windows", "grace", "heartbeat", "poll",
+        "discount", "tax", "fee", "fees", "eligibility", "nonce", "salt",
+        "signature", "secret", "secrets", "password", "passwords",
+        "credential", "credentials",
+    })
+    CONFIGURATION_TOKENS = frozenset({
+        "endpoint", "endpoints", "url", "urls", "uri", "host", "hostname",
+        "port", "queue", "topic", "bucket", "region", "environment", "deployment",
+    })
+    SAFE_VALUE_CALLS = frozenset({
+        "range", "enumerate", "zip", "len", "int", "float", "str", "bool",
+        "list", "dict", "set", "tuple", "print", "super", "isinstance",
+        "issubclass", "getattr", "setattr", "hasattr",
     })
 
     @staticmethod
@@ -1305,12 +1324,128 @@ class Enforcer:
         return any(token in Enforcer.OPERATIONAL_TOKENS
                    for token in re.split(r"[^a-z0-9]+", snake))
 
+    @classmethod
+    def _value_category(cls, name: str) -> str:
+        snake = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", name).lower()
+        if re.search(r"(?:^|_)(?:secret|password|passwd|credential|credentials|nonce|salt)(?:_|$)", snake) \
+                or re.search(r"(?:private|api|signing|access)_key(?:_|$)", snake) \
+                or re.search(r"(?:auth|access|refresh)_token(?:_|$)", snake):
+            return "secret"
+        tokens = set(re.split(r"[^a-z0-9]+", snake))
+        if tokens & cls.CONFIGURATION_TOKENS:
+            return "configuration"
+        return "value"
+
     @staticmethod
     def _literal(node: ast.AST) -> str | None:
         if isinstance(node, ast.Constant) and not isinstance(node.value, bool) \
                 and isinstance(node.value, (int, float, str)):
             return repr(node.value)[:80]
         return None
+
+    @staticmethod
+    def _target_name(target: ast.expr) -> str:
+        if isinstance(target, ast.Name):
+            return target.id
+        if isinstance(target, ast.Attribute):
+            return target.attr
+        return ""
+
+    @staticmethod
+    def _parents(tree: ast.Module) -> dict[ast.AST, ast.AST]:
+        parents: dict[ast.AST, ast.AST] = {}
+        for parent in ast.walk(tree):
+            for child in ast.iter_child_nodes(parent):
+                parents[child] = parent
+        return parents
+
+    @staticmethod
+    def _param_names(arguments: ast.arguments) -> list[str]:
+        names = [arg.arg for arg in arguments.posonlyargs + arguments.args]
+        if names and names[0] in ("self", "cls"):
+            names = names[1:]
+        return names
+
+    def _callables(self, tree: ast.Module) -> dict[str, list[str] | None]:
+        """Local callables whose positional parameters give a receiving name."""
+        result: dict[str, list[str] | None] = {}
+
+        def remember(name: str, params: list[str]) -> None:
+            if name not in result:
+                result[name] = params
+            elif result[name] != params:
+                result[name] = None
+
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                remember(node.name, self._param_names(node.args))
+            elif isinstance(node, ast.ClassDef):
+                init = next((item for item in node.body
+                             if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
+                             and item.name == "__init__"), None)
+                if init is not None:
+                    remember(node.name, self._param_names(init.args))
+        return result
+
+    @staticmethod
+    def _is_immutable_declaration(name: str, target: ast.expr, node: ast.AST) -> bool:
+        if not isinstance(target, ast.Name):
+            return False
+        if name.isupper():
+            return True
+        if isinstance(node, ast.AnnAssign):
+            return bool(re.search(r"\bFinal\b", Enforcer.annotation_text(node.annotation)))
+        return False
+
+    def _add_value_finding(self, unit: Unit, rel: str, lines: list[str], name: str,
+                           line: int, kind: str) -> None:
+        if not (0 < line <= len(lines)):
+            return
+        category = self._value_category(name)
+        if category == "secret":
+            message = (f"{unit.id} declares a secret-looking literal in {name}; resolve it through "
+                       "the secret mechanism and never commit or log the value.")
+        elif category == "configuration":
+            message = (f"{unit.id} declares {name} as a source literal; classify it as a stable "
+                       "code-owned constant or as deployment/runtime configuration resolved and "
+                       "validated at a composition boundary.")
+        elif kind == "mutable":
+            message = (f"{unit.id} declares the meaningful value {name} mutably; use an immutable "
+                       "constant, readonly field or immutable value object, or document why mutation "
+                       "is genuinely required.")
+        elif kind == "property":
+            message = (f"{unit.id} assigns the meaningful value {name} through a mutable property; "
+                       "prefer an immutable declaration or a readonly value object owned by the type.")
+        else:
+            message = (f"{unit.id} embeds a meaningful value in {name}; declare it once as an "
+                       "immutable constant in the owning file or type, or supply it explicitly from "
+                       "the appropriate configuration boundary.")
+        self.add("ACIMA-A006", message, rel, line, lines[line - 1].strip(), "candidate")
+
+    def _check_duplicate_values(self, lines_by_rel: dict[str, list[str]],
+                                declarations: list[tuple[str, str, str, int, Unit]]) -> None:
+        groups: dict[tuple[str, str, str], list[tuple[str, str, int, Unit]]] = {}
+        for name, literal, path, line, unit in declarations:
+            key = (unit.module or path, re.sub(r"[^a-z0-9]", "", name.lower()), literal)
+            groups.setdefault(key, []).append((name, path, line, unit))
+        for items in groups.values():
+            if len(items) < 2:
+                continue
+            items.sort(key=lambda item: (item[1], item[2]))
+            first = items[0]
+            for name, path, line, unit in items[1:]:
+                lines = lines_by_rel[path]
+                if not (0 < line <= len(lines)):
+                    continue
+                if path == first[1]:
+                    owner = "the owning type or file"
+                else:
+                    owner = f"the highest common owner in module {unit.module or 'this scope'}"
+                self.add("ACIMA-A006",
+                         f"{unit.id} declares {name} with the same apparent meaning and literal "
+                         f"value as {first[1]}:{first[2]}; confirm semantic identity and one "
+                         f"declaration at {owner} before consolidating.",
+                         path, line, lines[line - 1].strip(), "candidate")
 
     def check_configuration(self) -> None:
         """A005: configuration is resolved at a composition boundary, not discovered."""
@@ -1340,46 +1475,82 @@ class Enforcer:
                          rel, line, evidence)
 
     def check_operational_values(self) -> None:
-        """A006: values that define operational policy must have a named owner."""
+        """A006: meaningful values have one immutable, reviewable owner.
+
+        The scanner reports syntactic candidates. It does not prove semantic equivalence,
+        decide the correct configuration category, or rewrite declarations.
+        """
+        lines_by_rel: dict[str, list[str]] = {}
+        declarations: list[tuple[str, str, str, int, Unit]] = []
         for rel in sorted(self.files):
             unit = self.units_of[rel]
-            if unit.role not in self.OPERATIONAL_ROLES:
+            if unit.role not in self.VALUE_ROLES:
                 continue
+            tree = self.files[rel]
             lines = (self.root / rel).read_text(encoding="utf-8", errors="replace").splitlines()
-            for node in ast.walk(self.files[rel]):
-                candidates: list[tuple[str, int]] = []
-                if isinstance(node, ast.Assign):
-                    if self._literal(node.value) is not None:
-                        for target in node.targets:
-                            name = (target.id if isinstance(target, ast.Name)
-                                    else target.attr if isinstance(target, ast.Attribute) else "")
-                            if name and not name.isupper() and self._operational_name(name):
-                                candidates.append((name, node.lineno))
-                elif isinstance(node, ast.AnnAssign) and node.value is not None:
-                    target = node.target
-                    name = (target.id if isinstance(target, ast.Name)
-                            else target.attr if isinstance(target, ast.Attribute) else "")
-                    if name and not name.isupper() and self._operational_name(name):
-                        candidates.append((name, node.lineno))
-                elif isinstance(node, ast.Call):
-                    for keyword in node.keywords:
-                        if not keyword.arg or not self._operational_name(keyword.arg):
+            lines_by_rel[rel] = lines
+            parents = self._parents(tree)
+            callables = self._callables(tree)
+
+            for node in ast.walk(tree):
+                if isinstance(node, (ast.Assign, ast.AnnAssign)):
+                    value = node.value
+                    literal = self._literal(value) if value is not None else None
+                    if literal is None:
+                        continue
+                    targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                    for target in targets:
+                        name = self._target_name(target)
+                        if not name or not self._operational_name(name):
                             continue
-                        if self._literal(keyword.value) is not None:
-                            candidates.append((keyword.arg, keyword.lineno))
+                        if self._is_immutable_declaration(name, target, node):
+                            category = self._value_category(name)
+                            if category != "value":
+                                self._add_value_finding(unit, rel, lines, name, node.lineno,
+                                                        "inline")
+                            else:
+                                declarations.append((name, literal, rel, node.lineno, unit))
+                        else:
+                            kind = "property" if isinstance(target, ast.Attribute) else "mutable"
+                            self._add_value_finding(unit, rel, lines, name, node.lineno, kind)
+                elif isinstance(node, ast.Call):
+                    call_name = self._call_name(node.func).split(".")[-1]
+                    if call_name in self.SAFE_VALUE_CALLS:
+                        continue
+                    params = callables.get(call_name)
+                    for index, argument in enumerate(node.args):
+                        if isinstance(argument, ast.Starred) or params is None \
+                                or index >= len(params):
+                            continue
+                        receiving = params[index]
+                        if receiving and self._operational_name(receiving) \
+                                and self._literal(argument) is not None:
+                            self._add_value_finding(unit, rel, lines, receiving,
+                                                    argument.lineno, "inline")
+                    for keyword in node.keywords:
+                        if keyword.arg and self._operational_name(keyword.arg) \
+                                and self._literal(keyword.value) is not None:
+                            self._add_value_finding(unit, rel, lines, keyword.arg,
+                                                    keyword.lineno, "inline")
                 elif isinstance(node, ast.Compare):
                     left = node.left
                     name = (left.id if isinstance(left, ast.Name)
                             else left.attr if isinstance(left, ast.Attribute) else "")
                     if name and not name.isupper() and self._operational_name(name) \
                             and any(self._literal(item) is not None for item in node.comparators):
-                        candidates.append((name, node.lineno))
-                for name, line in candidates:
-                    evidence = lines[line - 1].strip() if 0 < line <= len(lines) else ""
-                    self.add("ACIMA-A006",
-                             f"{unit.id} embeds an operational value in {name}; name it in its "
-                             "owner or supply it as configuration at a composition boundary.",
-                             rel, line, evidence)
+                        self._add_value_finding(unit, rel, lines, name, node.lineno, "inline")
+                elif isinstance(node, ast.Return) and node.value is not None:
+                    if self._literal(node.value) is None:
+                        continue
+                    parent = parents.get(node)
+                    while parent is not None and not isinstance(
+                            parent, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        parent = parents.get(parent)
+                    if parent is not None and self._operational_name(parent.name):
+                        self._add_value_finding(unit, rel, lines, parent.name,
+                                                node.lineno, "inline")
+
+        self._check_duplicate_values(lines_by_rel, declarations)
 
     def check_naming(self) -> None:
         """N001/N002: language convention and generic responsibility names."""

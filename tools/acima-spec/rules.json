@@ -328,10 +328,11 @@
       "id": "ACIMA-A006",
       "severity": "warning",
       "level": "L3",
-      "title": "Operational value without a declared owner",
-      "summary": "A timeout, retry count, limit, rate, batch size, retention period or similar operational policy must have a named owner: a named constant, a typed configuration value supplied at a composition boundary, or a reviewed local literal.",
-      "fix": "Name the value as a constant in its owner, or resolve it from configuration at a composition boundary and inject it; keep only incidental literals inline.",
+      "title": "Meaningful value without one immutable owner",
+      "summary": "A meaningful primitive value must have one identifiable, immutable declaration at its highest appropriate ownership boundary; its semantic identity comes from what it represents, not its literal value or identifier alone, and shared or configuration values must be supplied explicitly.",
+      "fix": "Name the value once in the scope that genuinely owns its meaning, make the declaration immutable where the language supports it, and keep distinct policies separate; classify operationally variable values as explicit deployment or runtime configuration rather than mutable source state.",
       "automation": "automated",
+      "automationNotes": "Deterministic candidate detection covers inline literals, mutable declarations, same-module duplicate declarations and configuration/secret-looking names. Semantic equivalence, common ownership and the correct configuration category require review; Go, .NET and Java report this rule executed:false and require manual evidence.",
       "severityRatchet": {
         "to": "error",
         "at": "2.0.0"

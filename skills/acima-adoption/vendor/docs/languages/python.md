@@ -132,10 +132,14 @@ Use module-level uppercase constants for fixed policy (`MANUAL_REVIEW_THRESHOLD`
 dataclass for a component's settings. The host reads the environment and constructs
 `OrdersSettings(retry_limit=...)`; `OrdersService` requires that object and never calls `os.getenv`.
 The reference enforcer scans `implementation` and `adapter` units for `os.environ`/`os.getenv`
-(`A005`) and for numeric or string literals bound to operational names (`A006`). Uppercase named
-constants are skipped, and incidental literals are not findings; the rule is a review candidate, not
-a mandate to extract every number. Config modules belong to the host, not to a package that a module
-imports for convenience.
+(`A005`). For `A006` it scans implementation, adapter and host roles for meaningful inline literals,
+mutable meaningful bindings, and same-module duplicate immutable declarations. Uppercase named
+constants are accepted; a lowercase module constant is also immutable but may not be rebound.
+Local calls are traced to the callee's receiving parameter where both are in the same file, and
+`capacity`, `threshold`, `secret` and similar names are candidate evidence. Every finding is a
+candidate: semantic equivalence, units, ownership and configuration category require review.
+Incidental literals are not findings; the rule is not a mandate to extract every number. Config
+modules belong to the host, not to a package that a module imports for convenience.
 
 ### Composition and injection (`D013`, `D014`)
 

@@ -4,6 +4,38 @@ All normative changes to the ACIMA standard. The machine-readable catalog is
 [`tools/acima-spec/rules.json`](tools/acima-spec/rules.json); this file explains *why* it changed and
 what an adopting repository has to do about it.
 
+## Unreleased — meaningful value ownership
+
+**Normative and enforcement change.** `ACIMA-A006` is repurposed without adding a rule or changing its
+identity: severity stays `warning` at L3, ratcheting to `error` at 2.0.0. Existing fingerprints,
+waivers and baselines remain valid.
+
+### Why
+
+A006 detected named operational literals but could not distinguish a mutable declaration from an
+immutable one, an incidental literal from meaningful policy, or equal values with different owners.
+It also had no review model for semantic consolidation or constant-versus-configuration choices.
+
+### What changed
+
+- Chapter 14 now requires one identifiable immutable declaration at the highest appropriate ownership
+  boundary when a value's meaning is shared. It defines immutable bindings versus immutable values,
+  receiving-identifier data flow, semantic identity, consolidation, explicit propagation, and the
+  boundary between code-owned constants, deployment configuration, runtime configuration and secrets.
+- A006 now scans implementation, adapter and host roles in Python and TypeScript for meaningful inline
+  literals, mutable declarations, same-module duplicate declaration candidates, and configuration or
+  secret candidates. Every A006 finding is classified as a `candidate`.
+- Semantic equivalence, the highest common owner and the configuration category remain review
+  decisions. The enforcers do not refactor source and do not merge across module boundaries.
+- Go, .NET and Java continue to report A006 `executed: false` and require source-cited manual
+  evidence. The expanded workflow and its distinction table are in the adoption skill.
+
+### Adopting repositories
+
+Review existing A006 waivers and baselines: the rule meaning is broader even though the identifier,
+fingerprint algorithm and severity are unchanged. Treat new findings as review candidates. Do not
+consolidate equal literals or matching names automatically.
+
 ## 1.18.0 — guided adoption experience
 
 **Skill change only.** The catalog, standard version, rule ids, levels, severity and claim semantics
