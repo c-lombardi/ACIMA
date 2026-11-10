@@ -190,7 +190,7 @@ class ClaimCliTests(unittest.TestCase):
             self.assertEqual(computed["claim"], claim.PARTIAL)
             self.assertEqual(set(computed["missing"]), MANUAL)
 
-    def test_full_claim_passes_with_accepted_evidence(self) -> None:
+    def test_rule_complete_claim_without_git_metadata_is_not_current(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             report = root / "acima.json"
@@ -200,9 +200,11 @@ class ClaimCliTests(unittest.TestCase):
             evidence.parent.mkdir(parents=True)
             evidence.write_text(json.dumps(document), encoding="utf-8")
             result = self._run(report, evidence, "full", root=root)
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
             computed = json.loads(result.stdout)
             self.assertEqual(computed["claim"], claim.FULL)
+            self.assertFalse(computed["current"])
+            self.assertEqual(computed["currentness"], "git-unavailable")
 
     def test_malformed_report_exits_two(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

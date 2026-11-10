@@ -57,10 +57,14 @@ A consumer may rely on the following for the four implemented enforcers:
 6. **Waiver control.** A waiver needs a rule, scope, owner, reason, fingerprint,
    expiry and review date. Broad or fingerprint-less waivers are rejected. `P9.5` is
    advisory in Draft 1 and is not represented as machine-enforced.
-7. **Claim class.** `acima claim` emits `FULL CONFORMANCE` only when every rule required by
-   the level executed or has accepted repository-scoped manual evidence, with zero unwaived
-   errors. Otherwise it emits `PARTIAL ASSESSMENT` and names the missing rules. Malformed
-   input exits `2`.
+7. **Claim class and currentness.** `acima claim` emits `FULL CONFORMANCE` only when every rule
+   required by the level executed or has accepted repository-scoped manual evidence, with zero
+   unwaived errors, **and** the run's repository, commit, standard, catalog hash, configuration
+   hash, enforcer version, level, source inventory and baseline match the current checkout.
+   Otherwise it emits `PARTIAL ASSESSMENT` and names the missing rules; a rule-complete run from
+   another commit is reported as `FULL CONFORMANCE` with `current: false`, never as current
+   conformance. Malformed input exits `2`, and `--require full` exits `1` unless the claim is
+   current. Older reports remain readable but are historical evidence only.
 8. **Scope control.** Literal exclusions match a file or directory subtree, not an
    arbitrary sibling prefix. Globs remain globs; bare segments retain legacy
    any-directory matching.

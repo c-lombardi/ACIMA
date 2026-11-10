@@ -166,8 +166,11 @@ its criterion is verified:
 - **slice** compares runs only when standard, level, source scope and execution map match; a lower
   count from a different scope is not an improvement, and a resolved finding must be named with no
   new errors.
-- **claim** computes the class with `acima.py claim`. A manual-evidence file is not proof; invalid
-  or expired evidence blocks, and missing evidence is a partial assessment.
+- **claim** computes the class with `acima.py claim` and binds it to the repository state. A
+  manual-evidence file is not proof; invalid or expired evidence blocks, missing evidence is a
+  partial assessment, and a full result from another commit, catalog or configuration is historical
+  or stale. `--require full` succeeds only for a current claim; missing Git metadata never counts as
+  current.
 
 Optional documents (adoption plan, communication plan, STATUS dashboard, summary) never block
 progress and never appear in "next". Do not create optional artifacts unless the approved scope
@@ -230,7 +233,7 @@ Every command below is read-only unless marked.
 | `acima.py analyze --root .` | run the reference enforcer, print findings | no |
 | `acima.py fix --report <run> [selector]` | finding → catalog remedy and correction shape | no |
 | `acima.py report --root .` | evidence report naming rules that did not run | no |
-| `acima.py claim --report <run> --level <L> --require full` | `FULL`/`PARTIAL` and gate it | no |
+| `acima.py claim --report <run> --level <L> --require full` | `FULL`/`PARTIAL`, bound to current provenance, and gate it | no |
 | `summarize.py --root <target> --report <run>` | run → reader-facing summary | `--out` only |
 | `preflight.py --project <target>` | calibration and classification | `--write-*` only |
 | `inject_violation.py --project <target> --out docs/acima/proof.json` | prove the enforcer detects controlled input | `--out` only |
@@ -282,9 +285,12 @@ state ownership, never to reduce registrations; and keep naming advice targeted,
 and never a conformance gate.
 
 Conformance is per repository and per commit. `FULL CONFORMANCE` requires zero unwaived errors at the
-level **and** every required rule accounted for. Manual rules need accepted, current,
-repository-scoped evidence — a catalog-manual rule reported as executed is not evidence. Anything
-less is a **PARTIAL ASSESSMENT** or a plan, and you call it what it is.
+level, every required rule accounted for, **and** provenance that matches the current checkout —
+repository, `HEAD`, standard, catalog hash, configuration hash, enforcer version and source
+inventory. Manual rules need accepted, current, repository-scoped evidence — a catalog-manual rule
+reported as executed is not evidence. A rule-complete claim from an older commit is historical, not
+current; a changed catalog, configuration, baseline or source tree requires fresh measurement.
+Anything less is a **PARTIAL ASSESSMENT** or a plan, and you call it what it is.
 
 ## Stop conditions
 

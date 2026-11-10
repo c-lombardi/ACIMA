@@ -71,8 +71,8 @@ STATUS_DETAIL = {
     "Baseline established": ("The measured findings are recorded against a frozen baseline "
                              "and the gate reports no new findings. A passing baseline is "
                              "not architectural conformance."),
-    "Verified": ("A full conformance claim was supplied and matches this run. That is the "
-                 "only status that asserts conformance."),
+    "Verified": ("A current full conformance claim was supplied and matches this run. That "
+                 "is the only status that asserts conformance."),
 }
 
 
@@ -327,7 +327,8 @@ def overall_status(report: dict, groups: list[dict], missing_required: list[str]
         return "Baseline established"
     if missing_required:
         return "Assessment incomplete"
-    if claim and str(claim.get("claim", "")).upper().startswith("FULL") \
+    if claim and claim.get("current") is True \
+            and str(claim.get("claim", "")).upper().startswith("FULL") \
             and claim.get("level") in (None, report.get("level")) \
             and not claim.get("blockingFindings"):
         return "Verified"
@@ -465,6 +466,12 @@ def limitations(report: dict, groups: list[dict], required: set[str],
     elif not str(claim.get("claim", "")).upper().startswith("FULL"):
         items.append(f"The supplied claim is **{claim.get('claim')}**, not full "
                      f"conformance.")
+    elif claim.get("current") is not True:
+        state = claim.get("currentness") or "currentness not recorded"
+        items.append(f"The supplied full-conformance claim is not current (**{state}**). "
+                     f"Historical or stale evidence explains how the repository evolved; "
+                     f"it does not establish current conformance. Take a fresh measurement "
+                     f"at the current commit and recompute the claim before repeating it.")
     if artifacts:
         items.append(f"{plural(artifacts, 'finding')} are detector artefacts, not architectural "
                      f"defects. They remain in the gate so the detector problem stays "
@@ -883,6 +890,9 @@ def to_json(context: dict) -> dict:
         "nextActions": context["actions"],
         "completed": context["completed"],
         "limitations": context["limitations"],
+        "claim": context["claim"],
+        "claimState": (context["claim"] or {}).get("currentness"),
+        "claimCurrent": (context["claim"] or {}).get("current"),
         "reconciliation": context["reconciliation"],
         "evidence": {
             "report": str(context["report_path"]),

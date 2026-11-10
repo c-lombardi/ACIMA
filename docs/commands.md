@@ -17,7 +17,7 @@ errors at this level", never "the architecture is good".
 | `tools/acima.py fix` | 1..many findings → the catalog remedy and correction shape for each | no | slice |
 | `tools/acima.py externals` | draft the third-party tier declaration from the manifest | only with `--write-draft` | Step 3 |
 | `tools/acima.py report` | evidence report naming rules that did **not** run | no | report |
-| `tools/acima.py claim` | `FULL CONFORMANCE` vs `PARTIAL ASSESSMENT` | no | claim |
+| `tools/acima.py claim` | `FULL CONFORMANCE` vs `PARTIAL ASSESSMENT`, bound to the current commit | no | claim |
 | `tools/acima.py verify` | the full reference conformance suite | no | maintain |
 | `skills/acima-adoption/scripts/preflight.py` | skill calibration + target classification | only with `--write-*`, after approval | Step 0 |
 | `skills/acima-adoption/scripts/inject_violation.py` | prove the enforcer detects known violations | `--out` only | Step 5 |
@@ -75,7 +75,9 @@ count. A gate observation must reference that workflow and command, match the re
 standard, catalog hash, level and positive source count, and must not report a skipped enforcer. A
 configured gate and a manually recorded observation are `in progress`; only a provider-sourced run
 matching `HEAD` is complete. The proof record must show `L001` and `D001` detected, and the claim is
-computed with `acima.py claim`.
+computed with `acima.py claim`. A claim completes step 10 only when its repository, commit, standard,
+catalog hash, configuration hash, source inventory and baseline match the current checkout; a
+historical or stale full result leaves the step in progress and names freshness as the limitation.
 Optional documents never appear in the next action. It prints one next action, why, its done
 condition, and whether approval is required. Two honest limits remain: step 3 stays `UNKNOWN`
 until `inject_violation.py --out` is run, and step 9 needs two comparable measurements to show a
@@ -161,8 +163,16 @@ python3 tools/acima.py verify  python typescript
   value, adoption cost and practical applicability independently. Zero findings do not imply
   adoption; existing findings do not imply `RECOMMENDED_WITH_LIMITATIONS`. Benefits are classified
   as available today, achievable through adoption, requiring additional work, or not applicable.
-- `claim` exits `0` only when the requested class is satisfied, `1` when a full claim is requested
-  but the run is partial, `2` when the run or evidence document is invalid.
+- `claim` exits `0` only when the requested class is satisfied **and** the claim is current: the run
+  must record the current repository, `HEAD`, standard, catalog hash, configuration hash, enforcer
+  version, level, source inventory, baseline hash and positive source count, and no relevant tracked
+  file may be modified in the working tree. A rule-complete claim from an older commit, another
+  repository, or a changed catalog/configuration is still printed as `FULL CONFORMANCE`, but with
+  `current: false` and a `currentness` state (`historical`, `stale`, `uncommitted`, ...), and
+  `--require full` exits `1`. Missing Git metadata leaves currentness unestablished; it never
+  defaults to current. `2` means the run or evidence document is invalid.
+- Run provenance is additive: older reports stay readable and retain their historical claim, but
+  because they lack the fields above they cannot establish current conformance.
 - `inspect`, `analyze`, `report`, `claim`, `assess` never write to the target.
 
 ## The adoption skill's scripts
@@ -206,7 +216,9 @@ and other tools; `--claim` accepts the JSON from `acima.py claim` and is the onl
 becomes `Verified`. It never edits the target unless `--out` names a path.
 
 Exit `2` means the report, catalog or triage file is unusable. The summary is an interpretation of
-evidence: it cannot raise a claim, suppress a finding or soften a rule.
+evidence: it cannot raise a claim, suppress a finding or soften a rule. Its `Verified` status requires
+`"current": true` on the supplied claim; a historical, stale or unprovenanced claim is reported with
+its `claimState` and a limitation saying that freshness, not architecture, is the problem.
 
 ## The language enforcers
 

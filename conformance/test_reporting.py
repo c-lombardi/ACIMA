@@ -108,13 +108,39 @@ def test_zero_findings_is_not_conformance() -> None:
         assert any("No full-conformance claim" in item for item in data["limitations"])
 
 
-def test_full_claim_is_the_only_verified_route() -> None:
+def test_current_full_claim_is_the_only_verified_route() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        report = {"standard": "1.0.0-draft.1", "level": "L1", "sourceFiles": 2,
+                  "newFindings": 0, "execution": execution_map(), "findings": []}
+        data = run(Path(directory), report, claim={"claim": "FULL CONFORMANCE",
+                                                   "level": "L1", "current": True,
+                                                   "currentness": "current"})
+        assert data["status"] == "Verified", data["status"]
+        assert data["claimCurrent"] is True and data["claimState"] == "current"
+
+
+def test_historical_full_claim_does_not_establish_current_conformance() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        report = {"standard": "1.0.0-draft.1", "level": "L1", "sourceFiles": 2,
+                  "newFindings": 0, "execution": execution_map(), "findings": []}
+        data = run(Path(directory), report, claim={"claim": "FULL CONFORMANCE",
+                                                   "level": "L1", "current": False,
+                                                   "currentness": "historical"})
+        assert data["status"] == "Assessment incomplete", data["status"]
+        assert data["claimCurrent"] is False and data["claimState"] == "historical"
+        text = " ".join(data["limitations"]).lower()
+        assert "historical" in text and "fresh measurement" in text
+
+
+def test_claim_without_currentness_is_not_verified() -> None:
     with tempfile.TemporaryDirectory() as directory:
         report = {"standard": "1.0.0-draft.1", "level": "L1", "sourceFiles": 2,
                   "newFindings": 0, "execution": execution_map(), "findings": []}
         data = run(Path(directory), report, claim={"claim": "FULL CONFORMANCE",
                                                    "level": "L1"})
-        assert data["status"] == "Verified", data["status"]
+        assert data["status"] == "Assessment incomplete", data["status"]
+        text = " ".join(data["limitations"]).lower()
+        assert "not current" in text and "currentness not recorded" in text
 
 
 def test_reconciliation_names_the_difference() -> None:

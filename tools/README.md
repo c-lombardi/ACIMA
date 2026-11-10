@@ -23,7 +23,7 @@ python3 tools/acima.py verify  [profiles...]                   # delegates to co
 | `inspect` | read-only; never writes to the target |
 | `analyze` | runs the real enforcer for the detected language; exit `1` findings, `2` tool/config error |
 | `report` | evidence only — lists the rules the run did **not** evaluate; no health score |
-| `claim` | `FULL CONFORMANCE` only when every required rule executed or has accepted manual evidence, and there are zero unwaived errors |
+| `claim` | `FULL CONFORMANCE` only when every required rule executed or has accepted manual evidence, there are zero unwaived errors, and the run's repository, commit, catalog, configuration and source inventory match the current checkout |
 | `status` | which adoption steps the artefacts on disk evidence, and the one command to run next; read-only, exit `0` whenever a status is produced |
 | `fix` | 1..many findings (rule, `rule@path`, path, fingerprint and/or `--all`) → the catalog remedy and shape per entry; read-only, exit `1` when a selector matches nothing |
 

@@ -68,7 +68,7 @@ The catalog also makes **instance lifetime and state ownership** explicit: share
 3. **Read an honest report.** Every rule the run did not decide is listed as *not evaluated*. There is no health score, because a number that hides which rules were skipped is worse than no number.
 4. **Freeze, then ratchet.** In an existing codebase, existing findings become owned, expiring, fingerprinted waivers. The gate then fails on **new** violations only — so the count can only go down.
 
-The claim layer computes `FULL CONFORMANCE` or `PARTIAL ASSESSMENT` from the run and the manual evidence. Authors do not choose the label.
+The claim layer computes `FULL CONFORMANCE` or `PARTIAL ASSESSMENT` from the run and the manual evidence, and binds the result to the repository, commit, catalog, configuration and source inventory it measured. Authors do not choose the label, and an older full result is historical evidence, not current conformance.
 
 ## Five-minute quickstart
 

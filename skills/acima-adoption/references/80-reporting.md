@@ -48,11 +48,13 @@ Pick exactly one, from the evidence, with the least flattering accurate reading:
 | Significant issues found | `newFindings > 0` |
 | Partially aligned | at least one real defect is present and not waived |
 | Baseline established | no new findings and no unwaived defects; findings may remain waived or triaged as detector artefacts |
-| Verified | zero findings, every required rule executed or evidenced, and a supplied claim is **FULL CONFORMANCE** |
+| Verified | zero findings, every required rule executed or evidenced, and a supplied claim is **FULL CONFORMANCE** with `current: true` |
 
 Precedence follows that order, with one exception: `Verified` is never inferred. Without a claim
 artefact the strongest honest result is `Assessment incomplete` when coverage is incomplete, or
-`Baseline established` when it is not. “The gate is green” is not `Verified`.
+`Baseline established` when it is not. “The gate is green” is not `Verified`. A rule-complete claim
+that is historical, stale or missing provenance never yields `Verified`; report its `claimState` and
+name freshness, not an architecture defect, as the limitation.
 
 ## Grouping and traceability
 

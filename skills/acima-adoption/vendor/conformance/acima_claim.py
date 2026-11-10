@@ -380,8 +380,10 @@ def render_markdown(claim: dict) -> str:
         f"({claim.get('executed')} executed, {claim.get('manualEvidence')} manual evidence)",
         f"- Unwaived error findings: {claim.get('blockingFindings')}",
         f"- Manual evidence: `{claim.get('evidencePath')}`",
-        "",
     ]
+    if claim.get("currentness"):
+        lines.append(f"- Currentness: `{claim.get('currentness')}`")
+    lines.append("")
     if claim.get("missing"):
         lines.append("### Missing required evidence")
         lines.append("")

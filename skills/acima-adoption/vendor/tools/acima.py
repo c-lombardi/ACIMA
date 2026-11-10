@@ -36,6 +36,8 @@ CONFIG_NAME = "acima.config.json"
 PRUNE = {".git", "node_modules", "bin", "obj", "dist", "build", "target", "out",
          ".venv", "venv", "__pycache__", ".next", ".nuxt", "coverage"}
 SOURCE_EXTENSIONS = {".py", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".cs", ".go", ".java"}
+ENFORCER_VERSION = "acima-reference-1"
+PROVENANCE_VERSION = 1
 CATEGORY = {
     "D": "Dependency and structure",
     "L": "Layering inside a module",
@@ -207,7 +209,7 @@ def run_enforcer(root: Path, language: str, config_name: str | None = None,
         payload = json.loads(result.stdout)
     except json.JSONDecodeError:
         return 2, None, (result.stderr or result.stdout or "enforcer produced no JSON").strip()
-    return result.returncode, payload, result.stderr.strip()
+    return result.returncode, _attach_run_provenance(root, payload), result.stderr.strip()
 
 
 def analyze_project(root: Path, language: str | None = None, config_name: str | None = None,
@@ -249,15 +251,21 @@ def not_evaluated(language: str) -> list[str]:
     return sorted(NON_PORTABLE | LANGUAGE_GAPS.get(language, set()) & ids)
 
 
-def claim_for(root: Path, payload: dict) -> dict:
+def claim_for(root: Path, payload: dict, config: dict | None = None) -> dict:
     """Compute the claim class without letting a bad evidence file crash the report."""
     evidence_path = root / EVIDENCE_FILE
     try:
         evidence = load_evidence(evidence_path)
-        return assess_claim(
+        claim = assess_claim(
             payload, load_catalog(ACIMA_ROOT), evidence=evidence,
             evidence_path=EVIDENCE_FILE, root=root,
         )
+        catalog_version, catalog_sha = _catalog_version_and_hash()
+        currentness = _claim_currentness(
+            root, payload, config, payload.get("level"), catalog_version, catalog_sha)
+        claim.update({"currentness": currentness["state"],
+                      "current": currentness["current"], "provenance": currentness})
+        return claim
     except ClaimError as error:
         return {"claim": INVALID, "eligible": False, "error": str(error)}
 
@@ -1432,6 +1440,245 @@ def _repository_identity(value: str) -> str:
     return value.lower().strip("/")
 
 
+def _sha256_file(path: Path) -> str | None:
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return None
+
+
+def _git_dirty(root: Path) -> list[str] | None:
+    """Tracked changes in the working tree, or None when Git cannot answer."""
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "status", "--porcelain", "--untracked-files=no"],
+            capture_output=True, text=True)
+    except OSError:
+        return None
+    if result.returncode != 0:
+        return None
+    paths: list[str] = []
+    for line in result.stdout.splitlines():
+        if len(line) < 4:
+            continue
+        path = line[3:].strip()
+        if " -> " in path:
+            path = path.split(" -> ", 1)[1]
+        if path:
+            paths.append(path)
+    return paths
+
+
+def _relevant_change(path: str) -> bool:
+    normalized = path.replace("\\", "/")
+    if normalized in (CONFIG_NAME, ".acima/baseline.json", EVIDENCE_FILE):
+        return True
+    if normalized.startswith((".acima/", ".github/workflows/")):
+        return True
+    return Path(normalized).suffix.lower() in SOURCE_EXTENSIONS
+
+
+def _source_inventory_digest(inventory: dict[str, int]) -> str:
+    encoded = json.dumps(inventory, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _currentness_result(state: str, evidence: str, checks: dict[str, str],
+                        head: str | None = None, repository: str | None = None) -> dict:
+    return {
+        "state": state,
+        "current": state == "current",
+        "evidence": evidence,
+        "head": head,
+        "repository": repository,
+        "checks": checks,
+    }
+
+
+def _claim_currentness(root: Path, payload: dict, config: dict | None, level: str | None,
+                       catalog_version: str | None, catalog_sha: str | None,
+                       inventory: dict[str, int] | None = None) -> dict:
+    """Establish whether a run describes this repository, commit and configuration now.
+
+    Missing fields are not treated as a match. An older commit is historical evidence, not a
+    current claim. A dirty source tree or a changed catalogue/config requires fresh measurement.
+    """
+    checks: dict[str, str] = {}
+    head = _git_head(root)
+    remote = _git_remote(root)
+    dirty = _git_dirty(root)
+    if not head:
+        return _currentness_result("git-unavailable",
+                                   "Git HEAD is unavailable; currentness cannot be established.",
+                                   checks)
+    if not remote:
+        return _currentness_result("git-unavailable",
+                                   "the origin remote is unavailable; repository identity "
+                                   "cannot be established.", checks, head)
+    repository = str(payload.get("repository") or "").strip()
+    current_repository = _repository_identity(remote)
+    checks["repository"] = repository or "missing"
+    if not repository:
+        return _currentness_result("missing-provenance", "the run has no repository identity.",
+                                   checks, head, current_repository)
+    if _repository_identity(repository) != current_repository:
+        return _currentness_result(
+            "repository-mismatch",
+            f"the run belongs to {repository!r}, not the current repository "
+            f"{current_repository!r}.", checks, head, current_repository)
+    if dirty is None:
+        return _currentness_result("git-unavailable",
+                                   "the working-tree state cannot be established.", checks, head,
+                                   current_repository)
+    changed = [path for path in dirty if _relevant_change(path)]
+    if changed:
+        checks["workingTree"] = ", ".join(changed[:5])
+        return _currentness_result(
+            "uncommitted",
+            "source, configuration or governance files are modified in the working tree; a "
+            "committed report cannot represent that tree.", checks, head, current_repository)
+    commit = str(payload.get("commit") or "").strip().lower()
+    checks["commit"] = commit or "missing"
+    if not commit or not re.fullmatch(r"[0-9a-f]{7,40}", commit):
+        return _currentness_result("missing-provenance",
+                                   "the run has no valid commit identity.", checks, head,
+                                   current_repository)
+    if not head.lower().startswith(commit):
+        return _currentness_result(
+            "historical",
+            f"the run was measured at {commit[:12]}, not current HEAD {head[:12]}.",
+            checks, head, current_repository)
+    declared_standard = str((config or {}).get("standard") or "").strip()
+    run_standard = str(payload.get("standard") or "").strip()
+    checks["standard"] = run_standard or "missing"
+    if not declared_standard:
+        return _currentness_result("missing-provenance",
+                                   "the configuration declares no standard version.", checks,
+                                   head, current_repository)
+    if not run_standard:
+        return _currentness_result("missing-provenance",
+                                   "the run records no standard version.", checks, head,
+                                   current_repository)
+    if run_standard != declared_standard:
+        return _currentness_result(
+            "standard-mismatch",
+            f"the run records standard {run_standard or 'missing'}, not the declared "
+            f"{declared_standard}.", checks, head, current_repository)
+    if not catalog_sha:
+        return _currentness_result("missing-provenance",
+                                   "the current catalog hash is unavailable.", checks, head,
+                                   current_repository)
+    run_catalog = str(payload.get("catalogSha256") or "").strip().lower()
+    checks["catalogSha256"] = run_catalog or "missing"
+    if not run_catalog:
+        return _currentness_result("missing-provenance",
+                                   "the run records no rule-catalog hash.", checks, head,
+                                   current_repository)
+    if run_catalog != catalog_sha:
+        return _currentness_result(
+            "catalog-mismatch", "the run used a different rule catalog; recalibrate and measure "
+            "again.", checks, head, current_repository)
+    config_sha = _sha256_file(root / CONFIG_NAME)
+    run_config = str(payload.get("configurationSha256") or "").strip().lower()
+    checks["configurationSha256"] = run_config or "missing"
+    if not config_sha:
+        return _currentness_result("missing-provenance",
+                                   "the current configuration cannot be read.", checks, head,
+                                   current_repository)
+    if not run_config:
+        return _currentness_result("missing-provenance",
+                                   "the run records no configuration hash.", checks, head,
+                                   current_repository)
+    if run_config != config_sha:
+        return _currentness_result(
+            "configuration-mismatch", "the run used a different configuration; measure again.",
+            checks, head, current_repository)
+    run_enforcer = str(payload.get("enforcerVersion") or "").strip()
+    checks["enforcerVersion"] = run_enforcer or "missing"
+    if not run_enforcer:
+        return _currentness_result("missing-provenance",
+                                   "the run records no enforcer version.", checks, head,
+                                   current_repository)
+    if run_enforcer != ENFORCER_VERSION:
+        return _currentness_result(
+            "enforcer-mismatch", "the run was produced by a different enforcer version.",
+            checks, head, current_repository)
+    expected_level = level or (config or {}).get("level") or payload.get("level")
+    if payload.get("level") != expected_level:
+        return _currentness_result(
+            "level-mismatch", f"the run is {payload.get('level')!r}, not the declared "
+            f"{expected_level!r}.", checks, head, current_repository)
+    current_inventory = inventory if inventory is not None else _source_inventory(root)
+    inventory_digest = _source_inventory_digest(current_inventory)
+    run_inventory = payload.get("sourceInventorySha256")
+    if not run_inventory and isinstance(payload.get("sourceInventory"), dict):
+        run_inventory = _source_inventory_digest(payload["sourceInventory"])
+    checks["sourceInventorySha256"] = str(run_inventory or "missing")
+    if not run_inventory:
+        return _currentness_result("missing-provenance",
+                                   "the run has no source inventory digest.", checks, head,
+                                   current_repository)
+    if run_inventory != inventory_digest:
+        return _currentness_result(
+            "source-mismatch", "the source inventory has changed since measurement.", checks,
+            head, current_repository)
+    sources = payload.get("sourceFiles")
+    if isinstance(sources, bool) or not isinstance(sources, int) or sources <= 0:
+        return _currentness_result("missing-provenance",
+                                   "the run has no positive source-file count.", checks, head,
+                                   current_repository)
+    baseline_sha = _sha256_file(root / ".acima/baseline.json")
+    run_baseline = str(payload.get("baselineSha256") or "").strip().lower()
+    if baseline_sha:
+        checks["baselineSha256"] = run_baseline or "missing"
+        if not run_baseline:
+            return _currentness_result("missing-provenance",
+                                       "the run records no baseline identity.", checks, head,
+                                       current_repository)
+        if run_baseline != baseline_sha:
+            return _currentness_result(
+                "baseline-mismatch", "the fingerprint baseline changed after measurement.",
+                checks, head, current_repository)
+    elif run_baseline:
+        return _currentness_result(
+            "baseline-mismatch", "the run records a baseline that is no longer present.",
+            checks, head, current_repository)
+    checks["head"] = head
+    return _currentness_result(
+        "current", f"run, repository, HEAD {head[:12]}, catalog and configuration match.",
+        checks, head, current_repository)
+
+
+def _attach_run_provenance(root: Path, payload: dict) -> dict:
+    """Add current evidence to a freshly produced run without rewriting old reports."""
+    if not isinstance(payload, dict):
+        return payload
+    updated = dict(payload)
+    remote = _git_remote(root)
+    head = _git_head(root)
+    catalog_version, catalog_sha = _catalog_version_and_hash()
+    config_sha = _sha256_file(root / CONFIG_NAME)
+    inventory = _source_inventory(root)
+    if remote:
+        updated.setdefault("repository", _repository_identity(remote))
+    if head:
+        updated.setdefault("commit", head)
+    if catalog_version:
+        updated.setdefault("catalogVersion", catalog_version)
+    if catalog_sha:
+        updated.setdefault("catalogSha256", catalog_sha)
+    if config_sha:
+        updated.setdefault("configurationSha256", config_sha)
+    updated.setdefault("sourceInventory", inventory)
+    updated.setdefault("sourceInventorySha256", _source_inventory_digest(inventory))
+    updated.setdefault("enforcerVersion", ENFORCER_VERSION)
+    updated.setdefault("provenanceVersion", PROVENANCE_VERSION)
+    baseline_sha = _sha256_file(root / ".acima/baseline.json")
+    if baseline_sha:
+        updated.setdefault("baselineSha256", baseline_sha)
+    return updated
+
+
 def _proof_step(root: Path, catalog_version: str | None, catalog_sha: str | None) -> dict:
     path = root / PROOF_ARTEFACT
     if not path.is_file():
@@ -2161,10 +2408,13 @@ def _slice_step(runs: list[dict]) -> dict:
                  "land one boundary change and re-measure")
 
 
-def _claim_step(root: Path, runs: list[dict], level: str | None) -> dict:
+def _claim_step(root: Path, runs: list[dict], level: str | None, config: dict | None,
+                catalog_version: str | None, catalog_sha: str | None) -> dict:
     if not runs:
-        return _step(10, "claim", STEP_NOT_STARTED, "no measured run to base a claim on",
+        step = _step(10, "claim", STEP_NOT_STARTED, "no measured run to base a claim on",
                      "measure a run, then record manual evidence where a rule is manual")
+        step["claimState"] = "no-claim"
+        return step
     newest = runs[-1]
     evidence_path = root / EVIDENCE_FILE
     try:
@@ -2174,22 +2424,68 @@ def _claim_step(root: Path, runs: list[dict], level: str | None) -> dict:
             level=level or newest["payload"].get("level") or "L1",
             evidence=evidence, evidence_path=EVIDENCE_FILE, root=root,
         )
+        currentness = _claim_currentness(
+            root, newest["payload"], config, level, catalog_version, catalog_sha)
+        claim.update({"currentness": currentness["state"],
+                      "current": currentness["current"], "provenance": currentness})
     except (ClaimError, OSError, json.JSONDecodeError, ValueError) as error:
-        return _step(10, "claim", STEP_BLOCKED, f"{newest['path']}: {error}",
+        step = _step(10, "claim", STEP_BLOCKED, f"{newest['path']}: {error}",
                      "fix or replace the manual evidence, then recompute the claim")
+        step["claimState"] = "invalid"
+        return step
+
+    def result(state: str, claim_state: str, evidence: str, remedy: str = "") -> dict:
+        step = _step(10, "claim", state, evidence, remedy)
+        step["claimState"] = claim_state
+        step["claim"] = claim
+        step["provenance"] = currentness
+        return step
+
     invalid = claim.get("invalidEvidence") or []
     if invalid:
-        return _step(10, "claim", STEP_BLOCKED,
-                     f"{len(invalid)} evidence entr(y/ies) are invalid; the claim is {claim['claim']}",
-                     "correct the evidence fields or expiry, then recompute")
+        return result(
+            STEP_BLOCKED, "invalid",
+            f"{len(invalid)} evidence entr(y/ies) are invalid; the claim is {claim['claim']}",
+            "correct the evidence fields or expiry, then recompute")
     if claim["claim"] == FULL:
-        return _step(10, "claim", STEP_COMPLETE,
-                     f"FULL CONFORMANCE at {claim.get('level')} from {newest['path']}")
+        if currentness["current"]:
+            return result(
+                STEP_COMPLETE, "current",
+                f"FULL CONFORMANCE at {claim.get('level')} from {newest['path']}; "
+                f"current HEAD {str(currentness.get('head'))[:12]}")
+        if currentness["state"] == "historical":
+            return result(
+                STEP_IN_PROGRESS, "historical",
+                f"historical FULL CONFORMANCE at {claim.get('level')} from {newest['path']}; "
+                f"{currentness['evidence']}",
+                "measure the current HEAD and record a fresh claim")
+        if currentness["state"] in ("missing-provenance", "git-unavailable"):
+            return result(
+                STEP_IN_PROGRESS, "incomplete",
+                f"FULL CONFORMANCE rule coverage from {newest['path']}, but currentness is "
+                f"not established: {currentness['evidence']}",
+                "record repository, commit, catalog, configuration and source provenance")
+        return result(
+            STEP_IN_PROGRESS, "stale",
+            f"FULL CONFORMANCE rule coverage from {newest['path']} is stale: "
+            f"{currentness['evidence']}",
+            "re-measure after the repository, configuration or catalog changed")
     missing = claim.get("missing") or []
-    return _step(10, "claim", STEP_IN_PROGRESS,
-                 f"PARTIAL ASSESSMENT at {claim.get('level')}: "
-                 f"{len(missing)} required rule(s) have no accepted evidence",
-                 "record repository-scoped manual evidence for the named rules")
+    claim_state = "incomplete"
+    if currentness["state"] == "historical":
+        claim_state = "historical"
+    elif currentness["state"] in ("uncommitted", "repository-mismatch",
+                                  "catalog-mismatch", "standard-mismatch",
+                                  "configuration-mismatch", "level-mismatch",
+                                  "source-mismatch", "baseline-mismatch",
+                                  "enforcer-mismatch"):
+        claim_state = "stale"
+    return result(
+        STEP_IN_PROGRESS, claim_state,
+        f"PARTIAL ASSESSMENT at {claim.get('level')}: "
+        f"{len(missing)} required rule(s) have no accepted evidence; "
+        f"currentness {currentness['state']}: {currentness['evidence']}",
+        "record repository-scoped manual evidence for the named rules, then measure again")
 
 
 def status_project(root: Path) -> dict:
@@ -2296,7 +2592,7 @@ def status_project(root: Path) -> dict:
     steps.append(own)
     steps.append(_gate_step(root, workflows, level, catalog_version, catalog_sha))
     steps.append(_slice_step(runs))
-    steps.append(_claim_step(root, runs, level))
+    steps.append(_claim_step(root, runs, level, config, catalog_version, catalog_sha))
     steps.append(_step(11, "maintain", STEP_NOT_APPLICABLE,
                        "maintaining the standard is not part of adopting it"))
 
@@ -2406,11 +2702,30 @@ def status_project(root: Path) -> dict:
                          command=f"{context['commands']['acima']} fix --report {newest['path']} "
                                  f"{rule or '--all'}".replace("  ", " "),
                          doneWhen="one correction is chosen, explained and separately approved.")
-    elif steps[9]["state"] == STEP_IN_PROGRESS:
-        next_step.update(action="Record the evidence the claim still needs",
-                         why="A partial assessment is honest; accepted evidence is what can make it full.",
-                         command="fill .acima/manual-evidence.json for the named manual rules",
-                         doneWhen="acima.py claim --require full exits 0 at the declared level.",
+    elif steps[9].get("claimState") in ("historical", "stale", "uncommitted", "incomplete"):
+        claim_step = steps[9]
+        claim = claim_step.get("claim") or {}
+        if claim.get("missingManual"):
+            next_step.update(action="Record the evidence the claim still needs",
+                             why="A partial assessment is honest; accepted evidence is what can "
+                                 "make it full.",
+                             command="fill .acima/manual-evidence.json for the named manual rules",
+                             doneWhen="acima.py claim --require full exits 0 at the declared level.",
+                             approvalRequired=True, writes=True)
+        else:
+            next_step.update(
+                action="Measure the current repository state again",
+                why="The existing claim is historical or incomplete; freshness, not an architecture "
+                    "defect, is the limitation.",
+                command=f"{_enforcer_command(language)} --root . --format json",
+                doneWhen="a new run records the current HEAD, catalog, configuration and source "
+                         "inventory, then the claim matches it.")
+    elif steps[9].get("claimState") == "invalid":
+        next_step.update(action="Correct the claim evidence",
+                         why="The current claim record is invalid; a partial or stale record cannot "
+                             "be promoted to conformance.",
+                         command="repair .acima/manual-evidence.json and recompute the claim",
+                         doneWhen="the claim has valid, current repository and manual evidence.",
                          approvalRequired=True, writes=True)
     else:
         next_step.update(action="Keep the count falling and the gate green",
@@ -2770,7 +3085,7 @@ def main() -> int:
             return 2
         root = Path(args.root).resolve()
         config = read_config(root, args.config or CONFIG_NAME)
-        claim = claim_for(root, payload)
+        claim = claim_for(root, payload, config)
         if args.format == "json":
             print(json.dumps({
                 "summary": summarize(payload),
@@ -2804,6 +3119,15 @@ def main() -> int:
                 payload, load_catalog(ACIMA_ROOT), level=args.level,
                 evidence=evidence, evidence_path=str(evidence_path), root=root,
             )
+            try:
+                config = read_config(root)
+            except ConfigError:
+                config = None
+            catalog_version, catalog_sha = _catalog_version_and_hash()
+            currentness = _claim_currentness(
+                root, payload, config, args.level, catalog_version, catalog_sha)
+            claim.update({"currentness": currentness["state"],
+                          "current": currentness["current"], "provenance": currentness})
         except ClaimError as error:
             print(f"acima: {error}", file=sys.stderr)
             return 2
@@ -2811,7 +3135,7 @@ def main() -> int:
             print(json.dumps(claim, indent=2, sort_keys=True))
         else:
             print(render_claim_markdown(claim))
-        if args.require == "full" and claim["claim"] != FULL:
+        if args.require == "full" and (claim["claim"] != FULL or not claim.get("current")):
             return 1
         return 0
 

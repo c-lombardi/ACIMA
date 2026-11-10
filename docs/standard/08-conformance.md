@@ -139,13 +139,22 @@ enforcers in this repository fail when a suite finds zero files.
 |---|---|
 | Rules executed | <executed> of <required> automated; manual evidence: <rules> |
 | Claim | <FULL CONFORMANCE | PARTIAL ASSESSMENT> |
-| Claim gate | `acima claim --require full` exits 0 |
+| Claim gate | `acima claim --require full` exits 0 at the current commit |
+| Claim provenance | repository, commit, standard, catalog/config hashes, enforcer version, source inventory |
 | Unwaived errors | 0 |
 | Warnings | 3 (`C007` ×1, `G003` ×2) |
 | Waivers | 1 active, 0 expired, 1 expiring within 90 days |
 | Findings artefact | build #1234 / `acima.json` |
 | Last verified commit | `abc1234` |
 ```
+
+A claim is evidence about one repository state. `FULL CONFORMANCE` at an older commit is historical,
+not current; a changed catalog, configuration, baseline or source inventory requires fresh
+measurement. Missing provenance — repository, commit, catalog hash, configuration hash, enforcer
+version or source inventory — means currentness cannot be established and must not be assumed.
+Uncommitted source or configuration changes cannot be represented by a committed run. Historical
+reports stay readable and must not be deleted, but only a claim whose provenance matches the current
+checkout may be called current conformance.
 
 The count is derived from `rules.json`; never copy a fixed number. At L2 the catalog requires 37
 rules. The reference portable enforcers execute 32 of those and report `L004`, `C003`, `C007`,
@@ -166,8 +175,9 @@ python3 tools/acima.py claim --report acima.json \
   --evidence .acima/manual-evidence.json --level L2 --require full
 ```
 
-`claim` exits `0` when the requested class is satisfied, `1` when a full claim is requested but
-the run is only a partial assessment, and `2` when the run or evidence document is invalid. The
+`claim` exits `0` only when the requested class is satisfied **and** the claim is current. It exits
+`1` when a full claim is requested but the run is only a partial assessment or its provenance does
+not match the current repository state, and `2` when the run or evidence document is invalid. The
 same model is available in `acima report --format json` under the `claim` key.
 
 ## 8.6 Partial conformance is not conformance
@@ -188,8 +198,13 @@ The claim classes are exclusive:
 
 | Class | Conditions | May be called conformance? |
 |---|---|---|
-| `FULL CONFORMANCE` | every required rule executed or covered by accepted manual evidence; zero unwaived error findings | yes |
+| `FULL CONFORMANCE` | every required rule executed or covered by accepted manual evidence; zero unwaived error findings; provenance matches the current repository, commit, catalog, configuration and source inventory | yes, for that state |
 | `PARTIAL ASSESSMENT` | a complete, valid run, but at least one required rule has no execution or accepted manual evidence | no |
+
+`FULL CONFORMANCE` describes the measured state, not the repository forever: a later commit, a
+changed catalog or configuration, a changed baseline, a modified working tree, or missing provenance
+makes it historical, stale or incomplete evidence. Historical claims remain available; they are
+never reported as current.
 
 A catalog-manual rule reported as `executed: true` does not count as executed. The catalog is
 authoritative about how a rule is decided, so a run that claims to execute a manual rule has
@@ -271,7 +286,9 @@ accepted only when:
 - `artifact` exists at that path and contains the recorded review;
 - `result` is `pass`.
 
-Expired, missing or malformed evidence makes the claim `PARTIAL ASSESSMENT`; it does not make the run
+Expired, missing or malformed evidence makes the claim `PARTIAL ASSESSMENT`; accepted evidence still
+only supports a claim whose repository, commit, standard, catalog and configuration match the current
+checkout. Evidence problems do not make the run
 invalid. A missing execution map, an unknown level or malformed JSON is `INVALID ASSESSMENT` and exits
 `2`. The reference enforcers continue to report the fourteen manual rules as `executed: false`; the evidence file
 is how a repository records the review the portable tool cannot perform.
