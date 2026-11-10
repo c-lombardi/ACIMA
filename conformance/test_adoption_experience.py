@@ -407,9 +407,10 @@ class AdoptionExperienceTests(unittest.TestCase):
             config(root)
             baseline(root, findings=[])
             observation(root, manual=False, verified=True, provider="github-actions",
-                        runId="42", commit="a" * 40)
+                        runId="42", commit="a" * 40, repository="owner/repo")
             with mock.patch.object(acima, "_git_head", return_value="a" * 40), \
-                    mock.patch.object(acima, "_git_remote", return_value=None):
+                    mock.patch.object(acima, "_git_remote",
+                                      return_value="https://github.com/owner/repo.git"):
                 gate = step(acima.status_project(root), "gate")
             self.assertEqual(gate["state"], "COMPLETE", gate)
             self.assertIn("independently recorded", gate["evidence"])

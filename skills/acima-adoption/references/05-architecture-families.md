@@ -26,6 +26,22 @@ final message.
 | Microservices | independent deployables, per-service data, deployment manifests | service-topology profile P10–P13; per-layer, zero-reference contracts; no cross-service data access | contracts cannot reference contracts at all; boundaries must be declared as evidence |
 | Library / framework / SDK | published artifact, `files`/`exports`/`PackageId`, public surface | declared public API and intentional adapters are classified with owner and reason, never hidden | an undeclared edge outside the declared paths must still fail |
 
+## Fit is not a family judgement
+
+Assess six dimensions independently before recommending adoption:
+
+1. **Technical compatibility** — can the language and base mode express the boundaries at all?
+2. **Architectural substance** — are there real ownership boundaries, or one undifferentiated source area?
+3. **Existing enforcement** — are boundary checks already configured and required, and is their execution observed?
+4. **Incremental value** — what boundary guarantee would ACIMA add beyond those checks?
+5. **Adoption cost** — configuration, gate, ownership, remediation, migration and maintenance work.
+6. **Practical applicability** — does the operational model match the supported base profile?
+
+A clean report is one input, never a recommendation. A small utility with no module ownership, or a
+repository whose existing checks already protect the same boundary, can be `NOT_RECOMMENDED`. An
+unsupported language or service topology is `NOT_SUPPORTED`. If ownership is not established, use
+`INSUFFICIENT_EVIDENCE` and ask only the ownership question that changes the decision.
+
 ## How to say it
 
 Write it as one sentence in the team's terms, for example:

@@ -17,8 +17,10 @@ import hashlib
 from datetime import date, timedelta
 import json
 import re
+import shlex
 import shutil
 import subprocess
+import urllib.parse
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -332,6 +334,7 @@ VERDICT_MEANING = {
     "ASSESSED": "the reference enforcer ran against the declared unit map",
     "NEEDS_UNIT_MAP": "no acima.config.json, so files cannot be classified into units yet",
     "UNSUPPORTED_LANGUAGE": "no reference enforcer exists for the detected language",
+    "UNSUPPORTED_PROFILE": "the declared architecture profile is not supported by this revision",
     "TOOLCHAIN_MISSING": "the toolchain required to run that enforcer is not installed",
     "NO_SOURCE": "no source files were discovered",
     "INVALID_ROOT": "the path given as --root does not exist or is not a directory",
@@ -361,6 +364,9 @@ def _next_steps(report: dict) -> list[str]:
     elif verdict == "UNSUPPORTED_LANGUAGE":
         steps.append("This language has a documented profile but no reference enforcer in this "
                      "revision. An assessment must fail closed rather than report zero findings.")
+    elif verdict == "UNSUPPORTED_PROFILE":
+        steps.append("This architecture profile is not supported by this revision. The "
+                     "assessment must fail closed rather than apply the base unit model.")
     elif verdict == "TOOLCHAIN_MISSING":
         steps.append("Install the toolchain (%s) and re-run the assessment."
                      % report.get("detail", "see docs/status.md"))
@@ -446,78 +452,561 @@ def infer_architecture(root: Path, units: list[dict]) -> list[dict]:
     return signals
 
 
-def _assessment_benefits(report: dict) -> list[str]:
-    rules = (report.get("findings") or {}).get("byRule") or {}
-    benefits = ["Fails a pull request that adds a boundary violation and names the rule and remedy."]
-    if any(rule.startswith("ACIMA-D") for rule in rules):
-        benefits.insert(0, "Stops one module from importing another module's implementation, so "
-                           "a change in one cannot silently break its consumers.")
-    if any(rule.startswith("ACIMA-C") for rule in rules):
-        benefits.insert(0, "Keeps contracts free of behaviour and framework types, so consumers "
-                           "depend on a stable surface.")
-    if any(rule.startswith("ACIMA-A") for rule in rules):
-        benefits.append("Makes persistence, configuration and effect ownership visible instead "
-                        "of leaking across boundaries.")
-    return benefits[:4]
+OUTCOME_RECOMMENDED = "RECOMMENDED"
+OUTCOME_WITH_LIMITATIONS = "RECOMMENDED_WITH_LIMITATIONS"
+OUTCOME_NOT_RECOMMENDED = "NOT_RECOMMENDED"
+OUTCOME_INSUFFICIENT = "INSUFFICIENT_EVIDENCE"
+OUTCOME_NOT_SUPPORTED = "NOT_SUPPORTED"
+ASSESSMENT_OUTCOMES = (
+    OUTCOME_RECOMMENDED, OUTCOME_WITH_LIMITATIONS, OUTCOME_NOT_RECOMMENDED,
+    OUTCOME_INSUFFICIENT, OUTCOME_NOT_SUPPORTED,
+)
+
+BENEFIT_TODAY = "available-today"
+BENEFIT_ADOPTION = "achievable-through-adoption"
+BENEFIT_WORK = "requires-additional-work"
+BENEFIT_NOT_APPLICABLE = "not-applicable"
+
+ENFORCEMENT_TOKENS = (
+    "import-linter", "importlinter", "dependency-cruiser", "depcruise", "archunit",
+    "netarchtest", "ts-arch", "eslint-plugin-boundaries", "architecture test",
+    "architecture-test", "archtest", "acima_arch",
+)
+BOUNDARY_CONFIG_FILES = (
+    "pyproject.toml", "setup.cfg", "package.json", ".importlinter", "importlinter.ini",
+    "archunit.properties", "pom.xml", "build.gradle", "build.gradle.kts",
+)
+IGNORED_LAYOUT_DIRS = frozenset({
+    "test", "tests", "__tests__", "spec", "specs", "docs", "doc", "examples", "example",
+    "tools", "scripts", "migrations", "build", "dist", "target", "out", "coverage",
+    "node_modules", "vendor", ".venv", "venv", "bin", "obj",
+})
+
+
+def _dimension(status: str, summary: str, evidence: list[str],
+               confidence: str = "medium") -> dict:
+    return {"status": status, "summary": summary, "evidence": evidence,
+            "confidence": confidence}
+
+
+def _source_layout(root: Path) -> dict:
+    files = [path for path in _walk(root) if path.suffix.lower() in SOURCE_EXTENSIONS]
+    relative = [path.relative_to(root) for path in files]
+    modules: set[str] = set()
+    for item in relative:
+        parts = [part for part in item.parent.parts if part not in ("", ".")]
+        if any(part.lower() in IGNORED_LAYOUT_DIRS for part in parts):
+            continue
+        if parts:
+            modules.add("/".join(parts))
+    return {
+        "sourceFiles": len(files),
+        "moduleDirectories": sorted(modules),
+        "rootSourceFiles": sum(1 for item in relative if item.parent == Path(".")),
+    }
+
+
+def _architectural_substance(root: Path, config: dict | None) -> dict:
+    if config:
+        units = config.get("units") or []
+        modules = sorted({str(unit.get("module")) for unit in units if unit.get("module")})
+        implementations = [unit for unit in units if unit.get("role") == "implementation"]
+        contracts = [unit for unit in units
+                     if unit.get("role") in ("contracts", "port")]
+        evidence = [f"{len(units)} declared unit(s)"]
+        if modules:
+            evidence.append("modules: " + ", ".join(modules))
+        if implementations:
+            evidence.append(f"{len(implementations)} implementation unit(s)")
+        if contracts:
+            evidence.append(f"{len(contracts)} contract/port unit(s)")
+        if len(modules) >= 2 or (implementations and contracts):
+            return _dimension(
+                "meaningful",
+                "The declared unit map identifies distinct module ownership or a "
+                "contracts/implementation boundary worth enforcing.",
+                evidence, "medium")
+        if units:
+            return _dimension(
+                "weak",
+                "Units are declared, but they do not identify distinct module ownership "
+                "or a contract boundary that ACIMA could protect.",
+                evidence, "medium")
+        return _dimension("unknown", "acima.config.json declares no units.",
+                          evidence, "low")
+
+    layout = _source_layout(root)
+    if layout["sourceFiles"] <= 1 or not layout["moduleDirectories"]:
+        return _dimension(
+            "none",
+            "No meaningful ownership boundaries were found: the repository is a single "
+            "source area, not a set of modules.",
+            [f"{layout['sourceFiles']} source file(s)",
+             f"{len(layout['moduleDirectories'])} module director(ies)"],
+            "medium")
+    if len(layout["moduleDirectories"]) >= 2:
+        return _dimension(
+            "candidate",
+            "The layout suggests more than one source-owning area, but no unit map declares "
+            "who owns each one.",
+            layout["moduleDirectories"][:8], "low")
+    return _dimension(
+        "unknown",
+        "Source files exist, but the layout does not establish module ownership and no "
+        "unit map was declared.",
+        [f"{layout['sourceFiles']} source files in {len(layout['moduleDirectories'])} "
+         "source director(ies)"], "low")
+
+
+def _existing_enforcement(root: Path) -> dict:
+    mechanisms: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+
+    def add(kind: str, path: str, detail: str) -> None:
+        key = (kind, path)
+        if key in seen:
+            return
+        seen.add(key)
+        mechanisms.append({"kind": kind, "path": path, "detail": detail,
+                           "execution": "configured-not-observed"})
+
+    for entry in _gate_workflows(root):
+        if entry.get("validInvocations"):
+            first = entry["validInvocations"][0]
+            add("acima-gate", entry["path"],
+                "workflow invokes an ACIMA enforcer" +
+                (f" at {first['level']}" if first.get("level") else ""))
+
+    workflow_dir = root / ".github/workflows"
+    if workflow_dir.is_dir():
+        for path in sorted(list(workflow_dir.glob("*.yml")) + list(workflow_dir.glob("*.yaml"))):
+            try:
+                text = path.read_text(encoding="utf-8", errors="replace").lower()
+            except OSError:
+                continue
+            hits = sorted(token for token in ENFORCEMENT_TOKENS if token in text)
+            if hits:
+                add("ci-boundary-check", path.relative_to(root).as_posix(),
+                    "CI workflow mentions " + ", ".join(hits))
+
+    for name in BOUNDARY_CONFIG_FILES:
+        path = root / name
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace").lower()
+        except OSError:
+            continue
+        hits = sorted(token for token in ENFORCEMENT_TOKENS if token in text)
+        if hits:
+            add("boundary-configuration", name, "configuration declares " + ", ".join(hits))
+
+    for pattern in ("*.csproj", "dependency-cruiser.*", ".dependency-cruiser.*"):
+        for path in sorted(root.glob(pattern)):
+            try:
+                text = path.read_text(encoding="utf-8", errors="replace").lower()
+            except OSError:
+                continue
+            hits = sorted(token for token in ENFORCEMENT_TOKENS if token in text)
+            if hits:
+                add("boundary-configuration", path.relative_to(root).as_posix(),
+                    "configuration declares " + ", ".join(hits))
+
+    for path in sorted(_walk(root)):
+        relative = path.relative_to(root).as_posix()
+        if not re.search(
+                r"(^|/)(test[_-].*arch|.*arch.*test|.*architecture.*test|"
+                r".*boundar(y|ies).*test)", relative.lower()):
+            continue
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace").lower()
+        except OSError:
+            continue
+        if any(token in text for token in ("acima", "importlinter", "dependency-cruiser",
+                                           "archunit", "netarchtest", "architecture",
+                                           "boundary", "boundaries")):
+            add("architecture-test", relative, "test file asserts architecture constraints")
+
+    has_acima = any(item["kind"] == "acima-gate" for item in mechanisms)
+    has_linter = any(item["kind"] == "boundary-configuration" for item in mechanisms)
+    has_test = any(item["kind"] == "architecture-test" for item in mechanisms)
+    has_ci = any(item["kind"] == "ci-boundary-check" for item in mechanisms)
+    strong = has_acima or (has_ci and (has_linter or has_test))
+    status = "strong" if strong else ("partial" if mechanisms else "none")
+    if status == "strong":
+        summary = ("Configured boundary enforcement was found"
+                   + (", including an ACIMA gate" if has_acima else "")
+                   + "; execution was not observed by this read-only assessment.")
+        confidence = "medium"
+    elif status == "partial":
+        summary = ("Some boundary-related checks were found, but their CI coverage or "
+                   "scope is incomplete.")
+        confidence = "low"
+    else:
+        summary = "No repository evidence of automated boundary enforcement was found."
+        confidence = "medium"
+    return {
+        "status": status,
+        "summary": summary,
+        "mechanisms": mechanisms,
+        "execution": "configured-not-observed",
+        "confidence": confidence,
+    }
+
+
+def _adoption_cost(report: dict, config: dict | None, substance: dict,
+                   enforcement: dict, findings: dict) -> dict:
+    errors = (findings.get("bySeverity") or {}).get("error", 0)
+    rules = findings.get("byRule") or {}
+    drivers: list[str] = []
+    if config is None:
+        drivers.append("declare and review a unit map")
+    if enforcement["status"] == "none":
+        drivers.append("add and operate an automated pull-request gate")
+    elif enforcement["status"] == "strong":
+        drivers.append("reconcile ACIMA with the checks already in place")
+    if errors:
+        drivers.append(f"remediate or own {errors} existing error finding(s)")
+    if any(str(rule).startswith(("ACIMA-D", "ACIMA-C", "ACIMA-A")) for rule in rules):
+        drivers.append("review the boundaries implicated by the findings")
+    if report.get("requestedLevel") in ("L2", "L3"):
+        drivers.append("contract and manual-evidence work for the requested level")
+    if not drivers:
+        drivers.append("maintain the gate, catalog updates and waiver review")
+
+    if substance["status"] in ("none", "weak"):
+        status = "low"
+        summary = "Low: there are no meaningful module boundaries to configure or enforce."
+    elif enforcement["status"] == "none" and errors:
+        status = "high"
+        summary = ("High: existing boundary findings must be fixed or owned while a new gate "
+                   "is introduced.")
+    elif config is not None and enforcement["status"] == "strong" and not errors:
+        status = "low"
+        summary = "Low: the unit map exists and existing checks already cover the boundaries."
+    else:
+        status = "moderate"
+        summary = ("Moderate: adoption needs configuration, ownership decisions and a gate, "
+                   "but does not require a rewrite.")
+    return {"status": status, "summary": summary, "evidence": drivers,
+            "confidence": "medium", "drivers": drivers,
+            "organizational": ["confirm module ownership", "assign exception owners"],
+            "migration": "No source rewrite is required; existing findings may be fixed or owned.",
+            "maintenance": ("Ongoing: review exceptions before they expire and update the unit "
+                            "map when ownership or modules change."),
+            "estimate": "Qualitative estimate only; no time or price is inferred."}
+
+
+def _conditional_benefits(report: dict, config: dict | None, substance: dict,
+                          enforcement: dict, errors: int) -> list[dict]:
+    details: list[dict] = []
+
+    def add(benefit: str, classification: str, basis: str) -> None:
+        details.append({"benefit": benefit, "classification": classification,
+                        "basis": basis})
+
+    if config is not None and report.get("findings") is not None:
+        add("The reference enforcer can report boundary violations with the rule, path "
+            "and remedy today.", BENEFIT_TODAY,
+            "the assessment ran the enforcer; this is a report, not a merge gate")
+    else:
+        add("A read-only assessment can inspect the repository without changing it.",
+            BENEFIT_TODAY, "the assessment reads source and configuration only")
+
+    if substance["status"] in ("meaningful", "candidate"):
+        if enforcement["status"] != "strong":
+            add("A pull-request gate could reject new cross-module implementation imports "
+                "and name the remedy.", BENEFIT_ADOPTION,
+                "this becomes true only after a gate is approved, added and running")
+            add("Existing findings can be frozen as owned, expiring exceptions so the gate "
+                "fails only on new violations.", BENEFIT_ADOPTION,
+                "requires explicit ownership, scope and expiry decisions")
+        else:
+            add("ACIMA could add contract and ownership checks beyond the existing boundary "
+                "checks.", BENEFIT_ADOPTION,
+                "the existing checks already cover part of the boundary guarantee")
+    if config is None:
+        add("Declaring and reviewing the unit map is required before any automated check.",
+            BENEFIT_WORK, "ownership is a human decision, not a directory-name inference")
+    if errors:
+        add("Each existing finding must be fixed or covered by an owned exception.",
+            BENEFIT_WORK, "the assessment found errors that no gate can honestly ignore")
+    if enforcement["status"] == "none":
+        add("A CI gate must be approved, added and observed on a pull request.",
+            BENEFIT_WORK, "repository configuration alone is not an observed gate")
+    if enforcement["status"] == "strong":
+        add("A new boundary gate is not applicable; configured checks already exist.",
+            BENEFIT_NOT_APPLICABLE,
+            "only their execution and coverage remain unverified")
+    if substance["status"] in ("none", "weak"):
+        add("Module-boundary enforcement is not applicable because no meaningful module "
+            "ownership was found.", BENEFIT_NOT_APPLICABLE,
+            "there is no boundary for ACIMA to make executable")
+    return details
+
+
+def _recommendation(verdict: str, mode: str, substance: dict, enforcement: dict,
+                    incremental: dict, cost: dict, errors: int,
+                    config: dict | None) -> tuple[str, str]:
+    if verdict in ("UNSUPPORTED_LANGUAGE", "UNSUPPORTED_PROFILE") or mode != "base":
+        return (OUTCOME_NOT_SUPPORTED,
+                "The language or architecture profile is explicitly outside the supported "
+                "assessment surface.")
+    if verdict in ("NO_SOURCE", "INVALID_ROOT", "INVALID_CONFIG", "TOOLCHAIN_MISSING",
+                   "INVALID_ASSESSMENT"):
+        return (OUTCOME_INSUFFICIENT,
+                "The assessment could not produce trustworthy architectural evidence.")
+    if substance["status"] in ("none", "weak"):
+        return (OUTCOME_NOT_RECOMMENDED,
+                "There are no meaningful ownership boundaries for ACIMA to enforce, so it "
+                "would add process without adding a guarantee.")
+    if enforcement["status"] == "strong" and errors == 0:
+        return (OUTCOME_NOT_RECOMMENDED,
+                "Existing configured checks already cover the boundary guarantee, and no "
+                "meaningful additional guarantee was found.")
+    if incremental["status"] == "none":
+        return (OUTCOME_NOT_RECOMMENDED,
+                "No incremental boundary guarantee was identified from the available evidence.")
+    if incremental["status"] == "limited" and cost["status"] == "high":
+        return (OUTCOME_NOT_RECOMMENDED,
+                "Any additional guarantee is limited while the adoption and migration cost is high.")
+    if substance["status"] == "unknown":
+        return (OUTCOME_INSUFFICIENT,
+                "Module ownership is not established, so a fit recommendation would be a guess.")
+    if errors:
+        return (OUTCOME_WITH_LIMITATIONS,
+                "The boundaries are meaningful, but existing findings need remediation or "
+                "owned exceptions before a gate can be honest.")
+    if cost["status"] == "high":
+        return (OUTCOME_WITH_LIMITATIONS,
+                "The boundaries are meaningful, but adoption carries high migration or "
+                "enforcement cost.")
+    if config is None or substance["status"] == "candidate":
+        return (OUTCOME_WITH_LIMITATIONS,
+                "The layout suggests meaningful boundaries, but unit ownership is not declared "
+                "or approved.")
+    if enforcement["status"] in ("strong", "partial") and incremental["status"] == "limited":
+        return (OUTCOME_WITH_LIMITATIONS,
+                "Existing checks cover part of the boundary guarantee; ACIMA adds a narrower "
+                "set of contract and ownership checks.")
+    return (OUTCOME_RECOMMENDED,
+            "Meaningful boundaries exist, no effective automated enforcement covers them, and "
+            "the smallest adoption can add a real gate.")
+
+
+def _assessment_benefits(details: list[dict]) -> list[str]:
+    """Compatibility view: only capabilities that exist today without adoption work."""
+    return [item["benefit"] for item in details
+            if item["classification"] == BENEFIT_TODAY]
 
 
 def build_assessment_result(report: dict, config: dict | None) -> dict:
-    """Separate facts, inferences, unknowns and a recommendation for the proposal."""
+    """Evidence-based fit assessment: dimensions first, recommendation second.
+
+    A clean report is one input, never a recommendation. The result separates observed facts,
+    inferred layout characteristics, unresolved questions and the decision.
+    """
+    root = Path(report.get("root") or ".")
     verdict = report.get("verdict")
     findings = report.get("findings") or {}
     coverage = report.get("coverage") or {}
-    errors = (findings.get("bySeverity") or {}).get("error") if findings else None
-    if verdict == "ASSESSED":
-        fit = "recommended" if errors == 0 else "recommended-with-limitations"
-        confidence = "high" if coverage.get("complete") else "medium"
-    elif verdict == "NEEDS_UNIT_MAP":
-        fit, confidence = "insufficient-evidence", "medium"
+    errors = (findings.get("bySeverity") or {}).get("error") if findings else 0
+    mode = (config or {}).get("mode") or "base"
+    layout = _source_layout(root)
+    substance = _architectural_substance(root, config)
+    enforcement = _existing_enforcement(root)
+    units = (config or {}).get("units") or []
+
+    if verdict in ("UNSUPPORTED_LANGUAGE", "UNSUPPORTED_PROFILE") or mode != "base":
+        technical = _dimension(
+            "unsupported",
+            "The language or architecture profile is not supported by this assessment revision.",
+            [f"verdict: {verdict}", f"mode: {mode}"], "high")
+    elif verdict in ("NO_SOURCE", "INVALID_ROOT"):
+        technical = _dimension(
+            "unknown", "There is no analysable application to assess.",
+            [f"verdict: {verdict}"], "low")
+    elif verdict in ("INVALID_CONFIG", "TOOLCHAIN_MISSING", "INVALID_ASSESSMENT"):
+        technical = _dimension(
+            "unknown", "The tooling could not establish technical compatibility.",
+            [f"verdict: {verdict}"], "low")
+    elif config is None:
+        technical = _dimension(
+            "partial",
+            "The language is supported, but no unit map expresses the boundaries.",
+            ["no acima.config.json", f"language: {report.get('language') or 'unknown'}"],
+            "medium")
+    elif not units:
+        technical = _dimension("partial", "The configuration declares no units.", [], "low")
     else:
-        fit, confidence = "insufficient-evidence", "low"
-    unknowns = [
-        "The application's purpose and business requirements were not inferred from names; the "
-        "owner must confirm them.",
-        "Runtime behaviour, data ownership and operational autonomy are not established by a "
-        "static run.",
+        technical = _dimension(
+            "compatible",
+            "The language and base architecture mode can express ACIMA's boundaries.",
+            [f"language: {report.get('language') or 'unknown'}", "mode: base",
+             f"{len(units)} declared unit(s)"], "medium")
+
+    if technical["status"] == "unsupported":
+        practical = _dimension("unsupported", technical["summary"], technical["evidence"], "high")
+    elif substance["status"] == "none":
+        practical = _dimension(
+            "not-applicable",
+            "ACIMA's module-boundary requirements do not apply to this single ownership area.",
+            substance["evidence"], "medium")
+    elif verdict == "NO_SOURCE":
+        practical = _dimension("unknown", "No application code was found to assess.",
+                              ["no source files"], "low")
+    else:
+        practical = _dimension(
+            "applicable",
+            "The base architecture mode is applicable; deployment topology and framework "
+            "choice remain the team's decisions.", [f"mode: {mode}"], "medium")
+
+    if substance["status"] in ("none", "weak"):
+        incremental = _dimension(
+            "none", "No additional boundary guarantee is available because there is no "
+            "meaningful boundary to enforce.", substance["evidence"], "medium")
+    elif enforcement["status"] == "strong":
+        incremental = _dimension(
+            "none" if errors == 0 else "limited",
+            "Existing checks already cover the core boundary guarantee"
+            + ("; the remaining value is contract and ownership detail." if errors else "."),
+            [item["path"] for item in enforcement["mechanisms"]], "medium")
+    elif substance["status"] == "candidate" or config is None:
+        incremental = _dimension(
+            "high", "Declaring the units and adding a gate would make otherwise implicit "
+            "boundaries executable.", substance["evidence"], "low")
+    else:
+        incremental = _dimension(
+            "high", "No effective automated boundary enforcement was found, so a gate would "
+            "add a real guarantee.", substance["evidence"], "medium")
+
+    cost = _adoption_cost(report, config, substance, enforcement, findings)
+    outcome, why = _recommendation(verdict, mode, substance, enforcement, incremental,
+                                   cost, errors, config)
+
+    if outcome in (OUTCOME_NOT_SUPPORTED, OUTCOME_INSUFFICIENT):
+        confidence = "low"
+    elif config is None:
+        confidence = "low"
+    else:
+        confidence = "medium"
+
+    benefit_details = _conditional_benefits(report, config, substance, enforcement, errors)
+    what_it_will_not_solve = [
+        "It does not choose module ownership for the team.",
+        "It does not migrate persistence or split services.",
+        "It does not prove correctness, performance or security.",
     ]
-    if not config:
-        unknowns.append("Module ownership is not declared, so findings cannot be attributed to "
-                        "an owner.")
+    if enforcement["status"] == "none":
+        what_it_will_not_solve.append(
+            "It does not block merges until a gate is approved, added and running.")
+    if enforcement["status"] == "strong":
+        what_it_will_not_solve.append(
+            "It does not prove that the existing configured checks actually run or pass.")
+
+    unknowns = [
+        "The application's purpose and business requirements were not inferred from names; "
+        "the owner must confirm them.",
+        "Runtime behaviour, data ownership and operational autonomy are not established by a "
+        "static read-only assessment.",
+    ]
+    if config is None:
+        unknowns.append("Module ownership is not declared, so findings cannot be attributed "
+                        "to an owner.")
+    if enforcement["status"] in ("strong", "partial"):
+        unknowns.append("Configured boundary checks were not executed by this assessment; "
+                        "their actual coverage and enforcement are unverified.")
     if coverage and not coverage.get("complete"):
         unknowns.append(f"{len(coverage.get('notExecuted') or [])} required rule(s) did not "
                         "execute; they are not evidence of a pass.")
-    recommendation = {
-        "recommended": "ACIMA fits this repository; adopt the smallest scope that adds a "
-                       "measured gate.",
-        "recommended-with-limitations": "ACIMA fits with limitations: the existing findings are "
-                                       "real work, and the smallest useful adoption starts "
-                                       "with a map, a baseline and owned exceptions.",
-        "insufficient-evidence": "There is not enough evidence for a recommendation yet; "
-                                 "complete the read-only assessment first.",
-    }[fit]
+
+    questions: list[str] = []
+    if config is None and substance["status"] in ("candidate", "unknown"):
+        questions.append("Who owns each source area, and does the proposed unit map match "
+                         "that ownership?")
+    if enforcement["status"] in ("strong", "partial"):
+        questions.append("Are the configured checks required on the default branch and "
+                         "currently passing?")
+    if errors:
+        questions.append("Which existing findings will be fixed before adoption, and which "
+                         "need owned, expiring exceptions?")
+    if enforcement["status"] == "none" and substance["status"] in ("meaningful", "candidate"):
+        questions.append("Is a pull-request gate approved, and who will own it?")
+    questions = questions[:3]
+
+    unit_map = report.get("unitMap") or {}
+    application = (f"{report.get('language') or 'Unknown-language'} repository with "
+                   f"{report.get('sourceFiles', layout['sourceFiles'])} source file(s); "
+                   + (f"{unit_map.get('count', 0)} declared unit(s)."
+                      if unit_map.get("present") else "no unit map is declared."))
+    what_acima_adds = {
+        "high": "It would make the declared boundaries executable and fail a new violation "
+                "at the boundary.",
+        "limited": "It would add contract and ownership checks beyond the existing boundary "
+                   "checks.",
+        "none": "No additional boundary guarantee was identified from the available evidence.",
+        "unknown": "The additional guarantee cannot be established without unit ownership.",
+    }[incremental["status"]]
+
+    explanation = {
+        "application": application,
+        "boundaries": substance["evidence"],
+        "existingEnforcement": enforcement["summary"],
+        "whatAcimaAdds": what_acima_adds,
+        "whatAcimaWillNotAdd": what_it_will_not_solve,
+        "adoptionCost": cost["summary"],
+        "maintenanceCost": cost["maintenance"],
+        "why": why,
+        "confidence": confidence,
+        "unresolvedQuestions": questions,
+    }
+    recommendations = {
+        OUTCOME_RECOMMENDED: f"ACIMA is a good fit. {why}",
+        OUTCOME_WITH_LIMITATIONS: f"ACIMA is worth adopting with limitations. {why}",
+        OUTCOME_NOT_RECOMMENDED: f"Do not adopt ACIMA for this repository. {why}",
+        OUTCOME_INSUFFICIENT: f"There is not enough evidence to recommend adoption. {why}",
+        OUTCOME_NOT_SUPPORTED: f"ACIMA cannot assess this repository. {why}",
+    }
+    legacy = outcome.lower().replace("_", "-")
     level = ((report.get("assessment") or {}).get("level")
              or report.get("requestedLevel") or "L1")
     return {
         "facts": {
             "languages": report.get("languages"),
-            "sourceFiles": report.get("sourceFiles"),
+            "sourceFiles": report.get("sourceFiles", layout["sourceFiles"]),
+            "layout": layout,
             "unitMap": report.get("unitMap"),
             "reportedLevel": (report.get("assessment") or {}).get("level"),
+            "purpose": None,
+            "purposeBasis": "not inferred from repository names; the owner must confirm it",
         },
-        "inferences": infer_architecture(Path(report["root"]),
-                                         (report.get("unitMap") or {}).get("units", [])),
+        "inferences": infer_architecture(root, units),
+        "dimensions": {
+            "technicalCompatibility": technical,
+            "architecturalSubstance": substance,
+            "existingEnforcement": _dimension(
+                enforcement["status"], enforcement["summary"],
+                [item["path"] for item in enforcement["mechanisms"]],
+                enforcement["confidence"]),
+            "incrementalValue": incremental,
+            "adoptionCost": cost,
+            "practicalApplicability": practical,
+        },
+        "existingEnforcement": enforcement,
         "unknowns": unknowns,
-        "fit": fit,
+        "unresolvedQuestions": questions,
+        "fit": outcome,
+        "outcome": outcome,
+        "fitLegacy": legacy,
         "confidence": confidence,
-        "recommendation": recommendation,
-        "benefits": _assessment_benefits(report),
-        "whatItWillNotSolve": [
-            "It does not choose module ownership for the team.",
-            "It does not migrate persistence or split services.",
-            "It does not prove correctness, performance or security.",
-        ],
+        "recommendation": recommendations[outcome],
+        "why": why,
+        "benefits": _assessment_benefits(benefit_details),
+        "benefitDetails": benefit_details,
+        "whatItWillNotSolve": what_it_will_not_solve,
         "levelGuidance": LEVEL_GUIDANCE.get(level or "L1", LEVEL_GUIDANCE["L1"]),
         "recommendedNextAction": (report.get("nextSteps") or [None])[0],
+        "explanation": explanation,
     }
 
 
@@ -594,6 +1083,11 @@ def assess_project(root: Path, language: str | None = None,
         report["assessmentResult"] = build_assessment_result(report, config)
         return code, report
 
+    mode = (config or {}).get("mode") or "base"
+    if mode != "base" or (root / "acima.topology.json").is_file():
+        return finish("UNSUPPORTED_PROFILE",
+                      detail="architecture mode %r is not supported by this revision" % mode)
+
     spec = enforcer_spec(selected or "")
     if spec is None:
         return finish("UNSUPPORTED_LANGUAGE")
@@ -651,6 +1145,16 @@ def assess_text(report: dict) -> str:
     if result:
         lines.append("  fit         %s (%s confidence)" % (result["fit"], result["confidence"]))
         lines.append("  recommend   " + result["recommendation"])
+        for label, key in (("technical  ", "technicalCompatibility"),
+                           ("boundaries ", "architecturalSubstance"),
+                           ("enforcement", "existingEnforcement"),
+                           ("value      ", "incrementalValue"),
+                           ("cost       ", "adoptionCost"),
+                           ("applicable ", "practicalApplicability")):
+            dimension = (result.get("dimensions") or {}).get(key) or {}
+            if dimension:
+                lines.append("  %s %s - %s" % (label, dimension["status"],
+                                                dimension["summary"]))
         for signal in result.get("inferences") or []:
             lines.append("  layout      %s - evidence: %s (confidence: %s)"
                          % (signal["candidate"], ", ".join(signal["evidence"]) or "none",
@@ -699,9 +1203,31 @@ def assess_markdown(report: dict) -> str:
         "",
         "> Read-only assessment. No conformance claim, no health score, no code changes.",
         "",
-        "## Unit map",
+        "## Recommendation",
+        "",
+        "**%s** — %s" % (report.get("assessmentResult", {}).get("fit"),
+                          report.get("assessmentResult", {}).get("recommendation")),
         "",
     ]
+    dimensions = (report.get("assessmentResult") or {}).get("dimensions") or {}
+    if dimensions:
+        lines += ["| Dimension | Evidence status | Summary |", "|---|---|---|"]
+        for label, key in (("Technical compatibility", "technicalCompatibility"),
+                           ("Architectural substance", "architecturalSubstance"),
+                           ("Existing enforcement", "existingEnforcement"),
+                           ("Incremental value", "incrementalValue"),
+                           ("Adoption cost", "adoptionCost"),
+                           ("Practical applicability", "practicalApplicability")):
+            value = dimensions.get(key) or {}
+            lines.append("| %s | `%s` | %s |" % (label, value.get("status", ""),
+                                                  value.get("summary", "")))
+        lines.append("")
+    explanation = (report.get("assessmentResult") or {}).get("explanation") or {}
+    if explanation:
+        lines += ["## Why this recommendation", "", explanation.get("why", ""), "",
+                  "**What ACIMA adds:** " + explanation.get("whatAcimaAdds", ""), "",
+                  "**Adoption cost:** " + explanation.get("adoptionCost", ""), ""]
+    lines += ["## Unit map", "",]
     unit_map = report.get("unitMap") or {}
     if unit_map.get("present"):
         lines.append("- Declared units: **%s**" % unit_map.get("count", 0))
@@ -774,13 +1300,6 @@ STATE_LABEL = {
     STEP_UNKNOWN: "unverified",
 }
 CALIBRATION_MANIFEST = Path("skills/acima-adoption/manifest.json")
-GATE_TOKENS = ("acima_arch.py", "acima-arch.mjs", "./tools/archtest",
-               "Acima.ArchTests", "acima.py analyze", "preflight.py")
-GATE_OBSERVATION = "docs/acima/gate-observed.json"
-PROOF_ARTEFACT = "docs/acima/proof.json"
-COMPARISON_FIELDS = ("standard", "level", "sourceFiles", "catalog", "executed")
-
-
 def _step(number: int, name: str, state: str, evidence: str, remedy: str = "") -> dict:
     return {"n": number, "name": name, "state": state, "label": STATE_LABEL[state],
             "verified": state == STEP_COMPLETE, "evidence": evidence, "remedy": remedy}
@@ -913,28 +1432,6 @@ def _repository_identity(value: str) -> str:
     return value.lower().strip("/")
 
 
-def _gate_workflows(root: Path) -> list[dict]:
-    directory = root / ".github/workflows"
-    entries: list[dict] = []
-    if not directory.is_dir():
-        return entries
-    for path in sorted(directory.glob("*.y*ml")):
-        try:
-            text = path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        if "acima" not in text.lower():
-            continue
-        level = re.search(r"--level\s+(L[123])", text)
-        entries.append({
-            "path": path.relative_to(root).as_posix(),
-            "invokes": [token for token in GATE_TOKENS if token in text],
-            "onPullRequest": bool(re.search(r"pull_request|merge_group|pull-request", text)),
-            "level": level.group(1) if level else None,
-        })
-    return entries
-
-
 def _proof_step(root: Path, catalog_version: str | None, catalog_sha: str | None) -> dict:
     path = root / PROOF_ARTEFACT
     if not path.is_file():
@@ -970,42 +1467,559 @@ def _proof_step(root: Path, catalog_version: str | None, catalog_sha: str | None
                  f"L001 and D001 were detected in controlled input ({path.name})")
 
 
+GATE_TOKENS = ("acima_arch.py", "acima-arch.mjs", "./tools/archtest",
+               "Acima.ArchTests", "acima.py analyze")
+GATE_OBSERVATION = "docs/acima/gate-observed.json"
+PROOF_ARTEFACT = "docs/acima/proof.json"
+COMPARISON_FIELDS = ("standard", "level", "sourceFiles", "catalog", "executed")
+GATE_PROVIDERS = {"github", "github-actions"}
+PR_TRIGGERS = {"pull_request", "pull_request_target", "merge_group"}
+GATE_REQUIRED_FIELDS = ("repository", "commit", "workflow", "command", "executedAt",
+                        "standard", "catalogSha256", "level", "sourceFiles")
+
+
+def _line_indent(line: str) -> int:
+    expanded = line.expandtabs(2)
+    return len(expanded) - len(expanded.lstrip(" "))
+
+
+def _workflow_triggers(lines: list[str]) -> set[str]:
+    """Read the top-level on: value, including a block mapping or an inline list."""
+    triggers: set[str] = set()
+    for index, line in enumerate(lines):
+        match = re.match(r"^on\s*:\s*(.*)$", line.rstrip())
+        if not match:
+            continue
+        value = match.group(1).strip()
+        if value:
+            for trigger in PR_TRIGGERS | {"push", "workflow_call", "workflow_dispatch",
+                                          "schedule", "release", "issues"}:
+                if re.search(r"(^|[\s\[{,:])" + re.escape(trigger) +
+                             r"($|[\s\]},:])", value):
+                    triggers.add(trigger)
+            break
+        cursor = index + 1
+        while cursor < len(lines):
+            candidate = lines[cursor]
+            if not candidate.strip() or candidate.lstrip().startswith("#"):
+                cursor += 1
+                continue
+            if _line_indent(candidate) == 0:
+                break
+            key = re.match(r"\s*([A-Za-z_][\w-]*)\s*:", candidate)
+            if key:
+                triggers.add(key.group(1))
+            cursor += 1
+        break
+    return triggers
+
+
+def _workflow_jobs(lines: list[str]) -> list[dict]:
+    start = None
+    for index, line in enumerate(lines):
+        if re.match(r"^jobs\s*:\s*$", line.rstrip()):
+            start = index
+            break
+    if start is None:
+        return []
+    jobs: list[dict] = []
+    cursor = start + 1
+    while cursor < len(lines):
+        line = lines[cursor]
+        if not line.strip() or line.lstrip().startswith("#"):
+            cursor += 1
+            continue
+        if _line_indent(line) == 0:
+            break
+        header = re.match(r"\s*([A-Za-z0-9_.-]+)\s*:\s*$", line)
+        if not header:
+            cursor += 1
+            continue
+        name, indent = header.group(1), _line_indent(line)
+        end = cursor + 1
+        while end < len(lines):
+            if lines[end].strip() and _line_indent(lines[end]) <= indent:
+                break
+            end += 1
+        jobs.append({"name": name, "indent": indent, "lines": lines[cursor + 1:end]})
+        cursor = end
+    return jobs
+
+
+def _job_base_indent(job: dict) -> int:
+    indents = [_line_indent(line) for line in job["lines"]
+               if line.strip() and not line.lstrip().startswith("#")
+               and not line.lstrip().startswith("-")]
+    return min(indents, default=job["indent"] + 2)
+
+
+def _field_value(lines: list[str], key: str) -> str | None:
+    for line in lines:
+        match = re.match(r"^\s*" + re.escape(key) + r"\s*:\s*(.*)$", line)
+        if match:
+            return match.group(1).strip()
+    return None
+
+
+def _job_field_value(job: dict, key: str) -> str | None:
+    """Read a job property, not the same key inside one of its steps."""
+    base = _job_base_indent(job)
+    for line in job["lines"]:
+        if _line_indent(line) != base:
+            continue
+        match = re.match(r"^\s*" + re.escape(key) + r"\s*:\s*(.*)$", line)
+        if match:
+            return match.group(1).strip()
+    return None
+
+
+def _dedent(lines: list[str]) -> str:
+    nonempty = [line for line in lines if line.strip()]
+    if not nonempty:
+        return ""
+    common = min(_line_indent(line) for line in nonempty)
+    return "\n".join(line[common:] if len(line) >= common else line for line in lines)
+
+
+def _run_text(step_lines: list[str]) -> str | None:
+    for index, line in enumerate(step_lines):
+        match = re.match(r"^(\s*)run\s*:\s*(.*)$", line)
+        if not match:
+            continue
+        value = match.group(2).strip()
+        if value not in ("|", "|-", "|+", ">", ">-", ">+"):
+            return value
+        run_indent = len(match.group(1).expandtabs(2))
+        body: list[str] = []
+        cursor = index + 1
+        while cursor < len(step_lines):
+            candidate = step_lines[cursor]
+            if candidate.strip() and _line_indent(candidate) <= run_indent:
+                break
+            body.append(candidate)
+            cursor += 1
+        return _dedent(body)
+    return None
+
+
+def _workflow_steps(job: dict) -> list[list[str]]:
+    block = job["lines"]
+    base = _job_base_indent(job)
+    start = None
+    for index, line in enumerate(block):
+        if _line_indent(line) == base and re.match(r"^\s*steps\s*:\s*$", line):
+            start = index
+            break
+    if start is None:
+        return []
+    steps: list[list[str]] = []
+    cursor = start + 1
+    while cursor < len(block):
+        line = block[cursor]
+        if not line.strip() or line.lstrip().startswith("#"):
+            cursor += 1
+            continue
+        if _line_indent(line) <= base:
+            break
+        if not line.lstrip().startswith("-"):
+            cursor += 1
+            continue
+        item_indent = _line_indent(line)
+        end = cursor + 1
+        while end < len(block):
+            if block[end].strip() and _line_indent(block[end]) <= base:
+                break
+            if (block[end].strip().startswith("-")
+                    and _line_indent(block[end]) == item_indent):
+                break
+            end += 1
+        step_lines = block[cursor:end]
+        if step_lines:
+            step_lines = [re.sub(r"^(\s*)-\s?", r"\1", step_lines[0], count=1)] + step_lines[1:]
+        steps.append(step_lines)
+        cursor = end
+    return steps
+
+
+def _condition_state(value: str | None) -> str:
+    if value is None or not value.strip():
+        return "enabled"
+    normalized = value.strip()
+    normalized = re.sub(r"^\$\{\{\s*|\s*\}\}$", "", normalized).strip("'\" ")
+    lowered = normalized.lower()
+    if lowered in ("false", "0", "no", "null", "none"):
+        return "disabled"
+    if lowered in ("true", "1", "yes", "success()", "always()"):
+        return "enabled"
+    return "conditional"
+
+
+def _continue_on_error(value: str | None) -> str:
+    if value is None or not value.strip():
+        return "no"
+    normalized = value.strip().strip("'\"").lower()
+    if normalized in ("true", "yes", "1"):
+        return "advisory"
+    if normalized in ("false", "no", "0"):
+        return "no"
+    return "unknown"
+
+
+def _shell_segments(run: str) -> list[str]:
+    segments: list[str] = []
+    for line in run.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        for segment in re.split(r"\s*(?:&&|;)\s*", stripped):
+            segment = segment.strip().strip("(){}")
+            if segment:
+                segments.append(segment)
+    return segments
+
+
+def _root_value(command: str) -> str | None:
+    match = re.search(r"--root(?:=|\s+)(?:\"([^\"]+)\"|'([^']+)'|(\S+))", command)
+    if not match:
+        return None
+    return next((group for group in match.groups() if group), None)
+
+
+def _root_is_repository_root(value: str | None) -> bool:
+    if value is None:
+        return False
+    normalized = value.strip().strip("'\"")
+    return normalized in (".", "./", "${{ github.workspace }}", "$GITHUB_WORKSPACE",
+                          "${GITHUB_WORKSPACE}", "${{github.workspace}}")
+
+
+def _level_value(command: str) -> str | None:
+    match = re.search(r"--level(?:=|\s+)(L[123])\b", command, flags=re.I)
+    return match.group(1).upper() if match else None
+
+
+def _parse_gate_command(segment: str) -> dict | None:
+    """Recognise a gate only when a shell command actually invokes it.
+
+    A name in an ``echo``, a workflow name, a comment or a step label is not an invocation.
+    """
+    text = segment.strip()
+    if not text or text.startswith("#"):
+        return None
+    lowered = text.lower()
+    if re.match(r"^(echo|printf|cat|grep|rg|true|false|:|set)\b", lowered):
+        return None
+    try:
+        tokens = shlex.split(text)
+    except ValueError:
+        tokens = text.split()
+    if not tokens:
+        return None
+    first = Path(tokens[0].lstrip("(")).name.lower()
+    token: str | None = None
+    language: str | None = None
+    for index, item in enumerate(tokens):
+        base = Path(item.strip("()")).name
+        if base in ("acima_arch.py", "acima-arch.mjs"):
+            token, language = base, ("python" if base.endswith(".py") else "typescript")
+        elif base == "acima.py" and index + 1 < len(tokens) \
+                and tokens[index + 1].strip("()") == "analyze":
+            token, language = "acima.py analyze", None
+        elif base == "archtest" and ("go" in [part.lower() for part in tokens[:index]]
+                                     or first == "archtest"
+                                     or tokens[0].startswith("(")):
+            token, language = "./tools/archtest", "go"
+        elif base == "Acima.ArchTests" and "dotnet" in [part.lower() for part in tokens]:
+            token, language = "Acima.ArchTests", "dotnet"
+    if token is None:
+        return None
+    if first not in ("python", "python3", "node", "dotnet", "go") \
+            and not (first in ("acima_arch.py", "acima-arch.mjs", "acima.py", "archtest")):
+        return None
+    if token == "Acima.ArchTests" and "run" not in [part.lower() for part in tokens]:
+        return None
+    if token == "./tools/archtest" and first not in ("go", "archtest"):
+        return None
+    root = _root_value(text)
+    level = _level_value(text)
+    allowed_to_fail = bool(re.search(r"\|\|\s*(?:true|:|exit\s+0)\b", text))
+    return {"token": token, "language": language, "command": text, "root": root,
+            "level": level, "allowedToFail": allowed_to_fail}
+
+
+def _parse_workflow(path: Path, root: Path, level: str | None) -> dict:
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError as error:
+        return {"path": path.relative_to(root).as_posix(), "mentionsAcima": False,
+                "triggers": [], "onPullRequest": False, "invocations": [],
+                "validInvocations": [], "unsupported": [f"unreadable: {error}"],
+                "problems": [], "state": "no-gate"}
+    lines = text.splitlines()
+    triggers = _workflow_triggers(lines)
+    on_pull_request = bool(triggers & PR_TRIGGERS)
+    invocations: list[dict] = []
+    unsupported: list[str] = []
+    problems: list[str] = []
+
+    for job in _workflow_jobs(lines):
+        base = _job_base_indent(job)
+        job_if = _job_field_value(job, "if")
+        job_continue = _continue_on_error(_job_field_value(job, "continue-on-error"))
+        job_uses = _job_field_value(job, "uses") or ""
+        if job_if is not None and _condition_state(job_if) != "enabled":
+            job_condition = _condition_state(job_if)
+        else:
+            job_condition = "enabled"
+        if job_continue in ("advisory", "unknown"):
+            job_continue_state = job_continue
+        else:
+            job_continue_state = "no"
+        if job_uses:
+            unsupported.append(f"{job['name']}: reusable workflow {job_uses}")
+
+        for step in _workflow_steps(job):
+            step_if = _field_value(step, "if")
+            step_continue = _continue_on_error(_field_value(step, "continue-on-error"))
+            step_uses = _field_value(step, "uses") or ""
+            if step_uses.startswith("./") and "action" in step_uses.lower():
+                unsupported.append(f"{job['name']}: composite action {step_uses}")
+            run = _run_text(step)
+            if not run:
+                continue
+            for segment in _shell_segments(run):
+                parsed = _parse_gate_command(segment)
+                if not parsed:
+                    continue
+                invocation_problems: list[str] = []
+                if not on_pull_request:
+                    invocation_problems.append("workflow has no pull_request or merge_group trigger")
+                if "pull_request_target" in triggers and "pull_request" not in triggers \
+                        and "merge_group" not in triggers:
+                    invocation_problems.append(
+                        "pull_request_target does not verify the pull request commit")
+                if job_condition == "disabled":
+                    invocation_problems.append(f"job {job['name']} is disabled")
+                elif job_condition == "conditional":
+                    invocation_problems.append(
+                        f"job {job['name']} has conditional execution that cannot be verified")
+                if step_if is not None and _condition_state(step_if) == "disabled":
+                    invocation_problems.append("step is disabled")
+                elif step_if is not None and _condition_state(step_if) == "conditional":
+                    invocation_problems.append(
+                        "step has conditional execution that cannot be verified")
+                if job_continue_state == "advisory":
+                    invocation_problems.append(f"job {job['name']} allows failure")
+                elif job_continue_state == "unknown":
+                    invocation_problems.append(
+                        f"job {job['name']} has an unevaluable continue-on-error")
+                if step_continue == "advisory":
+                    invocation_problems.append("step allows failure")
+                elif step_continue == "unknown":
+                    invocation_problems.append("step has an unevaluable continue-on-error")
+                if not _root_is_repository_root(parsed["root"]):
+                    invocation_problems.append(
+                        f"does not use the repository root (--root {parsed['root'] or 'missing'})")
+                if parsed["level"] is None:
+                    if level not in (None, "L1"):
+                        invocation_problems.append(
+                            f"does not pin the declared {level} level")
+                elif level and parsed["level"] != level:
+                    invocation_problems.append(
+                        f"uses {parsed['level']} but the declared level is {level}")
+                if parsed["allowedToFail"]:
+                    invocation_problems.append("command is allowed to fail")
+                if "|" in parsed["command"] and "pipefail" not in run.lower():
+                    invocation_problems.append(
+                        "pipeline may lose the enforcer exit status without pipefail")
+                invocations.append({
+                    "workflow": path.relative_to(root).as_posix(),
+                    "job": job["name"],
+                    "step": _field_value(step, "name") or "",
+                    "token": parsed["token"],
+                    "language": parsed["language"],
+                    "command": parsed["command"],
+                    "root": parsed["root"],
+                    "level": parsed["level"],
+                    "onPullRequest": on_pull_request,
+                    "problems": invocation_problems,
+                    "valid": not invocation_problems,
+                })
+                problems.extend(invocation_problems)
+
+    valid = [item for item in invocations if item["valid"]]
+    if valid:
+        state = "configured"
+    elif invocations:
+        if any("no pull_request" in problem for problem in problems):
+            state = "not-pull-request"
+        elif any("allows failure" in problem or "disabled" in problem
+                 or "conditional execution" in problem or "unevaluable" in problem
+                 for problem in problems):
+            state = "disabled-or-advisory"
+        else:
+            state = "invalid-configuration"
+    elif unsupported:
+        state = "unsupported-workflow"
+    elif "acima" in text.lower():
+        state = "mention-only"
+    else:
+        state = "no-gate"
+    return {
+        "path": path.relative_to(root).as_posix(),
+        "mentionsAcima": "acima" in text.lower(),
+        "triggers": sorted(triggers),
+        "onPullRequest": on_pull_request,
+        "invocations": invocations,
+        "validInvocations": valid,
+        "unsupported": unsupported,
+        "problems": problems,
+        "state": state,
+    }
+
+
+def _gate_workflows(root: Path, level: str | None = None) -> list[dict]:
+    directory = root / ".github/workflows"
+    entries: list[dict] = []
+    if not directory.is_dir():
+        return entries
+    for path in sorted(list(directory.glob("*.yml")) + list(directory.glob("*.yaml"))):
+        entry = _parse_workflow(path, root, level)
+        if entry["mentionsAcima"] or entry["invocations"] or entry["unsupported"]:
+            entries.append(entry)
+    return entries
+
+
+def _observation_command_matches(command: str, invocation: dict) -> bool:
+    parsed = _parse_gate_command(command)
+    if not parsed or parsed["token"] != invocation["token"]:
+        return False
+    if parsed["root"] and parsed["root"] != invocation["root"]:
+        return False
+    if parsed["level"] and invocation["level"] and parsed["level"] != invocation["level"]:
+        return False
+    return True
+
+
+def _run_url_problem(url: str, repository: str, run_id: str) -> str | None:
+    try:
+        parsed = urllib.parse.urlsplit(url)
+    except ValueError:
+        return "runUrl is not a valid URL"
+    if parsed.scheme != "https" or parsed.hostname not in ("github.com", "www.github.com"):
+        return "runUrl is not a GitHub provider URL"
+    normalized = parsed.path.lower()
+    if repository and repository.lower() not in normalized:
+        return "runUrl does not name the observation repository"
+    if run_id and f"/actions/runs/{run_id.lower()}" not in normalized:
+        return "runUrl does not name the observation run"
+    return None
+
+
 def _gate_step(root: Path, workflows: list[dict], level: str | None,
                catalog_version: str | None, catalog_sha: str | None) -> dict:
     path = root / GATE_OBSERVATION
-    invoking = [entry for entry in workflows if entry["invokes"]]
+    valid = [item for entry in workflows for item in entry["validInvocations"]]
+    valid_paths = {item["workflow"] for item in valid}
+
+    def gate_result(state: str, gate_state: str, evidence: str, remedy: str = "",
+                    details: dict | None = None) -> dict:
+        step = _step(8, "gate", state, evidence, remedy)
+        step["gateState"] = gate_state
+        step["gate"] = details or {}
+        return step
+
     if not path.is_file():
-        if invoking:
-            return _step(8, "gate", STEP_IN_PROGRESS,
-                         f"{invoking[0]['path']} invokes {invoking[0]['invokes'][0]}; "
-                         "configured, not observed on a pull request",
-                         "keep a provider-sourced observation record for a real run")
+        if valid:
+            first = valid[0]
+            return gate_result(
+                STEP_IN_PROGRESS, "configured-not-observed",
+                f"{first['workflow']} invokes {first['token']}; configured, not observed "
+                "on a pull request",
+                "keep a provider-sourced observation record for a real run",
+                {"workflows": workflows, "validInvocations": valid})
         if workflows:
-            return _step(8, "gate", STEP_BLOCKED,
-                         f"{workflows[0]['path']} mentions ACIMA but invokes no gate command",
-                         "make the workflow run an enforcer, or remove the misleading file")
-        return _step(8, "gate", STEP_NOT_STARTED, "no workflow invokes a gate",
-                     "propose a CI gate and wait for approval")
+            first = workflows[0]
+            if first["state"] == "mention-only":
+                return gate_result(
+                    STEP_BLOCKED, "mention-only",
+                    f"{first['path']} mentions ACIMA but invokes no gate command",
+                    "make the workflow run an enforcer, or remove the misleading file",
+                    {"workflows": workflows})
+            if first["state"] == "not-pull-request":
+                return gate_result(
+                    STEP_BLOCKED, "not-pull-request",
+                    f"{first['path']} invokes {first['invocations'][0]['token']} but does "
+                    "not run for pull requests",
+                    "add a pull_request or merge_group trigger and re-check the workflow",
+                    {"workflows": workflows})
+            if first["state"] == "unsupported-workflow":
+                return gate_result(
+                    STEP_BLOCKED, "unsupported-workflow",
+                    "workflow cannot be interpreted safely: " + "; ".join(first["unsupported"]),
+                    "use a direct, unconditional enforcer step on pull requests",
+                    {"workflows": workflows})
+            if first["state"] in ("disabled-or-advisory", "invalid-configuration"):
+                detail = "; ".join((first.get("problems") or ["the invocation is not valid"])[:3])
+                return gate_result(
+                    STEP_BLOCKED, first["state"], f"{first['path']}: {detail}",
+                    "fix the workflow root, level, triggers and failure semantics",
+                    {"workflows": workflows})
+        return gate_result(STEP_NOT_STARTED, "not-found",
+                           "no workflow invokes a gate",
+                           "propose a CI gate and wait for approval")
+
+    if not valid and workflows:
+        first = workflows[0]
+        if first["state"] == "mention-only":
+            return gate_result(
+                STEP_BLOCKED, "mention-only",
+                f"{first['path']} mentions ACIMA but invokes no gate command",
+                "make the workflow run an enforcer, or remove the misleading file",
+                {"workflows": workflows})
+        if first["state"] == "not-pull-request":
+            return gate_result(
+                STEP_BLOCKED, "not-pull-request",
+                f"{first['path']} invokes {first['invocations'][0]['token']} but does not "
+                "run for pull requests",
+                "add a pull_request or merge_group trigger and re-check the workflow",
+                {"workflows": workflows})
+        if first["state"] == "unsupported-workflow":
+            return gate_result(
+                STEP_BLOCKED, "unsupported-workflow",
+                "workflow cannot be interpreted safely: " + "; ".join(first["unsupported"]),
+                "use a direct, unconditional enforcer step on pull requests",
+                {"workflows": workflows})
+        if first["state"] in ("disabled-or-advisory", "invalid-configuration"):
+            detail = "; ".join((first.get("problems") or ["the invocation is not valid"])[:3])
+            return gate_result(
+                STEP_BLOCKED, first["state"], f"{first['path']}: {detail}",
+                "fix the workflow root, level, triggers and failure semantics",
+                {"workflows": workflows})
+
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
-        return _step(8, "gate", STEP_BLOCKED, f"observation unreadable: {error}",
-                     "replace it with a valid observation record")
+        return gate_result(STEP_BLOCKED, "observation-malformed",
+                           f"observation unreadable: {error}",
+                           "replace it with a valid observation record")
     problems: list[str] = []
+    unverified: list[str] = []
     if not isinstance(data, dict):
         data, problems = {}, ["observation is not an object"]
     else:
-        for field in ("repository", "commit", "workflow", "command", "executedAt",
-                      "standard", "catalogSha256"):
+        for field in GATE_REQUIRED_FIELDS:
             if not str(data.get(field, "")).strip():
                 problems.append(f"missing {field}")
-        workflow = str(data.get("workflow", ""))
-        if workflow and workflow not in {entry["path"] for entry in workflows}:
-            problems.append("workflow does not exist or does not invoke a gate")
+        workflow = str(data.get("workflow", "")).strip()
+        if workflow and workflow not in valid_paths:
+            problems.append("workflow does not exist or does not invoke a valid gate")
         repository = str(data.get("repository", "")).strip()
         remote = _git_remote(root)
         if repository and remote and _repository_identity(repository) != _repository_identity(remote):
             problems.append("repository does not match the origin remote")
+        if repository and not remote:
+            unverified.append("repository cannot be cross-checked against an origin remote")
         if str(data.get("standard", "")) != str(catalog_version):
             problems.append("standard does not match the catalog")
         if data.get("catalogSha256") != catalog_sha:
@@ -1024,29 +2038,67 @@ def _gate_step(root: Path, workflows: list[dict], level: str | None,
         commit = str(data.get("commit", "")).strip()
         if commit and not re.fullmatch(r"[0-9a-f]{7,40}", commit):
             problems.append("commit is not a git SHA")
+        if data.get("enforcerExecuted") is False or data.get("skipped") is True \
+                or str(data.get("stepOutcome", "")).lower() in ("skipped", "cancelled") \
+                or str(data.get("conclusion", "")).lower() in ("skipped", "cancelled"):
+            problems.append("observation reports that the enforcer did not execute")
+        command = str(data.get("command", "")).strip()
+        workflow_invocations = [item for item in valid if item["workflow"] == workflow]
+        if command and not any(_observation_command_matches(command, item)
+                               for item in workflow_invocations):
+            problems.append("command does not match a valid invocation in the observed workflow")
+        status = str(data.get("status", "")).strip().lower()
+        conclusion = str(data.get("conclusion", "")).strip().lower()
+        if status and status not in ("completed", "success"):
+            unverified.append("the provider run is not complete")
+        if conclusion and conclusion not in ("success", "failure", "timed_out",
+                                             "startup_failure"):
+            problems.append(f"observation reports a {conclusion!r} conclusion")
+        run_id = str(data.get("runId", "")).strip()
+        provider = str(data.get("provider", "")).strip().lower()
+        if provider and provider not in GATE_PROVIDERS:
+            unverified.append(f"provider {provider!r} is not supported")
+        if not provider or not run_id:
+            unverified.append("provider or runId is missing")
+        if data.get("verified") is not True:
+            unverified.append("the provider verification flag is not true")
+        if data.get("manual") is True:
+            unverified.append("the observation is marked manual")
+        run_url = str(data.get("runUrl", "")).strip()
+        if run_url:
+            url_problem = _run_url_problem(run_url, repository, run_id)
+            if url_problem:
+                problems.append(url_problem)
         head = _git_head(root)
         if head and commit and not head.startswith(commit):
             problems.append(f"observation is stale: commit {commit[:12]} is not HEAD {head[:12]}")
-        if problems:
-            return _step(8, "gate", STEP_BLOCKED, "; ".join(problems),
-                         "record a fresh observation with repository, commit and workflow provenance")
-        if data.get("exitCode") == 1:
-            return _step(8, "gate", STEP_IN_PROGRESS,
-                         f"observed gate failure at {commit[:12]}; the gate ran and rejected the commit",
-                         "fix the finding, then record a passing observation")
-        independently = (data.get("verified") is True and data.get("provider")
-                          and data.get("runId"))
-        if data.get("manual") is True or not independently:
-            return _step(8, "gate", STEP_IN_PROGRESS,
-                         f"observed manually at {commit[:12]}; not independently verified",
-                         "attach provider and run identifier, or treat it as manual evidence")
         if not head:
-            return _step(8, "gate", STEP_IN_PROGRESS,
-                         "observation is recorded but the commit cannot be cross-checked here",
-                         "run status inside the measured repository's git worktree")
-        return _step(8, "gate", STEP_COMPLETE,
-                     f"independently recorded run {data.get('runId')} at {commit[:12]}")
-    return _step(8, "gate", STEP_BLOCKED, "observation did not validate", "re-record it")
+            unverified.append("the commit cannot be cross-checked here")
+        if problems:
+            gate_state = "observation-stale" if any("stale" in item for item in problems) \
+                else "observation-mismatch"
+            return gate_result(
+                STEP_BLOCKED, gate_state, "; ".join(problems),
+                "record a fresh observation with repository, commit, workflow, command and "
+                "catalog provenance", {"observationProblems": problems, "workflows": workflows})
+        if data.get("exitCode") == 1 or conclusion in ("failure", "timed_out",
+                                                       "startup_failure"):
+            return gate_result(
+                STEP_IN_PROGRESS, "observation-failed",
+                f"observed gate failure at {commit[:12]}; the gate ran and rejected the commit",
+                "fix the finding, then record a passing observation",
+                {"observation": data, "workflows": workflows})
+        if unverified:
+            return gate_result(
+                STEP_IN_PROGRESS, "observation-unverified",
+                f"observed at {commit[:12]}; not independently verified: "
+                + "; ".join(unverified),
+                "attach provider and run identifier, and cross-check the repository and HEAD",
+                {"observation": data, "unverified": unverified, "workflows": workflows})
+        return gate_result(
+            STEP_COMPLETE, "verified",
+            f"independently recorded run {data.get('runId')} at {commit[:12]}",
+            details={"observation": data, "workflows": workflows})
 
 
 def _count_errors(payload: dict) -> int:
@@ -1176,7 +2228,7 @@ def status_project(root: Path) -> dict:
     runs, rejected_runs = _run_artefacts(root, catalog_version)
     newest = runs[-1] if runs else None
     errors = _count_errors(newest["payload"]) if newest else 0
-    workflows = _gate_workflows(root)
+    workflows = _gate_workflows(root, level)
 
     steps = [_step(1, "recon", STEP_READY,
                    f"{sources} source file(s), {language or 'unknown language'}")]
@@ -1297,16 +2349,54 @@ def status_project(root: Path) -> dict:
                          doneWhen="an approved workflow invokes the gate on pull requests.",
                          approvalRequired=True, writes=True)
     elif steps[7]["state"] == STEP_BLOCKED:
-        next_step.update(action="Make the CI workflow run a real gate",
-                         why="A workflow that mentions ACIMA without invoking it proves nothing.",
-                         command="edit the workflow to run the enforcer with --root and the declared level",
-                         doneWhen="the workflow invokes the gate and a failing pull request blocks.",
-                         approvalRequired=True, writes=True)
+        gate_state = steps[7].get("gateState")
+        if gate_state == "mention-only":
+            next_step.update(action="Make the CI workflow run a real gate",
+                             why="A workflow that mentions ACIMA without invoking it proves nothing.",
+                             command="edit the workflow to run the enforcer with --root and the declared level",
+                             doneWhen="the workflow invokes the gate and a failing pull request blocks.",
+                             approvalRequired=True, writes=True)
+        elif gate_state == "not-pull-request":
+            next_step.update(action="Make the CI gate run on pull requests",
+                             why="A correct enforcer command that runs only on push or manually does not protect merges.",
+                             command="add a pull_request or merge_group trigger to the gate workflow",
+                             doneWhen="the workflow runs the enforcer for pull requests and merge groups.",
+                             approvalRequired=True, writes=True)
+        elif gate_state in ("disabled-or-advisory", "invalid-configuration"):
+            next_step.update(action="Fix the CI gate before trusting it",
+                             why="The enforcer invocation is disabled, advisory, conditional or configured for the wrong scope.",
+                             command="remove if: false and continue-on-error, use --root . and the declared level",
+                             doneWhen="one unconditional step invokes the enforcer at the declared level.",
+                             approvalRequired=True, writes=True)
+        elif gate_state in ("observation-stale", "observation-mismatch"):
+            next_step.update(action="Re-record the gate observation from the actual workflow",
+                             why="The recorded run is stale, belongs to another workflow or does not match the current command.",
+                             command="open a fresh pull request run and record its provider, run id, workflow and HEAD",
+                             doneWhen="the observation references this workflow and its commit is HEAD.",
+                             approvalRequired=True, writes=True)
+        elif gate_state == "unsupported-workflow":
+            next_step.update(action="Replace the reusable or composite gate with a directly verifiable step",
+                             why="The current workflow cannot be tied to a concrete enforcer execution.",
+                             command="run the enforcer directly in an unconditional pull-request job",
+                             doneWhen="the workflow has one directly observable enforcer invocation.",
+                             approvalRequired=True, writes=True)
+        else:
+            next_step.update(action="Make the CI workflow run a real gate",
+                             why="The gate evidence is incomplete or invalid.",
+                             command="edit the workflow to run the enforcer with --root and the declared level",
+                             doneWhen="the workflow invokes the gate and a failing pull request blocks.",
+                             approvalRequired=True, writes=True)
     elif steps[7]["state"] == STEP_IN_PROGRESS:
-        next_step.update(action="Confirm the gate runs on a pull request and record provider provenance",
-                         why="Configured or manually recorded is not independently observed.",
-                         command="open a pull request, then record commit, workflow and run id",
-                         doneWhen="a provider-sourced observation matches HEAD and the declared level.")
+        if steps[7].get("gateState") == "observation-failed":
+            next_step.update(action="Fix the failure the gate observed",
+                             why="The gate ran and rejected the commit; that is not a passing milestone.",
+                             command="fix the reported finding, then record a fresh passing run",
+                             doneWhen="a provider-sourced observation at HEAD exits 0.")
+        else:
+            next_step.update(action="Confirm the gate runs on a pull request and record provider provenance",
+                             why="Configured or manually recorded is not independently observed.",
+                             command="open a pull request, then record commit, workflow and run id",
+                             doneWhen="a provider-sourced observation matches HEAD and the declared level.")
     elif steps[8]["state"] in (STEP_NOT_STARTED, STEP_IN_PROGRESS):
         rule = ""
         if newest and newest["payload"].get("findings"):

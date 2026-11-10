@@ -8,12 +8,12 @@
       "bytes": 17767
     },
     "docs/commands.md": {
-      "sha256": "f68e6d2069b7c30e83e3b882846762fa642d544bd15e828ac633a2dafcbe022e",
-      "bytes": 13988
+      "sha256": "9d39a1283d6bb5ebd47179c5ba1e5169ceb52e6392bce369bebef81da538e13a",
+      "bytes": 15113
     },
     "docs/guides/architecture-families.md": {
-      "sha256": "b02bd837bce377c02d1e48b26ab5ab27478b426a5eed97fa4a6d342c7d60ade2",
-      "bytes": 7815
+      "sha256": "1cf4b53f5251e1bc36fa6339a0aab394e99b4158c0b518ea1bb9fc4078100325",
+      "bytes": 8756
     },
     "docs/guides/architecture-tests.md": {
       "sha256": "366bc3dd0d9dee927df997d347e47e101e5bd4f698057a667d53d6c6d036f66f",
@@ -172,8 +172,8 @@
       "bytes": 33855
     },
     "tools/acima.py": {
-      "sha256": "85281449ee8abebad6d8c84ef6be915bfafe00fffa5db6d964cfd854cee2f0d6",
-      "bytes": 88442
+      "sha256": "92eeb46985fb17affa443eb8e6b4aa9921aab218d36a777a434d2f91e725b445",
+      "bytes": 140889
     }
   }
 }

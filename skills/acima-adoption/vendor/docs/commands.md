@@ -68,11 +68,14 @@ python3 tools/acima.py status --root . --format json
 It reports the eleven steps with evidence-verified states — `NOT_STARTED`, `READY`, `IN_PROGRESS`,
 `BLOCKED`, `COMPLETE`, `NOT_APPLICABLE`, `UNKNOWN` — rendered in plain English. A step is complete
 only when its criterion is verified: calibration compares the manifest pin with the catalog, a
-baseline must parse with `sourceFiles > 0` and an execution map, a workflow is read to see whether it
-invokes a gate, and a gate observation is validated for repository, commit, workflow, command,
-time, standard, catalog hash, level, source count and exit status. A configured gate and a manually
-recorded observation are `in progress`; only a provider-sourced run matching `HEAD` is complete. The
-proof record must show `L001` and `D001` detected, and the claim is computed with `acima.py claim`.
+baseline must parse with `sourceFiles > 0` and an execution map. A gate workflow is parsed for an
+actual `run:` invocation: the enforcer must use `--root .`, the declared level, and a pull-request
+or merge trigger; disabled, advisory, conditional and unsupported reusable/composite jobs do not
+count. A gate observation must reference that workflow and command, match the repository, `HEAD`,
+standard, catalog hash, level and positive source count, and must not report a skipped enforcer. A
+configured gate and a manually recorded observation are `in progress`; only a provider-sourced run
+matching `HEAD` is complete. The proof record must show `L001` and `D001` detected, and the claim is
+computed with `acima.py claim`.
 Optional documents never appear in the next action. It prints one next action, why, its done
 condition, and whether approval is required. Two honest limits remain: step 3 stays `UNKNOWN`
 until `inject_violation.py --out` is run, and step 9 needs two comparable measurements to show a
@@ -90,11 +93,14 @@ fall.
  "manual": false, "verified": true, "provider": "github-actions", "runId": "123"}
 ```
 
-Every field except `manual`, `verified`, `provider` and `runId` is required. The workflow must
-exist and invoke a gate, the catalog hash and level must match, and the commit must match `HEAD`
-when it can be checked. `exitCode: 1` means the gate ran and rejected the commit — reported as a
-failure, never as a milestone. `manual: true`, or a record without provider provenance, is
-`IN_PROGRESS` and is not independently verified.
+Every field except `manual`, `verified`, `provider`, `runId` and optional `runUrl`/`enforcerExecuted`
+is required. The workflow must exist and contain a valid, unconditional enforcer invocation for a
+pull request or merge event. Its command must match the observation; the catalog hash, level and
+repository must match, and the commit must match `HEAD` when it can be checked. `exitCode: 1`
+means the gate ran and rejected the commit — reported as a failure, never as a milestone.
+`enforcerExecuted: false`, a skipped outcome, a non-success `conclusion`, or an unverifiable
+provider/run id never establishes a verified gate. `manual: true`, or a record without provider
+provenance, is `IN_PROGRESS` and is not independently verified.
 
 **Proof record** — `docs/acima/proof.json`, written by
 `inject_violation.py --project . --out docs/acima/proof.json`: `standard`, `catalogSha256`,
@@ -145,9 +151,16 @@ python3 tools/acima.py claim   --report acima.json --level L2 --require full
 python3 tools/acima.py verify  python typescript
 ```
 
-- `assess` verdicts: `ASSESSED`, `NEEDS_UNIT_MAP`, `UNSUPPORTED_LANGUAGE`, `TOOLCHAIN_MISSING`,
-  `INVALID_ROOT`, `NO_SOURCE`, `INVALID_CONFIG`, `INVALID_ASSESSMENT`. `NEEDS_UNIT_MAP` means
-  unassessed, never clean. Exit `0` when a report was produced, `2` when it could not be.
+- `assess` verdicts: `ASSESSED`, `NEEDS_UNIT_MAP`, `UNSUPPORTED_LANGUAGE`,
+  `UNSUPPORTED_PROFILE`, `TOOLCHAIN_MISSING`, `INVALID_ROOT`, `NO_SOURCE`, `INVALID_CONFIG`,
+  `INVALID_ASSESSMENT`. `NEEDS_UNIT_MAP` means unassessed, never clean. Exit `0` when a report was
+  produced, `2` when it could not be.
+- `assess` also returns an evidence-based fit result with one outcome: `RECOMMENDED`,
+  `RECOMMENDED_WITH_LIMITATIONS`, `NOT_RECOMMENDED`, `INSUFFICIENT_EVIDENCE` or `NOT_SUPPORTED`.
+  It assesses technical compatibility, architectural substance, existing enforcement, incremental
+  value, adoption cost and practical applicability independently. Zero findings do not imply
+  adoption; existing findings do not imply `RECOMMENDED_WITH_LIMITATIONS`. Benefits are classified
+  as available today, achievable through adoption, requiring additional work, or not applicable.
 - `claim` exits `0` only when the requested class is satisfied, `1` when a full claim is requested
   but the run is partial, `2` when the run or evidence document is invalid.
 - `inspect`, `analyze`, `report`, `claim`, `assess` never write to the target.

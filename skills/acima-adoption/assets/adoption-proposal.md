@@ -5,12 +5,18 @@
 
 ## 1. Recommendation
 
-**Recommendation:** Recommended / Recommended with limitations / Not recommended / Insufficient
-evidence to recommend.
+**Recommendation:** `RECOMMENDED` / `RECOMMENDED_WITH_LIMITATIONS` / `NOT_RECOMMENDED` /
+`INSUFFICIENT_EVIDENCE` / `NOT_SUPPORTED`.
 
 In two or three sentences: whether ACIMA fits this repository, the single strongest reason, and the
-main limitation. Use the evidence gathered in the read-only assessment. Do not argue for a different
-architecture and do not open with rule ids, levels or catalog terminology.
+main limitation. Use the evidence gathered in the read-only assessment. A clean report is not a
+recommendation: no meaningful boundaries, or existing checks that already cover the guarantee, can
+make adoption not recommended. Do not argue for a different architecture and do not open with rule
+ids, levels or catalog terminology.
+
+**Dimensions assessed:** technical compatibility; architectural substance; existing enforcement;
+incremental value; adoption cost; practical applicability. Each has a status, evidence and
+confidence. Distinguish observed facts, inferred layout and questions only the owner can answer.
 
 Key findings that drive the recommendation:
 
@@ -52,8 +58,10 @@ Specific outcomes grounded in the evidence above, not generic claims:
 - `<e.g. persistence details stop leaking into the host>`
 - `<e.g. a new boundary violation fails the pull request with an exact remedy>`
 
-Mark each as achievable now, achievable with further engineering work, or not applicable here. If
-ACIMA would add little, say so and recommend against adoption.
+Mark each as **available today**, **achievable through adoption**, **requires additional work**, or
+**not applicable**. Never describe a proposed gate, exception process or contract check as an
+existing capability. If ACIMA would add little relative to its cost, say so and recommend against
+adoption.
 
 ## 5. Recommended adoption scope
 

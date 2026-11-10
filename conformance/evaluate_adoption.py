@@ -99,7 +99,7 @@ def unclear_monolith(root: Path) -> str:
     assert "fit" in status["next"]["action"].lower(), status["next"]["action"]
     _, assessment = acima.assess_project(root)
     assert assessment["verdict"] == "NEEDS_UNIT_MAP", assessment["verdict"]
-    assert assessment["assessmentResult"]["fit"] == "insufficient-evidence"
+    assert assessment["assessmentResult"]["fit"] == "INSUFFICIENT_EVIDENCE"
     return "read-only fit path with named unknowns"
 
 
@@ -129,7 +129,7 @@ def unsupported(root: Path) -> str:
     write(root / "src/Main.java", "class Main {}\n")
     _, assessment = acima.assess_project(root)
     assert assessment["verdict"] == "UNSUPPORTED_LANGUAGE", assessment["verdict"]
-    assert assessment["assessmentResult"]["fit"] == "insufficient-evidence"
+    assert assessment["assessmentResult"]["fit"] == "NOT_SUPPORTED"
     return "unsupported profile reported without a conformance claim"
 
 

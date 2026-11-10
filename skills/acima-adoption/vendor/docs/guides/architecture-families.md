@@ -51,6 +51,20 @@ rules are the same whether the modules are folders, projects or services.
 | **Modular monolith** | One deployable, several team-owned capabilities, and a need for independent change. | This is ACIMA's home ground: it turns the seams from a folder convention into a gate (`D001`, `L003`, `A001`–`A006`), so the "modular" part does not decay. | In-process transactions across modules are forbidden even when technically possible; they are the coupling that prevents later extraction. Configuration and static state are owned per module. |
 | **Microservices** | Independent deployment, scaling and ownership are the dominant constraint. | The service-topology profile (P10–P13) applies the same ownership and isolation obligations per service layer, with per-layer contracts and zero-reference contracts; `D001` becomes "no service reads another service's database". | Contracts may not reference other contracts at all, and a service boundary must be declared as evidence, not inferred from folder names. The adoption skill this revision ships does not implement the service workflow; it stops rather than forcing the base unit model. |
 
+## Fit is not a family judgement
+
+Before recommending adoption, assess six dimensions independently: technical compatibility,
+architectural substance, existing enforcement, incremental value, adoption cost and practical
+applicability. Then choose `RECOMMENDED`, `RECOMMENDED_WITH_LIMITATIONS`, `NOT_RECOMMENDED`,
+`INSUFFICIENT_EVIDENCE` or `NOT_SUPPORTED`.
+
+A clean report is one input, never a recommendation. A small utility with no meaningful ownership
+boundaries, or an application whose existing boundary checks already cover the same guarantee, can
+be `NOT_RECOMMENDED`. An unsupported language or service topology is `NOT_SUPPORTED`. If ownership
+is not established, use `INSUFFICIENT_EVIDENCE` and ask only the question that changes the decision.
+Benefits must be classified as available today, achievable through adoption, requiring additional
+work, or not applicable; a proposed gate is never described as an existing capability.
+
 ## How to tell which one you are looking at
 
 Use evidence, not the README:

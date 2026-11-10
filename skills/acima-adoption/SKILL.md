@@ -76,9 +76,15 @@ proposal, and the implementation's run for the handoff. `status` reports which p
 **Phase 1 — Assessment.** Preflight runs first, always: it compares `rules.json` with the pinned SHA-256
 and rule ids (`SKL-002`/`SKL-003`), classifies `greenfield`, `brownfield` or `adopting`, and lists
 blockers. Exit `1` is a stop: report it in the user's terms with the printed remedy, never work
-around it. Then run the read-only fit analysis: explain the repository as discovered (see
-*Discovery*), and report where it differs from ACIMA's expectations. No config, waivers, baselines,
-CI, docs or source changes. `NEEDS_UNIT_MAP` means unassessed, never clean.
+around it. Then run the read-only fit analysis and assess six dimensions independently: technical
+compatibility, architectural substance, existing enforcement, incremental value, adoption cost and
+practical applicability. Choose one outcome: `RECOMMENDED`, `RECOMMENDED_WITH_LIMITATIONS`,
+`NOT_RECOMMENDED`, `INSUFFICIENT_EVIDENCE` or `NOT_SUPPORTED`. A clean report is not a
+recommendation: a utility with no meaningful boundaries, or an application whose existing checks
+already cover the guarantee, is a `NOT_RECOMMENDED`. Explain the application, discovered
+boundaries, existing enforcement, what ACIMA adds and does not add, cost, confidence and unresolved
+questions. No config, waivers, baselines, CI, docs or source changes. `NEEDS_UNIT_MAP` means
+unassessed, never clean.
 
 **Phase 2 — Proposal.** Present [the proposal](assets/adoption-proposal.md) as a decision document:
 recommendation first, then the evidence, the smallest useful scope, exact paths with
@@ -148,11 +154,15 @@ its criterion is verified:
   A fingerprint file alone is in progress, not measured.
 - **own** requires owners, scopes, fingerprints and unexpired waivers; invalid, unowned or expired
   exceptions block, and are never accepted as exceptions.
-- **gate** reads the workflow: a file that mentions ACIMA without invoking an enforcer is blocked;
-  a configured invocation is *in progress, not observed*. An observation must name the repository,
-  commit, workflow, command, time, standard, catalog hash, level, source count and exit status. A
-  manually recorded result is *in progress, not independently verified*; only a provider-sourced
-  run matching `HEAD` completes the step. CI configuration alone never proves enforcement.
+- **gate** reads the actual `run:` command, not just the file name: it must invoke a recognized
+  enforcer with `--root .`, the declared level, and a pull-request or merge trigger. Disabled,
+  advisory, conditional or reusable/composite steps are blocked; a valid configured step is
+  *in progress, not observed*. An observation must name the repository, commit, workflow, command,
+  time, standard, catalog hash, level, source count and exit status, and its workflow/command must
+  match a valid invocation in that same workflow. A manually recorded result is *in progress, not
+  independently verified*; only a provider-sourced, non-skipped run with a successful conclusion
+  against the matching repository and `HEAD` completes the step. CI configuration alone never
+  proves enforcement.
 - **slice** compares runs only when standard, level, source scope and execution map match; a lower
   count from a different scope is not an improvement, and a resolved finding must be named with no
   new errors.
@@ -184,13 +194,15 @@ Six milestone updates at most; a blocker gets a message only when it changes the
 
 ## Proposal: a decision document
 
-Nine sections, in this order: **Recommendation** (recommended / with limitations / not recommended /
-insufficient evidence, and why); **Application discovered**; **What ACIMA adds**; **Expected
-benefits** grounded in evidence; **Recommended scope** (smallest useful, level in plain English, what
-is excluded and why); **Proposed changes** (exact paths, purpose, required/conditional/optional,
-modified files, dependencies, CI); **Tradeoffs and risks** (maintenance, tooling limits, migration,
-compatibility, what ACIMA does not prove); **Next steps** (sequence, what the user sees, decisions);
-**Approval** (one question, scope-limited, partial approval allowed).
+Nine sections, in this order: **Recommendation** (`RECOMMENDED`, `RECOMMENDED_WITH_LIMITATIONS`,
+`NOT_RECOMMENDED`, `INSUFFICIENT_EVIDENCE` or `NOT_SUPPORTED`, and why); **Application
+discovered**; **What ACIMA adds**; **Expected benefits** grounded in evidence and classified as
+available today, achievable through adoption, requiring additional work, or not applicable;
+**Recommended scope** (smallest useful, level in plain English, what is excluded and why);
+**Proposed changes** (exact paths, purpose, required/conditional/optional, modified files,
+dependencies, CI); **Tradeoffs and risks** (maintenance, tooling limits, migration, compatibility,
+what ACIMA does not prove); **Next steps** (sequence, what the user sees, decisions); **Approval**
+(one question, scope-limited, partial approval allowed).
 
 Recommend; do not turn the proposal into a questionnaire. State the level's practical consequence
 before naming L1/L2/L3.
