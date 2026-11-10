@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "updatedOn": "2026-11-10",
+  "description": "Declarative scenario catalog for the AI adoption effectiveness benchmark. Each entry names one scenario file under repositories/ and the ground truth established for it.",
+  "scenarios": [
+    {
+      "id": "library-python-httpx",
+      "file": "repositories/library-python-httpx.json",
+      "category": "small-library",
+      "status": "implemented",
+      "profiles": ["base"],
+      "modes": ["read-only", "authorized-adoption"]
+    },
+    {
+      "id": "modular-monolith-typescript-domain-driven-hexagon",
+      "file": "repositories/modular-monolith-typescript-domain-driven-hexagon.json",
+      "category": "modular-monolith",
+      "status": "implemented",
+      "profiles": ["base"],
+      "modes": ["read-only", "authorized-adoption"]
+    }
+  ],
+  "plannedCategories": [
+    {
+      "category": "published-package",
+      "status": "planned",
+      "note": "Requires a pinned TypeScript or .NET package where the library profile can actually be enforced."
+    },
+    {
+      "category": "clean-architecture",
+      "status": "planned",
+      "note": "The modular-monolith scenario already exercises an established architecture; a dedicated Clean Architecture repository is not yet pinned."
+    },
+    {
+      "category": "hexagonal",
+      "status": "planned",
+      "note": "Ports-and-adapters interpretation is exercised inside the modular-monolith scenario."
+    },
+    {
+      "category": "distributed-system",
+      "status": "planned",
+      "note": "The service-topology profile is supported only for the .NET reference fixture, so a distributed scenario would measure applicability, not enforcement."
+    },
+    {
+      "category": "legacy",
+      "status": "planned",
+      "note": "Needs evidence discipline ground truth across a long-lived repository."
+    },
+    {
+      "category": "poorly-structured",
+      "status": "planned",
+      "note": "Needs an independently reviewed ground truth for proportionate recommendations."
+    }
+  ]
+}

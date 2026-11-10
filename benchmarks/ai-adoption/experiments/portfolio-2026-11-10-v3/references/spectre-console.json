@@ -1,0 +1,182 @@
+{
+  "schemaVersion": 1,
+  "experimentId": "portfolio-2026-11-10-v2",
+  "id": "spectre-console",
+  "repository": {
+    "url": "https://github.com/spectreconsole/spectre.console",
+    "commit": "e8045f7c53c3c217a7f93f362f5256f1fadc0020",
+    "license": "MIT",
+    "language": "dotnet"
+  },
+  "softwareCategory": "console-library",
+  "architectureFamily": "multi-project console library/extensions",
+  "applicableProfiles": [
+    "base",
+    "library"
+  ],
+  "profileSource": "reviewed unit map declares the library profile",
+  "expectedBoundaries": [
+    {
+      "id": "console",
+      "module": "console",
+      "role": "implementation",
+      "evidencePaths": [
+        "src/Spectre.Console"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    },
+    {
+      "id": "ansi",
+      "module": "ansi",
+      "role": "implementation",
+      "evidencePaths": [
+        "src/Spectre.Console.Ansi"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    },
+    {
+      "id": "testing",
+      "module": "testing",
+      "role": "implementation",
+      "evidencePaths": [
+        "src/Spectre.Console.Testing"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    },
+    {
+      "id": "json",
+      "module": "json",
+      "role": "implementation",
+      "evidencePaths": [
+        "src/Extensions/Spectre.Console.Json"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    },
+    {
+      "id": "imagesharp",
+      "module": "imagesharp",
+      "role": "implementation",
+      "evidencePaths": [
+        "src/Extensions/Spectre.Console.ImageSharp"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    },
+    {
+      "id": "sourcegenerator",
+      "module": "sourcegenerator",
+      "role": "tooling",
+      "evidencePaths": [
+        "src/Spectre.Console.SourceGenerator"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    },
+    {
+      "id": "build",
+      "module": "build",
+      "role": "tooling",
+      "evidencePaths": [
+        "build.cs"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    }
+  ],
+  "boundaryGroundTruth": {
+    "status": "author-adjudicated-module-map",
+    "measurement": "ACIMA module ownership",
+    "note": "Derived from an operator-reviewed ACIMA unit map. Map existence and name/path matching do not prove correctness; reviewers must verify contracts, implementation ownership, dependency isolation, data/configuration ownership, and composition.",
+    "independentReviewRequired": true
+  },
+  "knownViolations": [
+    {
+      "rule": "ACIMA-D001",
+      "count": 4,
+      "classification": "probable_true_positive",
+      "why": "extensions/testing reference core implementation assembly; public library API design is intentional but unmodelled"
+    },
+    {
+      "rule": "ACIMA-D009",
+      "count": 21,
+      "classification": "true_positive",
+      "why": "json uses internal StringBuffer from console; cross-assembly internal access is real coupling"
+    }
+  ],
+  "preservedChoices": [
+    {
+      "rule": "ACIMA-L003",
+      "count": 40,
+      "classification": "valid_architectural_choice",
+      "why": "public types are the shipped library surface, not an accidental implementation leak"
+    }
+  ],
+  "enforcerArtefacts": [
+    {
+      "rule": "ACIMA-D005",
+      "count": 2,
+      "classification": "false_positive",
+      "why": "cycles traverse analyzer-only ProjectReference with ReferenceOutputAssembly=false; sourcegenerator has no json reference"
+    },
+    {
+      "rule": "ACIMA-D008",
+      "count": 5,
+      "classification": "false_positive",
+      "why": "transitive closure of analyzer/extension edges; duplicates D001"
+    }
+  ],
+  "findingGroundTruth": {
+    "status": "adjudicated-rule-counts",
+    "precisionRecall": "unavailable",
+    "note": "Adjudication is per rule and count, not per source location, so precision and recall are reported unavailable rather than estimated."
+  },
+  "enforcerRun": {
+    "findings": 72,
+    "executed": true,
+    "sourceFilesReported": 384,
+    "rulesPortable": 23
+  },
+  "baselineVerification": {
+    "state": "pass",
+    "detail": "passes across net8/net9/net10"
+  },
+  "dimensionAvailability": {
+    "boundaryAccuracy": "available",
+    "requirementInterpretation": "available",
+    "profileSelection": "available",
+    "findingAccuracy": "unavailable",
+    "evidenceQuality": "available",
+    "architecturalPreservation": "available",
+    "scopeAndConsent": "available"
+  },
+  "limitations": [],
+  "provenance": {
+    "pinSource": "benchmark-evidence/rw-2026-11-08-01/aggregate/portfolio.json",
+    "unitMapSource": "benchmark-evidence/rw-2026-11-08-02/configs/spectre-console.acima.config.json",
+    "unitMapSha256": "f188e5bd11839e69099b0ad7029a647bbb3843a160be73900b8e19096959b7b7",
+    "classificationSource": "benchmark-evidence/rw-2026-11-08-01/ground-truth/classifications.json",
+    "method": "derived from adjudicated evidence; no repository content was re-classified",
+    "derivedOn": "2026-11-10",
+    "independentReview": false,
+    "givenToAgent": false,
+    "boundarySemantics": "ACIMA module ownership, not component discovery"
+  }
+}

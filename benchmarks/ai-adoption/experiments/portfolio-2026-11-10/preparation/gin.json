@@ -1,0 +1,16 @@
+{
+  "id": "gin",
+  "repo": "gin-gonic/gin",
+  "commit": "0f09c3a9b4626d9fe9979cf4d0521d6ae32ab646",
+  "language": "go",
+  "workspace": "G:\\Code Repository\\ACIMA\\benchmarks\\ai-adoption\\experiments\\portfolio-2026-11-10\\workspaces\\gin",
+  "preparedAt": "2026-11-10T03:18:34Z",
+  "status": "verified",
+  "verifiedCommit": "0f09c3a9b4626d9fe9979cf4d0521d6ae32ab646",
+  "treeSha256": "149148e0a330473ed4053a9f368c8ef2a74b93cc",
+  "manifestSha256": "a0395679a3f7c59c134f9820c3bd81569fada86c661d5e258e8109b8e22de832",
+  "fileCount": 130,
+  "bytes": 886166,
+  "snapshotVerified": true,
+  "missingEvidencePaths": []
+}

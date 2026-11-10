@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "experimentId": "portfolio-2026-11-10-v2",
+  "frozenAt": "2026-11-10T11:43:38Z",
+  "rubric": {
+    "file": "rubric.v1.1.json",
+    "version": "1.1.0",
+    "sha256": "23c2fa0719202e276608fb9cbcb083d354ce59b6ae5e03471960c131d16110db"
+  },
+  "manifestSha256": "418d2bd51ddd730ed800b863180a6c4942447a0372b04000fa18f750c4c5ddaa",
+  "references": {
+    "httpx": "6df5ec6cf08ced46da4457015a9da6d26edd882117068850a18df51937c72669",
+    "flask": "1ab6a4856c53e287f83996f592c1f1d5ad594dba9f91831f1eb315291ffdd14d",
+    "fastapi": "d2c96f06c084d2b385bff8d78bc7c7c47e3f0455bcf85f663e39fd6bcc3563f1",
+    "hono": "372d7ee04bc784f968479bcb761abf274d4432f818771ce90cdc69a0d7f68180",
+    "drizzle-orm": "2a4fb1abf4fdcaaa232095a90255e3c7ce6c9654c800e32bdaa1240326aabeba",
+    "trpc": "544a090131716036d8b5d4486de3409566f51bb13ad6630f4289a553fb3695de",
+    "cobra": "f14bdb41294d1d6516ea2b0ad741fced24b415793437cd86615f67ffbd81a7e7",
+    "bubbletea": "ad57f2ebe75de2e831817beb5085dae5947c069b3843b015e56379711dca3cfd",
+    "gin": "ff401d247396827b5ceb3daf92c7cc4b1fdf8d282057ebe25d3e7194e61d3476",
+    "fluentvalidation": "24b0eec9ffa273d3d4908e917068853f2f3486844be484e219d4d18d8b92f1bc",
+    "serilog": "15cb7a2ca79482f6ea1554bba3ccec5dfb320b39b31dd64ca8cb8f56197650ad",
+    "spectre-console": "975f3d3439f7f049ad9b1268c4d1624e36f28730dd1ff998cdbcb8f7a97ebb5e",
+    "jsoup": "9a4ea28fd2251e6afa20abb50acccce24f61ce9643d3b70d69630427d4801ca2",
+    "gson": "cbabfe8dd77e9273d358bd60dc88cdae789ad71451192946b9f2fac41f90f357",
+    "mall": "ba4567d7d1bc901d4af0d42104ec29943a32a5e6eb674a13c5ce8e7be96ad53a"
+  },
+  "referencesCombinedSha256": "000eb131a33886cccca091444baafba84cc7f477babf05ba52a82463cd797714",
+  "scenarioReferences": {
+    "library-python-httpx": "af60956f70e8eb08731dc6d84f0685540e028db2be3207b4ab8fdcad8620166e"
+  },
+  "evaluator": {
+    "path": "harness/evaluators/architectural.py",
+    "version": "1.1.0",
+    "sha256": "0b07e092bcb3596f39dc613331dd3bfc0e73e87e5641d7aee6e76fe7a4fb4948"
+  },
+  "collection": {
+    "skill": {
+      "name": "acima-adoption",
+      "version": "1.19.0",
+      "contentSha256": "98cd5dd8db1f06edea3ca399354aaceb42f6b7ac37746862a2c3ba13b0394b4f",
+      "files": 70,
+      "bytes": 1280472,
+      "path": "skills/acima-adoption",
+      "standard": "1.9.0-draft.1"
+    },
+    "standard": {
+      "version": "1.9.0-draft.1"
+    },
+    "catalog": {
+      "version": "1.9.0-draft.1",
+      "sha256": "f11f4b975760b97f854f28d1b48f872a67c9b1a021219846cf6d6b10f513e5b3",
+      "rules": 55,
+      "portable": 41
+    },
+    "harness": {
+      "version": "1.0.0-m1"
+    }
+  },
+  "modelUnderTest": {
+    "provider": "freebuff",
+    "model": "deepseek-v4.1-flash",
+    "verificationStatus": "unverified",
+    "note": "The exact provider model identifier has not been observed through a supported interface. Do not substitute another model or provider."
+  },
+  "executionMode": "read-only",
+  "preparation": {
+    "summarySha256": "b3eaffe21207dd82aa839d9fde89e811bfed856ef30604901d9400a17bd4d050",
+    "verified": 15,
+    "failed": 0
+  },
+  "humanReview": {
+    "rubricReviewed": false,
+    "referencesReviewed": false,
+    "qualitativeOutcomeReview": "required",
+    "minimumIndependentReviewers": 2,
+    "agreementRequired": true,
+    "note": "Author-created rubric and references remain pending independent review."
+  }
+}

@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "id": "modular-monolith-typescript-domain-driven-hexagon",
+  "name": "domain-driven-hexagon — TypeScript modular monolith",
+  "description": "A NestJS application organised as feature modules over shared domain, application and infrastructure libraries. It already has interface-layer, application-layer and domain-layer dependency rules enforced by dependency-cruiser, which makes it a test of whether an agent recognises existing enforcement instead of selling it back as new work.",
+  "category": "modular-monolith",
+  "repository": {
+    "url": "https://github.com/Sairyss/domain-driven-hexagon",
+    "commit": "5c2d15a7e2d69e83dfddf28468ee9f30e02c30de",
+    "license": "UNLICENSED (package.json declares \"private\": true)",
+    "retrievedOn": "2026-11-10"
+  },
+  "softwareCategory": "Single-deployable NestJS application with feature modules and shared libraries",
+  "architectureFamily": "Hexagonal / clean-architecture layering (api, application, domain, database) expressed through NestJS modules and dependency-cruiser rules",
+  "expectedCharacteristics": [
+    "Two feature modules with their own domain, application, database, dto and mapping code",
+    "Shared building blocks in src/libs: ddd primitives, application context, api adapters, db adapters, ports, decorators, exceptions and types",
+    "Composition through NestJS modules and dependency-injection tokens, not a hand-written composition root",
+    "Existing .dependency-cruiser.js rules that enforce layer direction (api/application/domain/infrastructure)",
+    "package.json is private, so the library profile's publishable-evidence requirement is not met"
+  ],
+  "applicableProfiles": ["base"],
+  "profileNotes": "package.json declares \"private\": true. The library profile requires publishable evidence, so it does not apply; a correct assessment says so rather than declaring it.",
+  "executionModes": ["read-only", "authorized-adoption"],
+  "expectedBoundaries": [
+    {
+      "id": "user-module",
+      "module": "user",
+      "evidencePaths": ["src/modules/user", "src/modules/user/user.module.ts"],
+      "required": true,
+      "confidence": "high",
+      "rationale": "A feature module with commands, queries, domain, database, dto and DI tokens of its own."
+    },
+    {
+      "id": "wallet-module",
+      "module": "wallet",
+      "evidencePaths": ["src/modules/wallet", "src/modules/wallet/wallet.module.ts"],
+      "required": true,
+      "confidence": "high",
+      "rationale": "A second feature module with application, domain and database code."
+    },
+    {
+      "id": "ddd-building-blocks",
+      "module": "ddd",
+      "evidencePaths": ["src/libs/ddd", "src/libs/ddd/entity.base.ts"],
+      "required": true,
+      "confidence": "high",
+      "rationale": "Entity, aggregate-root and value-object primitives shared by the feature modules."
+    },
+    {
+      "id": "ports",
+      "module": "ports",
+      "evidencePaths": ["src/libs/ports", "src/libs/ports/logger.port.ts"],
+      "required": false,
+      "confidence": "medium",
+      "rationale": "Declared port interfaces that adapters implement."
+    },
+    {
+      "id": "database-adapters",
+      "module": "database",
+      "evidencePaths": ["src/libs/db", "src/modules/user/database"],
+      "required": true,
+      "confidence": "medium",
+      "rationale": "Persistence adapters live beside the modules they serve and with the shared db helpers."
+    },
+    {
+      "id": "composition",
+      "module": "configs",
+      "evidencePaths": ["src/configs", "nest-cli.json"],
+      "required": false,
+      "confidence": "medium",
+      "rationale": "Application modules, configuration and bootstrap wiring are the composition area; the framework owns instantiation."
+    }
+  ],
+  "acceptableAdditionalModules": ["application", "api", "exceptions", "decorators", "types", "utils", "database", "config", "shared"],
+  "expectedObservations": [
+    {
+      "id": "O1",
+      "type": "enforcement",
+      "statement": "Dependency-cruiser rules already enforce layer direction, and package.json exposes deps:validate.",
+      "evidence": [".dependency-cruiser.js", "package.json"],
+      "required": true,
+      "keywords": ["dependency-cruiser", "dependency cruiser", "depcruise"]
+    },
+    {
+      "id": "O2",
+      "type": "applicability",
+      "statement": "There is no ACIMA unit map, so ACIMA's own rules are not measurable until units are declared.",
+      "evidence": ["src/modules", "package.json"],
+      "required": true,
+      "keywords": ["unit map", "acima.config"]
+    },
+    {
+      "id": "O3",
+      "type": "limitation",
+      "statement": "The package is private, so the library profile cannot be claimed for the shared libraries.",
+      "evidence": ["package.json"],
+      "required": true,
+      "keywords": ["private"]
+    },
+    {
+      "id": "O4",
+      "type": "boundary",
+      "statement": "Feature modules (user, wallet) are distinct from shared libraries under src/libs.",
+      "evidence": ["src/modules/user", "src/modules/wallet", "src/libs/ddd"],
+      "required": true,
+      "keywords": ["src/modules", "feature module"]
+    },
+    {
+      "id": "O5",
+      "type": "compatibility",
+      "statement": "Composition is framework-managed: NestJS modules and DI tokens instantiate components, so ACIMA's explicit-registration requirement needs a framework-aware reading rather than a hand-written composition root.",
+      "evidence": ["src/modules/user/user.module.ts", "src/modules/wallet/wallet.module.ts"],
+      "required": false,
+      "keywords": ["nestjs", "nest module", "dependency injection"]
+    }
+  ],
+  "expectedFindings": [],
+  "acceptableCompatibility": ["compatible", "compatible-with-adaptation"],
+  "acceptableRecommendations": ["RECOMMENDED_WITH_LIMITATIONS", "NOT_RECOMMENDED", "INSUFFICIENT_EVIDENCE"],
+  "expectedProposedChangeKinds": ["config", "tooling", "ci", "docs"],
+  "knownLimitations": [
+    "No violation-level ground truth is recorded, so finding precision and recall are reported unavailable rather than estimated.",
+    "The repository is not published and the ACIMA enforcer is not configured for it, so there is no second finding set to cross-check.",
+    "A correct unit map may reasonably merge or split the shared libraries; boundary scoring accepts the declared alternatives but does not prove one map is optimal.",
+    "The TypeScript enforcer analyses source text, not resolved module graphs."
+  ],
+  "groundTruth": {
+    "establishedBy": "harness author",
+    "establishedOn": "2026-11-10",
+    "method": "Manual inspection of the pinned checkout: package manifest, module layout, dependency-cruiser configuration and NestJS module files.",
+    "blind": false,
+    "independentReview": false,
+    "notes": "The existing dependency-cruiser rules were read directly from the pinned commit so the 'already enforced' observation is evidence-backed rather than inferred from the README."
+  }
+}

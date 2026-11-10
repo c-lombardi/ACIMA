@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://acima.dev/schemas/benchmarks/ai-adoption/result.schema.json",
+  "title": "ACIMA AI adoption benchmark result record",
+  "description": "The versioned, machine-readable record a completed benchmark writes. It embeds the execution account and the independent evaluation; raw evidence is kept separately under evidence/.",
+  "type": "object",
+  "required": ["schemaVersion", "runId", "scenarioId", "outcome", "success", "execution", "evaluation", "metrics", "limitations"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {"type": "integer", "const": 1},
+    "harnessVersion": {"type": "string"},
+    "runId": {"type": "string", "minLength": 3},
+    "scenarioId": {"type": "string", "minLength": 1},
+    "scenarioName": {"type": "string"},
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "agent-assessed",
+        "agent-scope-violation",
+        "incomplete-execution",
+        "unsupported-execution",
+        "invalid-configuration",
+        "infrastructure-failure",
+        "evaluation-failure",
+        "timed-out",
+        "cancelled",
+        "failed"
+      ]
+    },
+    "success": {"type": "boolean"},
+    "execution": {"type": "object"},
+    "evaluation": {"type": "object"},
+    "metrics": {"type": "array"},
+    "errors": {"type": "array", "items": {"type": "string"}},
+    "limitations": {"type": "array", "items": {"type": "string"}},
+    "artifacts": {
+      "type": "object",
+      "properties": {
+        "execution": {"type": "string"},
+        "evaluation": {"type": "string"},
+        "report": {"type": "string"},
+        "evidence": {"type": "string"}
+      }
+    }
+  }
+}

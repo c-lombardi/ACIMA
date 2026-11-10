@@ -1,0 +1,190 @@
+{
+  "schemaVersion": 1,
+  "experimentId": "portfolio-2026-11-10-v2",
+  "id": "drizzle-orm",
+  "repository": {
+    "url": "https://github.com/drizzle-team/drizzle-orm",
+    "commit": "eab8bedbb65d5429c54e612ddbd88aa23091d398",
+    "license": "Apache-2.0",
+    "language": "typescript"
+  },
+  "softwareCategory": "orm-monorepo",
+  "architectureFamily": "ORM monorepo",
+  "applicableProfiles": [
+    "base",
+    "library"
+  ],
+  "profileSource": "reviewed unit map declares the library profile",
+  "expectedBoundaries": [
+    {
+      "id": "orm",
+      "module": "orm",
+      "role": "implementation",
+      "evidencePaths": [
+        "drizzle-orm"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    },
+    {
+      "id": "kit",
+      "module": "kit",
+      "role": "implementation",
+      "evidencePaths": [
+        "drizzle-kit"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    },
+    {
+      "id": "zod",
+      "module": "zod",
+      "role": "implementation",
+      "evidencePaths": [
+        "drizzle-zod"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    },
+    {
+      "id": "valibot",
+      "module": "valibot",
+      "role": "implementation",
+      "evidencePaths": [
+        "drizzle-valibot"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    },
+    {
+      "id": "typebox",
+      "module": "typebox",
+      "role": "implementation",
+      "evidencePaths": [
+        "drizzle-typebox"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    },
+    {
+      "id": "arktype",
+      "module": "arktype",
+      "role": "implementation",
+      "evidencePaths": [
+        "drizzle-arktype"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    },
+    {
+      "id": "seed",
+      "module": "seed",
+      "role": "implementation",
+      "evidencePaths": [
+        "drizzle-seed"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    },
+    {
+      "id": "eslint-plugin-drizzle",
+      "module": "eslint-plugin-drizzle",
+      "role": "implementation",
+      "evidencePaths": [
+        "eslint-plugin-drizzle"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    },
+    {
+      "id": "eslint-internal",
+      "module": "eslint",
+      "role": "tooling",
+      "evidencePaths": [
+        "eslint"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    }
+  ],
+  "boundaryGroundTruth": {
+    "status": "author-adjudicated-module-map",
+    "measurement": "ACIMA module ownership",
+    "note": "Derived from an operator-reviewed ACIMA unit map. Map existence and name/path matching do not prove correctness; reviewers must verify contracts, implementation ownership, dependency isolation, data/configuration ownership, and composition.",
+    "independentReviewRequired": true
+  },
+  "knownViolations": [],
+  "preservedChoices": [
+    {
+      "rule": "ACIMA-L001",
+      "count": 38,
+      "classification": "valid_architectural_choice",
+      "why": "ORM product adapters intentionally reference pg/mysql2/knex; one test path is out of production scope"
+    }
+  ],
+  "enforcerArtefacts": [
+    {
+      "rule": "test-path",
+      "count": 1,
+      "classification": "false_positive",
+      "why": ""
+    }
+  ],
+  "findingGroundTruth": {
+    "status": "adjudicated-rule-counts",
+    "precisionRecall": "unavailable",
+    "note": "Adjudication is per rule and count, not per source location, so precision and recall are reported unavailable rather than estimated."
+  },
+  "enforcerRun": {
+    "findings": 39,
+    "executed": true,
+    "sourceFilesReported": 759,
+    "rulesPortable": 23
+  },
+  "baselineVerification": {
+    "state": "blocked",
+    "detail": "dependency build failed: better-sqlite3 native module"
+  },
+  "dimensionAvailability": {
+    "boundaryAccuracy": "available",
+    "requirementInterpretation": "available",
+    "profileSelection": "available",
+    "findingAccuracy": "unavailable",
+    "evidenceQuality": "available",
+    "architecturalPreservation": "available",
+    "scopeAndConsent": "available"
+  },
+  "limitations": [
+    "The enforcer reported 39 finding(s) with no violation-level adjudication; precision and recall cannot be measured from a count.",
+    "Baseline verification is not clean (blocked: dependency build failed: better-sqlite3 native module); regression measurement would need that recorded before any authorized change."
+  ],
+  "provenance": {
+    "pinSource": "benchmark-evidence/rw-2026-11-08-01/aggregate/portfolio.json",
+    "unitMapSource": "benchmark-evidence/rw-2026-11-08-02/configs/drizzle-orm.acima.config.json",
+    "unitMapSha256": "8fe667b08ce27d87528fc12784addd93d0839a3965f9ccc9c396609800ca6a6b",
+    "classificationSource": "benchmark-evidence/rw-2026-11-08-01/ground-truth/classifications.json",
+    "method": "derived from adjudicated evidence; no repository content was re-classified",
+    "derivedOn": "2026-11-10",
+    "independentReview": false,
+    "givenToAgent": false,
+    "boundarySemantics": "ACIMA module ownership, not component discovery"
+  }
+}

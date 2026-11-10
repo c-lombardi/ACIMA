@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "experimentId": "portfolio-2026-11-10",
+  "id": "fluentvalidation",
+  "repository": {
+    "url": "https://github.com/FluentValidation/FluentValidation",
+    "commit": "a8ca6ac3e7f35da9448a28e0ab84ae914cca4fb1",
+    "license": "Apache-2.0",
+    "language": "dotnet"
+  },
+  "softwareCategory": "validation-library",
+  "architectureFamily": "two-assembly validation library",
+  "applicableProfiles": [
+    "base",
+    "library"
+  ],
+  "profileSource": "reviewed unit map declares the library profile",
+  "expectedBoundaries": [
+    {
+      "id": "fluentvalidation",
+      "module": "fluentvalidation",
+      "role": "implementation",
+      "evidencePaths": [
+        "src/FluentValidation"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    },
+    {
+      "id": "fluentvalidation.di",
+      "module": "fluentvalidation.di",
+      "role": "implementation",
+      "evidencePaths": [
+        "src/FluentValidation.DependencyInjectionExtensions"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    },
+    {
+      "id": "build",
+      "module": "build",
+      "role": "tooling",
+      "evidencePaths": [
+        "src/CommonAssemblyInfo.cs"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    }
+  ],
+  "boundaryGroundTruth": {
+    "status": "adjudicated-unit-map",
+    "note": "Author-adjudicated unit map, reused from the enforcer run; not independently reviewed and not given to the executing agent."
+  },
+  "knownViolations": [
+    {
+      "rule": "ACIMA-D001",
+      "count": 1,
+      "classification": "true_positive",
+      "why": "DI extension assembly imports the implementation assembly; no contracts assembly"
+    }
+  ],
+  "preservedChoices": [
+    {
+      "rule": "ACIMA-L003",
+      "count": 6,
+      "classification": "valid_architectural_choice",
+      "why": "public library API is intentionally public; no contracts split"
+    }
+  ],
+  "enforcerArtefacts": [
+    {
+      "rule": "ACIMA-D008",
+      "count": 1,
+      "classification": "duplicate",
+      "why": "derived from the same project reference"
+    }
+  ],
+  "findingGroundTruth": {
+    "status": "adjudicated-rule-counts",
+    "precisionRecall": "unavailable",
+    "note": "Adjudication is per rule and count, not per source location, so precision and recall are reported unavailable rather than estimated."
+  },
+  "enforcerRun": {
+    "findings": 8,
+    "executed": true,
+    "sourceFilesReported": 144,
+    "rulesPortable": 23
+  },
+  "baselineVerification": {
+    "state": "pass",
+    "detail": "3 TFMs: 894 passed / 1 skipped each"
+  },
+  "dimensionAvailability": {
+    "boundaryAccuracy": "available",
+    "requirementInterpretation": "available",
+    "profileSelection": "available",
+    "findingAccuracy": "unavailable",
+    "evidenceQuality": "available",
+    "architecturalPreservation": "available",
+    "scopeAndConsent": "available"
+  },
+  "limitations": [],
+  "provenance": {
+    "pinSource": "benchmark-evidence/rw-2026-11-08-01/aggregate/portfolio.json",
+    "unitMapSource": "benchmark-evidence/rw-2026-11-08-02/configs/fluentvalidation.acima.config.json",
+    "unitMapSha256": "c41ea416ad1d4fc0de128aa9662124ea4437cde90ad7e2a4dedadd75850806c8",
+    "classificationSource": "benchmark-evidence/rw-2026-11-08-01/ground-truth/classifications.json",
+    "method": "derived from adjudicated evidence; no repository content was re-classified",
+    "derivedOn": "2026-11-10",
+    "independentReview": false,
+    "givenToAgent": false
+  }
+}

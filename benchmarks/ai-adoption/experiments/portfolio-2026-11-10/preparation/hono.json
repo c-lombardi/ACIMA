@@ -1,0 +1,16 @@
+{
+  "id": "hono",
+  "repo": "honojs/hono",
+  "commit": "61f7c59e50244ab4d2dd83c151928cf7ea448510",
+  "language": "typescript",
+  "workspace": "G:\\Code Repository\\ACIMA\\benchmarks\\ai-adoption\\experiments\\portfolio-2026-11-10\\workspaces\\hono",
+  "preparedAt": "2026-11-10T03:17:53Z",
+  "status": "verified",
+  "verifiedCommit": "61f7c59e50244ab4d2dd83c151928cf7ea448510",
+  "treeSha256": "349fd015602fe5d8233e88f259c98cacb9349028",
+  "manifestSha256": "68ecf1775c8885fc6f29a11933191a4b25986acb218a0ae9c91d7f3d21ef8bb5",
+  "fileCount": 584,
+  "bytes": 5107868,
+  "snapshotVerified": true,
+  "missingEvidencePaths": []
+}

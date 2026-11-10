@@ -1,0 +1,16 @@
+{
+  "id": "bubbletea",
+  "repo": "charmbracelet/bubbletea",
+  "commit": "67b4c7a8a2b34a0b1ce15261b0c705bc7e1a04b7",
+  "language": "go",
+  "workspace": "G:\\Code Repository\\ACIMA\\benchmarks\\ai-adoption\\experiments\\portfolio-2026-11-10\\workspaces\\bubbletea",
+  "preparedAt": "2026-11-10T03:18:32Z",
+  "status": "verified",
+  "verifiedCommit": "67b4c7a8a2b34a0b1ce15261b0c705bc7e1a04b7",
+  "treeSha256": "162e423a5ceaad77a57fce3f12fbb6498bf806a3",
+  "manifestSha256": "91e5016f026a390ddee945f1e5a22fb2a578cef155c37de8e08c1e50eecd3bed",
+  "fileCount": 233,
+  "bytes": 2983113,
+  "snapshotVerified": true,
+  "missingEvidencePaths": []
+}

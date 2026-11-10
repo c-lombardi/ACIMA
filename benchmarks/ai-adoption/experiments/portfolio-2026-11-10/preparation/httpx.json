@@ -1,0 +1,16 @@
+{
+  "id": "httpx",
+  "repo": "encode/httpx",
+  "commit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+  "language": "python",
+  "workspace": "G:\\Code Repository\\ACIMA\\benchmarks\\ai-adoption\\experiments\\portfolio-2026-11-10\\workspaces\\httpx",
+  "preparedAt": "2026-11-10T03:17:20Z",
+  "status": "verified",
+  "verifiedCommit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+  "treeSha256": "31ba94512339180efacceacc0646b56ee15eba63",
+  "manifestSha256": "5357ad466d3c48d11483b9a58a3251f858f7fcf4d66852237df3d4cf137d476e",
+  "fileCount": 125,
+  "bytes": 3321071,
+  "snapshotVerified": true,
+  "missingEvidencePaths": []
+}

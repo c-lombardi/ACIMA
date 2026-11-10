@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "description": "Controller-owned defaults for the AI adoption effectiveness benchmark. An agent cannot read, change or override these values; the controller loads this file, freezes the limits, and records them in every run.",
+  "adapters": {
+    "fake": {
+      "enabled": true,
+      "description": "Deterministic scripted adapter. Requires no model, no network and no credentials."
+    },
+    "freebuff": {
+      "enabled": true,
+      "command": "freebuff",
+      "description": "Capability probe for the locally installed Freebuff CLI. Registered as a boundary; execution is refused while no supported unattended invocation exists."
+    }
+  },
+  "sandbox": {
+    "backend": "auto",
+    "image": "python:3.12-slim",
+    "network": "none",
+    "user": "65534:65534",
+    "allowLocalIsolation": true,
+    "localIsolationNote": "This host has no container runtime. 'auto' therefore falls back to a local process sandbox and records, per run, that network and read-only enforcement are not guaranteed. Set allowLocalIsolation to false to fail closed instead."
+  },
+  "limits": {
+    "executionTimeoutSeconds": 1800,
+    "maxModelCalls": 200,
+    "maxTokens": 2000000,
+    "maxContainerMemoryMb": 2048,
+    "maxCpus": 2,
+    "maxDiskMb": 4096,
+    "maxProcesses": 256,
+    "maxConcurrentRuns": 1,
+    "maxCorrectionAttempts": 3,
+    "maxCapturedBytes": 8000000,
+    "maxOutputBytes": 64000,
+    "maxFiles": 200000
+  },
+  "resultsRoot": "results"
+}

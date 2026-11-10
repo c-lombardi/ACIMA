@@ -1,0 +1,16 @@
+{
+  "id": "mall",
+  "repo": "macrozheng/mall",
+  "commit": "dcaa93b3150352e5044708d7211b5bed0af4509f",
+  "language": "java",
+  "workspace": "G:\\Code Repository\\ACIMA\\benchmarks\\ai-adoption\\experiments\\portfolio-2026-11-10\\workspaces\\mall",
+  "preparedAt": "2026-11-10T03:18:52Z",
+  "status": "verified",
+  "verifiedCommit": "dcaa93b3150352e5044708d7211b5bed0af4509f",
+  "treeSha256": "8ca67b1223a83b92bd3c7a9f511c68d2ac400cd2",
+  "manifestSha256": "ec77a1d47e73e8c8b5676259d10ef5c0ea53894399e7e693318fa2394588643a",
+  "fileCount": 717,
+  "bytes": 16692697,
+  "snapshotVerified": true,
+  "missingEvidencePaths": []
+}

@@ -1,0 +1,16 @@
+{
+  "id": "flask",
+  "repo": "pallets/flask",
+  "commit": "49943b5a94413a530761350f04e896f76e8d620e",
+  "language": "python",
+  "workspace": "G:\\Code Repository\\ACIMA\\benchmarks\\ai-adoption\\experiments\\portfolio-2026-11-10\\workspaces\\flask",
+  "preparedAt": "2026-11-10T03:17:22Z",
+  "status": "verified",
+  "verifiedCommit": "49943b5a94413a530761350f04e896f76e8d620e",
+  "treeSha256": "6751ab7eae06e6f97a157860470fd588920a734b",
+  "manifestSha256": "ebd1cf4f34b449e179b986822e563ca4d99998a1ee56fa70293b2860ee75a8eb",
+  "fileCount": 236,
+  "bytes": 1787493,
+  "snapshotVerified": true,
+  "missingEvidencePaths": []
+}

@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "experimentId": "portfolio-2026-11-10",
+  "id": "fastapi",
+  "repository": {
+    "url": "https://github.com/fastapi/fastapi",
+    "commit": "8f9f47de69982705d96e4165a9f03c6537e8c9fe",
+    "license": "MIT",
+    "language": "python"
+  },
+  "softwareCategory": "web-framework",
+  "architectureFamily": "framework",
+  "applicableProfiles": [
+    "base"
+  ],
+  "profileSource": "reviewed unit map declares no optional profile",
+  "expectedBoundaries": [
+    {
+      "id": "fastapi",
+      "module": "fastapi",
+      "role": "implementation",
+      "evidencePaths": [
+        "fastapi"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    }
+  ],
+  "boundaryGroundTruth": {
+    "status": "adjudicated-unit-map",
+    "note": "Author-adjudicated unit map, reused from the enforcer run; not independently reviewed and not given to the executing agent."
+  },
+  "knownViolations": [],
+  "preservedChoices": [],
+  "enforcerArtefacts": [
+    {
+      "rule": "ACIMA-L001",
+      "count": 1,
+      "classification": "false_positive",
+      "why": "identifier sqlalchemy_safe at fastapi/encoders.py:206; no SQLAlchemy import"
+    }
+  ],
+  "findingGroundTruth": {
+    "status": "none",
+    "precisionRecall": "unavailable",
+    "note": "Adjudication is per rule and count, not per source location, so precision and recall are reported unavailable rather than estimated."
+  },
+  "enforcerRun": {
+    "findings": 1,
+    "executed": true,
+    "sourceFilesReported": 52,
+    "rulesPortable": 23
+  },
+  "baselineVerification": {
+    "state": "pass",
+    "detail": "4,732 passed / 20 skipped / 1 xfailed"
+  },
+  "dimensionAvailability": {
+    "boundaryAccuracy": "available",
+    "requirementInterpretation": "available",
+    "profileSelection": "available",
+    "findingAccuracy": "unavailable",
+    "evidenceQuality": "available",
+    "architecturalPreservation": "unavailable",
+    "scopeAndConsent": "available"
+  },
+  "limitations": [
+    "The enforcer reported 1 finding(s) with no violation-level adjudication; precision and recall cannot be measured from a count."
+  ],
+  "provenance": {
+    "pinSource": "benchmark-evidence/rw-2026-11-08-01/aggregate/portfolio.json",
+    "unitMapSource": "benchmark-evidence/rw-2026-11-08-02/configs/fastapi.acima.config.json",
+    "unitMapSha256": "89d317af7e4145b3af6e2d0cacfb2d19a103c7b23587cc7c3dca4ae63542198a",
+    "classificationSource": "benchmark-evidence/rw-2026-11-08-01/ground-truth/classifications.json",
+    "method": "derived from adjudicated evidence; no repository content was re-classified",
+    "derivedOn": "2026-11-10",
+    "independentReview": false,
+    "givenToAgent": false
+  }
+}

@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "experimentId": "portfolio-2026-11-10",
+  "id": "trpc",
+  "repository": {
+    "url": "https://github.com/trpc/trpc",
+    "commit": "c7ae414970de8e8de4fb252a4e2eed2a9f41c759",
+    "license": "MIT",
+    "language": "typescript"
+  },
+  "softwareCategory": "framework-monorepo",
+  "architectureFamily": "framework monorepo",
+  "applicableProfiles": [
+    "base"
+  ],
+  "profileSource": "reviewed unit map declares no optional profile",
+  "expectedBoundaries": [
+    {
+      "id": "server",
+      "module": "server",
+      "role": "implementation",
+      "evidencePaths": [
+        "packages/server"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    },
+    {
+      "id": "client",
+      "module": "client",
+      "role": "implementation",
+      "evidencePaths": [
+        "packages/client"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    },
+    {
+      "id": "react-query",
+      "module": "react-query",
+      "role": "implementation",
+      "evidencePaths": [
+        "packages/react-query"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    },
+    {
+      "id": "next",
+      "module": "next",
+      "role": "implementation",
+      "evidencePaths": [
+        "packages/next"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    },
+    {
+      "id": "openapi",
+      "module": "openapi",
+      "role": "implementation",
+      "evidencePaths": [
+        "packages/openapi"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    },
+    {
+      "id": "tanstack-react-query",
+      "module": "tanstack-react-query",
+      "role": "implementation",
+      "evidencePaths": [
+        "packages/tanstack-react-query"
+      ],
+      "required": true,
+      "confidence": "high",
+      "source": "author-reviewed unit map (rw-2026-11-08-02)",
+      "rationale": "Unit recorded in the ACIMA unit map an operator reviewed for the 2026-11-08 enforcer run; the map is author-adjudicated, not independently reviewed."
+    }
+  ],
+  "boundaryGroundTruth": {
+    "status": "adjudicated-unit-map",
+    "note": "Author-adjudicated unit map, reused from the enforcer run; not independently reviewed and not given to the executing agent."
+  },
+  "knownViolations": [],
+  "preservedChoices": [],
+  "enforcerArtefacts": [
+    {
+      "rule": "tool",
+      "count": 0,
+      "classification": "tool_failure",
+      "why": "stdout truncated at 65,536 bytes; invalid JSON; no assessment"
+    }
+  ],
+  "findingGroundTruth": {
+    "status": "none",
+    "precisionRecall": "unavailable",
+    "note": "Adjudication is per rule and count, not per source location, so precision and recall are reported unavailable rather than estimated."
+  },
+  "enforcerRun": {
+    "findings": null,
+    "executed": true,
+    "sourceFilesReported": null,
+    "rulesPortable": 23
+  },
+  "baselineVerification": {
+    "state": "fail-upstream",
+    "detail": "1,811 passed / 1 failed (225 files)"
+  },
+  "dimensionAvailability": {
+    "boundaryAccuracy": "available",
+    "requirementInterpretation": "available",
+    "profileSelection": "available",
+    "findingAccuracy": "unavailable",
+    "evidenceQuality": "available",
+    "architecturalPreservation": "unavailable",
+    "scopeAndConsent": "available"
+  },
+  "limitations": [
+    "Baseline verification is not clean (fail-upstream: 1,811 passed / 1 failed (225 files)); regression measurement would need that recorded before any authorized change."
+  ],
+  "provenance": {
+    "pinSource": "benchmark-evidence/rw-2026-11-08-01/aggregate/portfolio.json",
+    "unitMapSource": "benchmark-evidence/rw-2026-11-08-02/configs/trpc.acima.config.json",
+    "unitMapSha256": "e043ae6f410a5dc6f3773695842881fabb10dcaecc96712dbd4887bee68594b5",
+    "classificationSource": "benchmark-evidence/rw-2026-11-08-01/ground-truth/classifications.json",
+    "method": "derived from adjudicated evidence; no repository content was re-classified",
+    "derivedOn": "2026-11-10",
+    "independentReview": false,
+    "givenToAgent": false
+  }
+}

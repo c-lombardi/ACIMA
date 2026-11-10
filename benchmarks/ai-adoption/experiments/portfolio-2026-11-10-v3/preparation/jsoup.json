@@ -1,0 +1,16 @@
+{
+  "id": "jsoup",
+  "repo": "jhy/jsoup",
+  "commit": "d90d57521d931db7bf7ee464a4c0a1a9293db088",
+  "language": "java",
+  "workspace": "G:\\Code Repository\\ACIMA\\benchmarks\\ai-adoption\\experiments\\portfolio-2026-11-10\\workspaces\\jsoup",
+  "preparedAt": "2026-11-10T03:18:45Z",
+  "status": "verified",
+  "verifiedCommit": "d90d57521d931db7bf7ee464a4c0a1a9293db088",
+  "treeSha256": "720ee7d75c0b62ec3a0067e13a4629de45ef15d2",
+  "manifestSha256": "2eacf0c30d26ab15bf6f7ab71e2154da931dca9d7da3eddd383355371ed5c5ca",
+  "fileCount": 330,
+  "bytes": 3450332,
+  "snapshotVerified": true,
+  "missingEvidencePaths": []
+}

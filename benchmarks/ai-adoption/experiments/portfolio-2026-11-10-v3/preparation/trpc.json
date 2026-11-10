@@ -1,0 +1,16 @@
+{
+  "id": "trpc",
+  "repo": "trpc/trpc",
+  "commit": "c7ae414970de8e8de4fb252a4e2eed2a9f41c759",
+  "language": "typescript",
+  "workspace": "G:\\Code Repository\\ACIMA\\benchmarks\\ai-adoption\\experiments\\portfolio-2026-11-10\\workspaces\\trpc",
+  "preparedAt": "2026-11-10T03:18:12Z",
+  "status": "verified",
+  "verifiedCommit": "c7ae414970de8e8de4fb252a4e2eed2a9f41c759",
+  "treeSha256": "bd2a6aa6ee739b5a03923da8a22f0d3d84620e73",
+  "manifestSha256": "d6edafd1d2d7f33021d9e5b5786a9d57af8843191c5183f7e6150419b7b87f40",
+  "fileCount": 1923,
+  "bytes": 9348867,
+  "snapshotVerified": true,
+  "missingEvidencePaths": []
+}

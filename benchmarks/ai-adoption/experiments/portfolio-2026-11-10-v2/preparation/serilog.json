@@ -1,0 +1,16 @@
+{
+  "id": "serilog",
+  "repo": "serilog/serilog",
+  "commit": "43105b35095337d77f022561a8f2d3db2f9a7937",
+  "language": "dotnet",
+  "workspace": "G:\\Code Repository\\ACIMA\\benchmarks\\ai-adoption\\experiments\\portfolio-2026-11-10\\workspaces\\serilog",
+  "preparedAt": "2026-11-10T03:18:41Z",
+  "status": "verified",
+  "verifiedCommit": "43105b35095337d77f022561a8f2d3db2f9a7937",
+  "treeSha256": "e0e0aa791eb52b8f6db16e540b30cc07fc2bbdb4",
+  "manifestSha256": "58e0b867e400fb10eb55ea6952fe4f7ca4d42f155692b227001bded6b4de8814",
+  "fileCount": 285,
+  "bytes": 1203311,
+  "snapshotVerified": true,
+  "missingEvidencePaths": []
+}

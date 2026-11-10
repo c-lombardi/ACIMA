@@ -1,0 +1,16 @@
+{
+  "id": "cobra",
+  "repo": "spf13/cobra",
+  "commit": "adbc8813901bba65827259daa8e22ff94ec1f30e",
+  "language": "go",
+  "workspace": "G:\\Code Repository\\ACIMA\\benchmarks\\ai-adoption\\experiments\\portfolio-2026-11-10\\workspaces\\cobra",
+  "preparedAt": "2026-11-10T03:18:30Z",
+  "status": "verified",
+  "verifiedCommit": "adbc8813901bba65827259daa8e22ff94ec1f30e",
+  "treeSha256": "5a3b2c8e9af4c74e607a0a55e7910c1edb5d266f",
+  "manifestSha256": "75b0c99b1da86b0312a42f62c82fb24941807612f85029d07f7d0e6c8e28d28c",
+  "fileCount": 66,
+  "bytes": 705271,
+  "snapshotVerified": true,
+  "missingEvidencePaths": []
+}

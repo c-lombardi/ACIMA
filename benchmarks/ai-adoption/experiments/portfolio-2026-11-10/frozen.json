@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "experimentId": "portfolio-2026-11-10",
+  "frozenAt": "2026-11-10T03:20:10Z",
+  "rubric": {
+    "file": "rubric.v1.json",
+    "version": "1.0.0",
+    "sha256": "865d7f5177d49bf2877f53ac30c29dbcd24a23836bf98e51da29eb5d9f7b55e1"
+  },
+  "manifestSha256": "98c3db2a91b4ca41593bd051a0c15a26b28820964faec2cabc9c9efa82766d89",
+  "references": {
+    "httpx": "8587503649950a9f91981c4a9277fa4561a9375b78c7b01d65ea877448c7cbc2",
+    "flask": "d97d8a757935f6818b9f00d964a00fd62d372ae410b98089c1f6c007dc447730",
+    "fastapi": "e28c34a3c23e549902641508de85919aff8d7ebe452de6d9832166059ea88027",
+    "hono": "30abdb1b19aab9f54af2803b03b082bde2ef71db231c44c7f598361e3ab7f0cf",
+    "drizzle-orm": "d9a4ae36cf5bea9cc630a8cee8e7d59890051f537bf840fa5686e561f2ff9822",
+    "trpc": "03fe3f92c0f44a062c3305c7c080bcaad96e4852e51ac8a83f1d0e9a0722dec0",
+    "cobra": "211e03693f4c5cf9ef64f1e5e01d4fa913467525510c2d44cd354fa9a11949dd",
+    "bubbletea": "ea142c82c7c576bb7635f5e617c197ec64041f383f93cc02f9625836ca64cf49",
+    "gin": "a045087fbf69ec27ed891af008dcd6aadbdc34a173e3b92bcba47b37c8c7eab9",
+    "fluentvalidation": "b612ffe2a269a536788e6cee10f023c38dbf2d524cf17edeb226eae042c7b456",
+    "serilog": "96d345a932c1cd4a65e606ba772b123e5f2de07c3231b784440fd52a0a23aeb5",
+    "spectre-console": "ed32508947afb2fbc03eb01d624b6fc7a3e20e53dd447251929a652c253f7b6d",
+    "jsoup": "5940e7d84e5edb4bc6949cfb717a1f48ef18c3911b94174a095857f076b4a1fa",
+    "gson": "e40c833e99cba21f51dd512a1d34d442d741a83e6195dd9d2e01d44a5d56df23",
+    "mall": "9dcd41a3efdeec0a0abb4835ee49e025b44e534fa0709d3023c0f709cd840082"
+  },
+  "referencesCombinedSha256": "2de87f1693c14f66736ae57a90da2d1421e7ee395c7d62814853ed9be85fb65b",
+  "collection": {
+    "skill": {
+      "name": "acima-adoption",
+      "version": "1.18.0",
+      "contentSha256": "a6f2348e5fdad6e671af2da6ff6f6b47d2b4903caa9fb329569357dc959c8eb1",
+      "files": 70,
+      "bytes": 1272982,
+      "path": "skills/acima-adoption",
+      "standard": "1.9.0-draft.1"
+    },
+    "standard": {
+      "version": "1.9.0-draft.1"
+    },
+    "catalog": {
+      "version": "1.9.0-draft.1",
+      "sha256": "084d53a04582b955a4f64f80ca41067ff609bba812f2437ff8cc5c2306454822",
+      "rules": 55,
+      "portable": 41
+    },
+    "harness": {
+      "version": "1.0.0-m1"
+    }
+  },
+  "modelUnderTest": {
+    "provider": "freebuff",
+    "model": "deepseek-v4.1-flash",
+    "verificationStatus": "unverified",
+    "note": "The exact provider model identifier has not been observed through a supported interface. Do not substitute another model or provider."
+  },
+  "executionMode": "read-only",
+  "preparation": {
+    "summarySha256": "88ea46852cee7b8c9d54b21576ade3720bc40b199e489097f04a199838f80e2a",
+    "verified": 15,
+    "failed": 0
+  },
+  "humanReview": {
+    "rubricReviewed": false,
+    "referencesReviewed": false,
+    "note": "The author produced the rubric and references; no second reviewer signed them."
+  }
+}

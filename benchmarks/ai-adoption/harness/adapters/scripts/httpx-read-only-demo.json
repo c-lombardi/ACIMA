@@ -1,0 +1,188 @@
+{
+  "description": "Deterministic scripted assessment of the pinned httpx checkout. It demonstrates the pipeline end to end. It is not a model result and must never be cited as one.",
+  "model": "fake-scripted-1",
+  "behavior": "complete",
+  "events": [
+    {
+      "type": "message",
+      "role": "assistant",
+      "text": "Inspecting the package manifest and the public re-export surface."
+    },
+    {
+      "type": "message",
+      "role": "assistant",
+      "text": "Mapping the transport interface and the concrete transports."
+    }
+  ],
+  "toolCalls": [
+    {
+      "name": "read",
+      "arguments": {
+        "path": "pyproject.toml"
+      }
+    },
+    {
+      "name": "read",
+      "arguments": {
+        "path": "httpx/__init__.py"
+      }
+    },
+    {
+      "name": "read",
+      "arguments": {
+        "path": "httpx/_transports/base.py"
+      }
+    }
+  ],
+  "filesRead": [
+    "pyproject.toml",
+    "httpx/__init__.py",
+    "httpx/_transports/base.py",
+    "httpx/_client.py",
+    "httpx/_models.py"
+  ],
+  "commands": [],
+  "tests": [],
+  "tokenUsage": null,
+  "writeFiles": {},
+  "messages": [
+    {
+      "role": "assistant",
+      "text": "Read-only assessment written to the benchmark output directory."
+    }
+  ],
+  "output": {
+    "schemaVersion": 1,
+    "mode": "read-only",
+    "summary": "httpx is a published Python HTTP client library with a re-export facade, a client layer, a shared model surface and an explicit transport interface with four concrete transports. There is no ACIMA unit map, so the ACIMA rules cannot be measured yet; existing automation covers linting, typing and tests, not architectural dependency direction.",
+    "application": {
+      "purpose": "An HTTP client library consumed as an installed package",
+      "languages": [
+        "python"
+      ],
+      "frameworks": [],
+      "entryPoints": [
+        "httpx/_api.py",
+        "httpx/__init__.py"
+      ],
+      "existingEnforcement": [
+        "pyproject.toml: ruff",
+        "pyproject.toml: mypy",
+        ".github/workflows/test-suite.yml"
+      ]
+    },
+    "boundaries": [
+      {
+        "module": "public-api",
+        "units": [
+          "httpx/__init__.py"
+        ],
+        "evidence": [
+          {
+            "path": "httpx/__init__.py",
+            "note": "re-exports every public type and declares __all__"
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "module": "client",
+        "units": [
+          "httpx/_client.py",
+          "httpx/_api.py"
+        ],
+        "evidence": [
+          {
+            "path": "httpx/_client.py",
+            "note": "request execution and client lifecycle"
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "module": "transports",
+        "units": [
+          "httpx/_transports"
+        ],
+        "evidence": [
+          {
+            "path": "httpx/_transports/base.py",
+            "note": "BaseTransport and AsyncBaseTransport interface"
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "module": "models",
+        "units": [
+          "httpx/_models.py",
+          "httpx/_urls.py"
+        ],
+        "evidence": [
+          {
+            "path": "httpx/_models.py",
+            "note": "Request, Response and Headers imported package-wide"
+          }
+        ],
+        "confidence": "medium"
+      }
+    ],
+    "profiles": [
+      "base"
+    ],
+    "compatibility": "compatible-with-adaptation",
+    "findings": [
+      {
+        "rule": "ACIMA-C003",
+        "path": "httpx/_client.py",
+        "line": 1,
+        "classification": "manual-evidence-required",
+        "evidence": [
+          "httpx/_client.py:1"
+        ],
+        "rationale": "Whether boundary operations separate validation from behaviour is a semantic judgement that needs recorded human evidence, not a scan result."
+      },
+      {
+        "rule": "ACIMA-D001",
+        "path": "httpx/_transports/default.py",
+        "line": 1,
+        "classification": "implementation-difference",
+        "evidence": [
+          "httpx/_transports/default.py:1"
+        ],
+        "rationale": "The concrete transport depends on the transport interface and httpcore; that dependency direction is the intended port/adapter seam rather than a boundary breach."
+      }
+    ],
+    "recommendation": "RECOMMENDED_WITH_LIMITATIONS",
+    "uncertainties": [
+      "There is no ACIMA unit map yet; the module map above is a proposal that an owner must confirm.",
+      "The library profile is not implemented for Python in this ACIMA revision, so the published surface cannot be classified by the enforcer.",
+      "Whether the transport boundary is stable enough to freeze without waivers needs an owner decision."
+    ],
+    "commandsRun": [],
+    "testsRun": [],
+    "proposedChanges": [
+      {
+        "kind": "config",
+        "path": "acima.config.json",
+        "purpose": "declare the reviewed units and roles",
+        "required": true
+      },
+      {
+        "kind": "tooling",
+        "path": "tools/acima_arch.py",
+        "purpose": "run the Python reference enforcer locally and in CI",
+        "required": false
+      }
+    ],
+    "changesMade": [],
+    "valueOwnership": {
+      "candidates": [],
+      "preservedDistinctValues": [],
+      "configurationDecisions": [],
+      "uncertainties": [
+        "This deterministic fixture demonstrates the output contract only; it does not perform semantic value-ownership analysis."
+      ]
+    }
+  }
+}
