@@ -30,7 +30,7 @@ sys.path.insert(0, str(ACIMA_ROOT / "conformance"))
 from acima_claim import (  # noqa: E402 - path is set above deliberately
     EVIDENCE_FILE, FULL, INVALID, ClaimError, assess as assess_claim,
     load_catalog, load_evidence, render_markdown as render_claim_markdown,
-    validate_run_artefact, validate_waivers,
+    required_rules, validate_evidence, validate_run_artefact, validate_waivers,
 )
 CONFIG_NAME = "acima.config.json"
 PRUNE = {".git", "node_modules", "bin", "obj", "dist", "build", "target", "out",
@@ -391,9 +391,11 @@ def _next_steps(report: dict) -> list[str]:
         else:
             steps.append("Zero findings require proof that the enforcer saw files: check "
                          "sourceFiles > 0 and the coverage table before trusting the result.")
-        if report.get("coverage", {}).get("notExecuted"):
-            steps.append("Record manual evidence for the unevaluated rules if a full claim is "
-                         "needed (see docs/standard/08-conformance.md).")
+        coverage = report.get("coverage") or {}
+        if coverage.get("notAssessed", 0):
+            steps.append("Resolve every unassessed required rule: run the missing automated "
+                         "checks and record current repository-scoped evidence for manual reviews "
+                         "(see docs/standard/08-conformance.md).")
     steps.append("Capability and limitation detail: docs/status.md; release gates: "
                  "docs/product-contract.md.")
     return steps
@@ -925,8 +927,12 @@ def build_assessment_result(report: dict, config: dict | None) -> dict:
         unknowns.append("Configured boundary checks were not executed by this assessment; "
                         "their actual coverage and enforcement are unverified.")
     if coverage and not coverage.get("complete"):
-        unknowns.append(f"{len(coverage.get('notExecuted') or [])} required rule(s) did not "
-                        "execute; they are not evidence of a pass.")
+        automated_missing = len((coverage.get("automated") or {}).get("notExecuted") or [])
+        manual_missing = len((coverage.get("manual") or {}).get("missingEvidence") or [])
+        unknowns.append(
+            f"{coverage.get('notAssessed', automated_missing + manual_missing)} required rule(s) "
+            f"remain unassessed: {automated_missing} automated check(s) did not run and "
+            f"{manual_missing} manual review(s) lack accepted evidence.")
 
     questions: list[str] = []
     if config is None and substance["status"] in ("candidate", "unknown"):
@@ -1018,6 +1024,118 @@ def build_assessment_result(report: dict, config: dict | None) -> dict:
     }
 
 
+def _assessment_rule_coverage(root: Path, catalog: dict, level: str,
+                              execution: dict, default_reason: str | None = None) -> dict:
+    """Account for every rule required at the requested level.
+
+    Automated rules count only when the selected enforcer reports them executed. Manual
+    requirements count only when current, repository-scoped evidence validates. A raw
+    ``executed: true`` flag can never satisfy a catalog-manual rule.
+    """
+    rules = required_rules(catalog, level)
+    required_ids = {rule["id"] for rule in rules}
+    try:
+        evidence_entries = load_evidence(root / EVIDENCE_FILE)
+        evidence_error = None
+    except ClaimError as error:
+        evidence_entries = []
+        evidence_error = str(error)
+
+    evidence_by_rule: dict[str, list[dict]] = defaultdict(list)
+    malformed_evidence = []
+    for entry in evidence_entries:
+        if not isinstance(entry, dict):
+            malformed_evidence.append({"rule": None, "problems": ["entry is not an object"]})
+        elif entry.get("rule") in required_ids:
+            evidence_by_rule[str(entry["rule"])].append(entry)
+        elif not str(entry.get("rule", "")).strip():
+            malformed_evidence.append({"rule": None, "problems": ["rule is missing"]})
+
+    details = []
+    automated_required = automated_checked = 0
+    manual_required = manual_accepted = 0
+    automated_not_executed = []
+    manual_missing = []
+    invalid_evidence = list(malformed_evidence)
+    evidence_problems: dict[str, list[str]] = defaultdict(list)
+
+    for rule in rules:
+        rule_id = rule["id"]
+        automation = rule.get("automation")
+        entry = execution.get(rule_id)
+        executed = isinstance(entry, dict) and entry.get("executed") is True
+        reason = (entry.get("reason", "") if isinstance(entry, dict)
+                  else (default_reason or
+                        "the enforcer omitted this required rule from its execution map"))
+        status = "not_assessed"
+
+        if automation == "automated":
+            automated_required += 1
+            if executed:
+                automated_checked += 1
+                status = "deterministically_checked"
+            else:
+                automated_not_executed.append({"rule": rule_id,
+                                               "reason": reason or default_reason or
+                                               "the automated check did not run"})
+                status = "automated_check_not_run"
+        elif automation == "manual":
+            manual_required += 1
+            accepted = False
+            for evidence in evidence_by_rule.get(rule_id, []):
+                problems = validate_evidence(evidence, rule_id, root, date.today())
+                if problems:
+                    invalid_evidence.append({"rule": rule_id, "problems": problems})
+                    evidence_problems[rule_id].extend(problems)
+                else:
+                    accepted = True
+                    break
+            if accepted:
+                manual_accepted += 1
+                status = "manual_evidence_accepted"
+            else:
+                manual_missing.append({
+                    "rule": rule_id,
+                    "reason": ("manual evidence file could not be read: " + evidence_error
+                               if evidence_error else
+                               ("manual evidence is present but invalid: "
+                                + "; ".join(dict.fromkeys(evidence_problems[rule_id]))
+                                if evidence_problems[rule_id] else
+                                "the enforcer cannot decide this requirement; "
+                                "current repository-scoped manual evidence is required")),
+                })
+                status = "manual_evidence_required"
+        else:
+            raise ClaimError(f"catalog rule {rule_id} has unknown automation {automation!r}")
+
+        details.append({"rule": rule_id, "title": rule.get("title", rule_id),
+                        "level": rule.get("level"), "automation": automation,
+                        "status": status, "reason": reason if status == "automated_check_not_run" else None})
+
+    accounted = automated_checked + manual_accepted
+    required = len(rules)
+    unresolved = required - accounted
+    return {
+        "level": level,
+        "executionAvailable": bool(execution),
+        "catalogRules": len(catalog.get("rules", [])),
+        "required": required,
+        "accountedFor": accounted,
+        "notAssessed": unresolved,
+        "coveragePercent": round(accounted * 100 / required) if required else 100,
+        "complete": unresolved == 0,
+        "automated": {"required": automated_required, "checked": automated_checked,
+                       "notExecuted": automated_not_executed},
+        "manual": {"required": manual_required, "acceptedEvidence": manual_accepted,
+                   "missingEvidence": manual_missing},
+        "invalidEvidence": invalid_evidence,
+        "evidenceError": evidence_error,
+        "rules": details,
+        "outsideLevel": sorted(rule["id"] for rule in catalog.get("rules", [])
+                                if rule["id"] not in required_ids),
+    }
+
+
 def assess_project(root: Path, language: str | None = None,
                    level: str | None = None) -> tuple[int, dict]:
     """Read-only compatibility assessment: never writes to the target repository."""
@@ -1063,6 +1181,7 @@ def assess_project(root: Path, language: str | None = None,
         report["assessmentResult"] = build_assessment_result(report, None)
         return 2, report
 
+    report["requestedLevel"] = level or (config or {}).get("level") or "L1"
     selected = language or (config or {}).get("language") or (languages[0] if languages else None)
     units = (config or {}).get("units", [])
     report["language"] = selected
@@ -1075,11 +1194,23 @@ def assess_project(root: Path, language: str | None = None,
                    "paths": u.get("paths", [])} for u in units],
     }
     catalog = json.loads((ACIMA_ROOT / "tools/acima-spec/rules.json").read_text(encoding="utf-8"))
-    manual = sorted(rule["id"] for rule in catalog["rules"]
+    requested_level = level or (config or {}).get("level") or "L1"
+    try:
+        level_rules = required_rules(catalog, requested_level)
+    except ClaimError as error:
+        report.update({"verdict": "INVALID_ASSESSMENT", "verdictMeaning": str(error),
+                       "error": str(error)})
+        report["nextSteps"] = _next_steps(report)
+        report["assessmentResult"] = build_assessment_result(report, config)
+        return 2, report
+    manual = sorted(rule["id"] for rule in level_rules
                     if rule.get("automation") == "manual")
     report["applicable"] = {
         "catalogRules": len(catalog["rules"]),
-        "portableRules": len(catalog["rules"]) - len(manual),
+        "requiredRules": len(level_rules),
+        "portableRules": sum(1 for rule in level_rules if rule.get("automation") == "automated"),
+        "automatedRules": sum(1 for rule in level_rules if rule.get("automation") == "automated"),
+        "manualRules": manual,
         "manualEvidence": manual,
     }
 
@@ -1087,6 +1218,11 @@ def assess_project(root: Path, language: str | None = None,
         report["verdict"] = verdict
         report["verdictMeaning"] = VERDICT_MEANING[verdict]
         report.update(extra)
+        if verdict != "ASSESSED":
+            reason = str(extra.get("error") or extra.get("detail") or
+                         VERDICT_MEANING[verdict])
+            report["coverage"] = _assessment_rule_coverage(
+                root, catalog, requested_level, {}, default_reason=reason)
         report["nextSteps"] = _next_steps(report)
         report["assessmentResult"] = build_assessment_result(report, config)
         return code, report
@@ -1108,18 +1244,28 @@ def assess_project(root: Path, language: str | None = None,
     if payload is None:
         return finish("INVALID_ASSESSMENT", 2, error=error)
     execution = payload.get("execution") or {}
-    executed = sorted(rule for rule, value in execution.items() if value.get("executed") is True)
-    not_executed = {rule: value.get("reason", "")
-                    for rule, value in execution.items() if value.get("executed") is False}
+    measured_level = payload.get("level") or requested_level
+    if measured_level != requested_level:
+        return finish("INVALID_ASSESSMENT", 2,
+                      error=(f"enforcer measured level {measured_level!r}, but the assessment "
+                             f"requested {requested_level!r}"))
+    try:
+        rule_coverage = _assessment_rule_coverage(root, catalog, requested_level, execution)
+    except ClaimError as error:
+        return finish("INVALID_ASSESSMENT", 2, error=str(error))
+    executed = sorted(item["rule"] for item in rule_coverage["rules"]
+                      if item["status"] == "deterministically_checked")
+    not_executed = {item["rule"]: item["reason"]
+                    for item in rule_coverage["automated"]["notExecuted"]}
     findings = payload.get("findings", [])
     by_rule: dict[str, int] = defaultdict(int)
     for finding in findings:
         by_rule[finding["rule"]] += 1
     report["coverage"] = {
+        **rule_coverage,
         "executed": len(executed),
         "notExecuted": sorted(not_executed),
         "notExecutedReasons": not_executed,
-        "complete": not not_executed,
     }
     report["findings"] = {
         "total": len(findings),
@@ -1169,8 +1315,16 @@ def assess_text(report: dict) -> str:
                             signal["confidence"]))
     coverage = report.get("coverage")
     if coverage:
-        lines.append("  coverage    %s rules executed - %s not evaluated"
-                     % (coverage["executed"], len(coverage["notExecuted"])))
+        lines.append("  coverage    %s/%s required rules accounted for (%s%%)"
+                     % (coverage["accountedFor"], coverage["required"],
+                        coverage["coveragePercent"]))
+        lines.append("              %s/%s automated checks ran; %s/%s manual reviews evidenced"
+                     % (coverage["automated"]["checked"], coverage["automated"]["required"],
+                        coverage["manual"]["acceptedEvidence"], coverage["manual"]["required"]))
+        lines.append("              %s automated checks not run; %s manual reviews still needed"
+                     % (len(coverage["automated"]["notExecuted"]),
+                        len(coverage["manual"]["missingEvidence"])))
+        lines.append("              Coverage completeness is not a conformance claim.")
     findings = report.get("findings")
     if findings:
         severity = findings["bySeverity"]
@@ -1185,9 +1339,10 @@ def assess_text(report: dict) -> str:
         if findings["total"] > 12:
             lines.append("    ... %s more (use --format json for all)"
                          % (findings["total"] - 12))
-    manual = (report.get("applicable") or {}).get("manualEvidence") or []
+    manual = [item["rule"] for item in (coverage or {}).get("manual", {}).get(
+        "missingEvidence", [])] if coverage else []
     if manual:
-        lines.append("  human       %s rule(s) need recorded evidence: %s"
+        lines.append("  human       %s required manual review(s) still need evidence: %s"
                      % (len(manual), ", ".join(manual)))
     if report.get("error"):
         lines.append("  error       %s" % report["error"])
@@ -1246,10 +1401,28 @@ def assess_markdown(report: dict) -> str:
     coverage = report.get("coverage")
     if coverage:
         lines += ["", "## Verification coverage", "",
-                  "- Rules executed: **%s**" % coverage["executed"],
-                  "- Not evaluated: **%s** (%s)"
-                  % (len(coverage["notExecuted"]),
-                     ", ".join(coverage["notExecuted"]) or "none")]
+                  "- Required at `%s`: **%s**" % (coverage["level"], coverage["required"]),
+                  "- Accounted for: **%s/%s (%s%%)**" %
+                  (coverage["accountedFor"], coverage["required"], coverage["coveragePercent"]),
+                  "- Automated checks: **%s/%s ran**" %
+                  (coverage["automated"]["checked"], coverage["automated"]["required"]),
+                  "- Manual evidence: **%s/%s accepted**" %
+                  (coverage["manual"]["acceptedEvidence"], coverage["manual"]["required"]),
+                  "- Automated checks not run: **%s**" % len(coverage["automated"]["notExecuted"]),
+                  "- Manual evidence still required: **%s**" %
+                  len(coverage["manual"]["missingEvidence"]),
+                  "- Coverage complete: **%s**" % ("yes" if coverage["complete"] else "no"),
+                  "",
+                  "Coverage means every required rule was checked or has accepted manual evidence; "
+                  "it does not mean the repository has no findings or is fully conformant."]
+        if coverage["automated"]["notExecuted"]:
+            lines += ["", "### Automated checks not run", ""]
+            lines += ["- `%s`: %s" % (item["rule"], item["reason"])
+                      for item in coverage["automated"]["notExecuted"]]
+        if coverage["manual"]["missingEvidence"]:
+            lines += ["", "### Manual evidence required", ""]
+            lines += ["- `%s`: %s" % (item["rule"], item["reason"])
+                      for item in coverage["manual"]["missingEvidence"]]
     findings = report.get("findings")
     if findings:
         lines += ["", "## Findings", "",
@@ -1264,11 +1437,12 @@ def assess_markdown(report: dict) -> str:
         for item in findings["items"][:40]:
             lines.append("- `%s` %s (`%s:%s`)"
                          % (item["rule"], item["message"], item["path"], item["line"]))
-    manual = (report.get("applicable") or {}).get("manualEvidence") or []
+    manual = [item["rule"] for item in (coverage or {}).get("manual", {}).get(
+        "missingEvidence", [])] if coverage else []
     if manual:
         lines += ["", "## Requires human evidence", "",
-                  "These rules were not decided by the enforcer: "
-                  + ", ".join("`%s`" % rule for rule in manual) + "."]
+                  "These required reviews do not yet have accepted, current, repository-scoped "
+                  "evidence: " + ", ".join("`%s`" % rule for rule in manual) + "."]
     lines += ["", "## Recommended next steps", ""]
     lines += ["%s. %s" % (index, step)
               for index, step in enumerate(report.get("nextSteps", []), 1)]

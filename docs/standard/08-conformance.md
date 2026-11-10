@@ -107,6 +107,33 @@ Everything in L2, plus:
 
 ## 8.4 What counts as evidence
 
+### Assessment coverage accounting
+
+Every assessment MUST account for every rule required by its selected level. The required set is the
+cumulative catalog subset: L1 rules at L1; L1 and L2 rules at L2; and L1, L2 and L3 rules at L3.
+Rules above the selected level are outside that assessment and MUST NOT inflate its denominator.
+
+Coverage MUST distinguish:
+
+- **Automated checks required, executed and not executed.** Only a rule catalogued as automated
+  counts as deterministically checked, and only when its designated enforcer reports that it ran.
+  An omitted execution-map entry is not a pass; it is unassessed and needs an explicit reason.
+- **Manual reviews required, evidenced and missing.** A manual rule is accounted for only by valid,
+  current, repository-scoped evidence with a reviewer, owner, method, artifact, review date, expiry
+  and passing result. An enforcer's `executed: true` flag cannot satisfy a manual rule.
+- **Rules outside the selected level.** These are reported separately and are not included in the
+  required-rule denominator.
+
+The assessment MUST report the selected level, total required rules, automated coverage, manual
+coverage, every unresolved required rule and its reason, and whether coverage is complete. Coverage
+is the number of required rules actually checked or supported by accepted manual evidence divided by
+the total number required at that level. It MUST NOT use the entire catalog as the denominator for a
+lower-level assessment.
+
+Complete coverage is not a conformance claim: findings, waivers, provenance and the required gate
+remain separate conditions. An assessment with missing execution entries or missing manual evidence
+MUST report incomplete coverage and MUST NOT present those rules as passed.
+
 A conformance claim is credible when all six exist:
 
 1. **the configuration** — `acima.config.json` declaring units, level and mode;
