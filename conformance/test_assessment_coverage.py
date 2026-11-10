@@ -192,5 +192,79 @@ class AssessmentCoverageTests(unittest.TestCase):
         self.assertEqual(report["coverage"]["manual"]["required"], 1)
 
 
+    def test_comprehensive_review_exposes_all_catalog_rules_without_marking_them_reviewed(self) -> None:
+        review = acima._comprehensive_rule_review(CATALOG)
+        self.assertEqual(review["required"], 55)
+        self.assertEqual(review["levels"], {"L1": 27, "L2": 10, "L3": 18})
+        self.assertEqual(review["reviewed"], 0)
+        self.assertEqual(review["pending"], 55)
+        self.assertFalse(review["complete"])
+        self.assertEqual(len(review["rules"]), 55)
+        self.assertTrue(all(item["qualitativeStatus"] == "not_reviewed"
+                            for item in review["rules"]))
+
+    def test_missing_unit_map_still_provides_full_architecture_discovery_and_review_inventory(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "src/backend").mkdir(parents=True)
+            (root / "src/frontend").mkdir(parents=True)
+            (root / "src/backend/api.csproj").write_text("<Project />", encoding="utf-8")
+            (root / "src/frontend/package.json").write_text("{}", encoding="utf-8")
+            (root / "src/backend/Program.cs").write_text("class Program {}", encoding="utf-8")
+            (root / "src/frontend/main.tsx").write_text("export {}", encoding="utf-8")
+            (root / "architecture-rules.json").write_text("{}", encoding="utf-8")
+            (root / ".github/workflows").mkdir(parents=True)
+            (root / ".github/workflows/ci.yml").write_text("name: ci", encoding="utf-8")
+            (root / "solution.sln").write_text("", encoding="utf-8")
+            code, report = acima.assess_project(root)
+            self.assertEqual(code, 0)
+            self.assertEqual(report["verdict"], "NEEDS_UNIT_MAP")
+            self.assertEqual(report["comprehensiveRuleReview"]["required"], 55)
+            self.assertEqual(report["comprehensiveRuleReview"]["pending"], 55)
+            inventory = report["repositoryInventory"]
+            self.assertGreaterEqual(inventory["projectCount"], 2)
+            self.assertEqual({item["language"] for item in inventory["projects"]},
+                             {"dotnet", "typescript/javascript"})
+            self.assertIn("architecture-rules.json", inventory["architectureEvidence"])
+            self.assertIn(".github/workflows/ci.yml", inventory["ciWorkflows"])
+            self.assertIn("solution.sln", inventory["workspaces"])
+            self.assertEqual(inventory["sourceClassification"]["production"], 2)
+            self.assertEqual(inventory["sourceClassification"]["tests"], 0)
+            self.assertEqual(report["coverage"]["required"], 27)
+            markdown = acima.assess_markdown(report)
+            self.assertIn("Comprehensive ACIMA requirement review", markdown)
+            self.assertIn("Pending qualitative review: **55**", markdown)
+            self.assertIn("Project manifests", markdown)
+
+    def test_project_assessment_discovers_parent_repository_architecture_context(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="acima-parent-context-") as temp:
+            repository = Path(temp)
+            (repository / ".git").mkdir()
+            (repository / "arch").mkdir()
+            (repository / "arch" / "architecture-rules.json").write_text("{}", encoding="utf-8")
+            (repository / "docs" / "agents").mkdir(parents=True)
+            (repository / "docs" / "agents" / "repository-architecture.md").write_text(
+                "# Architecture", encoding="utf-8")
+            (repository / ".github" / "workflows").mkdir(parents=True)
+            (repository / ".github" / "workflows" / "ci.yml").write_text("name: ci", encoding="utf-8")
+            project = repository / "src" / "backend"
+            project.mkdir(parents=True)
+            (project / "Program.cs").write_text("class Program {}", encoding="utf-8")
+            _, report = acima.assess_project(project)
+            inventory = report["repositoryInventory"]
+            self.assertTrue(Path(inventory["repositoryRoot"]).samefile(repository))
+            self.assertIn("../../arch/architecture-rules.json", inventory["repositoryArchitectureEvidence"])
+            self.assertIn("../../docs/agents/repository-architecture.md", inventory["repositoryArchitectureEvidence"])
+            self.assertIn("../../.github/workflows/ci.yml", inventory["ciWorkflows"])
+
+    def test_project_inventory_does_not_claim_projects_are_approved_modules(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "one").mkdir()
+            (root / "one/project.csproj").write_text("<Project />", encoding="utf-8")
+            inventory = acima._repository_architecture_inventory(root)
+            self.assertIn("not approved", inventory["ownershipInference"])
+
+
 if __name__ == "__main__":
     unittest.main()

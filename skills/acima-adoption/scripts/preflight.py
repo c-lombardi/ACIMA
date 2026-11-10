@@ -66,6 +66,7 @@ class Report:
     profile: str = "none"
     language: str = "unknown"
     detected_languages: list[str] = field(default_factory=list)
+    source_coverage: dict = field(default_factory=dict)
     next_steps: list[str] = field(default_factory=list)
 
     def add(self, check_id: str, status: str, detail: str, remedy: str = "") -> None:
@@ -103,6 +104,28 @@ def walk_files(root: Path, limit: int = 50000):
             seen += 1
             if seen >= limit:
                 return
+
+
+def is_test_source(path: Path) -> bool:
+    parts = [part.lower() for part in path.parts]
+    name = path.name.lower()
+    return (any(part in {"test", "tests", "__tests__", "spec", "specs", "e2e"} or
+                part.endswith((".test", ".tests", ".spec", ".specs")) for part in parts)
+            or any(name.endswith(suffix) for suffix in
+                   (".test.ts", ".test.tsx", ".test.js", ".test.jsx",
+                    ".spec.ts", ".spec.tsx", ".spec.js", ".spec.jsx")))
+
+
+def is_tooling_source(path: Path) -> bool:
+    name = path.name.lower()
+    return (name.startswith(("eslint.config.", "vite.config.", "vitest.config.",
+                             "playwright.config.", "tsconfig."))
+            or name == "vite-env.d.ts")
+
+
+def is_generated_source(path: Path) -> bool:
+    name = path.name.lower()
+    return name.endswith((".g.cs", ".generated.cs", ".designer.cs")) or ".generated." in name
 
 
 def count_sources(root: Path) -> dict[str, int]:
@@ -170,8 +193,10 @@ def propose_dotnet_units(project: Path) -> list[dict]:
             continue
         seen.add(relative)
         name = directory.name
-        if name.endswith(".Contracts"):
-            module = name[: -len(".Contracts")].lower()
+        if is_test_source(directory):
+            continue
+        if name.lower().endswith(".contracts"):
+            module = name[: -len(".contracts")].lower()
             units.append({"id": f"{module}.contracts", "module": module,
                           "role": "contracts", "paths": [relative]})
         else:
@@ -208,7 +233,8 @@ def propose_directory_units(project: Path) -> list[dict]:
         if not base.is_dir():
             continue
         for child in sorted(base.iterdir()):
-            if not child.is_dir() or child.name in PRUNE or child.name.startswith("."):
+            if (not child.is_dir() or child.name in PRUNE or child.name.startswith(".")
+                    or is_test_source(child)):
                 continue
             relative = child.relative_to(project).as_posix()
             if relative in seen_paths or not has_sources(child):
@@ -711,19 +737,38 @@ def check_target(project: Path, report: Report, manifest: dict) -> tuple[list[di
                        "declare units manually; ADR-0001 in the adoption plan explains the split")
 
         if report.mode == "brownfield":
-            covered = sum(
-                1 for path in walk_files(project)
-                if path.suffix.lower() in SOURCE_EXTENSIONS
-                and unit_for_path(path.relative_to(project).as_posix(),
-                                  report.proposed_units) is not None
-            )
-            uncovered = max(total - covered, 0)
+            coverage = {"productionCovered": 0, "productionUncovered": [],
+                        "testsExcluded": 0, "toolingExcluded": 0, "generatedExcluded": 0}
+            for path in walk_files(project):
+                if path.suffix.lower() not in SOURCE_EXTENSIONS:
+                    continue
+                if is_test_source(path.relative_to(project)):
+                    coverage["testsExcluded"] += 1
+                elif is_tooling_source(path):
+                    coverage["toolingExcluded"] += 1
+                elif is_generated_source(path):
+                    coverage["generatedExcluded"] += 1
+                elif unit_for_path(path.relative_to(project).as_posix(),
+                                   report.proposed_units) is not None:
+                    coverage["productionCovered"] += 1
+                else:
+                    coverage["productionUncovered"].append(path.relative_to(project).as_posix())
+            report.source_coverage = coverage
+            uncovered = len(coverage["productionUncovered"])
+            excluded = (coverage["testsExcluded"] + coverage["toolingExcluded"] +
+                        coverage["generatedExcluded"])
             if uncovered:
                 report.add("TGT-005", "warn",
-                           f"{uncovered} source file(s) fall outside the proposed units",
-                           "they will be G005 findings until the map covers them")
+                           f"{uncovered} production source file(s) fall outside candidate units; "
+                           f"{coverage['testsExcluded']} test, {coverage['toolingExcluded']} tooling, "
+                           f"and {coverage['generatedExcluded']} generated source file(s) are "
+                           "separately excluded from module ownership coverage",
+                           "review the uncovered production paths and assign them to a genuine "
+                           "owning module or composition boundary")
             else:
-                report.add("TGT-005", "pass", "every source file is covered by a proposed unit")
+                report.add("TGT-005", "pass",
+                           f"all {coverage['productionCovered']} production source files are covered; "
+                           f"{excluded} test/tooling/generated files are excluded from module ownership coverage")
     return report.proposed_units, config
 
 
@@ -907,6 +952,7 @@ def main() -> int:
                         "profile": report.profile,
                         "language": report.language,
                         "detectedLanguages": report.detected_languages},
+            "sourceCoverage": report.source_coverage,
             "checks": [check.__dict__ for check in report.checks],
             "blockers": [check.id for check in report.blockers],
             "warnings": [check.id for check in report.warnings],

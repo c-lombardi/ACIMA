@@ -38,6 +38,62 @@ class PreflightDiscoveryTests(unittest.TestCase):
             self.assertEqual(checks["TGT-004"]["status"], "fail")
             self.assertIn("TGT-004", payload["blockers"])
 
+    def test_dotnet_contract_projects_are_recognized_case_insensitively(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="acima-contract-suffix-") as temp:
+            directory = Path(temp)
+            contracts = directory / "src" / "ailib.tools.domain.contracts"
+            contracts.mkdir(parents=True)
+            (contracts / "ailib.tools.domain.contracts.csproj").write_text(
+                "<Project />", encoding="utf-8")
+            (contracts / "Contract.cs").write_text("public sealed record Contract;", encoding="utf-8")
+            code, payload = run_preflight(directory)
+            self.assertEqual(code, 0)
+            unit = next(item for item in payload["proposedUnits"]
+                        if item["paths"] == ["src/ailib.tools.domain.contracts"])
+            self.assertEqual(unit["role"], "contracts")
+            self.assertEqual(unit["module"], "ailib.tools.domain")
+
+    def test_test_projects_are_not_proposed_as_production_modules(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="acima-test-projects-") as temp:
+            directory = Path(temp)
+            production = directory / "src" / "Catalog"
+            tests = directory / "src" / "Catalog.Tests"
+            production.mkdir(parents=True)
+            tests.mkdir(parents=True)
+            (production / "Catalog.csproj").write_text("<Project />", encoding="utf-8")
+            (production / "Catalog.cs").write_text("public class Catalog;", encoding="utf-8")
+            (tests / "Catalog.Tests.csproj").write_text("<Project />", encoding="utf-8")
+            (tests / "CatalogTests.cs").write_text("public class CatalogTests;", encoding="utf-8")
+            code, payload = run_preflight(directory)
+            self.assertEqual(code, 0)
+            self.assertEqual(len(payload["proposedUnits"]), 1)
+            self.assertEqual(payload["proposedUnits"][0]["id"], "catalog")
+            self.assertEqual(payload["sourceCoverage"]["productionCovered"], 1)
+            self.assertEqual(payload["sourceCoverage"]["testsExcluded"], 1)
+            self.assertEqual(payload["sourceCoverage"]["productionUncovered"], [])
+
+    def test_frontend_tooling_and_e2e_tests_are_not_reported_as_unowned_production(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="acima-frontend-source-scope-") as temp:
+            directory = Path(temp)
+            for name in ("api", "app", "features"):
+                path = directory / "src" / name
+                path.mkdir(parents=True)
+                (path / "index.ts").write_text("export {};", encoding="utf-8")
+            (directory / "src" / "main.tsx").write_text("export {};", encoding="utf-8")
+            (directory / "src" / "vite-env.d.ts").write_text("declare const x: string;", encoding="utf-8")
+            (directory / "e2e" / "specs").mkdir(parents=True)
+            (directory / "e2e" / "specs" / "home.spec.ts").write_text("test();", encoding="utf-8")
+            (directory / "vite.config.ts").write_text("export {};", encoding="utf-8")
+            code, payload = run_preflight(directory)
+            self.assertEqual(code, 0)
+            self.assertEqual(payload["sourceCoverage"]["testsExcluded"], 1)
+            self.assertEqual(payload["sourceCoverage"]["toolingExcluded"], 2)
+            self.assertEqual(payload["sourceCoverage"]["productionCovered"], 3)
+            self.assertEqual(payload["sourceCoverage"]["productionUncovered"], ["src/main.tsx"])
+            checks = {check["id"]: check for check in payload["checks"]}
+            self.assertEqual(checks["TGT-005"]["status"], "warn")
+            self.assertIn("1 production source file", checks["TGT-005"]["detail"])
+
     def test_more_than_sixteen_candidates_are_all_proposed(self) -> None:
         with tempfile.TemporaryDirectory(prefix="acima-many-units-") as temp:
             directory = Path(temp)

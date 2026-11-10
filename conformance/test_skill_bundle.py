@@ -36,7 +36,9 @@ class SkillBundleTests(unittest.TestCase):
     def test_no_unrecorded_files_are_shipped(self) -> None:
         expected = set(self.bundle["files"]) | {"MANIFEST.json"}
         actual = {path.relative_to(VENDOR).as_posix()
-                  for path in VENDOR.rglob("*") if path.is_file()}
+                  for path in VENDOR.rglob("*")
+                  if path.is_file() and "__pycache__" not in path.parts
+                  and path.suffix != ".pyc"}
         self.assertEqual(actual, expected)
 
 

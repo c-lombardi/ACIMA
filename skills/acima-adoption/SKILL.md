@@ -6,7 +6,7 @@ compatibility: Python 3.9+ for the preflight script. The target language toolcha
 allowed-tools: Read Grep Glob Bash Edit Write
 metadata:
   standard: "1.9.0-draft.1"
-  skill-version: "1.21.0"
+  skill-version: "1.22.0"
   catalog-sha256: "b593d28e81dacfdb9ba61b5792cbab04c521c0631cec6ff61292045acada678a"
 ---
 
@@ -99,8 +99,21 @@ unresolved questions. Record one compatibility outcome — compatible, compatibl
 incompatible or insufficient evidence — against the applicable requirements. Distinguish an
 implementation difference from a genuine conflict, and never treat missing evidence as
 incompatibility. Name any requirement that is stricter than the team's current practice and why it
-exists. No config, waivers, baselines, CI, docs or source changes. `NEEDS_UNIT_MAP` means
-unassessed, never clean.
+exists. No config, waivers, baselines, CI, docs or source changes. `NEEDS_UNIT_MAP` blocks deterministic
+conformance measurement only; it does not block qualitative architectural discovery or assessment.
+Never stop at a missing map. Continue with a provisional, explicitly unapproved ownership hypothesis,
+inspect the actual source and all relevant architecture evidence, and mark unresolved ownership as
+uncertain. `NEEDS_UNIT_MAP` means deterministic checks did not run, never that the architecture is
+unassessed or clean.
+
+A comprehensive assessment is mandatory unless the user explicitly requests a narrower review.
+Read [25-comprehensive-assessment](references/25-comprehensive-assessment.md). Assess all 55 current
+catalog requirements across L1, L2 and L3, independently of the level recommended for adoption.
+Keep the selected adoption/conformance level separate from the comprehensive architectural review.
+The CLI's `comprehensiveRuleReview` is a checklist, not evidence that those rules were reviewed.
+Inspect the repository and record evidence/status for each requirement. A deterministic check that
+cannot run must not be silently replaced by a pass; a qualitative review is also not a conformance
+claim or accepted manual evidence unless the formal evidence requirements are met.
 
 **Phase 2 — Proposal.** Present [the proposal](assets/adoption-proposal.md) as a decision document:
 recommendation first, then the compatibility outcome and evidence, requirements already satisfied,
@@ -145,7 +158,17 @@ assume a type. Establish, with evidence and confidence:
 
 Also record languages, frameworks and manifests; project/package layout; entry points; construction
 and injection patterns; existing boundaries and dependency direction; shared libraries;
-persistence, configuration and external-effect ownership; tests and existing architecture checks;
+persistence, configuration and external-effect ownership; tests and existing architecture checks.
+Discover the enclosing Git repository root when the requested project is nested. Inspect root-level
+architecture rules, CI workflows and architecture documentation as context without silently expanding
+the production source scope to unrelated sibling projects. For a multi-project or multi-language
+repository, inspect every relevant project and assess both project-local architecture and
+cross-project integration contracts. Do not select only the first
+detected language and imply the rest were covered. Discover and compare existing architecture tests,
+custom rule engines, static analyzers, dependency restrictions and CI gates before recommending new
+enforcement. Continue qualitative inspection when a module map is missing; project manifests,
+imports, references, deployment manifests and composition roots are evidence for provisional
+boundaries, not approval of module ownership.
 build, packaging and CI. A repository may be several kinds at once — say so, and never present a
 directory name as an ownership decision.
 

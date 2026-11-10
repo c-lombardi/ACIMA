@@ -1,6 +1,6 @@
 {
   "skill": "acima-adoption",
-  "skillVersion": "1.21.0",
+  "skillVersion": "1.22.0",
   "standard": "1.9.0-draft.1",
   "verifiedAt": "2026-11-10",
   "catalog": {
@@ -129,6 +129,7 @@
     "references/05-architecture-families.md",
     "references/10-greenfield.md",
     "references/20-brownfield.md",
+    "references/25-comprehensive-assessment.md",
     "references/30-adoption-for-newcomers.md",
     "references/40-communication.md",
     "references/50-outcomes.md",

@@ -16,6 +16,7 @@ import argparse
 import hashlib
 from datetime import date, timedelta
 import json
+import os
 import re
 import shlex
 import shutil
@@ -367,8 +368,10 @@ def _next_steps(report: dict) -> list[str]:
         steps.append("Decide module ownership with the people who own the system, then declare "
                      "units in acima.config.json. `preflight.py --write-draft` produces a "
                      "heuristic starting point that a human must review.")
-        steps.append("Re-run `acima assess` once the map exists; a repository without a map is "
-                     "unassessed, not clean.")
+        steps.append("Continue the read-only qualitative review of every catalog requirement using "
+                     "the discovered project and architecture evidence. The missing map blocks "
+                     "deterministic conformance measurement only; do not report the architecture "
+                     "as unassessed or clean.")
     elif verdict == "UNSUPPORTED_LANGUAGE":
         steps.append("This language has a documented profile but no reference enforcer in this "
                      "revision. An assessment must fail closed rather than report zero findings.")
@@ -1136,6 +1139,159 @@ def _assessment_rule_coverage(root: Path, catalog: dict, level: str,
     }
 
 
+
+PROJECT_MARKERS = {
+    ".csproj": "dotnet", ".fsproj": "dotnet",
+    "package.json": "typescript/javascript",
+    "go.mod": "go", "pyproject.toml": "python", "setup.py": "python",
+    "pom.xml": "java", "build.gradle": "java", "build.gradle.kts": "java",
+}
+ARCHITECTURE_MARKERS = (
+    "architecture", "archtest", "dependency-cruiser", "madge", "nx.json",
+    "eslint.config", ".eslintrc", "Directory.Build", "CODEOWNERS",
+)
+
+
+def _find_repository_root(root: Path) -> Path | None:
+    for candidate in (root, *root.parents):
+        marker = candidate / ".git"
+        if marker.is_dir() or marker.is_file():
+            return candidate
+    return None
+
+
+def _repository_context_evidence(project_root: Path, repository_root: Path | None) -> list[str]:
+    if repository_root is None:
+        return []
+    candidates = (
+        "arch", "docs/architecture-map.md", "docs/agents/repository-architecture.md",
+        "docs/agents/architecture-enforcement.md", "scripts/architecture-gate.mjs",
+        "scripts/architecture-map.mjs", ".github/workflows", ".azure/pipelines",
+        "CODEOWNERS", ".editorconfig", "Directory.Build.props", "Directory.Build.targets",
+    )
+    found = []
+    for relative in candidates:
+        path = repository_root / relative
+        if path.is_file():
+            found.append(os.path.relpath(path, project_root).replace("\\", "/"))
+        elif path.is_dir():
+            for child in path.rglob("*"):
+                if child.is_file():
+                    found.append(os.path.relpath(child, project_root).replace("\\", "/"))
+    return sorted(set(found))
+
+
+def _repository_architecture_inventory(root: Path) -> dict:
+    """Inventory project roots and architecture evidence without inferring ownership."""
+    projects = []
+    workspaces = []
+    architecture = []
+    source_roots = set()
+    source_classification = {"production": 0, "tests": 0, "tooling": 0, "generated": 0}
+    ci_workflows = []
+    for path in _walk(root):
+        relative = path.relative_to(root).as_posix()
+        name = path.name.lower()
+        language = PROJECT_MARKERS.get(path.suffix.lower())
+        if name in PROJECT_MARKERS:
+            language = PROJECT_MARKERS[name]
+        if language and name not in {"package-lock.json", "pnpm-lock.yaml"}:
+            projects.append({"manifest": relative, "directory": path.parent.relative_to(root).as_posix() or ".",
+                             "kind": path.name, "language": language})
+        if name.endswith((".sln", ".slnx")) or name in {"pnpm-workspace.yaml", "nx.json", "turbo.json"}:
+            workspaces.append(relative)
+        if path.suffix.lower() in SOURCE_EXTENSIONS:
+            relative_parts = [part.lower() for part in path.relative_to(root).parts]
+            source_roots.add(path.parent.relative_to(root).as_posix().split("/")[0])
+            source_name = path.name.lower()
+            is_test = (any(part in {"test", "tests", "__tests__", "spec", "specs", "e2e"} or
+                           part.endswith((".tests", ".test", ".spec", ".specs"))
+                           for part in relative_parts)
+                       or source_name.endswith((".test.ts", ".test.tsx", ".test.js", ".test.jsx",
+                                                ".spec.ts", ".spec.tsx", ".spec.js", ".spec.jsx")))
+            is_tooling = (source_name.startswith(("eslint.config.", "vite.config.", "vitest.config.",
+                                                  "playwright.config.", "tsconfig."))
+                          or source_name == "vite-env.d.ts")
+            is_generated = (source_name.endswith((".g.cs", ".generated.cs", ".designer.cs"))
+                            or ".generated." in source_name)
+            if is_test:
+                source_classification["tests"] += 1
+            elif is_tooling:
+                source_classification["tooling"] += 1
+            elif is_generated:
+                source_classification["generated"] += 1
+            else:
+                source_classification["production"] += 1
+        if any(marker in name for marker in ARCHITECTURE_MARKERS):
+            architecture.append(relative)
+        if relative.startswith(".github/workflows/") or relative.startswith(".azure/pipelines/"):
+            ci_workflows.append(relative)
+    # _walk intentionally excludes hidden directories for source discovery; inspect known CI roots
+    # explicitly so workflow evidence is not silently omitted.
+    for ci_root in (root / ".github" / "workflows", root / ".azure" / "pipelines"):
+        if ci_root.is_dir():
+            for path in ci_root.rglob("*"):
+                if path.is_file():
+                    ci_workflows.append(path.relative_to(root).as_posix())
+    projects.sort(key=lambda item: (item["directory"], item["manifest"]))
+    workspaces.sort()
+    architecture.sort()
+    ci_workflows.sort()
+    repository_root = _find_repository_root(root)
+    repository_context = _repository_context_evidence(root, repository_root)
+    context_workflows = [path for path in repository_context
+                         if ".github/workflows/" in path or ".azure/pipelines/" in path]
+    context_architecture = [path for path in repository_context
+                            if path not in context_workflows]
+    return {
+        "projectRoot": str(root),
+        "repositoryRoot": str(repository_root) if repository_root else None,
+        "projects": projects[:500],
+        "projectCount": len(projects),
+        "workspaces": workspaces[:100],
+        "sourceTopLevelRoots": sorted(source_roots),
+        "sourceClassification": source_classification,
+        "architectureEvidence": architecture[:300],
+        "architectureEvidenceCount": len(architecture),
+        "repositoryContextEvidence": repository_context[:300],
+        "repositoryContextEvidenceCount": len(repository_context),
+        "repositoryArchitectureEvidence": context_architecture[:200],
+        "ciWorkflows": sorted(set(ci_workflows + context_workflows))[:200],
+        "ciWorkflowCount": len(set(ci_workflows + context_workflows)),
+        "ownershipInference": "not_performed; project and directory boundaries are discovery evidence, not approved ACIMA modules",
+    }
+
+
+def _comprehensive_rule_review(catalog: dict) -> dict:
+    """Expose every catalog requirement for qualitative review without claiming it was reviewed."""
+    entries = []
+    for rule in catalog.get("rules", []):
+        entries.append({
+            "rule": rule["id"],
+            "level": rule.get("level"),
+            "title": rule.get("title", rule["id"]),
+            "requirement": rule.get("summary", ""),
+            "automation": rule.get("automation"),
+            "qualitativeStatus": "not_reviewed",
+            "applicability": "undetermined",
+            "evidence": [],
+            "reviewInstruction": ("Inspect the actual implementation, ownership, dataflow, callers, consumers, "
+                                  "configuration and relevant tests. Do not infer a pass from absent findings "
+                                  "or from a deterministic check that did not run."),
+        })
+    return {
+        "scope": "all_catalog_levels",
+        "levels": {level: sum(1 for item in entries if item["level"] == level)
+                   for level in ("L1", "L2", "L3")},
+        "required": len(entries),
+        "reviewed": 0,
+        "pending": len(entries),
+        "complete": False,
+        "statusMeaning": "The CLI exposes all requirements for the adoption agent's qualitative review. "
+                         "This inventory is not itself a completed architectural assessment.",
+        "rules": entries,
+    }
+
 def assess_project(root: Path, language: str | None = None,
                    level: str | None = None) -> tuple[int, dict]:
     """Read-only compatibility assessment: never writes to the target repository."""
@@ -1153,12 +1309,15 @@ def assess_project(root: Path, language: str | None = None,
         }
     counts = _source_inventory(root)
     languages = detect_languages(root)
+    catalog = json.loads((ACIMA_ROOT / "tools/acima-spec/rules.json").read_text(encoding="utf-8"))
     report: dict = {
         "readOnly": True,
         "root": str(root),
         "languages": languages,
         "sourceFiles": sum(counts.values()),
         "sourceCounts": counts,
+        "repositoryInventory": _repository_architecture_inventory(root),
+        "comprehensiveRuleReview": _comprehensive_rule_review(catalog),
         "requestedLevel": level or "L1",
         "limitation": ("Read-only assessment. It is not a conformance claim and it computes no "
                        "health score; rules without evidence are reported as not evaluated."),
@@ -1193,7 +1352,6 @@ def assess_project(root: Path, language: str | None = None,
         "units": [{"id": u.get("id"), "role": u.get("role"), "module": u.get("module"),
                    "paths": u.get("paths", [])} for u in units],
     }
-    catalog = json.loads((ACIMA_ROOT / "tools/acima-spec/rules.json").read_text(encoding="utf-8"))
     requested_level = level or (config or {}).get("level") or "L1"
     try:
         level_rules = required_rules(catalog, requested_level)
@@ -1313,6 +1471,15 @@ def assess_text(report: dict) -> str:
             lines.append("  layout      %s - evidence: %s (confidence: %s)"
                          % (signal["candidate"], ", ".join(signal["evidence"]) or "none",
                             signal["confidence"]))
+    inventory = report.get("repositoryInventory") or {}
+    review = report.get("comprehensiveRuleReview") or {}
+    if inventory:
+        lines.append("  projects    %s manifests; %s architecture artifacts; %s CI workflows" %
+                     (inventory.get("projectCount", 0), inventory.get("architectureEvidenceCount", 0),
+                      inventory.get("ciWorkflowCount", 0)))
+    if review:
+        lines.append("  all rules   %s catalog requirements exposed; %s qualitatively reviewed; %s pending" %
+                     (review.get("required", 0), review.get("reviewed", 0), review.get("pending", 0)))
     coverage = report.get("coverage")
     if coverage:
         lines.append("  coverage    %s/%s required rules accounted for (%s%%)"
@@ -1398,6 +1565,32 @@ def assess_markdown(report: dict) -> str:
     else:
         lines.append("- No `acima.config.json`: the repository cannot be classified into units, "
                      "so no architectural verdict is drawn.")
+    inventory = report.get("repositoryInventory") or {}
+    lines += ["## Repository discovery", "",
+              f"- Project manifests discovered: **{inventory.get('projectCount', 0)}**",
+              f"- Architecture/enforcement artifacts discovered: **{inventory.get('architectureEvidenceCount', 0)}**",
+              f"- CI workflows discovered: **{inventory.get('ciWorkflowCount', 0)}**",
+              f"- Top-level source roots: {', '.join(inventory.get('sourceTopLevelRoots', [])) or 'none'}",
+              f"- Source classification: {inventory.get('sourceClassification', {})}",
+              "- Discovered projects and architecture files are evidence for review, not approved ACIMA modules.", ""]
+    if inventory.get("projects"):
+        lines += ["### Project manifests", ""]
+        lines += [f"- `{item['manifest']}` ({item['language']})" for item in inventory["projects"]]
+    if inventory.get("architectureEvidence") or inventory.get("repositoryArchitectureEvidence"):
+        lines += ["", "### Existing architecture evidence", ""]
+        lines += [f"- `{item}`" for item in inventory.get("architectureEvidence", [])]
+        lines += [f"- Repository context: `{item}`" for item in inventory.get("repositoryArchitectureEvidence", [])]
+    review = report.get("comprehensiveRuleReview") or {}
+    if review:
+        lines += ["", "## Comprehensive ACIMA requirement review", "",
+                  f"- Catalog requirements: **{review.get('required', 0)}** across L1, L2 and L3",
+                  f"- Qualitatively reviewed by an adoption agent: **{review.get('reviewed', 0)}**",
+                  f"- Pending qualitative review: **{review.get('pending', 0)}**",
+                  "- The CLI does not perform semantic code review. Each requirement must be traced through actual code and evidence before its status can change.", "",
+                  "| Level | Requirement | Automation | Status |",
+                  "|---|---|---|---|"]
+        for item in review.get("rules", []):
+            lines.append(f"| {item['level']} | {item['title']} (`{item['rule']}`) | {item['automation']} | {item['qualitativeStatus']} |")
     coverage = report.get("coverage")
     if coverage:
         lines += ["", "## Verification coverage", "",
