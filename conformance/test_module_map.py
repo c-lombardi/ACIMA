@@ -59,6 +59,7 @@ def decision_doc(proposal: dict, *, map_decision: str = "accept",
                             for item in inner["modules"]],
         "recommendationDecisions": [{"id": item["id"], "decision": recommendation}
                                     for item in inner["recommendations"]],
+        "pathDecisions": [],
     }
 
 
@@ -74,6 +75,26 @@ class ModuleMapTests(unittest.TestCase):
                              {"Orders", "Billing"})
             self.assertTrue(data["proposal"]["proposalId"].startswith("sha256:"))
             self.assertFalse((root / "acima.config.json").exists())
+
+    def test_project_containers_are_not_proposed_as_modules(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write(root, "src/acme/orders/orders.csproj", "<Project />\n")
+            write(root, "src/acme/orders/Service.cs", "public class Service {}\n")
+            write(root, "src/acme/orders/orders.contracts/orders.contracts.csproj",
+                  "<Project />\n")
+            write(root, "src/acme/orders/orders.contracts/Contract.cs",
+                  "public sealed record Contract;\n")
+            write(root, "src/acme/billing/billing.csproj", "<Project />\n")
+            write(root, "src/acme/billing/Service.cs", "public class Service {}\n")
+            data = module_map.discover(root)
+            ids = {item["id"] for item in data["proposal"]["modules"]}
+            self.assertEqual(ids, {"orders", "billing"})
+            orders = next(item for item in data["proposal"]["modules"]
+                          if item["id"] == "orders")
+            self.assertEqual(orders["implementation"]["paths"], ["src/acme/orders"])
+            self.assertEqual(orders["contracts"]["paths"],
+                             ["src/acme/orders/orders.contracts"])
 
     def test_partial_map_preserves_existing_units_and_proposes_missing_source(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -173,6 +194,62 @@ class ModuleMapTests(unittest.TestCase):
             self.assertTrue(any(item["id"].startswith("MMR-")
                                 and "Unassigned production code" in item["title"]
                                 for item in data["proposal"]["recommendations"]))
+
+    def test_path_dispositions_resolve_non_module_content_and_unresolved_source(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            clean_repo(root)
+            write(root, "tests/test_orders.py", "def test_place(): pass\n")
+            write(root, "tools/build.py", "VALUE = 1\n")
+            write(root, "legacy.py", "VALUE = 2\n")
+            data = module_map.discover(root)
+            inner = data["proposal"]
+            dispositions = {item["classification"]: item for item in inner["pathDispositions"]}
+            self.assertEqual(dispositions["tests"]["paths"], ["tests"])
+            self.assertEqual(dispositions["build-tooling"]["paths"], ["tools"])
+            self.assertIn("legacy.py", dispositions["unresolved-production"]["paths"])
+
+            review = decision_doc(data)
+            for item in inner["pathDispositions"]:
+                if item["classification"] == "unresolved-production":
+                    review["pathDecisions"].append({
+                        "id": item["id"], "decision": "modify",
+                        "classification": "owned-implementation",
+                        "moduleId": "orders", "paths": item["paths"],
+                    })
+                else:
+                    review["pathDecisions"].append({"id": item["id"], "decision": "accept"})
+            result = module_map.apply_review(data, review, root=root)
+            self.assertEqual(result["status"], "approved", result["approval"])
+            self.assertTrue(result["approval"]["canWriteConfig"])
+            config = module_map.build_config(data, result)
+            self.assertEqual(config["repositoryDispositions"][0]["classification"], "build-tooling")
+            write(root, "acima.config.json", json.dumps(config))
+            again = module_map.discover(root)
+            self.assertEqual(again["status"], "authoritative")
+            self.assertEqual(again["authoritativeMap"]["status"], "complete")
+
+    def test_missing_module_decision_is_not_auto_accepted(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            clean_repo(root)
+            data = proposal_for(root)
+            review = decision_doc(data)
+            review["moduleDecisions"] = review["moduleDecisions"][1:]
+            result = module_map.apply_review(data, review, root=root)
+            self.assertEqual(result["status"], "partially_approved")
+            self.assertFalse(result["approval"]["canWriteConfig"])
+            self.assertTrue(result["approval"]["undecidedModules"])
+
+    def test_rejected_map_does_not_report_modules_as_approved(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            clean_repo(root)
+            data = proposal_for(root)
+            result = module_map.apply_review(data, decision_doc(data, map_decision="reject"), root=root)
+            self.assertEqual(result["status"], "rejected")
+            self.assertEqual(result["approval"]["approvedModules"], [])
+            self.assertFalse((root / "acima.config.json").exists())
 
     def test_decisions_allow_accept_modify_reject_and_defer_atomically(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -1547,11 +1547,11 @@ def assess_project(root: Path, language: str | None = None,
         return finish("UNSUPPORTED_PROFILE",
                       detail="architecture mode %r is not supported by this revision" % mode)
 
-    if config is None:
-        return finish("NEEDS_UNIT_MAP")
     spec = enforcer_spec(selected or "")
     if spec is None:
         return finish("UNSUPPORTED_LANGUAGE")
+    if config is None:
+        return finish("NEEDS_UNIT_MAP")
     if shutil.which(spec["run"][0]) is None:
         return finish("TOOLCHAIN_MISSING", detail="%s is not installed" % spec["run"][0])
 

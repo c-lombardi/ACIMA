@@ -8,16 +8,16 @@
       "bytes": 17880
     },
     "conformance/adoption_workflow.py": {
-      "sha256": "f672f6dfa6b6a0cf985debf3ff303718ea5dfdab4097882d0e8b2c1ecd653bbc",
-      "bytes": 85136
+      "sha256": "645d1397471e48b71207217b2c94748ff9acab1089b092b1588615be12f3dfbc",
+      "bytes": 94607
     },
     "conformance/agent_guidance.py": {
       "sha256": "3d1556e2d5654f0fa252b74a8ff5bc9504c4906bb5b8b7cae035dc02dc810ae7",
       "bytes": 30166
     },
     "conformance/module_map.py": {
-      "sha256": "86f515f5788144a6b27654225675e3a8f9e0adc43d838b5f4b2503c458d00431",
-      "bytes": 48715
+      "sha256": "afe647a8d43bca18c223962d3cc7653ade2a77afd0ee5813a8dcfc6a7d99831d",
+      "bytes": 77578
     },
     "conformance/qualitative_review.py": {
       "sha256": "24e52211c9117e7cd9eed1581d5694c5bbca557655ea83954e9483a22d938a6c",
@@ -188,7 +188,7 @@
       "bytes": 34422
     },
     "tools/acima.py": {
-      "sha256": "2a9f391797750061ab64571a43052d5402479c25971c4138b78c5968ffc97f78",
+      "sha256": "7840d81af50d08a791fce51f7152f906b480d9378f3debed1985794ef1d38ec9",
       "bytes": 249576
     },
     "tools/qualitative-review.schema.json": {

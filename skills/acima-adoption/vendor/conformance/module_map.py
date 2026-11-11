@@ -2,8 +2,9 @@
 
 The proposal is an assessment artefact. It never becomes authoritative merely because
 discovery succeeded: a reviewer must accept, modify, reject or defer the proposal (or
-individual boundaries and recommendations). An approved map is then converted to the
-existing ``acima.config.json`` unit contract, which the enforcers already understand.
+individual boundaries, repository-path dispositions and recommendations). An approved map
+is then converted to the existing ``acima.config.json`` unit contract, which the enforcers
+already understand.
 
 This module is deliberately shared by the adoption skill and the developer CLI so a
 proposal cannot drift between the two entry points.
@@ -13,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import sys
 from datetime import date, datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -27,14 +29,19 @@ SOURCE_EXTENSIONS = {
 PRUNE = {
     ".git", "node_modules", "bin", "obj", "dist", "build", "target", "out",
     ".venv", "venv", "__pycache__", ".next", ".nuxt", "coverage", ".idea", ".vs",
+    ".acima",
 }
 BASES = ("src", "internal", "packages", "app", "apps", "services", "lib", "modules")
 CONTRACT_NAMES = {"contracts", "contract", "api", "ports", "port", "public"}
 IGNORED_LAYOUT = {
     "test", "tests", "__tests__", "spec", "specs", "e2e", "docs", "doc",
     "examples", "example", "tools", "scripts", "migrations", "benchmarks",
+    "fixtures", "fixture", "testdata", "test-data", "spikes", "spike",
+    "experimental", "experiments", "generated", "vendor", "vendored",
+    "third_party", "third-party",
 }
 DECISIONS = {"accept", "modify", "reject", "defer"}
+PATH_DECISIONS = {"accept", "modify", "reject", "defer"}
 ESSENTIAL_RECOMMENDATION_CLASSES = {"required", "owner-decision"}
 OWNERSHIP_DEPENDENT_RULES = {
     "ACIMA-D001", "ACIMA-D002", "ACIMA-D003", "ACIMA-D004", "ACIMA-D005",
@@ -42,6 +49,27 @@ OWNERSHIP_DEPENDENT_RULES = {
     "ACIMA-D015", "ACIMA-D016", "ACIMA-L001", "ACIMA-L002", "ACIMA-L003",
     "ACIMA-A007", "ACIMA-A008", "ACIMA-A009",
 }
+
+# These are discovery classifications, not automatically ACIMA modules.
+CLASSIFICATIONS = {
+    "owned-implementation": "Production implementation owned by an identified module.",
+    "public-contract": "Public contract owned by an identified module.",
+    "shared-infrastructure": "Shared infrastructure with an explicit ownership model.",
+    "composition": "Composition host or composition-specific wiring.",
+    "build-tooling": "Build, packaging or development tooling.",
+    "architecture-tooling": "Architecture enforcement, gate or analysis tooling.",
+    "tests": "Tests and test infrastructure.",
+    "fixtures": "Fixtures and deliberately invalid examples.",
+    "experimental": "Experimental or spike code not in the production architecture.",
+    "generated": "Generated source that should not be hand-edited.",
+    "vendored": "Vendored or third-party source.",
+    "documentation-configuration": "Documentation and non-architecture configuration.",
+    "unresolved-production": "Production implementation whose ownership is not established.",
+}
+MODULE_CLASSIFICATIONS = {"owned-implementation", "public-contract"}
+NON_MODULE_CLASSIFICATIONS = set(CLASSIFICATIONS) - MODULE_CLASSIFICATIONS - {"unresolved-production"}
+RESOLVED_NON_MODULE = NON_MODULE_CLASSIFICATIONS
+UNIT_ROLES = {"implementation", "contracts", "shared", "port", "adapter", "host", "tooling"}
 
 
 class ModuleMapError(ValueError):
@@ -53,10 +81,14 @@ def _walk(root: Path):
         if not path.is_file():
             continue
         relative = path.relative_to(root)
-        if any(part in PRUNE or (part.startswith(".") and part not in {".acima"})
+        if any(part in PRUNE or (part.startswith(".") and part != ".acima")
                for part in relative.parts):
             continue
         yield path
+
+
+def _relative(path: Path, root: Path) -> str:
+    return path.relative_to(root).as_posix()
 
 
 def _is_test(path: Path) -> bool:
@@ -69,28 +101,132 @@ def _is_test(path: Path) -> bool:
                     ".spec.ts", ".spec.tsx", ".spec.js", ".spec.jsx")))
 
 
-def _is_tooling(path: Path) -> bool:
-    name = path.name.lower()
-    return (name.startswith(("eslint.config.", "vite.config.", "vitest.config.",
-                             "playwright.config.", "tsconfig."))
-            or name == "vite-env.d.ts")
+def _is_fixture(path: Path) -> bool:
+    parts = [part.lower() for part in path.parts]
+    return any(part in {"fixture", "fixtures", "testdata", "test-data", "testcases",
+                        "test-cases", "violations", "gallery"} for part in parts)
+
+
+def _is_experimental(path: Path) -> bool:
+    parts = [part.lower() for part in path.parts]
+    return any(part in {"spike", "spikes", "experimental", "experiments", "prototype",
+                        "prototypes", "playground", "sandbox"} for part in parts)
 
 
 def _is_generated(path: Path) -> bool:
     name = path.name.lower()
-    return name.endswith((".g.cs", ".generated.cs", ".designer.cs")) or ".generated." in name
+    parts = [part.lower() for part in path.parts]
+    return (name.endswith((".g.cs", ".generated.cs", ".designer.cs"))
+            or ".generated." in name or "generated" in parts)
+
+
+def _is_vendored(path: Path) -> bool:
+    parts = [part.lower() for part in path.parts]
+    return any(part in {"vendor", "vendored", "third_party", "third-party",
+                        "external", "extern"} for part in parts)
+
+
+def _is_architecture_tooling(path: Path) -> bool:
+    name = path.name.lower()
+    parts = [part.lower() for part in path.parts]
+    return (any(part in {"arch", "architecture", "architecturetests", "archtests"} for part in parts)
+            and any(part in {"tools", "scripts", "tests"} for part in parts)) or \
+        name in {"architecture-gate.mjs", "architecture-map.mjs", "architecture-analyzers.mjs"}
+
+
+def _is_tooling(path: Path) -> bool:
+    name = path.name.lower()
+    parts = [part.lower() for part in path.parts]
+    return (any(part in {"tools", "scripts", "build-tools", "coverage-tools",
+                         "license-tools", "devtools"} for part in parts)
+            or name.startswith(("eslint.config.", "vite.config.", "vitest.config.",
+                                "playwright.config.", "tsconfig."))
+            or name in {"vite-env.d.ts", "setup.py", "setup.cfg"})
+
+
+def _is_documentation(path: Path) -> bool:
+    parts = [part.lower() for part in path.parts]
+    return any(part in {"docs", "doc", "documentation"} for part in parts)
+
+
+def _is_composition(path: Path) -> bool:
+    parts = [part.lower() for part in path.parts]
+    return any(part in {"host", "hosts", "composition", "bootstrap"} for part in parts)
+
+
+def classify_path(relative: str) -> dict:
+    """Classify a repository-relative path without making it a module."""
+    path = Path(relative)
+    if _is_generated(path):
+        return {"classification": "generated", "confidence": "high",
+                "reason": "The file name or containing path identifies generated source."}
+    if _is_vendored(path):
+        return {"classification": "vendored", "confidence": "high",
+                "reason": "The containing path identifies vendored or third-party source."}
+    if _is_fixture(path):
+        return {"classification": "fixtures", "confidence": "high",
+                "reason": "The containing path identifies fixtures or deliberately invalid examples."}
+    if _is_test(path):
+        return {"classification": "tests", "confidence": "high",
+                "reason": "The file or containing project is test infrastructure."}
+    if _is_experimental(path):
+        return {"classification": "experimental", "confidence": "high",
+                "reason": "The containing path identifies experimental or spike code."}
+    if _is_architecture_tooling(path):
+        return {"classification": "architecture-tooling", "confidence": "high",
+                "reason": "The path contains architecture analysis, tests or gate tooling."}
+    if _is_tooling(path):
+        return {"classification": "build-tooling", "confidence": "high",
+                "reason": "The path is build, packaging or development tooling."}
+    if _is_documentation(path):
+        return {"classification": "documentation-configuration", "confidence": "high",
+                "reason": "The path is documentation or non-architecture configuration."}
+    if _is_composition(path):
+        return {"classification": "composition", "confidence": "medium",
+                "reason": "The path is a conventional composition or process entry point; "
+                          "the owner should confirm the host boundary."}
+    return {"classification": "unresolved-production", "confidence": "low",
+            "reason": "No architectural ownership or non-module role is established by the "
+                      "available repository evidence."}
+
+
+def _disposition_group(relative: str, classification: str) -> str:
+    """Group routine non-module files into a coherent path decision."""
+    if classification == "unresolved-production":
+        return relative
+    parts = list(PurePosixPath(relative).parts)
+    markers = {
+        "tests": {"test", "tests", "__tests__", "spec", "specs", "e2e"},
+        "fixtures": {"fixture", "fixtures", "testdata", "test-data", "testcases",
+                     "test-cases", "violations", "gallery"},
+        "experimental": {"spike", "spikes", "experimental", "experiments", "prototype",
+                         "prototypes", "playground", "sandbox"},
+        "build-tooling": {"tools", "scripts", "build-tools", "coverage-tools",
+                          "license-tools", "devtools"},
+        "architecture-tooling": {"arch", "architecture", "architecturetests", "archtests"},
+        "documentation-configuration": {"docs", "doc", "documentation"},
+        "generated": {"generated", "obj", "bin"},
+        "vendored": {"vendor", "vendored", "third_party", "third-party", "external", "extern"},
+    }.get(classification, set())
+    cut = None
+    for index, part in enumerate(parts[:-1]):
+        lowered = part.lower()
+        if lowered in markers or lowered.endswith((".tests", ".test", ".spec", ".specs")):
+            cut = index + 1
+            break
+    if cut is None:
+        cut = max(1, len(parts) - 1)
+    return PurePosixPath(*parts[:cut]).as_posix()
+
+
+def _source_files(root: Path) -> list[Path]:
+    return [path for path in _walk(root) if path.suffix.lower() in SOURCE_EXTENSIONS]
 
 
 def _production_files(root: Path) -> list[Path]:
-    return [path for path in _walk(root)
-            if path.suffix.lower() in SOURCE_EXTENSIONS
-            and not _is_test(path.relative_to(root))
-            and not _is_tooling(path.relative_to(root))
-            and not _is_generated(path.relative_to(root))]
-
-
-def _relative(path: Path, root: Path) -> str:
-    return path.relative_to(root).as_posix()
+    """Source that is not already identified as non-production by path evidence."""
+    return [path for path in _source_files(root)
+            if classify_path(_relative(path, root))["classification"] == "unresolved-production"]
 
 
 def _read_config(root: Path) -> tuple[dict | None, str | None]:
@@ -143,6 +279,8 @@ def _module_name(path: Path) -> str:
     stem = path.name
     if stem.lower().endswith(".contracts"):
         stem = stem[:-len(".contracts")]
+    if stem.lower().endswith(".contract"):
+        stem = stem[:-len(".contract")]
     words = re.sub(r"[^A-Za-z0-9]+", " ", stem).strip().split()
     return " ".join(word[:1].upper() + word[1:] for word in words) or stem
 
@@ -150,6 +288,36 @@ def _module_name(path: Path) -> str:
 def _slug(value: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", value.casefold()).strip("-")
     return slug or "module"
+
+
+def _module_id(relative: str) -> str:
+    name = Path(relative).name
+    if name.lower().endswith(".contracts"):
+        name = name[:-len(".contracts")]
+    elif name.lower().endswith(".contract"):
+        name = name[:-len(".contract")]
+    return _slug(name)
+
+
+def _unique_modules(modules: list[dict]) -> list[dict]:
+    """Make IDs stable and unique, even when the repository repeats a leaf name."""
+    used: dict[str, int] = {}
+    for module in sorted(modules, key=lambda item: item.get("id", "")):
+        base = _slug(str(module.get("id") or module.get("name") or "module"))
+        used[base] = used.get(base, 0) + 1
+        if used[base] > 1:
+            suffix = _slug(module.get("implementation", {}).get("paths", ["module"])[0]
+                           if module.get("implementation", {}).get("paths") else str(used[base]))
+            candidate = f"{base}-{suffix}"
+            counter = 2
+            while candidate in used:
+                candidate = f"{base}-{suffix}-{counter}"
+                counter += 1
+            used[candidate] = 1
+            module["id"] = candidate
+        else:
+            module["id"] = base
+    return modules
 
 
 def _candidate_paths(root: Path) -> dict[str, dict]:
@@ -161,8 +329,18 @@ def _candidate_paths(root: Path) -> dict[str, dict]:
             relative = _relative(directory, root)
         except ValueError:
             return
-        if not relative or relative == "." or any(part in PRUNE or part.startswith(".")
-                                                  for part in PurePosixPath(relative).parts):
+        if not relative or relative == "." or any(
+                part in PRUNE or part.startswith(".") for part in PurePosixPath(relative).parts):
+            return
+        classification = classify_path(relative)
+        if classification["classification"] != "unresolved-production":
+            return
+        # A container that groups projects is not itself a module. Its children have
+        # their own manifests and must be discovered independently.
+        if manifest is None and any(
+                candidate.parent != directory
+                for pattern in ("*.csproj", "package.json", "pyproject.toml", "go.mod")
+                for candidate in directory.rglob(pattern)):
             return
         if not any(path.suffix.lower() in SOURCE_EXTENSIONS for path in directory.rglob("*")
                    if path.is_file()):
@@ -207,12 +385,15 @@ def _candidate_paths(root: Path) -> dict[str, dict]:
     for relative in list(candidates):
         path = root / relative
         if path.name.lower().endswith(".contracts"):
-            modules = relative.rsplit("/", 1)[0] if "/" in relative else ""
-            implementation = f"{modules}/{path.name[:-len('.contracts')]}" if modules else path.name[:-len(".contracts")]
-            if (root / implementation).is_dir():
-                target = candidates.setdefault(implementation, {"paths": [implementation],
-                                                                  "manifests": []})
-                target["paths"].append(relative)
+            parent = relative.rsplit("/", 1)[0] if "/" in relative else ""
+            stem = path.name[:-len(".contracts")]
+            nested = f"{parent}/{stem}" if parent else stem
+            implementation = next((item for item in (nested, parent)
+                                   if item in candidates and (root / item).is_dir()), None)
+            if implementation:
+                target = candidates[implementation]
+                if relative not in target["paths"]:
+                    target["paths"].append(relative)
                 target["manifests"].extend(candidates[relative].get("manifests", []))
                 target["manifests"] = sorted(set(target["manifests"]))
                 del candidates[relative]
@@ -221,7 +402,7 @@ def _candidate_paths(root: Path) -> dict[str, dict]:
 
 def _contract_paths(root: Path, directory: Path) -> list[str]:
     found = []
-    for child in sorted(directory.rglob("*")):
+    for child in sorted(directory.iterdir()):
         if child.is_dir() and child.name.lower() in CONTRACT_NAMES:
             if any(item.is_file() and item.suffix.lower() in SOURCE_EXTENSIONS
                    for item in child.rglob("*")):
@@ -259,7 +440,7 @@ def _import_evidence(root: Path, module: dict, modules: list[dict]) -> list[dict
                 for other in modules:
                     if other["id"] == module["id"]:
                         continue
-                    names = {other["name"], _slug(other["name"])}
+                    names = {other["name"], _slug(other["name"]), other["id"]}
                     if not any(re.search(rf"(?<![A-Za-z0-9_-]){re.escape(name)}(?![A-Za-z0-9_-])",
                                          stripped, re.I) for name in names if name):
                         continue
@@ -311,7 +492,7 @@ def _unit_issue(unit: dict, root: Path, seen_ids: set[str]) -> str | None:
         return "A declared unit has no id."
     if unit_id in seen_ids:
         return f"Unit id {unit_id!r} is declared more than once."
-    if unit.get("role") not in {"implementation", "contracts", "shared", "port", "adapter"}:
+    if unit.get("role") not in UNIT_ROLES:
         return f"Unit {unit_id!r} has unsupported role {unit.get('role')!r}."
     paths = unit.get("paths")
     if not isinstance(paths, list) or not paths:
@@ -327,11 +508,39 @@ def _unit_issue(unit: dict, root: Path, seen_ids: set[str]) -> str | None:
     return None
 
 
-def _authoritative_review(root: Path, config: dict | None, production: list[Path]) -> dict:
+def _path_matches(relative: str, prefix: str) -> bool:
+    clean = prefix.rstrip("/")
+    return relative == clean or relative.startswith(clean + "/")
+
+
+def _config_dispositions(config: dict | None) -> list[dict]:
+    raw = (config or {}).get("repositoryDispositions")
+    if not isinstance(raw, list):
+        return []
+    result = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        paths = item.get("paths")
+        if not isinstance(paths, list):
+            paths = [item.get("path")] if item.get("path") else []
+        paths = [path for path in paths if isinstance(path, str) and path]
+        classification = item.get("classification")
+        if not paths or classification not in NON_MODULE_CLASSIFICATIONS:
+            continue
+        result.append({"paths": paths, "classification": classification,
+                       "reason": item.get("reason") or "Declared by the existing map.",
+                       "confidence": item.get("confidence") or "high",
+                       "owner": item.get("owner") or ""})
+    return result
+
+
+def _authoritative_review(root: Path, config: dict | None, source: list[Path]) -> dict:
     units = (config or {}).get("units") or []
+    dispositions = _config_dispositions(config)
     issues: list[dict] = []
     seen_ids: set[str] = set()
-    paths: list[tuple[str, str]] = []
+    paths: list[tuple[str, str, str]] = []
     for index, unit in enumerate(units if isinstance(units, list) else []):
         if not isinstance(unit, dict):
             issues.append({"code": "invalid-unit", "detail": f"Unit {index} is not an object."})
@@ -343,21 +552,25 @@ def _authoritative_review(root: Path, config: dict | None, production: list[Path
             seen_ids.add(unit["id"])
         for raw in unit.get("paths", []) if isinstance(unit.get("paths"), list) else []:
             if isinstance(raw, str):
-                paths.append((unit.get("id", "?"), raw.rstrip("/")))
-    for i, (left_id, left) in enumerate(paths):
-        for right_id, right in paths[i + 1:]:
-            if left_id == right_id:
+                paths.append((str(unit.get("module") or unit.get("id", "?")),
+                              str(unit.get("id", "?")), raw.rstrip("/")))
+    for i, (left_module, left_id, left) in enumerate(paths):
+        for right_module, right_id, right in paths[i + 1:]:
+            if left_id == right_id or left_module == right_module:
                 continue
             if left == right or left.startswith(right + "/") or right.startswith(left + "/"):
                 issues.append({"code": "overlap",
                                "detail": f"Units {left_id!r} and {right_id!r} claim overlapping paths "
                                          f"({left!r}, {right!r})."})
     covered = []
+    classified = []
     unowned = []
-    for path in production:
+    for path in source:
         relative = _relative(path, root)
-        if any(relative == prefix or relative.startswith(prefix + "/") for _, prefix in paths):
+        if any(_path_matches(relative, prefix) for _, _, prefix in paths):
             covered.append(relative)
+        elif any(_path_matches(relative, prefix) for item in dispositions for prefix in item["paths"]):
+            classified.append(relative)
         else:
             unowned.append(relative)
     if config is None:
@@ -369,18 +582,19 @@ def _authoritative_review(root: Path, config: dict | None, production: list[Path
     elif not paths:
         status = "incomplete"
         summary = "The declared map contains no usable unit paths."
-    elif len(covered) == 0 and production:
+    elif len(covered) == 0 and source:
         status = "stale"
         summary = "The declared unit paths do not cover any current production source."
     elif unowned:
         status = "incomplete"
-        summary = f"{len(unowned)} production source file(s) are not covered by the declared map."
+        summary = f"{len(unowned)} source file(s) are not covered by a module or an explicit disposition."
     else:
         status = "complete"
-        summary = "The declared module map covers all discovered production source and is structurally consistent."
+        summary = ("The declared module map covers all relevant source with module ownership or "
+                   "an explicit non-module disposition and is structurally consistent.")
     if status != "complete" and unowned:
         issues.append({"code": "unowned-source",
-                       "detail": f"{len(unowned)} production source file(s) are outside the declared units."})
+                       "detail": f"{len(unowned)} source file(s) are outside declared units and dispositions."})
     return {
         "present": config is not None,
         "path": CONFIG_NAME if config is not None else None,
@@ -390,10 +604,12 @@ def _authoritative_review(root: Path, config: dict | None, production: list[Path
         "modules": sorted({str(unit.get("module")) for unit in units
                            if isinstance(unit, dict) and unit.get("module")}),
         "coveredProduction": len(covered),
-        "productionFiles": len(production),
+        "classifiedNonModule": len(classified),
+        "productionFiles": len(source),
         "issues": issues,
         "unownedPaths": unowned,
         "units": units if isinstance(units, list) else [],
+        "dispositions": dispositions,
         "classification": "observed" if config is not None else "absence",
     }
 
@@ -417,16 +633,27 @@ def _recommendation(identifier: str, title: str, observed: str, evidence: list[d
         "essential": classification in ESSENTIAL_RECOMMENDATION_CLASSES,
         "requiresUserInput": requires_user,
         "affectedModules": affected or [],
+        "affectedFiles": [],
+        "changes": [],
         "decision": "pending",
     }
 
 
-def _build_modules(root: Path, candidates: dict[str, dict]) -> tuple[list[dict], list[dict]]:
+def _build_modules(root: Path, candidates: dict[str, dict]) -> list[dict]:
     modules: list[dict] = []
     for relative, candidate in candidates.items():
         directory = root / relative
+        contract_only = directory.name.lower().endswith((".contracts", ".contract"))
         name = _module_name(directory)
-        contracts = _contract_paths(root, directory)
+        candidate_paths = [path for path in candidate.get("paths", []) if path]
+        contracts = [path for path in candidate_paths
+                     if Path(path).name.lower().endswith((".contracts", ".contract"))]
+        if contract_only:
+            contracts = [relative]
+        elif not contracts:
+            contracts = _contract_paths(root, directory)
+        implementation_paths = [] if contract_only else [
+            path for path in candidate_paths if path not in contracts]
         evidence = []
         first = _first_source_evidence(
             root, directory,
@@ -443,33 +670,42 @@ def _build_modules(root: Path, candidates: dict[str, dict]) -> tuple[list[dict],
         if not evidence and contracts:
             evidence.append(_line_evidence(root, contracts[0], 1,
                                            "A contract-shaped area was observed."))
-        module_id = _slug(directory.name)
+        module_id = _module_id(relative)
         modules.append({
             "id": module_id,
             "name": name,
             "status": "candidate",
             "ownership": "inferred",
-            "confidence": "low" if not candidate.get("manifests") else "medium",
-            "responsibility": ("Observed production code under "
-                               f"`{relative}`. Its business responsibility is not inferred from "
-                               "the directory name and requires owner confirmation."),
-            "implementation": {"paths": [relative], "classification": "observed-layout"},
-            "contracts": {"paths": contracts, "classification": "observed" if contracts else "not-identified"},
+            "confidence": "medium" if candidate.get("manifests") else "low",
+            "responsibility": (f"Observed production code under `{relative}`. Its responsibility "
+                               "is inferred only from repository structure and requires owner "
+                               "confirmation."),
+            "implementation": {"paths": implementation_paths,
+                               "classification": "observed-layout"},
+            "contracts": {"paths": contracts,
+                          "classification": "observed" if contracts else "not-identified"},
             "dependencies": [],
             "dataAndConfiguration": [],
+            "entryPoints": [],
+            "compositionResponsibilities": [],
             "evidence": evidence,
             "limitations": ("The boundary is a discovery candidate. It does not establish ownership, "
                             "deployment independence or a public contract."),
         })
-    return modules, []
+    return _unique_modules(modules)
 
 
-def _quality_and_recommendations(root: Path, modules: list[dict], unassigned: list[str],
-                                 authoritative: dict) -> tuple[dict, list[dict]]:
-    by_id = {module["id"]: module for module in modules}
+def _module_paths(modules: list[dict]) -> list[str]:
+    return [prefix for module in modules
+            for prefix in module.get("implementation", {}).get("paths", []) +
+            module.get("contracts", {}).get("paths", [])]
+
+
+def _quality_and_recommendations(root: Path, modules: list[dict], unresolved: list[str],
+                                 authoritative: dict, dispositions: list[dict]) -> tuple[dict, list[dict]]:
     graph = {module["id"]: set() for module in modules}
     for module in modules:
-        for dependency in module["dependencies"]:
+        for dependency in module.get("dependencies", []):
             graph[module["id"]].add(dependency["moduleId"])
     cycles = _cycle_nodes(graph)
     observations = []
@@ -489,6 +725,13 @@ def _quality_and_recommendations(root: Path, modules: list[dict], unassigned: li
         "basis": "observed",
     })
     observations.append({
+        "topic": "repository classification",
+        "observation": (f"{sum(len(item['paths']) for item in dispositions)} non-module path group(s) "
+                        f"and {len(unresolved)} unresolved production file(s) were identified."),
+        "confidence": "medium",
+        "basis": "observed",
+    })
+    observations.append({
         "topic": "dependency cycle",
         "observation": ("No candidate dependency cycle was found in observed import lines."
                         if not cycles else
@@ -499,25 +742,26 @@ def _quality_and_recommendations(root: Path, modules: list[dict], unassigned: li
     })
     recommendations: list[dict] = []
     counter = 1
+
     def add(*args, **kwargs):
         nonlocal counter
         recommendations.append(_recommendation(f"MMR-{counter:03d}", *args, **kwargs))
         counter += 1
 
-    if unassigned:
+    if unresolved:
         add("Unassigned production code",
-            f"{len(unassigned)} production source file(s) are outside every candidate boundary.",
-            [_line_evidence(root, unassigned[0], 1,
-                            "The file was inspected and falls outside every candidate path.")],
-            "ACIMA cannot assign a boundary it cannot identify. Leaving these files unowned makes "
-            "ownership-dependent checks incomplete or misleading.",
-            "Assign each path to an existing candidate module or explicitly declare it as a "
-            "composition/entry-point area with an owner.",
-            "Every production file has a deliberate owner or an explicit, reviewed exclusion.",
-            "Assignment may reveal that the file belongs to a responsibility not represented by the "
-            "current candidates; that may require a new boundary or consolidation.",
-            classification="required", affected=[],
-            requires_user=True)
+            f"{len(unresolved)} source file(s) have no established module or non-module role.",
+            [_line_evidence(root, unresolved[0], 1,
+                            "The file was inspected and no ownership classification was established.")],
+            "ACIMA cannot assign a boundary it cannot identify. Leaving these files unresolved "
+            "makes ownership-dependent checks incomplete or misleading.",
+            "Assign each path to an accepted module, classify it as an explicit non-module role, "
+            "or record why it is excluded. Do not assign it by directory proximity alone.",
+            "Every production file has a deliberate owner or an explicit reviewed exclusion.",
+            "Assignment may reveal a responsibility not represented by the current candidates; "
+            "that may require a new boundary or consolidation.",
+            classification="required", affected=[], requires_user=True)
+        recommendations[-1]["affectedFiles"] = unresolved[:25]
     if authoritative["status"] in {"incomplete", "inconsistent", "stale"}:
         add("Complete the existing module map",
             authoritative["summary"],
@@ -529,8 +773,7 @@ def _quality_and_recommendations(root: Path, modules: list[dict], unassigned: li
             "ignoring unowned code.",
             "An existing boundary may be intentional. Do not replace it merely to make the "
             "proposal uniform.",
-            classification="required", affected=authoritative["modules"],
-            requires_user=True)
+            classification="required", affected=authoritative["modules"], requires_user=True)
     for cycle in cycles:
         add("Resolve a candidate dependency cycle",
             "Observed imports form a cycle among " + ", ".join(cycle) + ".",
@@ -546,11 +789,12 @@ def _quality_and_recommendations(root: Path, modules: list[dict], unassigned: li
             "dependency before restructuring.",
             classification="required", affected=cycle, requires_user=True)
     for module in modules:
-        for dependency in module["dependencies"]:
+        affected = module.get("implementation", {}).get("paths", []) + \
+            module.get("contracts", {}).get("paths", [])
+        for dependency in module.get("dependencies", []):
             if dependency["leaksImplementation"]:
                 add("Replace private implementation coupling",
-                    f"{module['name']} imports {dependency['module']} through an implementation-"
-                    "shaped path.",
+                    f"{module['name']} imports {dependency['module']} through an implementation-shaped path.",
                     dependency["evidence"],
                     "A consumer that depends on another module's implementation makes internal "
                     "changes cross a published boundary.",
@@ -561,12 +805,11 @@ def _quality_and_recommendations(root: Path, modules: list[dict], unassigned: li
                     "the path before changing it.",
                     classification="required", affected=[module["id"], dependency["moduleId"]],
                     requires_user=True)
-    for module in modules:
-        cross_dependencies = [item for item in module["dependencies"] if item["moduleId"] in by_id]
+                recommendations[-1]["affectedFiles"] = affected
+        cross_dependencies = [item for item in module.get("dependencies", []) if item["moduleId"] in graph]
         if cross_dependencies and not module["contracts"]["paths"]:
             add("Decide the contract boundary",
-                f"{module['name']} participates in cross-module imports but has no identified "
-                "contract-shaped path.",
+                f"{module['name']} participates in cross-module imports but has no identified contract-shaped path.",
                 [item for dependency in cross_dependencies for item in dependency["evidence"]],
                 "A dependency needs a public shape that is distinguishable from private code.",
                 "Confirm whether the existing entry point is the public contract, create an explicit "
@@ -574,11 +817,73 @@ def _quality_and_recommendations(root: Path, modules: list[dict], unassigned: li
                 "Consumers and providers can evolve independently without exposing implementation.",
                 "Creating a new folder is not automatically an improvement. Preserve an existing "
                 "public API if it already separates contract from implementation.",
-                classification="owner-decision", affected=[module["id"]],
-                requires_user=True)
-    return {"observations": observations, "cycles": cycles,
-            "dependencyGraph": {node: sorted(children) for node, children in graph.items()},
-            "contractCoverage": sum(bool(module["contracts"]["paths"]) for module in modules)}, recommendations
+                classification="owner-decision", affected=[module["id"]], requires_user=True)
+            recommendations[-1]["affectedFiles"] = affected
+    return ({"observations": observations, "cycles": cycles,
+             "dependencyGraph": {node: sorted(children) for node, children in graph.items()},
+             "contractCoverage": sum(bool(module["contracts"]["paths"]) for module in modules)},
+            recommendations)
+
+
+def _existing_architecture(root: Path) -> dict:
+    candidates = [
+        CONFIG_NAME, "arch/architecture-rules.json", "architecture-rules.json",
+        "docs/architecture-map.md", "scripts/architecture-gate.mjs",
+        "scripts/architecture-map.mjs", "scripts/architecture-analyzers.mjs",
+        "tools/acima_arch.py", "tools/acima-arch.mjs", "tools/Acima.ArchTests/Program.cs",
+    ]
+    paths = [path for path in candidates if (root / path).exists()]
+    solutions = sorted(_relative(path, root) for path in root.rglob("*.sln")
+                       if not any(part in PRUNE for part in path.relative_to(root).parts))
+    project_manifests = sorted(_relative(path, root) for path in root.rglob("*.csproj")
+                               if not any(part in PRUNE for part in path.relative_to(root).parts))
+    return {
+        "paths": paths,
+        "solutions": solutions[:20],
+        "dotnetProjects": project_manifests[:100],
+        "declarations": (["Existing ACIMA configuration is present and is preserved."]
+                         if (root / CONFIG_NAME).is_file() else []),
+        "note": "Existing architecture evidence is preserved and evaluated; discovery does not "
+                "replace it with directory-derived modules.",
+    }
+
+
+def _path_decision_item(identifier: str, classification: str, paths: list[str],
+                        reason: str, confidence: str, *, owner: str = "",
+                        module_id: str | None = None, status: str = "pending") -> dict:
+    return {
+        "id": identifier,
+        "kind": "path",
+        "classification": classification,
+        "paths": paths,
+        "reason": reason,
+        "confidence": confidence,
+        "owner": owner,
+        "moduleId": module_id,
+        "status": status,
+        "requiresDecision": True,
+        "options": ["accept", "modify", "reject", "defer"],
+    }
+
+
+def _decision_statuses(proposal: dict) -> tuple[list[dict], list[dict]]:
+    modules = proposal.get("modules") or []
+    dispositions = proposal.get("pathDispositions") or []
+    return modules, dispositions
+
+
+def _assign_disposition_ids(dispositions: list[dict]) -> list[dict]:
+    used = set()
+    for item in dispositions:
+        base = "path:" + _slug(item["classification"] + "-" + (item["paths"][0] if item["paths"] else "path"))
+        identifier = base
+        counter = 2
+        while identifier in used:
+            identifier = f"{base}-{counter}"
+            counter += 1
+        used.add(identifier)
+        item["id"] = identifier
+    return dispositions
 
 
 def discover(root: Path, *, config: dict | None = None) -> dict:
@@ -587,11 +892,12 @@ def discover(root: Path, *, config: dict | None = None) -> dict:
     if not root.is_dir():
         raise ModuleMapError(f"project does not exist: {root}")
     loaded, error = (config, None) if config is not None else _read_config(root)
-    production = _production_files(root)
-    authoritative = _authoritative_review(root, loaded, production)
+    source = _source_files(root)
+    authoritative = _authoritative_review(root, loaded, source)
     if error:
         authoritative.update({"status": "inconsistent", "summary": error})
         authoritative["issues"].append({"code": "invalid-config", "detail": error})
+    existing_architecture = _existing_architecture(root)
     if authoritative["status"] == "complete":
         review = _read_review(root)
         return {
@@ -602,6 +908,7 @@ def discover(root: Path, *, config: dict | None = None) -> dict:
             "authoritativeMap": authoritative,
             "proposal": None,
             "review": review,
+            "existingArchitecture": existing_architecture,
             "quality": {
                 "observations": [
                     {"topic": "ownership declaration", "observation": authoritative["summary"],
@@ -618,7 +925,7 @@ def discover(root: Path, *, config: dict | None = None) -> dict:
             "nextDecision": "Review the map's quality observations; no ownership approval is required.",
         }
     candidates = _candidate_paths(root)
-    modules, _ = _build_modules(root, candidates)
+    modules = _build_modules(root, candidates)
     # Preserve declared units when the existing map is partial. Discovery adds candidates for
     # uncovered source; it never relabels or replaces a declaration the owner already made.
     existing_by_name: dict[str, dict] = {}
@@ -637,6 +944,8 @@ def discover(root: Path, *, config: dict | None = None) -> dict:
             "contracts": {"paths": [], "classification": "declared"},
             "dependencies": [],
             "dataAndConfiguration": [],
+            "entryPoints": [],
+            "compositionResponsibilities": [],
             "evidence": [_line_evidence(root, CONFIG_NAME, 1,
                                         "The existing map declares this module and its paths.",
                                         kind="configuration")],
@@ -657,20 +966,61 @@ def discover(root: Path, *, config: dict | None = None) -> dict:
             module = existing
         merged.append(module)
         seen.add(module["id"])
-    for key, existing in existing_by_name.items():
+    for _key, existing in existing_by_name.items():
         if existing["id"] not in seen:
             merged.append(existing)
-    modules = sorted(merged, key=lambda item: item["id"])
-    paths = [prefix for module in modules
-             for prefix in module["implementation"]["paths"] + module["contracts"]["paths"]]
-    unassigned = []
-    for path in production:
+    modules = _unique_modules(sorted(merged, key=lambda item: item["id"]))
+    module_paths = _module_paths(modules)
+
+    # Group routine non-module content; never manufacture a module for it.
+    grouped: dict[tuple[str, str], dict] = {}
+    unresolved: list[str] = []
+    for path in source:
         relative = _relative(path, root)
-        if not any(relative == prefix or relative.startswith(prefix + "/") for prefix in paths):
-            unassigned.append(relative)
+        if any(_path_matches(relative, prefix) for prefix in module_paths):
+            continue
+        existing_disposition = next(
+            (item for item in authoritative.get("dispositions", [])
+             if any(_path_matches(relative, prefix) for prefix in item["paths"])), None)
+        if existing_disposition:
+            classification = existing_disposition["classification"]
+            reason = existing_disposition.get("reason") or "Declared by the existing map."
+            confidence = existing_disposition.get("confidence") or "high"
+            owner = existing_disposition.get("owner") or ""
+        else:
+            classified = classify_path(relative)
+            classification = classified["classification"]
+            reason = classified["reason"]
+            confidence = classified["confidence"]
+            owner = ""
+        if classification == "unresolved-production":
+            unresolved.append(relative)
+            continue
+        group = _disposition_group(relative, classification)
+        item = grouped.setdefault((classification, group), {
+            "classification": classification, "paths": [group], "files": [],
+            "reason": reason, "confidence": confidence, "owner": owner, "existing": bool(existing_disposition),
+        })
+        item["files"].append(relative)
+        if confidence == "high":
+            item["confidence"] = "high"
+        if owner:
+            item["owner"] = owner
+    dispositions = []
+    for (classification, group), item in sorted(grouped.items()):
+        status = "existing" if item["existing"] else "pending"
+        dispositions.append(_path_decision_item(
+            "", classification, [group], item["reason"], item["confidence"],
+            owner=item["owner"], status=status))
+        dispositions[-1]["affectedFiles"] = sorted(item["files"])
+    for path in sorted(unresolved):
+        dispositions.append(_path_decision_item(
+            "", "unresolved-production", [path], classify_path(path)["reason"], "low"))
+    dispositions = _assign_disposition_ids(dispositions)
     for module in modules:
         module["dependencies"] = _import_evidence(root, module, modules)
-    quality, recommendations = _quality_and_recommendations(root, modules, unassigned, authoritative)
+    quality, recommendations = _quality_and_recommendations(
+        root, modules, sorted(unresolved), authoritative, dispositions)
     decisions = [{
         "id": f"module:{module['id']}",
         "kind": "module",
@@ -682,6 +1032,17 @@ def discover(root: Path, *, config: dict | None = None) -> dict:
         "options": ["accept", "modify", "reject", "defer"],
         "affectedModules": [module["id"]],
     } for module in modules]
+    decisions.extend({
+        "id": item["id"],
+        "kind": "path",
+        "question": f"Accept the {item['classification']} disposition for {', '.join(item['paths'])}?",
+        "context": item["reason"],
+        "recommendation": "Accept, modify into a module assignment, reject, or defer this classification.",
+        "essential": True,
+        "status": "existing" if item["status"] == "existing" else "pending",
+        "options": ["accept", "modify", "reject", "defer"],
+        "affectedPaths": item["paths"],
+    } for item in dispositions)
     decisions.extend({
         "id": f"recommendation:{rec['id']}",
         "kind": "recommendation",
@@ -695,30 +1056,46 @@ def discover(root: Path, *, config: dict | None = None) -> dict:
     } for rec in recommendations)
     basis = ("No module map was declared." if loaded is None else
              f"An existing map was found ({authoritative['status']}) and its usable units were preserved.")
+    module_covered = [ _relative(path, root) for path in source
+                       if any(_path_matches(_relative(path, root), prefix) for prefix in module_paths)]
+    disposition_covered = [path for item in dispositions
+                           if item["classification"] != "unresolved-production"
+                           for path in item.get("affectedFiles", [])]
     proposal = {
         "schemaVersion": SCHEMA_VERSION,
         "status": "proposed",
         "basis": basis,
         "classification": "inference",
         "modules": modules,
+        "pathDispositions": dispositions,
         "unassigned": [{
             "path": path,
-            "reason": "No candidate production boundary covers this file.",
-            "classification": "observed",
-        } for path in unassigned],
+            "reason": classify_path(path)["reason"],
+            "classification": "unresolved-production",
+        } for path in sorted(unresolved)],
+        "coverage": {
+            "sourceFiles": len(source),
+            "moduleCovered": len(set(module_covered)),
+            "classifiedNonModule": len(set(disposition_covered)),
+            "unresolvedProduction": len(unresolved),
+        },
+        "existingArchitecture": existing_architecture,
         "quality": quality,
         "recommendations": recommendations,
         "decisions": decisions,
-        "confidence": "low" if modules else "low",
+        "confidence": "medium" if modules else "low",
         "limitations": [
-            "Discovery uses layout, manifests, source presence and observed import lines. It does "
-            "not prove business ownership, runtime isolation, deployment independence or public API status.",
+            "Discovery uses layout, manifests, source presence, existing declarations and observed "
+            "import lines. It does not prove business ownership, runtime isolation, deployment "
+            "independence or public API status.",
             "Project, package, folder and runtime boundaries are signals, not approved modules.",
+            "Tests, fixtures, tooling, spikes, generated and vendored source are repository content, "
+            "not automatically modules. Their dispositions still require review.",
             "The proposal must be reviewed before it can become an authoritative map.",
         ],
     }
     canonical = json.dumps({key: value for key, value in proposal.items()
-                            if key != "schemaVersion"}, sort_keys=True, ensure_ascii=False)
+                            if key not in {"schemaVersion"}}, sort_keys=True, ensure_ascii=False)
     proposal["proposalId"] = "sha256:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()
     return {
         "schemaVersion": SCHEMA_VERSION,
@@ -728,10 +1105,33 @@ def discover(root: Path, *, config: dict | None = None) -> dict:
         "authoritativeMap": authoritative,
         "proposal": proposal,
         "review": _read_review(root),
+        "existingArchitecture": existing_architecture,
         "summary": basis,
-        "nextDecision": ("Review the proposed boundaries and recommendations. Do not treat them "
-                         "as ownership until accepted."),
+        "nextDecision": ("Review the proposed boundaries, path dispositions and recommendations. "
+                         "Do not treat them as ownership until accepted."),
     }
+
+
+def proposed_units(document: dict) -> list[dict]:
+    """Return the units represented by a discovery proposal for preflight/coverage."""
+    proposal = document.get("proposal") or {}
+    modules = proposal.get("modules") or []
+    result = []
+    for module in modules:
+        implementation = module.get("implementation", {}).get("paths", [])
+        contracts = module.get("contracts", {}).get("paths", [])
+        if implementation:
+            result.append({"id": module["id"], "module": module["id"],
+                           "role": "implementation", "paths": implementation})
+        if contracts:
+            contract_path = contracts[0]
+            base = Path(contract_path).name
+            module_id = Path(contract_path).name[:-len(".contracts")] \
+                if Path(contract_path).name.lower().endswith(".contracts") else module["id"]
+            result.append({"id": base if base.lower().endswith(".contracts")
+                           else f"{module['id']}.contracts",
+                           "module": module_id, "role": "contracts", "paths": contracts})
+    return result
 
 
 def _safe_relative(raw: Any) -> str:
@@ -741,6 +1141,29 @@ def _safe_relative(raw: Any) -> str:
     if candidate.is_absolute() or ".." in candidate.parts:
         raise ModuleMapError(f"ownership path escapes the repository: {raw!r}")
     return candidate.as_posix().rstrip("/")
+
+
+def _decision_map(items: Any, label: str) -> dict[str, dict]:
+    if items is None:
+        return {}
+    if not isinstance(items, list):
+        raise ModuleMapError(f"review.{label} must be a list")
+    result = {}
+    for item in items:
+        if not isinstance(item, dict) or not item.get("id"):
+            raise ModuleMapError(f"every review.{label} entry needs an id")
+        identifier = str(item["id"])
+        if identifier in result:
+            raise ModuleMapError(f"duplicate review.{label} id {identifier!r}")
+        result[identifier] = item
+    return result
+
+
+def _apply_path_assignment(module: dict, paths: list[str], classification: str) -> None:
+    key = "contracts" if classification == "public-contract" else "implementation"
+    for path in paths:
+        if path not in module[key]["paths"]:
+            module[key]["paths"].append(path)
 
 
 def apply_review(proposal: dict, review: dict, *, root: Path | None = None) -> dict:
@@ -766,14 +1189,14 @@ def apply_review(proposal: dict, review: dict, *, root: Path | None = None) -> d
     map_decision = review.get("mapDecision", "defer")
     if map_decision not in DECISIONS:
         raise ModuleMapError("review.mapDecision must be accept, modify, reject or defer")
-    module_reviews = {str(item.get("id")): item for item in review.get("moduleDecisions", [])
-                      if isinstance(item, dict)}
-    rec_reviews = {str(item.get("id")): item for item in review.get("recommendationDecisions", [])
-                   if isinstance(item, dict)}
+    module_reviews = _decision_map(review.get("moduleDecisions"), "moduleDecisions")
+    path_reviews = _decision_map(review.get("pathDecisions"), "pathDecisions")
+    rec_reviews = _decision_map(review.get("recommendationDecisions"), "recommendationDecisions")
     modules = []
     for module in inner.get("modules", []):
-        decision = module_reviews.get(module["id"], {})
-        choice = decision.get("decision", "defer" if map_decision == "defer" else "accept" if map_decision == "accept" else "defer")
+        decision = module_reviews.get(module["id"])
+        # An overall accept never implies acceptance of an individual boundary.
+        choice = decision.get("decision", "defer") if decision else "defer"
         if choice not in DECISIONS:
             raise ModuleMapError(f"module {module['id']} has unknown decision {choice!r}")
         updated = json.loads(json.dumps(module))
@@ -798,42 +1221,115 @@ def apply_review(proposal: dict, review: dict, *, root: Path | None = None) -> d
         else:
             updated["status"] = "accepted" if choice == "accept" else "modified"
         modules.append(updated)
+    by_id = {module["id"]: module for module in modules}
+
+    path_results = []
+    for disposition in inner.get("pathDispositions", []):
+        decision = path_reviews.get(disposition["id"])
+        if disposition.get("status") == "existing":
+            updated = json.loads(json.dumps(disposition))
+            updated["reviewDecision"] = "accept"
+            updated["decisionSource"] = "existing-map"
+            path_results.append(updated)
+            continue
+        choice = decision.get("decision", "defer") if decision else "defer"
+        if choice not in PATH_DECISIONS:
+            raise ModuleMapError(f"path disposition {disposition['id']} has unknown decision {choice!r}")
+        updated = json.loads(json.dumps(disposition))
+        updated["reviewDecision"] = choice
+        if choice == "modify":
+            classification = str(decision.get("classification") or updated.get("classification"))
+            if classification not in CLASSIFICATIONS:
+                raise ModuleMapError(f"path disposition {disposition['id']} has unknown classification {classification!r}")
+            paths = decision.get("paths", updated.get("paths"))
+            if not isinstance(paths, list) or not paths:
+                raise ModuleMapError(f"path disposition {disposition['id']} modification has no paths")
+            paths = [_safe_relative(path) for path in paths]
+            if root is not None:
+                for path in paths:
+                    if not (root / path).exists():
+                        raise ModuleMapError(f"modified disposition path does not exist: {path}")
+            updated["classification"] = classification
+            updated["paths"] = paths
+            if decision.get("owner"):
+                updated["owner"] = str(decision["owner"]).strip()
+            if decision.get("reason"):
+                updated["reason"] = str(decision["reason"]).strip()
+            if classification in MODULE_CLASSIFICATIONS:
+                module_id = decision.get("moduleId")
+                if not module_id or module_id not in by_id:
+                    raise ModuleMapError(f"path disposition {disposition['id']} assigns to an unknown module")
+                if by_id[module_id].get("reviewDecision") not in {"accept", "modify"}:
+                    raise ModuleMapError(f"path disposition {disposition['id']} assigns to an unaccepted module")
+                _apply_path_assignment(by_id[module_id], paths, classification)
+                updated["moduleId"] = module_id
+        elif choice == "reject":
+            updated["classification"] = "unresolved-production"
+            updated["reason"] = "The reviewer rejected this disposition; ownership remains unresolved."
+        elif choice == "defer":
+            updated["status"] = "deferred"
+        if choice in {"accept", "modify"}:
+            updated["status"] = "accepted"
+        elif choice == "reject":
+            updated["status"] = "rejected"
+        path_results.append(updated)
+
     recommendation_results = []
     for recommendation in inner.get("recommendations", []):
-        decision = rec_reviews.get(recommendation["id"], {})
-        choice = decision.get("decision", "pending")
+        decision = rec_reviews.get(recommendation["id"])
+        choice = decision.get("decision", "pending") if decision else "pending"
         if choice not in {"accept", "reject", "defer", "pending"}:
             raise ModuleMapError(f"recommendation {recommendation['id']} has unknown decision {choice!r}")
         updated = dict(recommendation)
         updated["decision"] = choice
-        if decision.get("note"):
+        if decision and decision.get("note"):
             updated["decisionNote"] = str(decision["note"]).strip()
         recommendation_results.append(updated)
+
     accepted = [module for module in modules if module["reviewDecision"] in {"accept", "modify"}]
-    undecided = [module["id"] for module in modules if module["reviewDecision"] not in {"accept", "modify"}]
+    module_pending = [module["id"] for module in modules
+                      if module["reviewDecision"] not in {"accept", "modify"}]
     essential_pending = [rec["id"] for rec in recommendation_results
-                         if rec["essential"] and rec["decision"] in {"pending", "defer"}]
+                         if rec["essential"] and rec["decision"] == "pending"]
+    path_pending = [item["id"] for item in path_results
+                    if item.get("reviewDecision") not in {"accept", "modify", "reject"}]
     if map_decision == "reject":
         status = "rejected"
+        approved_modules = []
+        approved_units = []
     elif map_decision == "defer":
         status = "deferred"
-    elif not modules or (not undecided and not essential_pending):
-        status = "approved"
-    else:
+        approved_modules = []
+        approved_units = []
+    elif module_pending or path_pending or essential_pending:
         status = "partially_approved"
-    approved_paths = []
-    for module in accepted:
-        approved_paths.extend(module["implementation"]["paths"])
-        approved_paths.extend(module["contracts"]["paths"])
-    production = _production_files(root) if root is not None else []
-    uncovered = []
-    if root is not None:
-        for path in production:
-            relative = _relative(path, root)
-            if not any(relative == prefix or relative.startswith(prefix + "/")
-                       for prefix in approved_paths):
-                uncovered.append(relative)
-    if status == "approved" and (not modules or uncovered or inner.get("unassigned")):
+        approved_modules = [module["id"] for module in accepted]
+        approved_units = units_from_approved(accepted)
+    else:
+        status = "approved"
+        approved_modules = [module["id"] for module in accepted]
+        approved_units = units_from_approved(accepted)
+
+    # Recompute coverage from the decisions, never from the original unassigned list.
+    source = _source_files(root) if root is not None else []
+    module_paths = _module_paths([module for module in modules
+                                  if module["reviewDecision"] in {"accept", "modify"}])
+    accepted_dispositions = [item for item in path_results
+                             if item.get("reviewDecision") in {"accept", "modify"}
+                             and item.get("classification") in RESOLVED_NON_MODULE]
+    module_covered = []
+    classified = []
+    unresolved = []
+    for path in source:
+        relative = _relative(path, root)
+        if any(_path_matches(relative, prefix) for prefix in module_paths):
+            module_covered.append(relative)
+        elif any(_path_matches(relative, prefix) for item in accepted_dispositions
+                 for prefix in item["paths"]):
+            classified.append(relative)
+        else:
+            unresolved.append(relative)
+    if status == "approved" and (not modules or unresolved):
         status = "partially_approved"
     approval = {
         "schemaVersion": SCHEMA_VERSION,
@@ -842,62 +1338,95 @@ def apply_review(proposal: dict, review: dict, *, root: Path | None = None) -> d
         "reviewedOn": reviewed_on,
         "mapDecision": map_decision,
         "status": status,
-        "approvedModules": [module["id"] for module in accepted],
-        "undecidedModules": undecided,
+        "approvedModules": approved_modules,
+        "undecidedModules": module_pending,
+        "undecidedPathDispositions": path_pending,
         "essentialRecommendationsPending": essential_pending,
-        "uncoveredProduction": uncovered,
-        "canWriteConfig": status == "approved" and not uncovered,
+        "uncoveredProduction": unresolved,
+        "classifiedNonModule": classified,
+        "moduleCovered": module_covered,
+        "coverage": {
+            "sourceFiles": len(source),
+            "moduleCovered": len(module_covered),
+            "classifiedNonModule": len(classified),
+            "unresolvedProduction": len(unresolved),
+        },
+        "canWriteConfig": status == "approved" and not unresolved,
         "approvedAt": datetime.now(timezone.utc).isoformat(),
         "meaning": ("Approval is explicit and scoped. A partial approval permits only approved "
                     "boundaries; it does not authorize deterministic checks over unowned source."),
     }
-    review = {
+    result = {
         "schemaVersion": SCHEMA_VERSION,
         "proposalId": inner.get("proposalId"),
         "status": status,
         "modules": modules,
+        "pathDispositions": path_results,
         "recommendations": recommendation_results,
         "approval": approval,
-        "approvedUnits": units_from_approved(accepted),
+        "approvedUnits": approved_units,
     }
     if status == "approved":
         try:
-            review["config"] = build_config(proposal, review)
+            result["config"] = build_config(proposal, result)
         except ModuleMapError:
             pass
-    return review
+    return result
 
 
 def units_from_approved(modules: list[dict]) -> list[dict]:
     units = []
     for module in modules:
-        slug = _slug(module["name"])
+        module_id = module["id"]
         paths = module.get("implementation", {}).get("paths", [])
         contracts = module.get("contracts", {}).get("paths", [])
         if paths:
-            units.append({"id": slug, "module": slug, "role": "implementation",
+            units.append({"id": module_id, "module": module_id, "role": "implementation",
                           "paths": paths, "source": "proposal-approved"})
         if contracts:
-            units.append({"id": f"{slug}.contracts", "module": slug, "role": "contracts",
+            first = Path(contracts[0]).name
+            contract_module = first[:-len(".contracts")] if first.lower().endswith(".contracts") else module_id
+            unit_id = first if first.lower().endswith(".contracts") else f"{module_id}.contracts"
+            units.append({"id": unit_id, "module": contract_module, "role": "contracts",
                           "paths": contracts, "source": "proposal-approved"})
     return units
 
 
-def build_config(proposal: dict, review_result: dict, *, existing: dict | None = None) -> dict:
+def build_config(proposal: dict, review_result: dict, *, existing: dict | None = None,
+                 language: str | None = None) -> dict:
     approval = review_result.get("approval") or {}
     if not approval.get("canWriteConfig"):
         raise ModuleMapError("the review does not authorize a complete authoritative map")
     units = review_result.get("approvedUnits") or []
     if not units:
         raise ModuleMapError("the approved review contains no units")
+    seen = set()
+    for unit in units:
+        if unit["id"] in seen:
+            raise ModuleMapError(f"approved units contain duplicate id {unit['id']!r}")
+        seen.add(unit["id"])
     base = dict(existing or {})
+    dispositions = []
+    for item in review_result.get("pathDispositions", []):
+        if item.get("reviewDecision") not in {"accept", "modify"}:
+            continue
+        if item.get("classification") not in RESOLVED_NON_MODULE:
+            continue
+        dispositions.append({
+            "paths": item["paths"],
+            "classification": item["classification"],
+            "reason": item.get("reason", ""),
+            "owner": item.get("owner", ""),
+            "confidence": item.get("confidence", "medium"),
+        })
     base.update({
         "standard": base.get("standard") or "1.9.0-draft.1",
         "mode": base.get("mode") or "base",
-        "language": base.get("language") or "python",
+        "language": base.get("language") or language or "unknown",
         "level": base.get("level") or "L1",
         "root": base.get("root") or ".",
         "units": units,
+        "repositoryDispositions": dispositions,
         "exclude": base.get("exclude") or ["bin", "obj", "node_modules", "dist", "build",
                                             "target", "tests", "**/__pycache__"],
         "waivers": base.get("waivers") or ".acima/waivers.json",
@@ -907,9 +1436,55 @@ def build_config(proposal: dict, review_result: dict, *, existing: dict | None =
             "reviewedOn": approval.get("reviewedOn"),
             "approvedAt": approval.get("approvedAt"),
             "status": approval.get("status"),
+            "coverage": approval.get("coverage"),
         },
     })
     return base
+
+
+def automatic_review(proposal: dict, reviewer: str) -> dict:
+    """Create a conservative review for full automation.
+
+    It accepts only classifications and boundaries supported by medium/high confidence, and
+    explicitly defers everything else. It never uses directory proximity to invent ownership.
+    """
+    inner = proposal.get("proposal") or {}
+    modules = []
+    for module in inner.get("modules", []):
+        supported = module.get("confidence") in {"medium", "high"} and bool(module.get("responsibility"))
+        modules.append({"id": module["id"], "decision": "accept" if supported else "defer"})
+    paths = []
+    for item in inner.get("pathDispositions", []):
+        supported = item.get("classification") in RESOLVED_NON_MODULE and item.get("confidence") in {"medium", "high"}
+        paths.append({"id": item["id"], "decision": "accept" if supported else "defer"})
+    recommendations = []
+    for item in inner.get("recommendations", []):
+        supported = bool(item.get("autoAcceptable")) and not item.get("requiresUserInput")
+        recommendations.append({"id": item["id"], "decision": "accept" if supported else "defer"})
+    return {
+        "schemaVersion": SCHEMA_VERSION,
+        "proposalId": proposal.get("proposalId"),
+        "reviewer": reviewer,
+        "reviewedOn": date.today().isoformat(),
+        "mapDecision": "accept",
+        "moduleDecisions": modules,
+        "pathDecisions": paths,
+        "recommendationDecisions": recommendations,
+    }
+
+
+def mode_can_auto_accept(proposal: dict) -> tuple[bool, str]:
+    inner = proposal.get("proposal") or {}
+    if not inner.get("modules"):
+        return False, "no candidate module is available for automatic adoption"
+    unresolved = [item for item in inner.get("pathDispositions", [])
+                  if item.get("classification") == "unresolved-production"]
+    if unresolved:
+        return False, ("%s production path(s) remain unresolved; the owner must classify them"
+                       % len(unresolved))
+    if any(module.get("confidence") not in {"medium", "high"} for module in inner.get("modules", [])):
+        return False, "at least one module has low-confidence ownership evidence"
+    return True, "all modules have supported evidence and no unresolved production path remains"
 
 
 def load_proposal(path: Path) -> dict:
@@ -943,19 +1518,32 @@ def _read_review(root: Path) -> dict | None:
     return value if isinstance(value, dict) else None
 
 
+def language_for(root: Path) -> str:
+    """Choose the dominant production language, ignoring incidental non-production source."""
+    counts: dict[str, int] = {}
+    extensions = {".py": "python", ".ts": "typescript", ".tsx": "typescript",
+                  ".js": "typescript", ".mjs": "typescript", ".cjs": "typescript",
+                  ".go": "go", ".cs": "dotnet"}
+    for path in _source_files(root):
+        relative = _relative(path, root)
+        classification = classify_path(relative)
+        if classification["classification"] not in {"unresolved-production", "composition"}:
+            continue
+        language = extensions.get(path.suffix.lower())
+        if language:
+            counts[language] = counts.get(language, 0) + 1
+    if counts:
+        return max(counts, key=lambda item: counts[item])
+    # Contract-only or unusually classified repositories still have a language.
+    for path in _source_files(root):
+        language = extensions.get(path.suffix.lower())
+        if language:
+            counts[language] = counts.get(language, 0) + 1
+    return max(counts, key=lambda item: counts[item]) if counts else "unknown"
+
+
 def _language_for(root: Path) -> str:
-    counts = {extension: 0 for extension in SOURCE_EXTENSIONS}
-    for path in _production_files(root):
-        extension = path.suffix.lower()
-        if extension in counts:
-            counts[extension] += 1
-    if counts.get(".cs"):
-        return "dotnet"
-    if counts.get(".go"):
-        return "go"
-    if counts.get(".ts") or counts.get(".tsx") or counts.get(".js"):
-        return "typescript"
-    return "python"
+    return language_for(root)
 
 
 def _write_json(path: Path, value: dict) -> None:
@@ -996,14 +1584,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.write_approval:
             _write_json(root / args.write_approval, result)
         if args.write_config:
-            config = build_config(proposal, result, existing=existing)
-            if not (existing or {}).get("language"):
-                config["language"] = _language_for(root)
+            config = build_config(proposal, result, existing=existing, language=language_for(root))
             _write_json(root / args.write_config, config)
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return 0
     except ModuleMapError as error:
-        print(f"module_map: {error}", file=__import__("sys").stderr)
+        print(f"module_map: {error}", file=sys.stderr)
         return 2
 
 

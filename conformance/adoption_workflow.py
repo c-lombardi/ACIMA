@@ -36,12 +36,14 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "conformance"))
 from module_map import (  # noqa: E402
-    APPROVAL_FILE, CONFIG_NAME, ModuleMapError, apply_review, build_config,
-    discover as discover_module_map, load_proposal, load_review,
+    APPROVAL_FILE, CONFIG_NAME, ModuleMapError, apply_review, automatic_review,
+    build_config, discover as discover_module_map, language_for, load_proposal,
+    load_review, mode_can_auto_accept, proposed_units,
 )
 import agent_guidance  # noqa: E402
 
 STATE_FILE = ".acima/adoption-workflow.json"
+PREFLIGHT_FILE = ".acima/preflight.json"
 PROPOSAL_JSON = ".acima/module-map.proposal.json"
 SCOPE_FILE = ".acima/adoption-scope.json"
 ADOPTION_PROPOSAL = "docs/acima/adoption-proposal.md"
@@ -57,13 +59,14 @@ WAIVERS_FILE = ".acima/waivers.json"
 
 MODES = ("guided", "full")
 STAGE_ORDER = (
-    "preflight", "discovery", "module_map", "adoption_proposal",
+    "preflight", "discovery", "assessment", "module_map", "adoption_proposal",
     "implementation", "architecture_tests", "ci", "remediation", "verification",
     "agent_guidance", "handoff",
 )
 STAGE_LABEL = {
     "preflight": "Pre-flight authorization",
     "discovery": "Repository discovery",
+    "assessment": "Comprehensive assessment",
     "module_map": "Module map",
     "adoption_proposal": "Adoption proposal",
     "implementation": "Enforcement implementation",
@@ -216,38 +219,101 @@ def _maturity(root: Path, config: dict | None = None) -> dict:
 
 
 def _language(root: Path) -> str:
-    counts: dict[str, int] = {}
-    extensions = {".py": "python", ".ts": "typescript", ".tsx": "typescript",
-                  ".js": "typescript", ".mjs": "typescript", ".cjs": "typescript",
-                  ".go": "go", ".cs": "dotnet"}
-    for path in root.rglob("*"):
-        if not path.is_file() or any(part in {".git", "node_modules", "bin", "obj",
-                                               "dist", "build", "target"} for part in path.parts):
-            continue
-        language = extensions.get(path.suffix.lower())
-        if language:
-            counts[language] = counts.get(language, 0) + 1
-    for preferred in ("python", "typescript", "go", "dotnet"):
-        if counts.get(preferred):
-            return preferred
-    return "unknown"
+    """Select the dominant production language, not the first incidental source file."""
+    return language_for(root)
 
 
-def _enforcer(root: Path, language: str) -> tuple[str, str, str] | None:
-    """Return (source, target, command) for a portable enforcer we can copy."""
-    candidates = {
-        "python": (ROOT / "examples/python/tools/acima_arch.py", "tools/acima_arch.py",
-                   "python3 tools/acima_arch.py --root . --config acima.config.json --format json"),
-        "typescript": (ROOT / "examples/typescript/tools/acima-arch.mjs", "tools/acima-arch.mjs",
-                       "node tools/acima-arch.mjs --root . --config acima.config.json --format json"),
-    }
-    item = candidates.get(language)
-    if not item:
-        return None
-    source, target, command = item
-    if not source.is_file():
-        return None
-    return str(source), target, command
+def _dotnet_executable() -> str | None:
+    found = shutil.which("dotnet")
+    if found:
+        return found
+    configured = os.environ.get("DOTNET_ROOT")
+    candidates = []
+    if configured:
+        candidates.append(Path(configured) / ("dotnet.exe" if os.name == "nt" else "dotnet"))
+    candidates.extend([Path("C:/Program Files/dotnet/dotnet.exe"),
+                       Path("C:/Program Files/dotnet/dotnet"),
+                       Path("/c/Program Files/dotnet/dotnet.exe"),
+                       Path("/mnt/c/Program Files/dotnet/dotnet.exe"),
+                       Path("/usr/local/share/dotnet/dotnet"),
+                       Path("/usr/bin/dotnet")])
+    return next((str(path) for path in candidates if path.is_file()), None)
+
+
+def _enforcer(root: Path, language: str) -> dict | None:
+    """Describe a portable enforcer bundle and its invocation."""
+    if language == "python":
+        source = ROOT / "examples/python/tools/acima_arch.py"
+        if not source.is_file():
+            return None
+        return {
+            "language": language, "kind": "file", "target": "tools/acima_arch.py",
+            "files": [{"source": str(source), "target": "tools/acima_arch.py"}],
+            "command": "python3 tools/acima_arch.py --root . --config acima.config.json --format json",
+            "argv": [sys.executable, "tools/acima_arch.py", "--root", ".", "--config",
+                     CONFIG_NAME, "--format", "json"],
+        }
+    if language == "typescript":
+        source = ROOT / "examples/typescript/tools/acima-arch.mjs"
+        if not source.is_file():
+            return None
+        return {
+            "language": language, "kind": "file", "target": "tools/acima-arch.mjs",
+            "files": [{"source": str(source), "target": "tools/acima-arch.mjs"}],
+            "command": "node tools/acima-arch.mjs --root . --config acima.config.json --format json",
+            "argv": ["node", "tools/acima-arch.mjs", "--root", ".", "--config",
+                     CONFIG_NAME, "--format", "json"],
+        }
+    if language == "dotnet":
+        source_root = ROOT / "examples/dotnet"
+        files = [
+            {"source": str(source_root / "tools/Acima.ArchTests/Program.cs"),
+             "target": "tools/Acima.ArchTests/Program.cs"},
+            {"source": str(source_root / "tools/Acima.ArchTests/Acima.ArchTests.csproj"),
+             "target": "tools/Acima.ArchTests/Acima.ArchTests.csproj"},
+            {"source": str(source_root / "Directory.Build.props"),
+             "target": "tools/Acima.ArchTests/Directory.Build.props"},
+        ]
+        if not all(Path(item["source"]).is_file() for item in files):
+            return None
+        return {
+            "language": language, "kind": "project", "target": "tools/Acima.ArchTests",
+            "files": files,
+            "command": ("dotnet run --project tools/Acima.ArchTests -- --root . "
+                        "--config acima.config.json --format json"),
+            "argv": [_dotnet_executable() or "dotnet", "run", "--project",
+                     "tools/Acima.ArchTests", "--", "--root", ".", "--config",
+                     CONFIG_NAME, "--format", "json"],
+        }
+    return None
+
+
+def _preflight_script() -> Path | None:
+    candidates = [
+        ROOT / "skills/acima-adoption/scripts/preflight.py",
+        Path(__file__).resolve().parents[2] / "scripts/preflight.py",
+        Path(__file__).resolve().parents[1] / "skills/acima-adoption/scripts/preflight.py",
+    ]
+    return next((path for path in candidates if path.is_file()), None)
+
+
+def _run_preflight(root: Path) -> dict:
+    script = _preflight_script()
+    if script is None:
+        return {"exitCode": 2, "payload": None, "error": "preflight.py was not found"}
+    try:
+        result = subprocess.run(
+            [sys.executable, str(script), "--project", str(root), "--format", "json"],
+            capture_output=True, text=True, timeout=300,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        return {"exitCode": 2, "payload": None, "error": str(error)}
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        payload = None
+    return {"exitCode": result.returncode, "payload": payload,
+            "error": result.stderr[-1000:] if result.stderr else ""}
 
 
 def _ci(root: Path) -> dict:
@@ -382,14 +448,28 @@ def _proposal_document(root: Path, module_map: dict, state: dict) -> dict:
             item[key]["paths"].extend(unit.get("paths") or [])
         modules = list(grouped.values())
     recommendations = proposal.get("recommendations") or []
+    existing_architecture = proposal.get("existingArchitecture") or {}
     strengths = []
-    for module in modules:
-        if module.get("contracts", {}).get("paths"):
-            strengths.append("%s has an identified contract-shaped area." % module.get("name"))
-        if module.get("confidence") in ("medium", "high"):
-            strengths.append("%s has a manifest or existing declaration supporting its boundary." % module.get("name"))
+    if existing_architecture.get("paths"):
+        strengths.append("Existing architecture or enforcement evidence was found at: %s." %
+                         ", ".join(existing_architecture["paths"][:8]))
+    contract_modules = [module for module in modules if module.get("contracts", {}).get("paths")]
+    if contract_modules:
+        strengths.append("%s of %s candidate modules have an identified contract-shaped area "
+                         "that can be preserved or made explicit." %
+                         (len(contract_modules), len(modules)))
+    manifest_modules = [module for module in modules
+                        if module.get("confidence") in ("medium", "high")]
+    if manifest_modules:
+        strengths.append("%s candidate boundaries have project, package or existing-declaration evidence." %
+                         len(manifest_modules))
+    if proposal.get("coverage", {}).get("classifiedNonModule"):
+        strengths.append("%s source file(s) can be accounted for as tests, tooling, fixtures, composition "
+                         "or another explicit non-module role rather than silently becoming modules." %
+                         proposal["coverage"]["classifiedNonModule"])
     if not strengths:
-        strengths.append("The repository already contains production source areas that can be reviewed as candidate ownership boundaries.")
+        strengths.append("No existing architecture declaration was established; the proposal records "
+                         "that absence instead of presenting layout as ownership.")
     required = []
     for item in recommendations:
         required.append({
@@ -400,6 +480,7 @@ def _proposal_document(root: Path, module_map: dict, state: dict) -> dict:
             "status": "proposed",
             "changes": item.get("changes") or [],
             "affectedFiles": item.get("affectedFiles") or [],
+            "affectedModules": item.get("affectedModules") or [],
             "prerequisites": item.get("prerequisites") or [],
             "risks": item.get("risks") or [],
         })
@@ -418,6 +499,10 @@ def _proposal_document(root: Path, module_map: dict, state: dict) -> dict:
              "status": "required", "action": "create"}
     ci = {"path": CI_FILE, "purpose": "Record CI discovery and the integration outcome.",
           "status": "conditional", "action": "create"}
+    existing_mechanism = ("Preserve and integrate the existing architecture declarations at %s; add only "
+                         "the missing executable ACIMA configuration and checks." %
+                         ", ".join(existing_architecture["paths"][:5])) if existing_architecture.get("paths") else \
+        "Use the repository's dominant-language ACIMA reference enforcer plus an executable configuration."
     return {
         "schemaVersion": 1,
         "status": "proposed",
@@ -427,10 +512,13 @@ def _proposal_document(root: Path, module_map: dict, state: dict) -> dict:
                     "architecture, and make enforcement executable." if modules else
                     "No safe ownership proposal is available; complete owner discovery first."),
         "existingStrengths": strengths,
+        "existingArchitecture": existing_architecture,
+        "coverage": proposal.get("coverage", {}),
+        "pathDispositions": proposal.get("pathDispositions", []),
         "requiredChanges": required,
         "enforcementStrategy": {
-            "mechanism": "The repository's language-specific ACIMA reference enforcer plus an executable configuration.",
-            "positive": "Run the enforcer against compliant source and require a valid JSON result.",
+            "mechanism": existing_mechanism,
+            "positive": "Run the selected enforcer against compliant source and require a valid JSON result.",
             "negative": "Exercise a controlled violation and require the enforcer to detect it.",
             "manual": "Requirements that cannot be automated remain explicit manual evidence, not a pass.",
         },
@@ -456,6 +544,9 @@ def _proposal_document(root: Path, module_map: dict, state: dict) -> dict:
             "status": module_map.get("status"),
             "proposalId": module_map.get("proposalId"),
             "review": module_map.get("review"),
+            "coverage": proposal.get("coverage", {}),
+            "pathDispositions": proposal.get("pathDispositions", []),
+            "existingArchitecture": existing_architecture,
         },
         "limitations": proposal.get("limitations", []),
         "generatedAt": _now(),
@@ -478,7 +569,22 @@ def _proposal_markdown(document: dict, root: Path) -> str:
         "",
     ]
     lines += ["- " + item for item in document["existingStrengths"]]
-    lines += ["", "## 3. Required changes", ""]
+    lines += ["", "## 3. Repository coverage and dispositions", ""]
+    coverage = document.get("coverage") or {}
+    lines += ["- Source files inspected: %s" % coverage.get("sourceFiles", 0),
+              "- Covered by module ownership: %s" % coverage.get("moduleCovered", 0),
+              "- Explicitly classified as non-module: %s" % coverage.get("classifiedNonModule", 0),
+              "- Unresolved production ownership: %s" % coverage.get("unresolvedProduction", 0), ""]
+    dispositions = document.get("pathDispositions") or []
+    if dispositions:
+        lines.append("### Path dispositions")
+        lines.append("")
+        for item in dispositions:
+            lines.append("- **%s** — `%s` (%s confidence): %s" %
+                         (item.get("classification"), ", ".join(item.get("paths", [])),
+                          item.get("confidence"), item.get("reason", "")))
+        lines.append("")
+    lines += ["## 4. Required changes", ""]
     for item in document["requiredChanges"]:
         lines += [
             "### %s" % item["title"],
@@ -486,22 +592,24 @@ def _proposal_markdown(document: dict, root: Path) -> str:
             "- Requirement: %s" % item["requirement"],
             "- Required outcome: %s" % item["outcome"],
             "- Proposed implementation: %s" % item["implementation"],
+            "- Affected files: %s" % (", ".join(item.get("affectedFiles", [])) or "Not established"),
+            "- Affected modules: %s" % (", ".join(item.get("affectedModules", [])) or "Not established"),
             "- Status: %s" % item["status"],
             "",
         ]
-    lines += ["## 4. Enforcement strategy", "",
+    lines += ["## 5. Enforcement strategy", "",
               "**Mechanism:** %s" % document["enforcementStrategy"]["mechanism"], "",
               "- Positive: %s" % document["enforcementStrategy"]["positive"],
               "- Negative: %s" % document["enforcementStrategy"]["negative"],
               "- Manual: %s" % document["enforcementStrategy"]["manual"], "",
-              "## 5. Implementation impact", ""]
+              "## 6. Implementation impact", ""]
     for item in document["implementationImpact"]["create"]:
         lines.append("- Create `%s`: %s (%s)." % (item["path"], item["purpose"], item["status"]))
-    lines += ["", "## 6. Risks and tradeoffs", ""]
+    lines += ["", "## 7. Risks and tradeoffs", ""]
     lines += ["- " + item for item in document["risks"]]
-    lines += ["", "## 7. Verification criteria", ""]
+    lines += ["", "## 8. Verification criteria", ""]
     lines += ["- " + item for item in document["verificationCriteria"]]
-    lines += ["", "## 8. Decisions requiring the owner", ""]
+    lines += ["", "## 9. Decisions requiring the owner", ""]
     decisions = document.get("decisions") or []
     if decisions:
         for item in decisions:
@@ -510,7 +618,7 @@ def _proposal_markdown(document: dict, root: Path) -> str:
                           "yes" if item.get("essential") else "no", item.get("status")))
     else:
         lines.append("- No module-level decision was generated; this is not proof that ownership is settled.")
-    lines += ["", "## 9. Approval", "",
+    lines += ["", "## 10. Approval", "",
               "Guided adoption: approve the module-map decisions and this scope before implementation.",
               "Full automation: continue only within the explicit pre-flight authorization and safety boundaries.",
               "No application source is changed by this proposal.", ""]
@@ -527,34 +635,11 @@ def _write_proposal(root: Path, module_map: dict, state: dict) -> dict:
 
 
 def _review_for(proposal: dict, reviewer: str) -> dict:
-    inner = proposal.get("proposal") or {}
-    return {
-        "schemaVersion": "1.0",
-        "proposalId": inner.get("proposalId"),
-        "reviewer": reviewer,
-        "reviewedOn": _today(),
-        "mapDecision": "accept",
-        "moduleDecisions": [{"id": item["id"], "decision": "accept"}
-                            for item in inner.get("modules", [])],
-        "recommendationDecisions": [{"id": item["id"], "decision": "accept"}
-                                    for item in inner.get("recommendations", [])],
-    }
+    return automatic_review(proposal, reviewer)
 
 
 def _can_auto_accept(proposal: dict) -> tuple[bool, str]:
-    inner = proposal.get("proposal") or {}
-    modules = inner.get("modules") or []
-    if not modules:
-        return False, "no candidate module is available for automatic adoption"
-    if inner.get("unassigned"):
-        return False, "unassigned production code needs an ownership decision"
-    for module in modules:
-        if module.get("confidence") not in ("medium", "high"):
-            return False, "module %s has low-confidence ownership evidence" % module.get("name")
-    for recommendation in inner.get("recommendations", []):
-        if recommendation.get("essential") and recommendation.get("requiresUserInput"):
-            return False, "recommendation %s requires owner input" % recommendation.get("id")
-    return True, "the proposal has supported modules, no unassigned source, and no essential owner-input recommendation"
+    return mode_can_auto_accept(proposal)
 
 
 def _adopt_map(root: Path, state: dict, module_map: dict, reviewer: str) -> tuple[bool, str]:
@@ -572,10 +657,14 @@ def _adopt_map(root: Path, state: dict, module_map: dict, reviewer: str) -> tupl
     try:
         result = apply_review(module_map, review, root=root)
         if result.get("status") != "approved":
-            return False, "automatic review did not approve a complete map: %s" % result.get("status")
+            approval = result.get("approval") or {}
+            pending = (approval.get("undecidedModules") or []) + \
+                      (approval.get("undecidedPathDispositions") or [])
+            detail = "; ".join(pending[:6])
+            return False, ("automatic review did not approve a complete map: %s%s" %
+                           (result.get("status"), (" (" + detail + ")") if detail else ""))
         existing = _read_json(root / CONFIG_NAME) if (root / CONFIG_NAME).is_file() else None
-        config = build_config(module_map, result, existing=existing)
-        config.setdefault("language", _language(root))
+        config = build_config(module_map, result, existing=existing, language=_language(root))
         _write_json(root, CONFIG_NAME, config)
         _write_json(root, APPROVAL_FILE, result)
         state["artifacts"]["moduleMapApproval"] = APPROVAL_FILE
@@ -585,7 +674,8 @@ def _adopt_map(root: Path, state: dict, module_map: dict, reviewer: str) -> tupl
             "on": _today(), "basis": "explicit full-automation pre-flight authorization",
             "proposalId": module_map.get("proposalId"),
         })
-        state["blockers"] = []
+        state["blockers"] = [item for item in state.get("blockers", [])
+                             if not str(item).startswith("TGT-")]
         return True, reason
     except (ModuleMapError, OSError, ValueError) as error:
         return False, str(error)
@@ -626,21 +716,29 @@ def _write_scope(root: Path, state: dict) -> dict:
 
 
 def _copy_enforcer(root: Path, language: str) -> dict:
-    item = _enforcer(root, language)
-    if not item:
+    plan = _enforcer(root, language)
+    if not plan:
         return {"status": "unsupported", "reason": "No portable enforcer for %s." % language,
-                "command": None, "path": None}
-    source, target, command = item
-    destination = root / target
-    if destination.is_file():
-        if destination.read_bytes() == (root / source).read_bytes():
-            return {"status": "preserved", "path": target, "command": command}
-        return {"status": "blocked", "path": target, "command": command,
-                "reason": "The target already has a different file at %s; refusing to overwrite it." % target}
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(source, destination)
-    return {"status": "implemented", "path": target, "command": command,
-            "source": str(Path(source).relative_to(ROOT))}
+                "command": None, "path": None, "files": []}
+    copied = []
+    preserved = []
+    for item in plan["files"]:
+        source = Path(item["source"])
+        target = item["target"]
+        destination = root / target
+        if destination.exists():
+            if not destination.is_file() or destination.read_bytes() != source.read_bytes():
+                return {"status": "blocked", "path": plan["target"],
+                        "command": plan["command"], "files": copied,
+                        "reason": "The target already has different content at %s; refusing to overwrite it." % target}
+            preserved.append(target)
+            continue
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+        copied.append(target)
+    return {"status": "implemented" if copied else "preserved",
+            "path": plan["target"], "command": plan["command"],
+            "files": copied or preserved, "language": language}
 
 
 def _write_waivers(root: Path, config: dict) -> None:
@@ -661,33 +759,52 @@ def _run(command: list[str], cwd: Path, timeout: int = 120) -> tuple[int, str, s
 
 def _negative_probe(root: Path, language: str) -> dict:
     """Prove the copied enforcer rejects a controlled dependency violation."""
-    item = _enforcer(root, language)
-    if not item:
-        return {"status": "unsupported", "reason": "No portable enforcer."}
-    source, _target, _command = item
-    if language != "python":
-        return {"status": "not_run", "reason": "Controlled negative probe is implemented for the Python enforcer in this revision."}
+    plan = _enforcer(root, language)
+    if not plan:
+        return {"status": "unsupported", "reason": "No portable enforcer for %s." % language}
+    if language not in {"python", "dotnet"}:
+        return {"status": "not_run",
+                "reason": "A controlled negative probe is implemented for Python and .NET in this revision."}
     with tempfile.TemporaryDirectory() as directory:
         probe = Path(directory)
-        (probe / "tools").mkdir()
-        shutil.copy2(source, probe / "tools/acima_arch.py")
-        for relative, text in {
-            "src/a/impl/service.py": "from src.b.impl.internal import VALUE\n\ndef use():\n    return VALUE\n",
-            "src/b/impl/internal.py": "VALUE = 1\n",
-        }.items():
-            path = probe / relative
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(text, encoding="utf-8")
-        config = {
-            "standard": "1.9.0-draft.1", "mode": "base", "language": "python", "level": "L1",
-            "root": ".", "units": [
-                {"id": "a", "module": "a", "role": "implementation", "paths": ["src/a/impl"]},
-                {"id": "b", "module": "b", "role": "implementation", "paths": ["src/b/impl"]},
-            ],
-        }
-        (probe / "acima.config.json").write_text(json.dumps(config), encoding="utf-8")
-        code, out, err = _run([sys.executable, "tools/acima_arch.py", "--root", ".", "--config",
-                               "acima.config.json", "--format", "json"], probe)
+        for item in plan["files"]:
+            destination = probe / item["target"]
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(item["source"], destination)
+        if language == "python":
+            for relative, text in {
+                "src/a/impl/service.py": "from src.b.impl.internal import VALUE\n\ndef use():\n    return VALUE\n",
+                "src/b/impl/internal.py": "VALUE = 1\n",
+            }.items():
+                path = probe / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(text, encoding="utf-8")
+            config = {
+                "standard": "1.9.0-draft.1", "mode": "base", "language": "python",
+                "level": "L1", "root": ".", "units": [
+                    {"id": "a", "module": "a", "role": "implementation", "paths": ["src/a/impl"]},
+                    {"id": "b", "module": "b", "role": "implementation", "paths": ["src/b/impl"]},
+                ],
+            }
+        else:
+            for relative, text in {
+                "src/a/impl/A.csproj": '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup><ItemGroup><ProjectReference Include="../../b/impl/B.csproj" /></ItemGroup></Project>',
+                "src/a/impl/Service.cs": "namespace A; public sealed class Service { public object Read() => new B.Internal(); }\n",
+                "src/b/impl/B.csproj": '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>',
+                "src/b/impl/Internal.cs": "namespace B; public sealed class Internal { }\n",
+            }.items():
+                path = probe / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(text, encoding="utf-8")
+            config = {
+                "standard": "1.9.0-draft.1", "mode": "base", "language": "dotnet",
+                "level": "L1", "root": ".", "units": [
+                    {"id": "a", "module": "a", "role": "implementation", "paths": ["src/a/impl"]},
+                    {"id": "b", "module": "b", "role": "implementation", "paths": ["src/b/impl"]},
+                ],
+            }
+        (probe / CONFIG_NAME).write_text(json.dumps(config), encoding="utf-8")
+        code, out, err = _run(plan["argv"], probe)
         try:
             payload = json.loads(out)
         except json.JSONDecodeError:
@@ -719,8 +836,8 @@ def _write_enforcement(root: Path, state: dict, config: dict) -> dict:
         "enforcer": result,
         "waivers": WAIVERS_FILE,
         "architectureTests": ARCH_TESTS_FILE,
-        "requirementsWithAutomatedEnforcement": 41 if language in ("python", "typescript") else 0,
-        "requirementsWithoutAutomatedEnforcement": 14 if language in ("python", "typescript") else 55,
+        "requirementsWithAutomatedEnforcement": {"python": 41, "typescript": 41, "dotnet": 31}.get(language, 0),
+        "requirementsWithoutAutomatedEnforcement": {"python": 14, "typescript": 14, "dotnet": 24}.get(language, 55),
         "limitations": [],
     }
     _write_json(root, ENFORCEMENT_FILE, enforcement)
@@ -781,12 +898,9 @@ def _verify(root: Path, state: dict, config: dict) -> dict:
         "limitations": [],
     }
     if item:
-        source, target, command = item
-        if (root / target).is_file():
-            argv = [sys.executable, target, "--root", ".", "--config", CONFIG_NAME, "--format", "json"]
-            if language == "typescript":
-                argv = ["node", target, "--root", ".", "--config", CONFIG_NAME, "--format", "json"]
-            code, out, err = _run(argv, root)
+        targets = [root / entry["target"] for entry in item["files"]]
+        if all(path.exists() for path in targets):
+            code, out, err = _run(item["argv"], root, timeout=240)
             try:
                 payload = json.loads(out)
             except json.JSONDecodeError:
@@ -800,6 +914,7 @@ def _verify(root: Path, state: dict, config: dict) -> dict:
                     "exitCode": code, "sourceFiles": payload.get("sourceFiles"),
                     "findingCount": len(findings),
                     "findings": len(findings),
+                    "command": item["command"],
                 }
         else:
             result["positive"] = {"status": "blocked", "reason": "The enforcer is not present in the target."}
@@ -1305,6 +1420,10 @@ def _apply(root: Path, state: dict) -> dict:
            (verification.get("positive", {}).get("status"),
             verification.get("negative", {}).get("status")),
            evidence=VERIFICATION_FILE)
+    if verification.get("status") != "verified":
+        state["blockers"].append("architectural enforcement verification did not pass")
+        _save(root, state)
+        return state
     ci = _integrate_ci(root, state, command)
     _stage(state, "ci", COMPLETE if ci.get("status") in ("configured", "already_present", "no_provider",
                                                          "manual_instructions") else BLOCKED,
@@ -1355,9 +1474,24 @@ def start(root: Path, mode: str, *, authorize_full: bool = False,
         state["authorized"] = True
         state["authorizedBy"] = reviewer or "Full automation consent"
         state["authorizedOn"] = _today()
-    _stage(state, "preflight", COMPLETE,
-           "The user selected %s adoption." % mode,
-           evidence={"mode": mode, "explicitAuthorization": mode == "full"})
+    preflight = _run_preflight(root)
+    if preflight.get("payload"):
+        _write_json(root, PREFLIGHT_FILE, preflight["payload"])
+        state["artifacts"]["preflight"] = PREFLIGHT_FILE
+    blockers = list((preflight.get("payload") or {}).get("blockers") or [])
+    if preflight.get("exitCode") == 0 and not blockers:
+        _stage(state, "preflight", COMPLETE,
+               "Preflight passed for %s adoption." % mode,
+               evidence={"mode": mode, "explicitAuthorization": mode == "full",
+                         "preflight": PREFLIGHT_FILE})
+    else:
+        detail = ("Preflight blocked adoption: %s." % ", ".join(blockers)
+                  if blockers else
+                  "Preflight did not complete: %s" % (preflight.get("error") or "no valid result"))
+        _stage(state, "preflight", BLOCKED, detail,
+               evidence={"mode": mode, "explicitAuthorization": mode == "full",
+                         "preflight": PREFLIGHT_FILE})
+        state["blockers"].extend(blockers or ["preflight did not complete"])
     _stage(state, "discovery", IN_PROGRESS, "Discovering repository ownership, contracts and enforcement.")
     try:
         module_map = discover_module_map(root)
@@ -1373,6 +1507,11 @@ def start(root: Path, mode: str, *, authorize_full: bool = False,
            len((module_map.get("proposal") or {}).get("modules", [])),
            evidence={"proposalId": module_map.get("proposalId"),
                      "authoritative": module_map.get("authoritativeMap", {}).get("status")})
+    _stage(state, "assessment", IN_PROGRESS,
+           "The mandatory 55-requirement qualitative review has not been recorded. "
+           "Discovery and ownership decisions may continue independently, but no complete "
+           "assessment is claimed and ownership-dependent checks remain qualified.",
+           evidence={"catalog": "tools/acima-spec/rules.json", "requiredRules": 55})
     if module_map.get("proposal"):
         _write_json(root, PROPOSAL_JSON, module_map.get("proposal"))
         state["artifacts"]["moduleMapProposal"] = PROPOSAL_JSON
@@ -1454,8 +1593,7 @@ def approve(root: Path, *, map_decisions: Path | None = None,
             _write_json(root, APPROVAL_FILE, result)
             if result.get("status") == "approved":
                 existing = _read_json(root / CONFIG_NAME) if (root / CONFIG_NAME).is_file() else None
-                config = build_config(wrapper, result, existing=existing)
-                config.setdefault("language", _language(root))
+                config = build_config(wrapper, result, existing=existing, language=_language(root))
                 _write_json(root, CONFIG_NAME, config)
                 state["artifacts"]["moduleMapApproval"] = APPROVAL_FILE
                 state["artifacts"]["moduleMap"] = CONFIG_NAME
@@ -1470,16 +1608,37 @@ def approve(root: Path, *, map_decisions: Path | None = None,
         else:
             raise WorkflowError("no module-map proposal is available at %s" % PROPOSAL_JSON)
     if scope:
+        if not (root / CONFIG_NAME).is_file():
+            raise WorkflowError("an adoption scope cannot be approved before an authoritative module map exists")
+        approval = _read_json(root / APPROVAL_FILE) if (root / APPROVAL_FILE).is_file() else {}
+        if (approval.get("status") != "approved"
+                or not (approval.get("approval") or {}).get("canWriteConfig")):
+            raise WorkflowError("the module map is not approved and cannot authorize an implementation scope")
         document = _read_json(scope)
         for key in ("approvedBy", "approvedOn", "objectives"):
             if key not in document:
                 raise WorkflowError("scope is missing %s" % key)
+        if not str(document.get("approvedBy", "")).strip():
+            raise WorkflowError("scope.approvedBy is required")
+        try:
+            date.fromisoformat(str(document.get("approvedOn")))
+        except ValueError as error:
+            raise WorkflowError("scope.approvedOn must be a YYYY-MM-DD date") from error
+        objectives = document.get("objectives")
+        if not isinstance(objectives, list) or not objectives:
+            raise WorkflowError("scope.objectives must contain at least one objective")
+        for objective in objectives:
+            if not isinstance(objective, dict) or not objective.get("id"):
+                raise WorkflowError("every scope objective needs an id")
+            if objective.get("disposition") not in {"required", "approved", "deferred", "optional", "declined"}:
+                raise WorkflowError("scope objective %s has an unknown disposition" % objective.get("id"))
         _write_json(root, SCOPE_FILE, document)
         state["artifacts"]["scope"] = SCOPE_FILE
         state["decisions"].append({"id": "adoption-scope", "decision": "accepted",
                                    "by": document.get("approvedBy"), "on": _today()})
         _stage(state, "adoption_proposal", COMPLETE,
-               "The owner-approved scope is recorded.", evidence={ADOPTION_PROPOSAL: True, SCOPE_FILE: True})
+               "The authoritative map and owner-approved implementation scope are recorded.",
+               evidence={ADOPTION_PROPOSAL: True, SCOPE_FILE: True, CONFIG_NAME: True})
     if (root / CONFIG_NAME).is_file() and (root / SCOPE_FILE).is_file():
         _save(root, state)
         return _apply(root, state)

@@ -33,7 +33,9 @@ STANDARD_ROOT = (_REPOSITORY if (_REPOSITORY / "tools/acima-spec/rules.json").is
                  else SKILL_DIR / "vendor")
 sys.path.insert(0, str(STANDARD_ROOT / "conformance"))
 from acima_claim import validate_waivers  # noqa: E402 - shared governance validation
-from module_map import ModuleMapError, discover as discover_module_map  # noqa: E402
+from module_map import (  # noqa: E402
+    ModuleMapError, classify_path, discover as discover_module_map, proposed_units,
+)
 
 PRUNE = {
     ".git", "node_modules", "bin", "obj", "dist", "build", "target", "out",
@@ -179,6 +181,19 @@ def detect_languages(project: Path, counts: dict[str, int]) -> list[str]:
 
 
 def propose_units(project: Path, language: str) -> list[dict]:
+    """Use the shared discovery model so preflight and adoption cannot disagree.
+
+    The old language-specific helpers remain as a fallback for old or malformed trees, but
+    they are not a second source of truth when discovery succeeds.
+    """
+    try:
+        discovered = discover_module_map(project)
+        if discovered.get("proposal"):
+            units = proposed_units(discovered)
+            if units:
+                return units
+    except (ModuleMapError, OSError):
+        pass
     if language == "dotnet":
         return propose_dotnet_units(project)
     return propose_directory_units(project)
@@ -742,37 +757,69 @@ def check_target(project: Path, report: Report, manifest: dict) -> tuple[list[di
 
         if report.mode == "brownfield":
             coverage = {"productionCovered": 0, "productionUncovered": [],
-                        "testsExcluded": 0, "toolingExcluded": 0, "generatedExcluded": 0}
+                        "testsExcluded": 0, "toolingExcluded": 0, "generatedExcluded": 0,
+                        "fixturesExcluded": 0, "experimentalExcluded": 0,
+                        "compositionExcluded": 0, "vendoredExcluded": 0,
+                        "classifiedNonModule": 0}
             for path in walk_files(project):
                 if path.suffix.lower() not in SOURCE_EXTENSIONS:
                     continue
-                if is_test_source(path.relative_to(project)):
+                relative = path.relative_to(project).as_posix()
+                classified = classify_path(relative)
+                classification = classified["classification"]
+                if classification == "tests":
                     coverage["testsExcluded"] += 1
-                elif is_tooling_source(path):
+                    continue
+                if classification == "fixtures":
+                    coverage["fixturesExcluded"] += 1
+                    continue
+                if classification == "experimental":
+                    coverage["experimentalExcluded"] += 1
+                    continue
+                if classification in {"build-tooling", "architecture-tooling"}:
                     coverage["toolingExcluded"] += 1
-                elif is_generated_source(path):
+                    continue
+                if classification == "generated":
                     coverage["generatedExcluded"] += 1
-                elif unit_for_path(path.relative_to(project).as_posix(),
-                                   report.proposed_units) is not None:
+                    continue
+                if classification == "vendored":
+                    coverage["vendoredExcluded"] += 1
+                    continue
+                if classification == "composition":
+                    coverage["compositionExcluded"] += 1
+                    continue
+                if classification == "documentation-configuration":
+                    coverage["classifiedNonModule"] += 1
+                    continue
+                if unit_for_path(relative, report.proposed_units) is not None:
                     coverage["productionCovered"] += 1
                 else:
-                    coverage["productionUncovered"].append(path.relative_to(project).as_posix())
+                    coverage["productionUncovered"].append(relative)
             report.source_coverage = coverage
             uncovered = len(coverage["productionUncovered"])
             excluded = (coverage["testsExcluded"] + coverage["toolingExcluded"] +
-                        coverage["generatedExcluded"])
+                        coverage["generatedExcluded"] + coverage["fixturesExcluded"] +
+                        coverage["experimentalExcluded"] + coverage["compositionExcluded"] +
+                        coverage["vendoredExcluded"] + coverage["classifiedNonModule"])
             if uncovered:
                 report.add("TGT-005", "warn",
-                           f"{uncovered} production source file(s) fall outside candidate units; "
+                           f"{uncovered} production source file(s) fall outside candidate units "
+                           "and explicit repository classifications; "
                            f"{coverage['testsExcluded']} test, {coverage['toolingExcluded']} tooling, "
-                           f"and {coverage['generatedExcluded']} generated source file(s) are "
-                           "separately excluded from module ownership coverage",
-                           "review the uncovered production paths and assign them to a genuine "
-                           "owning module or composition boundary")
+                           f"{coverage['fixturesExcluded']} fixture, "
+                           f"{coverage['experimentalExcluded']} experimental, "
+                           f"{coverage['compositionExcluded']} composition, "
+                           f"{coverage['generatedExcluded']} generated, "
+                           f"{coverage['vendoredExcluded']} vendored and "
+                           f"{coverage['classifiedNonModule']} other non-module file(s) are "
+                           "separately classified outside module ownership coverage",
+                           "review the unresolved production paths and assign each to a module "
+                           "or an explicit non-module disposition; do not use directory proximity")
             else:
                 report.add("TGT-005", "pass",
                            f"all {coverage['productionCovered']} production source files are covered; "
-                           f"{excluded} test/tooling/generated files are excluded from module ownership coverage")
+                           f"{excluded} test/tooling/fixture/composition/other files are explicitly "
+                           "classified outside module ownership coverage")
     return report.proposed_units, config
 
 

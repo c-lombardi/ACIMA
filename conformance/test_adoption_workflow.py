@@ -197,6 +197,31 @@ class AdoptionWorkflowTests(unittest.TestCase):
             self.assertFalse((root / "tools/acima_arch.py").exists())
             self.assertTrue(state["next"]["approvalRequired"])
 
+    def test_scope_cannot_be_approved_before_the_map(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            workflow.start(root, "guided")
+            with self.assertRaises(workflow.WorkflowError):
+                workflow.approve(root, scope=scope(root))
+            self.assertFalse((root / "acima.config.json").exists())
+            self.assertFalse((root / ".acima/adoption-scope.json").exists())
+
+    def test_language_selection_uses_dominant_production_source(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for index in range(5):
+                write(root, "src/orders/service%s.cs" % index, "class Service%s {}" % index)
+            write(root, "spike/probe.py", "VALUE = 1\n")
+            write(root, "tests/test_probe.py", "def test(): pass\n")
+            self.assertEqual(workflow._language(root), "dotnet")
+            plan = workflow._enforcer(root, "dotnet")
+            self.assertIsNotNone(plan)
+            self.assertEqual(plan["target"], "tools/Acima.ArchTests")
+            copied = workflow._copy_enforcer(root, "dotnet")
+            self.assertEqual(copied["status"], "implemented")
+            self.assertTrue((root / "tools/Acima.ArchTests/Program.cs").is_file())
+
     def test_resume_preserves_the_map_approval_and_waits_for_scope(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

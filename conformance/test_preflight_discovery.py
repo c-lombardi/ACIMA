@@ -110,6 +110,36 @@ class PreflightDiscoveryTests(unittest.TestCase):
             self.assertEqual(checks["TGT-004"]["status"], "pass")
             self.assertEqual(checks["TGT-005"]["status"], "pass")
 
+    def test_preflight_units_match_the_module_map_proposal(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="acima-consistent-") as temp:
+            directory = Path(temp)
+            for name in ("orders", "billing"):
+                source = directory / "src" / name
+                source.mkdir(parents=True)
+                (source / "service.py").write_text("VALUE = 1\n", encoding="utf-8")
+            (directory / "tests").mkdir()
+            (directory / "tests" / "test_service.py").write_text("def test(): pass\n",
+                                                                    encoding="utf-8")
+            (directory / "tools").mkdir()
+            (directory / "tools" / "build.py").write_text("VALUE = 2\n", encoding="utf-8")
+            code, payload = run_preflight(directory)
+            self.assertEqual(code, 0)
+            proposal = json.loads(
+                subprocess.run(
+                    [sys.executable, "-c",
+                     "import json,sys; sys.path.insert(0,'conformance'); "
+                     "import module_map; print(json.dumps(module_map.discover("
+                     "__import__('pathlib').Path(sys.argv[1]))['proposal']))",
+                     str(directory)], cwd=ROOT, capture_output=True, text=True,
+                    check=True).stdout)
+            proposed_ids = {item["id"] for item in payload["proposedUnits"]}
+            proposed_ids.update(item["id"] for item in payload["proposedUnits"]
+                                if item.get("role") == "contracts")
+            proposal_ids = {item["id"] for item in proposal["modules"]}
+            self.assertEqual(proposed_ids, proposal_ids)
+            checks = {check["id"]: check for check in payload["checks"]}
+            self.assertEqual(checks["TGT-005"]["status"], "pass")
+
 
 if __name__ == "__main__":
     unittest.main()
