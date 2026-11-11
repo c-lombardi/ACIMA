@@ -76,6 +76,8 @@ def validate_review(document: Any, root: Path, catalog: dict,
         by_id.setdefault(rule_id, []).append(entry)
     validated = []
     counts = {status: 0 for status in sorted(STATUSES)}
+    rationale_owners: dict[str, str] = {}
+    evidence_owners: dict[tuple, str] = {}
     for rule in rules:
         rule_id = rule["id"]
         candidates = by_id.get(rule_id, [])
@@ -91,6 +93,13 @@ def validate_review(document: Any, root: Path, catalog: dict,
         rationale = entry.get("rationale")
         if not isinstance(rationale, str) or len(rationale.strip()) < 20:
             local.append("rationale must explain the disposition in at least 20 characters")
+        else:
+            rationale_key = " ".join(rationale.casefold().split())
+            previous_rule = rationale_owners.get(rationale_key)
+            if previous_rule and previous_rule != rule_id:
+                local.append(f"rationale is duplicated from {previous_rule}; explain this requirement's own evidence and reasoning")
+            else:
+                rationale_owners[rationale_key] = rule_id
         evidence = entry.get("evidence")
         if not isinstance(evidence, list) or not evidence:
             local.append("at least one evidence reference is required")
@@ -130,6 +139,14 @@ def validate_review(document: Any, root: Path, catalog: dict,
                             local.append(f"evidence[{index}].quote must reproduce text from the cited lines")
                         elif quote.strip() not in "\n".join(cited_lines):
                             local.append(f"evidence[{index}].quote does not appear in the cited line range")
+                        else:
+                            observation_text = observation.strip() if isinstance(observation, str) else ""
+                            signature = (str(path), kind, start, end, quote.strip(), observation_text)
+                            previous_rule = evidence_owners.get(signature)
+                            if previous_rule and previous_rule != rule_id:
+                                local.append(f"evidence[{index}] duplicates the exact evidence already used for {previous_rule}; cite requirement-specific evidence")
+                            else:
+                                evidence_owners[signature] = rule_id
             elif path is not None and path.is_dir() and kind != "absence":
                 local.append(f"evidence[{index}]: directory evidence must use kind 'absence' or cite a file")
             elif kind == "absence" and (start is not None or end is not None):
@@ -156,16 +173,22 @@ def validate_review(document: Any, root: Path, catalog: dict,
     duplicate = sorted(rule_id for rule_id, values in by_id.items() if len(values) != 1)
     reviewed = sum(1 for item in validated if item["valid"])
     unresolved = counts["insufficient_evidence"]
-    complete = (not problems and reviewed == len(expected) and not missing and not extra
-                and unresolved == 0)
+    coverage_complete = (not problems and reviewed == len(expected) and not missing
+                         and not extra and not duplicate)
+    decision_complete = coverage_complete and unresolved == 0
     return {
         "schemaVersion": SCHEMA_VERSION,
-        "complete": complete,
-        "status": "complete" if complete else "incomplete",
+        # Coverage means every catalog requirement has one valid, evidence-backed disposition.
+        # Decision completeness is stricter: no requirement remains unresolved.
+        "coverageComplete": coverage_complete,
+        "decisionComplete": decision_complete,
+        "complete": decision_complete,
+        "status": "complete" if decision_complete else ("coverage_complete_with_unresolved" if coverage_complete else "incomplete"),
         "reviewed": reviewed,
         "required": len(expected),
         "pending": len(expected) - reviewed,
         "unresolved": unresolved,
+        "evidenceBackedDispositions": reviewed,
         "counts": counts,
         "missing": missing,
         "extra": extra,

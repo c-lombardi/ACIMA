@@ -1,12 +1,12 @@
 ---
 name: acima-adoption
-description: Adopt, audit, and enforce the ACIMA architecture standard in a greenfield or brownfield repository. Use when the user asks to apply ACIMA, split a monolith into contract-isolated modules, add architecture tests or dependency rules, run an architecture audit against the ACIMA rule catalog, migrate a shared "Common" project, or onboard a team with no prior exposure to contract-based modular architecture. Not for general refactoring, formatting, or framework upgrades.
+description: Help users understand the value and outcomes of ACIMA, then assess, adopt, or enforce it transparently in a greenfield or brownfield codebase. Use when the user asks what ACIMA provides, gives no specific command, provides a repository, asks for an architecture review, wants to apply ACIMA, split a monolith into contract-isolated modules, add architecture tests or dependency rules, migrate a shared "Common" project, or needs onboarding. Keep users informed of scope, progress, changes, evidence, risks and outcomes at every phase. Not for general refactoring, formatting, or framework upgrades.
 license: MIT
 compatibility: Python 3.9+ for the preflight script. The target language toolchain is only needed to run that language's enforcer.
 allowed-tools: Read Grep Glob Bash Edit Write
 metadata:
   standard: "1.9.0-draft.1"
-  skill-version: "1.23.0"
+  skill-version: "1.31.0"
   catalog-sha256: "b593d28e81dacfdb9ba61b5792cbab04c521c0631cec6ff61292045acada678a"
 ---
 
@@ -22,16 +22,30 @@ You do the discovery, explanation, recommendation and implementation. The user s
 context, resolves genuinely ambiguous ownership, and approves changes. Never make them learn the
 catalog, the levels or the command set to get value. Analysis is never authorization.
 
-## Positioning
+## User transparency
+Keep the user informed of ACIMA's value, phase purpose, scope, progress, decisions, risks, evidence and
+outcomes. Explain what exists today versus what is proposed, implemented or verified. Never hide
+costs, uncertainty or work outside the approved scope. Follow [35-user-transparency](references/35-user-transparency.md).
 
+## Start here: make the first interaction effortless
+No command, ACIMA terminology, adoption level, module map or configuration is required to begin.
+
+- One repository is already open: use it and identify its actual root. Do not ask for a path again.
+- Multiple repositories: ask one short question naming the candidates.
+- No repository: ask **"Which codebase should I look at? Paste its folder path or repository link. If you already have it open here, just say 'use this workspace'."**
+- No command or a greeting: begin a read-only assessment when a repository is available.
+- Unsupported command: infer the closest supported intent; ask one plain-language question only if genuinely ambiguous.
+- Do not ask users to choose L1/L2/L3 before assessment. Inspect first and recommend a level with its practical implications.
+- Any requested changes: assess first, state exact scope and impact, and obtain explicit approval before writing.
+
+## Positioning
 ACIMA defines portable architectural requirements: module ownership, explicit contracts,
 dependency isolation and direction, data and configuration ownership, and controlled composition.
 Applicable lifecycle, state and effect ownership requirements also apply. It is not a template for
 the system's overall architecture, and it is not merely an enforcement layer for boundaries
 chosen elsewhere.
 
-Existing architecture families can often satisfy these requirements, but compatibility is evaluated
-against the actual requirements, not assumed from the family's name. Some requirements are
+Compatibility is evaluated against the actual requirements, not assumed from the architecture family name. Outcomes are **compatible**, **compatible with adaptation**, **incompatible**, or **insufficient evidence**; see [05-architecture-families](references/05-architecture-families.md). See [05-architecture-families](references/05-architecture-families.md). Some requirements are
 intentionally stricter than common practice; name them and explain why. A compatible family may need
 a limited boundary adaptation. A fundamental conflict is incompatibility, not a violation to
 refactor away. Distinguish incompatibility from insufficient evidence.
@@ -41,353 +55,44 @@ a different family. Never suggest that adopting ACIMA requires the `service-topo
 the family you detected from evidence and state which ACIMA requirements it already satisfies, which
 need adaptation, and which are not established — [05-architecture-families](references/05-architecture-families.md).
 
-## Where you are running
+## Execution context
+Detect whether this is an ACIMA checkout, an installed skill, or a separate target before printing or running commands. In a copied skill, the vendored CLI is `<skill>/vendor/tools/acima.py`; in a source checkout use `tools/acima.py`. Load [12-getting-started](references/12-getting-started.md) only when choosing invocation paths or routing an ambiguous request.
 
-Three execution contexts exist. Detect yours before printing a command; a path that does not exist
-in the active context is not a runnable command.
+## Workflow
+Use the sequence: read-only preflight; complete the 55-requirement evidence-backed qualitative review; run supported deterministic checks where an approved unit map exists; explain fit and value; prepare a scoped proposal; obtain explicit approval; implement only approved changes; verify and hand off. Do not issue an adoption recommendation or decision-ready HTML report until all 55 requirements have valid dispositions. Unresolved dispositions require an insufficient-evidence recommendation. Assessment is never authorization. Load [22-workflow](references/22-workflow.md) when executing or resuming an engagement.
 
-| Context | What exists | How to invoke |
-|---|---|---|
-| ACIMA source checkout | `tools/`, `docs/`, `examples/`, the skill | `python3 tools/acima.py ...`, `python3 skills/acima-adoption/scripts/...`, `examples/<lang>/tools/...` |
-| Copied or installed skill | `skills/acima-adoption/` with its `vendor/` snapshot | `python3 <skill>/scripts/preflight.py ...`, `python3 <skill>/vendor/tools/acima.py ...`, `python3 <skill>/vendor/examples/<lang>/tools/...` |
-| A different target repository | the target software only | run ACIMA commands from the checkout or skill directory with `--root`/`--project <target>` |
+### The five phases
 
-`preflight --deep` and `acima.py verify` need the full checkout; if it is absent, say so and offer
-the read-only assessment that the skill can run. Verify a command's path and `--help` before calling
-it executable, and never present a flag you have not confirmed.
+**Phase 1 — Assessment.** Read-only discovery, the complete 55-requirement review, and deterministic checks only where an approved map exists. A missing map triggers a module-map proposal, not a stop.
 
-## Route the request
+**Phase 2 — Proposal.** A decision document with exact scope, file impact, tradeoffs, decisions and a single recommendation. Module-map boundaries and recommendations remain open to individual review.
 
-Pick one mode from the user's words. If intent is unclear, run the read-only assessment and say so.
-Never upgrade an assessment into an adoption because the findings are interesting.
+**Phase 3 — Explicit authorization.** The owner approves named files, level, boundaries and recommendations. Partial approval is supported. Approval covers the listed scope only. Do not create optional artifacts from this approval.
 
-| The user says | Mode | Writes? | First action | Ends when |
-|---|---|---|---|---|
-| "what is ACIMA", "would it help", "assess", "audit", "review" | **Assess** | no | explain in plain English, then read-only analysis | a verdict, named gaps and limits |
-| "adopt", "apply ACIMA", "set it up", "add the gate" | **Adopt** | only after consent | the assessment, then the proposal | an approved scope, implemented and verified |
-| "continue", "where are we", "what next" | **Resume** | no | `acima.py status --root .` | one next action, stated plainly |
-| "fix this", "why does the gate fail", "correct D001" | **Slice** | smallest named change | `acima.py fix`, then the rule page | one boundary changed, gate re-measured |
-| "explain this rule" | **Explain** | no | the rule page, then `acima.py report` | the answer and its remedy |
+**Phase 4 — Approved implementation.** Change only the approved paths and scope. A new path, level, dependency or boundary requires a new decision.
 
-## Canonical workflow
+**Phase 5 — Verification and handoff.** Prove what changed with evidence; report what remains unproven. Merge, publish or release requires separate, explicit approval. Do not create a communication plan by default; optional documents need their own request or approval.
 
-One order, everywhere. Preflight establishes that this skill matches the catalog on disk and
-classifies the target; the assessment establishes fit. Neither writes to the target.
+## Adoption modes and end-to-end orchestration
+At pre-flight, explicitly offer **guided adoption** and **full automation**. Guided generates the module-map proposal, adoption proposal, enforcement plan and CI proposal, then waits for scoped approval before implementation. Full automation is available only after an explicit confirmation; it applies supported module-map decisions, implements enforcement, adds a gate to a detected CI provider when safe, verifies the result and writes a handoff. Full automation is not permission to deploy, release, commit, push, modify another repository, expose secrets or make destructive changes. Any unsupported or ambiguous ownership decision pauses only that decision and is recorded; independent work continues. Preserve the selected mode in `.acima/adoption-workflow.json` and use `acima.py adoption status` to resume. Every stage has an artifact, completion condition and next action; never leave proposal, enforcement, CI or verification dangling. After CI is decided, ask the separate final question: apply **none**, **selected**, or **all applicable** recommended fixes. Do not infer remediation from adoption consent. Classify greenfield/brownfield from implementation and compatibility evidence, not age alone. Large or high-risk brownfield work needs two distinct affirmations: scope acknowledgement, then implementation authorization. Apply only the authorized changes, preserve user changes, revalidate stale findings, and run a fresh assessment afterward. Load [13-adoption-orchestration](references/13-adoption-orchestration.md) when starting or resuming an engagement.
 
-| Phase | Purpose | Command | Ends when |
-|---|---|---|---|
-| 1. Assess | preflight first, then read-only fit, findings and limits | `preflight.py --project <target>`, then `acima.py assess --root <target>` | exit 0, a classification, and a verdict with named gaps |
-| 2. Propose | the decision document | fill `assets/adoption-proposal.md` | a recommendation, exact paths, one question |
-| 3. Authorize | explicit, scope-specific approval | none | an unambiguous yes to that proposal |
-| 4. Implement | only the approved scope | the approved commands | the named files exist and measure |
-| 5. Verify | prove what changed and what did not | the enforcer and `acima.py claim` | artefacts support every claim, limits named |
+## Discovery
+Inspect actual ownership, contracts, dependencies, composition, data/configuration, lifecycle/state/effects, project structure and existing enforcement. Do not infer module ownership from folders or project names. Load [45-discovery](references/45-discovery.md) for the full inventory and evidence method.
 
-Do not run the same expensive analysis twice for two phases: reuse the assessment's run for the
-proposal, and the implementation's run for the handoff. `status` reports which phase is evidenced.
+## Module-map discovery and approval
+Every assessment checks whether an authoritative map exists and whether it is complete, stale or inconsistent. If it is absent or insufficient, discovery runs automatically: it proposes evidence-backed candidate boundaries, contracts, observed dependencies, unassigned production code, quality observations, recommendations and decisions. Project, package, folder and runtime boundaries are signals, never approved modules. The proposal distinguishes observed facts from inferred ownership. Do not stop independent qualitative review because the map is missing. Do not make inferred ownership authoritative or execute ownership-dependent deterministic checks until the reviewer explicitly accepts the relevant boundaries and decisions. Approval is per module and recommendation, not all-or-nothing; approved maps become the existing `acima.config.json` unit contract with review provenance. Use `conformance/module_map.py discover` and `review` when a durable review artifact is needed; no target file is written without `--write-proposal`, `--write-approval` or `--write-config`.
 
-**Phase 1 — Assessment.** Preflight runs first, always: it compares `rules.json` with the pinned SHA-256
-and rule ids (`SKL-002`/`SKL-003`), classifies `greenfield`, `brownfield` or `adopting`, and lists
-blockers. Exit `1` is a stop: report it in the user's terms with the printed remedy, never work
-around it. Then run the read-only fit analysis and assess six dimensions independently: technical
-compatibility, architectural substance, existing enforcement, incremental value, adoption cost and
-practical applicability. Choose one outcome: `RECOMMENDED`, `RECOMMENDED_WITH_LIMITATIONS`,
-`NOT_RECOMMENDED`, `INSUFFICIENT_EVIDENCE` or `NOT_SUPPORTED`. A clean report is not a
-recommendation: a utility with no meaningful boundaries, or a system whose existing checks already
-cover the guarantee, is a `NOT_RECOMMENDED`. Explain the target software, discovered
-boundaries, existing enforcement, what ACIMA requires and does not require, cost, confidence and
-unresolved questions. Record one compatibility outcome — compatible, compatible with adaptation,
-incompatible or insufficient evidence — against the applicable requirements. Distinguish an
-implementation difference from a genuine conflict, and never treat missing evidence as
-incompatibility. Name any requirement that is stricter than the team's current practice and why it
-exists. No config, waivers, baselines, CI, docs or source changes. `NEEDS_UNIT_MAP` blocks deterministic
-conformance measurement only; it does not block qualitative architectural discovery or assessment.
-Never stop at a missing map. Continue with a provisional, explicitly unapproved ownership hypothesis,
-inspect the actual source and all relevant architecture evidence, and mark unresolved ownership as
-uncertain. `NEEDS_UNIT_MAP` means deterministic checks did not run, never that the architecture is
-unassessed or clean.
+## Evidence and completion
+Never equate file presence, a configured gate, or a checklist with verified architecture. The first adoption gate is 55/55 valid, evidence-backed qualitative dispositions across the entire catalog, independent of the recommended adoption level or availability of a module map. The CLI and HTML renderer validate coverage, catalog freshness, evidence paths, line ranges and exact quotes. Unresolved dispositions remain visible and block a resolved recommendation; they do not count as conformance. If coverage is incomplete, report a partial assessment and do not issue an adoption recommendation or decision-ready HTML report. Keep qualitative review, deterministic execution, formal manual evidence and conformance separate. A missing module map blocks only deterministic checks that depend on it. Report incomplete work explicitly; do not claim completion. Load [25-comprehensive-assessment](references/25-comprehensive-assessment.md) and [55-status-and-evidence](references/55-status-and-evidence.md) when assessing or recording completion.
 
-A comprehensive assessment is mandatory unless the user explicitly requests a narrower review.
-Read [25-comprehensive-assessment](references/25-comprehensive-assessment.md). Assess all 55 current
-catalog requirements across L1, L2 and L3, independently of the level recommended for adoption.
-Keep the selected adoption/conformance level separate from the comprehensive architectural review.
-The CLI's `comprehensiveRuleReview` is a checklist, not evidence that those rules were reviewed.
-Inspect the repository and record evidence/status for each requirement. A deterministic check that
-cannot run must not be silently replaced by a pass; a qualitative review is also not a conformance
-claim or accepted manual evidence unless the formal evidence requirements are met.
-Produce a structured qualitative-review JSON artefact with exactly one evidence-backed disposition
-for every current catalog rule. Validate it with the vendored `acima.py validate-review` command.
-The artefact must pin the current catalog SHA-256 and include reviewer/date metadata, a rationale,
-and repository-relative evidence for every rule. File evidence must cite valid line ranges and an
-exact quote from those lines. Missing, duplicate, unknown, stale-catalog, fabricated-quote,
-invalid-path, or out-of-range evidence prevents completion. `insufficient_evidence` remains
-unresolved. The overall assessment is complete only when all 55 rules validate, the ACIMA unit map
-is declared, and deterministic assessment succeeds. Completion is not conformance; gaps remain gaps.
-Attach the validated artefact using `assess --review <review-json>` and report its validator result.
+## Communication
+Explain findings and ACIMA identifiers in human terms, show evidence and confidence, and distinguish existing, proposed, implemented and verified capabilities. Load [42-communication-and-interaction](references/42-communication-and-interaction.md) when producing user-facing findings, approval requests or structured interaction.
 
-**Phase 2 — Proposal.** Present [the proposal](assets/adoption-proposal.md) as a decision document:
-recommendation first, then the compatibility outcome and evidence, requirements already satisfied,
-the smallest useful scope, exact paths with required/conditional/optional status, stricter
-constraints and tradeoffs, and the one approval question. Do not write files "so the user can see
-them".
+## Proposals and reports
+For adoption, prepare a decision-ready proposal with exact scope and file impact. For comprehensive assessments, render the six-page HTML report using `assets/report.schema.json` and `scripts/render_report.py`. Use schema 1.1 for new decision-ready reports; embed the original qualitative review and all 55 human-readable dispositions. The renderer revalidates every disposition and its evidence against the target repository and pinned catalog. Never render a decision-ready report with partial review coverage. Preserve unknown, blocked and not-assessed states rather than inventing content. Load [90-html-outcome-reports](references/90-html-outcome-reports.md) for the information model and validation contract, and [75-proposals-and-deliverables](references/75-proposals-and-deliverables.md) when preparing deliverables.
 
-**Phase 3 — Explicit authorization.** Approval covers the listed scope only — the named paths,
-level and changes. Partial approval
-is supported: implement exactly what was approved and name the capability that stays unavailable.
-Wait for an unambiguous yes to that proposal before touching a path. Interest, silence, "looks good"
-about the diagnosis, or a request to see files is not approval.
-Approval to change files never authorizes merge, release, publication or external systems.
-
-**Phase 4 — Approved implementation.** Only approved changes. A new path, level, dependency or enforcement
-mechanism outside the approved list stops work for a new decision.
-
-**Phase 5 — Verification and handoff.** Verify with a run artefact, not intent, and report what is
-proven separately from what is not.
-
-| Action | Approval |
-|---|---|
-| Inspect, read, run read-only analysis, prepare a proposal | not needed |
-| Create config, baseline, waivers, tooling, docs or CI | required, named paths |
-| Modify source, build configuration or existing docs | required, named paths |
-| Merge, publish or release, or change an external system | separate, explicit |
-
-Full boundary and artifact matrix: [15-consent-and-scope](references/15-consent-and-scope.md).
-
-## Discovery: the agent's job
-
-Inspect before asking architectural questions. The target may be a package, library, framework,
-SDK, application, monolith, distributed system, service, worker, plugin host or a mixture; do not
-assume a type. Establish, with evidence and confidence:
-
-1. what constitutes an ownership boundary and how modules are represented;
-2. which artifacts are only distribution or deployment units;
-3. how contracts are exposed and dependencies are declared;
-4. where composition occurs, including each composition boundary and whether a host is optional;
-5. how state and configuration are owned;
-6. which requirements already hold, which need adaptation and whether ACIMA adds meaningful value.
-
-Also record languages, frameworks and manifests; project/package layout; entry points; construction
-and injection patterns; existing boundaries and dependency direction; shared libraries;
-persistence, configuration and external-effect ownership; tests and existing architecture checks.
-Discover the enclosing Git repository root when the requested project is nested. Inspect root-level
-architecture rules, CI workflows and architecture documentation as context without silently expanding
-the production source scope to unrelated sibling projects. For a multi-project or multi-language
-repository, inspect every relevant project and assess both project-local architecture and
-cross-project integration contracts. Do not select only the first
-detected language and imply the rest were covered. Discover and compare existing architecture tests,
-custom rule engines, static analyzers, dependency restrictions and CI gates before recommending new
-enforcement. Continue qualitative inspection when a module map is missing; project manifests,
-imports, references, deployment manifests and composition roots are evidence for provisional
-boundaries, not approval of module ownership.
-build, packaging and CI. A repository may be several kinds at once — say so, and never present a
-directory name as an ownership decision.
-
-For each material inference give what was found, the evidence, confidence, and what remains
-uncertain. Ask only what the repository cannot settle: shared-kernel status, composition-boundary
-ownership, duplicate names, and who owns exceptions.
-
-Then explain ACIMA against the target system: for each meaningful difference, the existing design, the
-ACIMA expectation, why it matters, whether it is a confirmed problem, a suspected one, an acceptable
-design or insufficient evidence, what would change, and whether judgement is required. Recognise what
-already satisfies a requirement — do not sell existing good practice back as work. If ACIMA would add
-little, say that plainly and recommend against adoption.
-
-Ground benefits in observed characteristics: preventing a change in one implementation from breaking
-its consumers, making ownership visible, stopping persistence or vendor details leaking across
-boundaries, giving immediate feedback at the boundary, and enforcing the same constraint for people
-and agents. Distinguish what this repository can achieve now from what needs organisational work.
-
-## Status: what is actually proven
-
-`acima.py status --root .` reports the evidence diagnostics and a scope-aware engagement summary.
-The vocabulary is `NOT_STARTED`, `READY`, `IN_PROGRESS`, `BLOCKED`, `COMPLETE`, `NOT_APPLICABLE`
-and `UNKNOWN`; objective dispositions also distinguish `declined`, `deferred`, `optional` and
-`not-applicable`. A step or objective is complete only when its criterion is verified:
-
-- **scope** is an explicit owner artifact (`.acima/adoption-scope.json` or an `adoption` object in
-  the config) naming `required`, `approved`, `declined`, `deferred`, `optional` and
-  `not-applicable` objectives. File presence never implies approval, and a missing scope is
-  `UNKNOWN`, not full adoption. Required and approved objectives must complete; the others never
-  block. A prerequisite is promoted to required, and a declined prerequisite for an approved
-  objective is a scope conflict.
-- **fit** is complete only when the approved scope exists and a read-only assessment artifact
-  (`docs/acima/assessment.json`) records a valid verdict for this repository. A config file proves
-  neither fit nor approval.
-- **trust the tool** requires a proof record naming the standard and catalog hash with `L001` and
-  `D001` detected; an empty or stale record blocks.
-- **calibration** compares the manifest pin with the catalog on disk; a config file proves nothing.
-- **declare** requires a parsable config with at least one unit that covers source; review and
-  approval are not proven by the file.
-- **freeze** requires a run artefact with `sourceFiles > 0`, an `execution` map and a findings list.
-  A fingerprint file alone is in progress, not measured.
-- **own** requires owners, scopes, fingerprints and unexpired waivers; invalid, unowned or expired
-  exceptions block, and are never accepted as exceptions.
-- **gate** reads the actual `run:` command, not just the file name: it must invoke a recognized
-  enforcer with `--root .`, the declared level, and a pull-request or merge trigger. Disabled,
-  advisory, conditional or reusable/composite steps are blocked; a valid configured step is
-  *in progress, not observed*. An observation must name the repository, commit, workflow, command,
-  time, standard, catalog hash, level, source count and exit status, and its workflow/command must
-  match a valid invocation in that same workflow. A manually recorded result is *in progress, not
-  independently verified*; only a provider-sourced, non-skipped run with a successful conclusion
-  against the matching repository and `HEAD` completes the step. CI configuration alone never
-  proves enforcement.
-- **slice** compares runs only when standard, level, source scope and execution map match; a lower
-  count from a different scope is not an improvement, and a resolved finding must be named with no
-  new errors.
-- **claim** computes the class with `acima.py claim` and binds it to the repository state. A
-  manual-evidence file is not proof; invalid or expired evidence blocks, missing evidence is a
-  partial assessment, and a full result from another commit, catalog or configuration is historical
-  or stale. `--require full` succeeds only for a current claim; missing Git metadata never counts as
-  current.
-
-Assessment-only and local-only engagements can complete without CI, waivers or optional documents.
-When full conformance is approved, every claim requirement still applies; adoption completion and
-architectural conformance stay separate. Optional documents (adoption plan, communication plan,
-STATUS dashboard, summary) never block progress and never appear in "next". Do not create optional
-artifacts unless the approved scope includes them or the owner asks. Do not create a communication
-plan by default.
-
-Status output states what is complete, in progress, remaining and blocked within the approved
-scope; what is declined, deferred, optional or not applicable; the single next action with its
-prerequisite, command, done condition and effect; and whether approval is required. A status
-command never recommends a write unless that scope was approved; it proposes instead.
-
-## Communication contract
-
-**All user-facing communication MUST express the actual meaning of an architectural requirement,
-finding, recommendation or decision in plain, human-comprehensible language. Internal identifiers
-MUST NOT be presented as the explanation or primary description of that information.**
-
-This applies to the initial assessment, findings, recommendations, implementation plans, approval
-requests, progress updates, final reports, error messages and spoken or conversational output. It is
-not a final-summary formatting rule.
-
-For every material observation, describe in proportion to its importance:
-
-1. what the requirement means;
-2. what was observed in this codebase;
-3. why it matters for this software;
-4. the practical consequence or risk;
-5. the recommended action in understandable terms;
-6. whether the observation is confirmed, probable, uncertain, or still needs review.
-
-Use language suited to the reader's apparent technical familiarity without assuming ACIMA knowledge.
-Do not oversimplify a technically meaningful distinction; explain it accurately and concisely.
-
-### Resolve identifiers before speaking
-
-Internal IDs remain valuable in machine-readable findings, source, tests, waivers, baselines and
-evidence. They are not user-facing terminology. Translate them from authoritative material at the
-point of use:
-
-- catalog rules: the `title`, `summary`, `fix` and coverage notes in `rules.json`;
-- principles and requirements: the heading and normative text in `docs/standard/`;
-- evaluation criteria: the active benchmark rubric's statement and evidence requirement;
-- repository-local identifiers: the repository document that defines them.
-
-Do not infer a meaning from an identifier's shape or maintain a small hand-written translation
-table. Identifiers can be scoped or reused: if a repository's requirement register defines `R3` as
-dependency isolation while ACIMA's lifecycle chapter defines `R3` as separating behaviour from
-mutable state, name the source you are using rather than guessing. If the authoritative definition
-cannot be found, say the check is unresolved, label that as a reporting defect, preserve the
-evidence and do not invent a meaning.
-
-Internal traceability is preserved separately: requirement ID, rule ID, classification, source
-evidence, enforcement mechanism and authoritative reference may live in structured metadata or a
-technical appendix. If an identifier is useful for advanced traceability, make it secondary and
-optional, for example: “Operational values are embedded instead of owned by named immutable
-declarations. (Internal reference: A006)” Never use “A006: operational literal” as the explanation.
-Normally omit identifiers unless the user asks for technical traceability.
-
-### Finding and approval shape
-
-A meaningful finding explains **what was found**, **why it matters**, **the recommended improvement**,
-**the evidence**, and **confidence** — confirmed, probable, uncertain, or requiring review. Do not
-force every finding into a long template; group findings that share a cause and explain the shared
-meaning once.
-
-An approval request names the actual files, components, responsibilities and behaviour the user is
-authorizing. Never ask to “resolve A006” or “apply R3”. Progress updates describe meaningful
-activities and outcomes, not evaluator stages, catalogue codes or benchmark classifications. Spoken
-output follows the same rule: translate the meaning rather than reading an identifier aloud.
-
-The detailed wording, examples and exception handling are in
-[80-reporting](references/80-reporting.md).
-
-## Interaction contract
-
-Every phase ends in the same shape, in plain English:
-
-- **Current state** — where the user is, in one sentence.
-- **What happened** — the meaningful work, not a command log.
-- **What it means** — the consequence for this software.
-- **What happens next** — the next phase and why it is needed.
-- **User involvement** — the one decision or approval required, or "none".
-- **Next action** — one action with a completion condition.
-
-Never use an internal identifier as a heading, table label or substitute for the explanation. Never
-ask twice for information the repository already answers. Never claim completion from intent,
-configuration or file presence. Six milestone updates at most; a blocker gets a message only when it
-changes the outcome.
-
-## Proposal: a decision document
-
-Nine sections, in this order: **Recommendation** (`RECOMMENDED`, `RECOMMENDED_WITH_LIMITATIONS`,
-`NOT_RECOMMENDED`, `INSUFFICIENT_EVIDENCE` or `NOT_SUPPORTED`, and why); **Software
-discovered**; **What ACIMA adds**; **Expected benefits** grounded in evidence and classified as
-available today, achievable through adoption, requiring additional work, or not applicable;
-**Recommended scope** (smallest useful, level in plain English, what is excluded and why);
-**Proposed changes** (exact paths, purpose, required/conditional/optional, modified files,
-dependencies, CI); **Tradeoffs and risks** (maintenance, tooling limits, migration, compatibility,
-what ACIMA does not prove); **Next steps** (sequence, what the user sees, decisions); **Approval**
-(one question, scope-limited, partial approval allowed).
-
-Recommend; do not turn the proposal into a questionnaire. State the level's practical consequence
-before naming L1/L2/L3.
-
-## Document lifecycle
-
-Build documents only as the work earns them.
-
-| Stage | Deliverable | Written where |
-|---|---|---|
-| A. Assessment brief | what the app is, what was found, fit, limits, recommendation | conversation, or outside the target |
-| B. Proposal | the decision document above | conversation / temporary file |
-| C. Implementation guide | steps, commands, files, verification, failure handling | in the approved scope only |
-| D. Handoff and developer guide | what changed, what was verified, what remains, how to run and read the gate | approved docs, or the final message |If a document is not approved, deliver its content in the response — that is not a lesser outcome.
-
-## Commands
-
-Every command below is read-only unless marked.
-
-| Command | Purpose | Writes |
-|---|---|---|
-| `acima.py status --root .` | scope-aware objectives, evidenced steps, blockers, one next action | no |
-| `acima.py inspect --root .` | language, units, level, enforcer readiness | no |
-| `acima.py assess --root .` | fit assessment and verdict | no |
-| `acima.py analyze --root .` | run the reference enforcer, print findings | no |
-| `acima.py fix --report <run> [selector]` | finding → catalog remedy and correction shape | no |
-| `acima.py report --root .` | evidence report naming rules that did not run | no |
-| `acima.py claim --report <run> --level <L> --require full` | `FULL`/`PARTIAL`, bound to current provenance, and gate it | no |
-| `summarize.py --root <target> --report <run>` | run → reader-facing summary | `--out` only |
-| `preflight.py --project <target>` | calibration and classification | `--write-*` only |
-| `inject_violation.py --project <target> --out docs/acima/proof.json` | prove the enforcer detects controlled input | `--out` only |
-| `<language enforcer> --root <target> --format json` | the gate for one language | no |
-
-When a user must run a command, give purpose, working directory, prerequisites, whether it writes,
-one copyable form, expected success output, and what to do on failure. Support PowerShell and POSIX
-where the user runs it.
-
-## Context files
-
-Read these before proposing or resuming; never reconstruct state from the conversation:
-`acima.config.json` (units, level, mode), `.acima/adoption-scope.json` (approved objectives and
-approval metadata), `docs/acima/assessment.json` (the read-only assessment evidence),
-`.acima/baseline.json` (frozen fingerprints), `.acima/waivers.json` (owned exceptions),
-`.acima/manual-evidence.json` (manual-rule evidence), `docs/acima/STATUS.md` (next step),
-`docs/acima/gate-*.json` (the runs a claim rests on), `.acima/triage.json` (recorded defect /
-artefact / review decisions). Missing means missing: name the artefact and the phase that produces
-it; do not invent contents. Optional docs: `docs/acima/adoption-plan.md`,
-`docs/acima/communication-plan.md`, `docs/acima/adoption-summary.md`, `docs/acima/handoff.md`.
+## Commands and context
+Verify executable paths and supported flags in the active environment. Load [65-commands-and-context](references/65-commands-and-context.md) only when a command, artifact path or execution context is needed.
 
 ## Hard rules
 
@@ -412,40 +117,34 @@ it; do not invent contents. Optional docs: `docs/acima/adoption-plan.md`,
 13. **Never require an organisational artefact.** Plans, dashboards and summaries are optional.
 14. **A fix plan is not a patch.** `fix` explains a correction; changing source needs its own
     approval, and a request to fix one finding never authorizes other findings, CI or a redesign.
+15. **Never skip a catalog requirement.** A decision-ready assessment requires one validated,
+    evidence-backed disposition for every current catalog rule, including requirements above the
+    recommended adoption level. A missing module map is not a reason to omit qualitative review.
+    The renderer must independently validate the review before producing the HTML report.
+16. **Never convert discovery into ownership or authority.** A proposed module map, accepted folder,
+    or successful structural validator is not an approved ownership decision. Record reviewer,
+    proposal identity, scope and date; block only checks that genuinely require an approved map.
+17. **Never infer full-automation consent from a request to assess or adopt.** Full automation needs
+    the explicit pre-flight mode selection and `--authorize-full`; the persisted mode does not
+    authorize deployment, release, commit, push, another repository or secrets.
+18. **Never infer remediation from adoption consent.** The final none/selected/all decision comes
+    after CI and is independent of it. Only authorized, evidence-supported recommendations may
+    change source. Large brownfield work needs two distinct confirmations; unselected items stay
+    deferred and no partial result is called complete.
 
-## Reviewing effects and choosing a correction
-
-Effect, lifecycle, naming and per-rule remedies are conditional judgements, not a checklist:
-read [70-corrections](references/70-corrections.md) before editing. In short — identify the effect and
-its owner; decide which of retry, duplicate handling, consistency, cancellation, outcome and
-evidence actually apply; fix the dependency path rather than banning closures; choose lifetime from
-state ownership, never to reduce registrations; and keep naming advice targeted, never a bulk rename
-and never a conformance gate.
-
-For `A006`, use the same discipline: start from the receiving identifier, trace the value through its
-data flow, and compare units, domain meaning and ownership — not just the literal or the name. A
-matching value or a matching name is not evidence of the same semantic value. Consolidate only at
-the highest appropriate genuine owner and pass the value explicitly; keep environment-dependent
-values in configuration and secrets out of source constants. When equivalence is uncertain, report a
-candidate with evidence and ask for human review rather than consolidating.
-
-Conformance is per repository and per commit. `FULL CONFORMANCE` requires zero unwaived errors at the
-level, every required rule accounted for, **and** provenance that matches the current checkout —
-repository, `HEAD`, standard, catalog hash, configuration hash, enforcer version and source
-inventory. Manual rules need accepted, current, repository-scoped evidence — a catalog-manual rule
-reported as executed is not evidence. A rule-complete claim from an older commit is historical, not
-current; a changed catalog, configuration, baseline or source tree requires fresh measurement.
-Anything less is a **PARTIAL ASSESSMENT** or a plan, and you call it what it is.
+## Effects and corrections
+Assess ownership and guarantees for external effects, consistency and corrections without imposing universal implementation patterns. Load [72-effects-and-corrections](references/72-effects-and-corrections.md) when reviewing these concerns.
 
 ## Stop conditions
 
-Stop and ask when: preflight exits 1; no owner exists for exceptions; two modules disagree about
-concept ownership; one rule repeatedly produces waivers for legitimate designs; the target is Java
+Stop and ask when: preflight identifies a skill-integrity, invalid-target, ambiguous-classification
+or unsupported-mode blocker; no owner exists for exceptions; two modules disagree about concept ownership; one rule repeatedly produces waivers for legitimate designs; the target is Java
 (profile only, no reference implementation); the mode is `service-topology` or
 `acima.topology.json` exists (this revision has no supported service workflow); a library profile
 lacks publishable evidence, or is requested for Python/Go; a unit map would hide a dependency the
 manifests prove; the requested change would edit the catalog; implementation needs a path, source,
-build or CI change outside the approved list; or the module map still has a material ambiguity.
+build or CI change outside the approved list. Do not perform ownership-dependent implementation while
+the module map still has a material ambiguity, but continue independent qualitative review.
 
 ## Reference map
 
@@ -457,10 +156,21 @@ build or CI change outside the approved list; or the module map still has a mate
 | [10-greenfield](references/10-greenfield.md) / [20-brownfield](references/20-brownfield.md) | approved implementation sequences |
 | [70-corrections](references/70-corrections.md) | per-rule remedy, traps, effect and lifecycle review |
 | [30-adoption-for-newcomers](references/30-adoption-for-newcomers.md) | teaching someone with no background |
+| [35-user-transparency](references/35-user-transparency.md) | keeping the user informed at every phase |
 | [40-communication](references/40-communication.md) | coordinating a multi-team programme, only if asked |
 | [50-outcomes](references/50-outcomes.md) | metrics and definition of done per level |
 | [60-troubleshooting](references/60-troubleshooting.md) | false positives, waiver storms, monorepos |
 | [80-reporting](references/80-reporting.md) | report structure, status vocabulary, triage |
+| [90-html-outcome-reports](references/90-html-outcome-reports.md) | structured multi-page HTML reports and rendering |
+| [12-getting-started](references/12-getting-started.md) | execution context and request routing, only when needed |
+| [22-workflow](references/22-workflow.md) | detailed phase workflow, only when executing/resuming |
+| [13-adoption-orchestration](references/13-adoption-orchestration.md) | guided/full modes, state, artifacts, CI and resumability |
+| [45-discovery](references/45-discovery.md) | full repository and architecture discovery |
+| [55-status-and-evidence](references/55-status-and-evidence.md) | proof, status and completion rules |
+| [42-communication-and-interaction](references/42-communication-and-interaction.md) | detailed user-facing output and interaction |
+| [75-proposals-and-deliverables](references/75-proposals-and-deliverables.md) | proposal, report and artifact lifecycle |
+| [65-commands-and-context](references/65-commands-and-context.md) | verified commands and contextual artifacts |
+| [72-effects-and-corrections](references/72-effects-and-corrections.md) | detailed effect review and correction decisions |
 | [glossary](references/glossary.md) | plain-language definitions |
 | [commands](vendor/docs/commands.md) | every flag, exit code and step |
 

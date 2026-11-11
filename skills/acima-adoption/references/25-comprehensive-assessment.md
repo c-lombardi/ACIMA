@@ -7,6 +7,24 @@ A read-only ACIMA assessment has two independent outputs:
 
 A missing module map blocks the first output, not the second. Continue qualitative discovery and review. Do not call an inferred map approved, and do not invent deterministic results.
 
+When no authoritative map exists, automatic discovery must produce a proposal before the assessment
+concludes. The proposal contains candidate module names and responsibilities, observed evidence,
+inferred ownership, candidate contracts, observed dependencies, unassigned production code,
+architectural-quality observations, recommendations with rationale/benefit/risk/uncertainty, and
+the decisions that require owner input. Project, package and directory boundaries are discovery
+signals. Evaluate the proposal for meaningful ownership rather than inventory completeness: coherent
+responsibility, implementation ownership, contract separation, dependency direction, cycles,
+private-implementation coupling, data/configuration ownership and composition isolation. A structural
+validator accepting a proposal does not make it architecturally correct.
+
+The assessment must state separately whether an authoritative map exists, whether a proposal was
+generated, whether it was reviewed or approved, which qualitative reviews were completed, and which
+deterministic ownership-dependent checks remain blocked. A partial map preserves its existing units
+and adds candidates only where ownership is missing. Approval is explicit and scoped per boundary
+and recommendation; approved units become the existing unit-map contract, with proposal identity,
+reviewer, review date and approval status retained. Do not write the map or run ownership-dependent
+checks before that approval.
+
 ## 1. Establish the complete repository scope
 
 Inspect the entire requested repository, not just the first detected project or language. If the requested project is nested in a Git repository, discover the repository root and inspect its architecture standards, rule files, CI workflows, build orchestration and architecture documentation as repository context, while keeping production source analysis scoped to the requested project(s). Do not scan unrelated sibling source projects as if they were part of the requested project. Inventory:
@@ -61,19 +79,22 @@ Also inspect physical and logical file organization. Determine whether projects,
 
 ## 4. Rule status and evidence
 
-Every catalog rule must have exactly one explicit review status:
+Every catalog rule must have exactly one explicit review disposition, using the validator's exact vocabulary:
 
-- `satisfied`: inspected evidence supports the requirement; cite exact files/locations and reasoning.
-- `confirmed_violation`: direct evidence demonstrates a conflict with the normative requirement.
-- `candidate_for_review`: a concrete signal exists but semantic or ownership judgment is unresolved.
-- `not_applicable`: explain why the software shape genuinely does not exercise the requirement.
-- `insufficient_evidence`: identify the missing source, runtime, owner or decision evidence.
-- `unsupported`: explain the language/tooling limitation.
-- `not_assessed`: explain why the review could not be performed.
+- `conforms`: inspected evidence supports the requirement; cite exact files/locations and explain why the evidence satisfies its intent.
+- `gap`: direct evidence demonstrates a conflict with the normative requirement; explain the actual behavior and consequence.
+- `not_applicable`: explain why the assessed software genuinely does not exercise the requirement and support the scope decision with evidence.
+- `insufficient_evidence`: identify what source, runtime, owner or decision evidence is missing. This is an explicit unresolved disposition, never a pass.
 
-Never infer `satisfied` from zero findings, absent keyword matches, an enforcer that did not run, or a similarly named local rule. Do not count a qualitative observation as accepted formal manual evidence unless it meets the standard's evidence schema, scope, reviewer, freshness and artifact requirements. Keep deterministic execution status and qualitative review status separate.
+A concrete but ambiguous signal belongs in the rationale for `insufficient_evidence`, not in a guessed conformance or gap result. Do not infer `conforms` from zero findings, absent keyword matches, an enforcer that did not run, or a similarly named local rule. Do not count a qualitative observation as accepted formal manual evidence unless it meets the standard's evidence schema, scope, reviewer, freshness and artifact requirements. Keep deterministic execution status and qualitative review status separate.
 
 For every material finding, include the actual behavior, requirement meaning, exact evidence location, consequence, confidence, status and a practical correction. Trace dataflow and callers when needed. Do not report an identifier without explaining its meaning in user-facing prose.
+
+Module-map recommendations must distinguish observed repository facts, evidence-supported inferred
+boundaries, recommendations and decisions requiring the owner. Every proposed assignment and
+recommendation needs repository-relative evidence and line references where applicable. For an
+absence claim, record the inspection scope and method; a missing keyword is not proof. Do not inflate
+confidence because the proposal is internally consistent or a validator accepted it.
 
 ## 5. Separate review scope from adoption level
 
@@ -114,10 +135,13 @@ Each entry must contain:
 
 `not_applicable` requires an explicit scope rationale and evidence supporting why the requirement
 is outside the assessed system. `insufficient_evidence` is an honest disposition, not a pass; it keeps
-the review incomplete until the missing evidence is obtained. A `gap` is a completed review finding,
-not a successful conformance result. The validator checks evidence paths, line ranges, exact quotes,
-rule identity/coverage, duplicate and unknown rules, reviewer/date metadata, and catalog freshness.
-It validates evidence provenance and structure, not the semantic correctness of the reviewer's
+the decision unresolved even though coverage is complete. A `gap` is a completed review finding,
+not a successful conformance result. Each requirement needs its own rationale and relevant evidence;
+copy-pasted rationales and exact duplicate evidence records across requirements are rejected. Shared
+source files may support multiple requirements only when the specific location, observation and
+reasoning are independently relevant to each one. The validator checks evidence paths, line ranges,
+exact quotes, rule identity/coverage, duplicate and unknown rules, reviewer/date metadata, and catalog
+freshness. It validates evidence provenance and structure, not the semantic correctness of the reviewer's
 interpretation. The adoption agent must still inspect and reason about the cited code; a matching
 quote is not by itself proof that a requirement is satisfied.
 
@@ -133,9 +157,29 @@ Then attach the same validated review to the comprehensive assessment:
 py -3 "<skill-root>\vendor\tools\acima.py" assess --root "<assessed-repository>" --level L3 --review "<review-json>" --format json
 ```
 
+The first adoption gate is **complete qualitative coverage**: all 55 current catalog requirements must
+have exactly one valid, evidence-backed disposition. The validator's `coverageComplete` result means
+every requirement was explicitly reviewed and accounted for; it does not mean every requirement is
+resolved or conformant. An `insufficient_evidence` disposition is valid coverage, but remains an
+unresolved decision and must be shown as such. Missing module ownership blocks only checks that
+depend on an approved unit map. It never excuses skipping independent qualitative reviews.
+
+Run the validator and require exit code zero for full catalog coverage. Exit code zero means all 55
+dispositions and their evidence passed structural/provenance validation. It does not certify semantic
+correctness. If the validator returns nonzero, do not produce a decision-ready adoption recommendation
+or HTML outcome report. Continue the review or report only a clearly labelled preliminary discovery
+result with no adoption recommendation.
+
 An assessment may be called **complete** only when all 55 rule entries validate, none is
 `insufficient_evidence`, the ACIMA unit map is declared, and the deterministic assessment finishes
 successfully. This is assessment completeness, not `FULL CONFORMANCE`. A complete assessment may
 contain gaps. Never manufacture an ACIMA unit map or a rule disposition to obtain a complete result.
-If the project is not yet mapped, report the 55-rule qualitative review state separately and keep
-overall assessment completion false.
+If the project is not yet mapped, the 55-rule qualitative review may still be coverage-complete; report
+that separately and keep deterministic and overall assessment completion false.
+
+The HTML renderer independently revalidates the embedded original qualitative review against the
+assessed repository and the pinned catalog. It rejects missing or duplicate requirements, stale
+catalogs, unsupported dispositions, nonexistent evidence, invalid line ranges, fabricated quotes,
+inconsistent counts, and an incomplete per-requirement disposition table. Do not bypass this gate by
+hand-editing report counts or constructing a synthetic review. The renderer validates evidence
+provenance and structure, not the reviewer's semantic interpretation.

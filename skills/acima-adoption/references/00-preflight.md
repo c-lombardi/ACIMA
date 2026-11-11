@@ -52,7 +52,7 @@ preflight reports it so you do not promise a gate you cannot run.
 | `TGT-001` | the target exists and is a directory | pass the right `--project` |
 | `TGT-002` | a language is recognisable from manifests or sources | confirm the path, or scaffold first |
 | `TGT-003` | classification: `greenfield`, `brownfield`, `adopting` | if ambiguous, ask the owner |
-| `TGT-004` | candidate units can be proposed | declare units manually with the plan's ADR |
+| `TGT-004` | candidate units can be proposed | complete the 55-requirement qualitative review before making an adoption recommendation; do not infer no value from missing candidate units. Unit ownership still requires owner approval |
 | `TGT-005` | every source file falls inside a proposed unit | uncovered files become `G005` findings |
 | `TGT-006` | the architecture mode is valid and matches the tree: `base` (or absent) with no manifest, or `service-topology` with `acima.topology.json` | repair `mode` and the manifest; service mode is `NOT SUPPORTED` by this skill and must not be assessed as base |
 
@@ -121,6 +121,16 @@ not permission to suppress every future finding in the unit. The file is structu
 **not acceptable**: `GOV-003` blocks until a human replaces every owner, because an unowned
 exception is not an accepted exception. That is intentional. An
 automatically generated exception file that passes review is how governance dies.
+
+## Automation mode
+
+Preflight is read-only. Before consequential work, ask the user to choose **guided adoption** or
+**full automation** and record it with
+`acima.py adoption start --root <target> --mode guided` or
+`acima.py adoption start --root <target> --mode full --authorize-full`. A request to assess or adopt
+is not full-automation consent. `preflight.py --automation-mode guided|full` reports the choice; full
+also requires `--authorize-full-automation` and still only authorizes the adoption workflow, never a
+deployment, release, commit or push.
 
 ## Reading the report
 

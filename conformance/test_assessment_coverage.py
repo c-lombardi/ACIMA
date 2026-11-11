@@ -140,6 +140,8 @@ class AssessmentCoverageTests(unittest.TestCase):
             self.assertEqual(coverage["automated"]["notExecuted"][0]["reason"],
                              report["verdictMeaning"])
             self.assertFalse(coverage["executionAvailable"])
+            self.assertEqual(report["assessmentResult"]["fit"], acima.OUTCOME_INSUFFICIENT)
+            self.assertIn("0/55", report["assessmentResult"]["recommendation"])
 
     def test_enforcer_level_mismatch_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

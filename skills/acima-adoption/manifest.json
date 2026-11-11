@@ -1,6 +1,6 @@
 {
   "skill": "acima-adoption",
-  "skillVersion": "1.23.0",
+  "skillVersion": "1.31.0",
   "standard": "1.9.0-draft.1",
   "verifiedAt": "2026-11-10",
   "catalog": {
@@ -137,7 +137,18 @@
     "references/70-corrections.md",
     "references/80-reporting.md",
     "references/15-consent-and-scope.md",
-    "references/glossary.md"
+    "references/glossary.md",
+    "references/90-html-outcome-reports.md",
+    "references/35-user-transparency.md",
+    "references/12-getting-started.md",
+    "references/22-workflow.md",
+    "references/13-adoption-orchestration.md",
+    "references/45-discovery.md",
+    "references/55-status-and-evidence.md",
+    "references/42-communication-and-interaction.md",
+    "references/75-proposals-and-deliverables.md",
+    "references/65-commands-and-context.md",
+    "references/72-effects-and-corrections.md"
   ],
   "assets": [
     "assets/acima.config.template.json",
@@ -148,6 +159,11 @@
     "assets/status-dashboard.md",
     "assets/adoption-summary.md",
     "assets/adoption-proposal.md",
-    "assets/triage.template.json"
+    "assets/triage.template.json",
+    "assets/report.schema.json",
+    "assets/report-template.css"
+  ],
+  "scripts": [
+    "scripts/render_report.py"
   ]
 }

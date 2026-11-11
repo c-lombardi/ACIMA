@@ -96,7 +96,8 @@ class AssessmentRecommendationTests(unittest.TestCase):
             code, assessment = acima.assess_project(root)
             self.assertEqual(code, 0)
             result = assessment["assessmentResult"]
-            self.assertEqual(result["fit"], "NOT_RECOMMENDED")
+            self.assertEqual(result["fit"], "INSUFFICIENT_EVIDENCE")
+            self.assertIn("0/55", result["why"])
             self.assertIn("no meaningful ownership boundaries", result["why"])
             self.assertIn("purpose", result["facts"])
             self.assertIsNone(result["facts"]["purpose"])

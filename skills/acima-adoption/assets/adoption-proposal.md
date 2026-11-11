@@ -47,6 +47,15 @@ What this software does, in plain language, and what the inspection established:
 State confidence for each material inference and name what remains uncertain. Never present a
 directory-name guess as an ownership decision.
 
+When the repository has no sufficient authoritative module map, include the automatic module-map
+proposal in this section: candidate module names and responsibilities, observed evidence, candidate
+contracts and dependencies, unassigned production code, quality observations, recommendations and
+the decisions the owner must make. Distinguish observed facts, inferred boundaries, recommendations
+and unverified assumptions. State whether the map is absent, incomplete, stale or inconsistent, and
+whether a proposal was reviewed or approved. The proposal is not an ownership decision; ownership-
+dependent deterministic checks stay blocked until the owner accepts the relevant boundaries and
+decisions. Record the proposal identity, reviewer, date and scoped decision in the approval artifact.
+
 ## 3. What ACIMA adds
 
 The practical difference between the current repository and the proposed enforced boundaries. For

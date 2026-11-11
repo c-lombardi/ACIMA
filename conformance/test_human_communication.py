@@ -213,7 +213,7 @@ class HumanCommunicationTests(unittest.TestCase):
         self.assertNotIn("A006", spoken)
 
     def test_skill_requires_the_policy_across_all_interactions(self) -> None:
-        text = " ".join(SKILL.read_text(encoding="utf-8").lower().split())
+        text = " ".join((SKILL.parent / "references/42-communication-and-interaction.md").read_text(encoding="utf-8").lower().split())
         self.assertIn("all user-facing communication must express the actual meaning", text)
         self.assertIn("internal identifiers must not be presented", text)
         for surface in ("initial assessment", "findings", "recommendations",

@@ -272,6 +272,22 @@ to commitments do.
 - When done, lead with the outcome and the limits; keep technical evidence available by path.
 - Never claim a CI run, a merge or a conformance level that was not observed.
 
+## Automation modes
+
+Guided adoption and full automation use the same assessment and artifacts. Guided stops at the
+module-map review and at the adoption-scope approval. Full automation is an explicit pre-flight
+authorization to apply well-supported map decisions, generate enforcement, integrate a detected CI
+provider and verify the result without repeated routine approvals. It is scoped to the selected
+repository and is not permission to deploy, release, commit, push, expose secrets, destroy data,
+modify another repository or override an owner's architectural decision. Ambiguous ownership pauses
+only that decision; completed work remains. The selected mode lives in
+`.acima/adoption-workflow.json` and approval of a map alone does not authorize application changes.
+
+Immediate remediation is a separate final decision after CI, not part of initial adoption consent or
+full automation. The user chooses none, selected, or all applicable recommendations. A large or
+high-risk brownfield scope requires two distinct affirmative confirmations; small/moderate brownfield
+and greenfield work require one. Declining remediation preserves the map, enforcement and CI outcome.
+
 ## Stop conditions
 
 Stop and ask when:

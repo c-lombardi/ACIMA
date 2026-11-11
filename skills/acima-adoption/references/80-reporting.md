@@ -1,5 +1,10 @@
 # Reporting an adoption
 
+
+For a reader-facing, navigable multi-page HTML report, use [90-html-outcome-reports](90-html-outcome-reports.md).
+The HTML outcome pack is the product-facing explanation; this document remains the source for
+status semantics, traceability and evidence presentation.
+
 Two audiences read an adoption: the people who own the repository, and the people who audit the
 run. Give them two different documents, and make the first one the product.
 
@@ -362,3 +367,15 @@ For a non-specialist:
 > The Orders team is using Catalog's private code instead of the interface Catalog publishes for
 > other teams. A change inside Catalog can therefore break Orders without warning. Orders should use
 > the published interface, and Catalog should add anything genuinely missing to that interface.
+
+## Decision-ready report contract
+
+Use schema 1.1 for new HTML outcome reports. Keep normative conformance dispositions separate from adoption recommendations:
+- Conformance answers whether evidence establishes that an applicable requirement is satisfied. Retain unverified, not assessed, unsupported and blocked as distinct states.
+- Recommendation classification answers what kind of action is proposed: required, recommended, optional, or owner decision.
+
+An outcome must explain the capability, why it matters, the practical engineering change, its supporting requirements, prerequisites, classification, verification and limitations. Identify whether it is guaranteed by the standard when implemented and verified, dependent on implementation, merely a potential downstream benefit, or not yet established.
+
+Every empty report section must carry an explicit explanation. Unknown, not assessed, blocked, not applicable and genuinely unnecessary are not interchangeable. Do not infer a clean assessment from an empty findings list.
+
+Keep inspect, create, modify and preserve file inventories separate. A file read as evidence is not a proposed edit. A generated plan or report is not authorization. Preserve the distinction between assessment completion, report generation, proposal completion, implementation completion and verified conformance.

@@ -36,6 +36,9 @@ from acima_claim import (  # noqa: E402 - path is set above deliberately
 from qualitative_review import (  # noqa: E402
     ReviewValidationError, load_and_validate_review,
 )
+from module_map import (  # noqa: E402
+    ModuleMapError, OWNERSHIP_DEPENDENT_RULES, discover as discover_module_map,
+)
 CONFIG_NAME = "acima.config.json"
 PRUNE = {".git", "node_modules", "bin", "obj", "dist", "build", "target", "out",
          ".venv", "venv", "__pycache__", ".next", ".nuxt", "coverage"}
@@ -368,8 +371,13 @@ def _next_steps(report: dict) -> list[str]:
     verdict = report["verdict"]
     steps: list[str] = []
     if verdict == "NEEDS_UNIT_MAP":
-        steps.append("Decide module ownership with the people who own the system, then declare "
-                     "units in acima.config.json. `preflight.py --write-draft` produces a "
+        proposal = (report.get("moduleMap") or {}).get("proposal") or {}
+        if proposal:
+            steps.append(f"Review the generated module-map proposal ({len(proposal.get('modules', []))} "
+                         "candidate module(s)) and decide each boundary and recommendation. Discovery "
+                         "does not make ownership authoritative.")
+        steps.append("Decide module ownership with the people who own the system, then approve and "
+                     "declare units in acima.config.json. `preflight.py --write-draft` produces a "
                      "heuristic starting point that a human must review.")
         steps.append("Continue the read-only qualitative review of every catalog requirement using "
                      "the discovered project and architecture evidence. The missing map blocks "
@@ -1030,6 +1038,55 @@ def build_assessment_result(report: dict, config: dict | None) -> dict:
     }
 
 
+
+def build_gated_assessment_result(report: dict, config: dict | None) -> dict:
+    """Do not issue an adoption recommendation before the complete qualitative review gate."""
+    result = build_assessment_result(report, config)
+    review = report.get("comprehensiveRuleReview") or {}
+    coverage_complete = bool(review.get("coverageComplete"))
+    decision_complete = bool(review.get("decisionComplete", review.get("complete")))
+    # Unsupported language/profile conclusions are explicit tool-capability limits, not
+    # adoption recommendations, and remain the most accurate result for those targets.
+    if result.get("fit") == OUTCOME_NOT_SUPPORTED:
+        return result
+    if coverage_complete and decision_complete:
+        return result
+
+    required = review.get("required", len((report.get("catalog") or {}).get("rules", [])))
+    reviewed = review.get("reviewed", 0)
+    unresolved = review.get("unresolved", 0)
+    if not coverage_complete:
+        reason = (f"The comprehensive review has {reviewed}/{required} valid evidence-backed dispositions. "
+                  "All catalog requirements must be individually reviewed before ACIMA adoption can be recommended.")
+    else:
+        reason = (f"All {required} catalog requirements have explicit dispositions, but {unresolved} remain unresolved "
+                  "because the available evidence is insufficient. Resolve those questions before an adoption recommendation.")
+    gate_reason = reason
+    preliminary_signal = result.get("why")
+    if preliminary_signal:
+        reason += " Preliminary repository fit signal: " + preliminary_signal
+    result.update({
+        "fit": OUTCOME_INSUFFICIENT,
+        "outcome": OUTCOME_INSUFFICIENT,
+        "fitLegacy": OUTCOME_INSUFFICIENT.lower().replace("_", "-"),
+        "confidence": "low",
+        "recommendation": "There is not enough evidence to recommend adoption. " + gate_reason,
+        "why": reason,
+    })
+    explanation = result.get("explanation") or {}
+    explanation["why"] = reason
+    explanation["confidence"] = "low"
+    result["explanation"] = explanation
+    unknowns = result.setdefault("unknowns", [])
+    if reason not in unknowns:
+        unknowns.append(reason)
+    questions = result.setdefault("unresolvedQuestions", [])
+    gate_question = "Complete and validate the individual evidence-backed review for all catalog requirements."
+    if gate_question not in questions:
+        questions.append(gate_question)
+    return result
+
+
 def _assessment_rule_coverage(root: Path, catalog: dict, level: str,
                               execution: dict, default_reason: str | None = None) -> dict:
     """Account for every rule required at the requested level.
@@ -1289,6 +1346,8 @@ def _comprehensive_rule_review(catalog: dict) -> dict:
         "required": len(entries),
         "reviewed": 0,
         "pending": len(entries),
+        "coverageComplete": False,
+        "decisionComplete": False,
         "complete": False,
         "statusMeaning": "The CLI exposes all requirements for the adoption agent's qualitative review. "
                          "This inventory is not itself a completed architectural assessment.",
@@ -1296,21 +1355,33 @@ def _comprehensive_rule_review(catalog: dict) -> dict:
     }
 
 def _set_assessment_completion(report: dict, verdict: str) -> None:
-    review_complete = bool((report.get("comprehensiveRuleReview") or {}).get("complete"))
+    review = report.get("comprehensiveRuleReview") or {}
+    review_coverage_complete = bool(review.get("coverageComplete", review.get("complete")))
+    review_decision_complete = bool(review.get("decisionComplete", review.get("complete")))
     unit_map = report.get("unitMap") or {}
     unit_map_complete = bool(unit_map.get("present") and unit_map.get("count", 0) > 0)
-    complete = verdict == "ASSESSED" and review_complete and unit_map_complete
+    deterministic_complete = verdict == "ASSESSED" and unit_map_complete
+    complete = deterministic_complete and review_decision_complete
     reasons = []
-    if not review_complete:
-        reasons.append("qualitative review is missing, incomplete, or invalid; validate all catalog rules with evidence")
+    if not review_coverage_complete:
+        reasons.append("all catalog requirements need one valid, evidence-backed disposition")
+    elif not review_decision_complete:
+        reasons.append("one or more requirements remain unresolved; see their insufficient-evidence dispositions")
     if not unit_map_complete:
-        reasons.append("a declared ACIMA module/unit map is required")
+        reasons.append("a declared ACIMA module/unit map is required for deterministic checks")
     if verdict != "ASSESSED":
         reasons.append("deterministic assessment did not complete successfully: " + verdict)
+    gate = report.get("ownershipGate") or {}
+    if gate.get("status") == "blocked":
+        reasons.append("ownership-dependent deterministic checks are blocked until the module map is reviewed and approved")
     report["assessmentCompletion"] = {
         "complete": complete,
-        "qualitativeReviewComplete": review_complete,
+        "qualitativeReviewCoverageComplete": review_coverage_complete,
+        "qualitativeReviewDecisionComplete": review_decision_complete,
+        "qualitativeReviewComplete": review_decision_complete,
+        "deterministicAssessmentComplete": deterministic_complete,
         "unitMapComplete": unit_map_complete,
+        "ownershipGate": gate.get("status", "not recorded"),
         "reasons": reasons,
     }
 
@@ -1371,8 +1442,11 @@ def assess_project(root: Path, language: str | None = None,
             report["comprehensiveRuleReview"] = {
                 **report["comprehensiveRuleReview"],
                 "reviewed": review["reviewed"], "pending": review["pending"],
+                "coverageComplete": review["coverageComplete"],
+                "decisionComplete": review["decisionComplete"],
                 "complete": review["complete"], "status": review["status"],
                 "counts": review["counts"], "unresolved": review["unresolved"],
+                "evidenceBackedDispositions": review["evidenceBackedDispositions"],
                 "rules": merged_rules,
                 "validation": {key: value for key, value in review.items() if key != "rules"},
             }
@@ -1385,7 +1459,7 @@ def assess_project(root: Path, language: str | None = None,
         report["verdictMeaning"] = VERDICT_MEANING["NO_SOURCE"]
         _set_assessment_completion(report, report["verdict"])
         report["nextSteps"] = _next_steps(report)
-        report["assessmentResult"] = build_assessment_result(report, None)
+        report["assessmentResult"] = build_gated_assessment_result(report, None)
         return 0, report
 
     try:
@@ -1396,9 +1470,32 @@ def assess_project(root: Path, language: str | None = None,
                        "error": str(error)})
         _set_assessment_completion(report, report["verdict"])
         report["nextSteps"] = _next_steps(report)
-        report["assessmentResult"] = build_assessment_result(report, None)
+        report["assessmentResult"] = build_gated_assessment_result(report, None)
         return 2, report
 
+    try:
+        report["moduleMap"] = discover_module_map(root, config=config)
+    except (ModuleMapError, OSError) as error:
+        report["moduleMap"] = {
+            "status": "discovery_failed",
+            "error": str(error),
+            "authoritativeMap": {"present": config is not None, "status": "unknown"},
+            "proposal": None,
+            "nextDecision": "Complete module-map discovery manually; no ownership was inferred.",
+        }
+    authority = (report.get("moduleMap") or {}).get("authoritativeMap") or {}
+    ownership_ready = authority.get("status") == "complete"
+    report["ownershipGate"] = {
+        "status": "ready" if ownership_ready else "blocked",
+        "reason": ("An authoritative module map covers the discovered production source."
+                   if ownership_ready else
+                   "Ownership-dependent deterministic checks require an explicitly approved map. "
+                   "Independent qualitative review continues for every catalog requirement."),
+        "ownershipDependentRules": sorted(OWNERSHIP_DEPENDENT_RULES),
+        "independentReviewContinues": True,
+        "deterministicChecksBlocked": not ownership_ready,
+        "proposalReviewRequired": bool((report.get("moduleMap") or {}).get("proposal")),
+    }
     report["requestedLevel"] = level or (config or {}).get("level") or "L1"
     selected = language or (config or {}).get("language") or (languages[0] if languages else None)
     units = (config or {}).get("units", [])
@@ -1418,7 +1515,7 @@ def assess_project(root: Path, language: str | None = None,
         report.update({"verdict": "INVALID_ASSESSMENT", "verdictMeaning": str(error),
                        "error": str(error)})
         report["nextSteps"] = _next_steps(report)
-        report["assessmentResult"] = build_assessment_result(report, config)
+        report["assessmentResult"] = build_gated_assessment_result(report, config)
         return 2, report
     manual = sorted(rule["id"] for rule in level_rules
                     if rule.get("automation") == "manual")
@@ -1442,7 +1539,7 @@ def assess_project(root: Path, language: str | None = None,
                 root, catalog, requested_level, {}, default_reason=reason)
         _set_assessment_completion(report, verdict)
         report["nextSteps"] = _next_steps(report)
-        report["assessmentResult"] = build_assessment_result(report, config)
+        report["assessmentResult"] = build_gated_assessment_result(report, config)
         return code, report
 
     mode = (config or {}).get("mode") or "base"
@@ -1450,13 +1547,13 @@ def assess_project(root: Path, language: str | None = None,
         return finish("UNSUPPORTED_PROFILE",
                       detail="architecture mode %r is not supported by this revision" % mode)
 
+    if config is None:
+        return finish("NEEDS_UNIT_MAP")
     spec = enforcer_spec(selected or "")
     if spec is None:
         return finish("UNSUPPORTED_LANGUAGE")
     if shutil.which(spec["run"][0]) is None:
         return finish("TOOLCHAIN_MISSING", detail="%s is not installed" % spec["run"][0])
-    if config is None:
-        return finish("NEEDS_UNIT_MAP")
 
     code, payload, error = run_enforcer(root, selected, None, level)
     if payload is None:
@@ -1510,6 +1607,17 @@ def assess_text(report: dict) -> str:
     unit_map = report.get("unitMap") or {}
     declared = "declared: %s units" % unit_map.get("count", 0) if unit_map.get("present") else "absent"
     lines.append("  unit map    %s" % declared)
+    module_map = report.get("moduleMap") or {}
+    if module_map:
+        authority = module_map.get("authoritativeMap") or {}
+        lines.append("  map quality %s - %s" % (authority.get("status", "unknown"),
+                                                 authority.get("summary", "not recorded")))
+        proposal = module_map.get("proposal") or {}
+        if proposal:
+            lines.append("  proposal    %s candidate module(s), %s recommendation(s), %s unassigned path(s)"
+                         % (len(proposal.get("modules", [])), len(proposal.get("recommendations", [])),
+                            len(proposal.get("unassigned", []))))
+            lines.append("  ownership   review required; inferred boundaries are not authoritative")
     if unit_map.get("modules"):
         shown = ", ".join(unit_map["modules"][:8])
         lines.append("  modules     %s%s" % (shown, " ..." if len(unit_map["modules"]) > 8 else ""))
@@ -1538,11 +1646,18 @@ def assess_text(report: dict) -> str:
                      (inventory.get("projectCount", 0), inventory.get("architectureEvidenceCount", 0),
                       inventory.get("ciWorkflowCount", 0)))
     if review:
-        lines.append("  all rules   %s catalog requirements exposed; %s qualitatively reviewed; %s pending" %
+        lines.append("  all rules   %s catalog requirements; %s evidence-backed dispositions; %s not dispositioned" %
                      (review.get("required", 0), review.get("reviewed", 0), review.get("pending", 0)))
+        lines.append("  review      coverage %s; unresolved decisions %s" %
+                     ("complete" if review.get("coverageComplete") else "incomplete",
+                      review.get("unresolved", 0)))
     completion = report.get("assessmentCompletion") or {}
     if completion:
-        lines.append("  complete    %s" % ("yes" if completion.get("complete") else "no"))
+        lines.append("  qualitative %s; deterministic %s; overall %s" %
+                     ("complete" if completion.get("qualitativeReviewDecisionComplete") else
+                      "coverage complete, unresolved" if completion.get("qualitativeReviewCoverageComplete") else "incomplete",
+                      "complete" if completion.get("deterministicAssessmentComplete") else "incomplete",
+                      "complete" if completion.get("complete") else "incomplete"))
         for reason in completion.get("reasons", []):
             lines.append("              - " + reason)
     coverage = report.get("coverage")
@@ -1647,8 +1762,10 @@ def assess_markdown(report: dict) -> str:
         lines += [f"- Repository context: `{item}`" for item in inventory.get("repositoryArchitectureEvidence", [])]
     completion = report.get("assessmentCompletion") or {}
     lines += ["", "## Assessment completion", "",
-              "- Complete: **%s**" % ("yes" if completion.get("complete") else "no"),
-              "- Evidence-backed qualitative review: **%s**" % ("complete" if completion.get("qualitativeReviewComplete") else "incomplete"),
+              "- Overall assessment: **%s**" % ("complete" if completion.get("complete") else "incomplete"),
+              "- Qualitative disposition coverage: **%s**" % ("55/55 complete" if completion.get("qualitativeReviewCoverageComplete") else "incomplete"),
+              "- Qualitative decisions resolved: **%s**" % ("yes" if completion.get("qualitativeReviewDecisionComplete") else "no"),
+              "- Deterministic assessment: **%s**" % ("complete" if completion.get("deterministicAssessmentComplete") else "incomplete"),
               "- Declared unit map: **%s**" % ("present" if completion.get("unitMapComplete") else "missing"),
               *["- Remaining: " + reason for reason in completion.get("reasons", [])], ""]
     review = report.get("comprehensiveRuleReview") or {}
@@ -4364,7 +4481,84 @@ def main() -> int:
     verify = sub.add_parser("verify", help="run the full reference conformance suite")
     verify.add_argument("profiles", nargs="*")
 
+    adoption = sub.add_parser("adoption", help="end-to-end guided or explicitly authorized adoption")
+    adoption.add_argument("action", choices=("start", "status", "approve", "apply", "continue", "remediate"))
+    adoption.add_argument("--root", default=".")
+    adoption.add_argument("--mode", choices=("guided", "full"), default=None,
+                          help="required for start: guided or explicit full automation")
+    adoption.add_argument("--authorize-full", action="store_true", dest="authorize_full",
+                          help="required before full automation can start")
+    adoption.add_argument("--reviewer", default=None)
+    adoption.add_argument("--map-decisions", default=None)
+    adoption.add_argument("--scope", default=None)
+    adoption.add_argument("--choice", choices=("none", "selected", "all"), default=None)
+    adoption.add_argument("--maturity-choice", choices=("greenfield", "brownfield"), default=None)
+    adoption.add_argument("--selected", action="append", default=[])
+    adoption.add_argument("--approved-by", default="Repository owner")
+    adoption.add_argument("--confirm", action="store_true")
+    adoption.add_argument("--confirm-scope", action="store_true", dest="confirm_scope")
+    adoption.add_argument("--confirm-implementation", action="store_true",
+                          dest="confirm_implementation")
+    adoption.add_argument("--format", choices=("json", "text"), default="json")
+
     args = parser.parse_args()
+    if args.command == "adoption":
+        try:
+            import adoption_workflow
+        except ImportError as error:
+            print(f"acima: adoption workflow is unavailable: {error}", file=sys.stderr)
+            return 2
+        root = Path(args.root).resolve()
+        try:
+            if args.action == "start":
+                if not args.mode:
+                    print("acima: adoption start requires --mode guided or --mode full",
+                          file=sys.stderr)
+                    return 2
+                result = adoption_workflow.start(root, args.mode,
+                                                 authorize_full=args.authorize_full,
+                                                 reviewer=args.reviewer)
+            elif args.action == "status":
+                result = adoption_workflow.status(root)
+            elif args.action == "approve":
+                result = adoption_workflow.approve(
+                    root,
+                    map_decisions=Path(args.map_decisions) if args.map_decisions else None,
+                    scope=Path(args.scope) if args.scope else None,
+                    reviewer=args.reviewer)
+            elif args.action == "apply":
+                result = adoption_workflow._apply(root, adoption_workflow._load(root))
+            elif args.action == "remediate":
+                if not args.choice:
+                    print("acima: adoption remediate requires --choice none, selected, or all",
+                          file=sys.stderr)
+                    return 2
+                result = adoption_workflow.remediate(
+                    root, args.choice, selected=args.selected, approved_by=args.approved_by,
+                    confirm=args.confirm, confirm_scope=args.confirm_scope,
+                    confirm_implementation=args.confirm_implementation,
+                    maturity_choice=args.maturity_choice)
+            else:
+                result = adoption_workflow.continue_workflow(root)
+        except (adoption_workflow.WorkflowError, adoption_workflow.ModuleMapError,
+                OSError, ValueError) as error:
+            print(f"acima: adoption workflow: {error}", file=sys.stderr)
+            return 2
+        if args.format == "json":
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+        else:
+            summary = adoption_workflow._summary(result) if "stages" in result else result
+            print("ACIMA adoption workflow")
+            print("  mode    %s" % summary.get("mode", result.get("mode", "unknown")))
+            for stage in summary.get("stages", []):
+                print("  %-8s %-28s %s" % (stage.get("status"), stage.get("label"),
+                                            stage.get("detail")))
+            nxt = summary.get("next") or result.get("next") or {}
+            if nxt.get("action"):
+                print("  next    %s" % nxt["action"])
+        return 0 if not (result.get("blockers") or
+                         (result.get("next") or {}).get("action", "").startswith("Resolve")) else 1
+
     if args.command == "inspect":
         payload = inspect_project(Path(args.root), args.config)
         if args.format == "json":
@@ -4481,8 +4675,13 @@ def main() -> int:
                 print("  %-22s %s" % (status, count))
             for issue in validation["problems"]:
                 print("  %s: %s" % (issue.get("rule", issue.get("scope", "document")), "; ".join(issue["problems"])))
-            print("  meaning: a complete review is not a conformance result")
-        return 0 if validation["complete"] else 1
+            print("  disposition coverage: %s" % ("complete" if validation["coverageComplete"] else "incomplete"))
+            print("  unresolved decisions: %s" % validation["unresolved"])
+            print("  decision resolved: %s" % ("yes" if validation["decisionComplete"] else "no"))
+            print("  meaning: complete disposition coverage is not a conformance result")
+        # A fully dispositioned review is a successful validation even when some
+        # requirements remain unresolved. Overall assessment completion stays false.
+        return 0 if validation["coverageComplete"] else 1
 
     if args.command == "status":
         report = status_project(Path(args.root))

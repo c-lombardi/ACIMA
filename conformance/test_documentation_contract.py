@@ -54,7 +54,8 @@ class DocumentationContractTests(unittest.TestCase):
 
     def test_skill_carries_the_partial_assessment_and_service_stops(self) -> None:
         skill = read("skills/acima-adoption/SKILL.md")
-        self.assertIn("PARTIAL ASSESSMENT", skill)
+        status = read("skills/acima-adoption/references/55-status-and-evidence.md")
+        self.assertIn("partial assessment", skill.lower())
         self.assertIn("service-topology", skill)
         self.assertIn(json.loads(read("skills/acima-adoption/manifest.json"))["skillVersion"], skill)
 
@@ -172,6 +173,64 @@ class DocumentationContractTests(unittest.TestCase):
         self.assertIn("not conformance levels", guide)
         self.assertIn("intentionally", guide)
         self.assertIn("stricter", guide)
+
+    def test_adoption_skill_has_a_low_friction_first_turn_for_missing_or_unspecified_intent(self) -> None:
+        skill = normalized("skills/acima-adoption/SKILL.md")
+        for required in (
+            "start here: make the first interaction effortless",
+            "no command or a greeting",
+            "do not ask for a path again",
+            "paste its folder path or repository link",
+            "no command, acima terminology, adoption level, module map or configuration is required",
+            "unsupported command",
+            "infer the closest supported intent",
+            "do not ask users to choose l1/l2/l3 before assessment",
+            "obtain explicit approval before writing",
+        ):
+            self.assertIn(required, skill)
+
+    def test_adoption_skill_keeps_users_informed_of_value_scope_progress_and_outcomes(self) -> None:
+        skill = normalized("skills/acima-adoption/SKILL.md")
+        reference = normalized("skills/acima-adoption/references/35-user-transparency.md")
+        for required in (
+            "user transparency", "phase purpose", "progress", "decisions", "risks", "evidence", "outcomes",
+        ):
+            self.assertIn(required, skill)
+        for required in (
+            "the user must remain informed at every phase", "explain what the user will acquire",
+            "deterministic checks and repeatable evidence", "before starting", "while working",
+            "before changing anything", "after each phase", "at handoff",
+            "phase-specific communication contract", "existing capabilities, proposed capabilities, implemented capabilities and verified capabilities",
+            "state coverage explicitly", "assessment consent is not implementation consent", "costs, risks and tradeoffs early",
+        ):
+            self.assertIn(required, reference)
+
+    def test_adoption_skill_uses_progressive_disclosure(self) -> None:
+        skill = read("skills/acima-adoption/SKILL.md")
+        manifest = json.loads(read("skills/acima-adoption/manifest.json"))
+        self.assertLess(len(skill.splitlines()), 200)
+        for reference in (
+            "12-getting-started.md", "22-workflow.md", "45-discovery.md",
+            "55-status-and-evidence.md", "42-communication-and-interaction.md",
+            "75-proposals-and-deliverables.md", "65-commands-and-context.md",
+            "72-effects-and-corrections.md",
+        ):
+            self.assertIn("references/" + reference, manifest["references"])
+            self.assertIn(reference, skill)
+        self.assertIn("Load the phase-specific reference immediately before performing that phase", read("skills/acima-adoption/references/22-workflow.md"))
+
+    def test_adoption_skill_exposes_reader_first_html_outcome_reporting(self) -> None:
+        skill = normalized("skills/acima-adoption/SKILL.md")
+        reference = normalized("skills/acima-adoption/references/90-html-outcome-reports.md")
+        manifest = json.loads(read("skills/acima-adoption/manifest.json"))
+        for required in ("six-page html report", "report.schema.json", "render_report.py"):
+            self.assertIn(required, skill)
+        for required in ("proposed file", "greenfield", "brownfield", "files.html", "evidence.html", "must not invent facts", "approval"):
+            self.assertIn(required, reference)
+        self.assertIn("scripts/render_report.py", manifest["scripts"])
+        self.assertIn("assets/report.schema.json", manifest["assets"])
+        self.assertIn("assets/report-template.css", manifest["assets"])
+        self.assertIn("references/90-html-outcome-reports.md", manifest["references"])
 
     def test_adoption_skill_requires_honest_compatibility_assessment(self) -> None:
         skill = normalized("skills/acima-adoption/SKILL.md")

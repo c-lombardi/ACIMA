@@ -412,17 +412,20 @@ class AdoptionExperienceTests(unittest.TestCase):
                          "docs/commands.md", "MANIFEST.json"):
             self.assertTrue((vendor / relative).is_file(), relative)
         skill = (ROOT / "skills/acima-adoption/SKILL.md").read_text(encoding="utf-8")
-        self.assertIn("<skill>/vendor/tools/acima.py", skill)
+        context = (ROOT / "skills/acima-adoption/references/12-getting-started.md").read_text(encoding="utf-8")
+        self.assertIn("<skill>/vendor/tools/acima.py", context)
 
     def test_skill_is_compact_and_teaches_the_contract(self) -> None:
         text = (ROOT / "skills/acima-adoption/SKILL.md").read_text(encoding="utf-8")
         self.assertLess(len(text.splitlines()), 500)
+        interaction = (ROOT / "skills/acima-adoption/references/42-communication-and-interaction.md").read_text(encoding="utf-8")
         for phrase in ("Current state", "What happened", "What it means",
                        "What happens next", "User involvement", "Next action"):
-            self.assertIn(phrase, text)
+            self.assertIn(phrase, interaction)
+        context = (ROOT / "skills/acima-adoption/references/12-getting-started.md").read_text(encoding="utf-8")
         for phrase in ("source checkout", "Copied or installed skill",
                        "different target repository"):
-            self.assertIn(phrase, text)
+            self.assertIn(phrase, context)
         intro = text.split("## Positioning", 1)[0]
         self.assertNotIn("ACIMA-D0", intro)
 

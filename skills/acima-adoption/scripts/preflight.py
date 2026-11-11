@@ -33,6 +33,7 @@ STANDARD_ROOT = (_REPOSITORY if (_REPOSITORY / "tools/acima-spec/rules.json").is
                  else SKILL_DIR / "vendor")
 sys.path.insert(0, str(STANDARD_ROOT / "conformance"))
 from acima_claim import validate_waivers  # noqa: E402 - shared governance validation
+from module_map import ModuleMapError, discover as discover_module_map  # noqa: E402
 
 PRUNE = {
     ".git", "node_modules", "bin", "obj", "dist", "build", "target", "out",
@@ -67,6 +68,8 @@ class Report:
     language: str = "unknown"
     detected_languages: list[str] = field(default_factory=list)
     source_coverage: dict = field(default_factory=dict)
+    module_map: dict = field(default_factory=dict)
+    automation: dict = field(default_factory=dict)
     next_steps: list[str] = field(default_factory=list)
 
     def add(self, check_id: str, status: str, detail: str, remedy: str = "") -> None:
@@ -729,9 +732,10 @@ def check_target(project: Path, report: Report, manifest: dict) -> tuple[list[di
         elif report.mode == "brownfield":
             report.add("TGT-004", "fail",
                        "no candidate units found for a source-bearing repository",
-                       "run the read-only assessment before declaring anything; if it confirms "
-                       "no meaningful ownership boundaries, recommend against adoption. If the "
-                       "layout really has modules, declare them manually and explain the split.")
+                       "complete the 55-requirement evidence-backed qualitative review before making an adoption recommendation. "
+                       "Do not infer that ACIMA adds no value from the absence of candidate units. "
+                       "If the review confirms no meaningful ownership boundaries or applicable benefit, "
+                       "recommend against adoption; otherwise record owner-approved units separately.")
         else:
             report.add("TGT-004", "warn", "no candidate units found",
                        "declare units manually; ADR-0001 in the adoption plan explains the split")
@@ -837,6 +841,11 @@ def build_next_steps(report: Report, project: Path, manifest: dict,
             steps.append(f"Resolve {blocker.id}: {blocker.remedy or blocker.detail}")
         return steps
 
+    proposal = (report.module_map or {}).get("proposal") or {}
+    if proposal:
+        steps.insert(0, "Review the proposed module map, its evidence and recommendations; "
+                        "accept, modify, reject or defer individual decisions before relying on "
+                        "inferred ownership. No map was made authoritative.")
     if report.mode == "greenfield":
         steps = [
             "Review the proposed units and present the adoption proposal; do not scaffold until approved.",
@@ -884,11 +893,33 @@ def main() -> int:
     parser.add_argument("--write-waivers", dest="write_waivers", default=None,
                         help="write scoped waivers from the measured baseline")
     parser.add_argument("--strict", action="store_true", help="treat warnings as blockers")
+    parser.add_argument("--automation-mode", choices=["guided", "full"], default=None,
+                        help="explicitly choose guided adoption or full automation for this engagement")
+    parser.add_argument("--authorize-full-automation", action="store_true",
+                        dest="authorize_full_automation",
+                        help="required with --automation-mode full; authorizes routine implementation steps")
     args = parser.parse_args()
+    if args.authorize_full_automation and args.automation_mode != "full":
+        print("acima: --authorize-full-automation requires --automation-mode full", file=sys.stderr)
+        return 2
+    if args.automation_mode == "full" and not args.authorize_full_automation:
+        print("acima: full automation requires --authorize-full-automation; no write was made",
+              file=sys.stderr)
+        return 2
 
     manifest_path = Path(args.manifest).resolve()
     project = Path(args.project).resolve()
     report = Report()
+    report.automation = {
+        "mode": args.automation_mode,
+        "fullAutomationAuthorized": bool(args.authorize_full_automation),
+        "meaning": ("Explicit authorization to apply routine adoption steps inside the target; "
+                    "deployment, release, commit and push remain separately unauthorized."
+                    if args.automation_mode == "full" else
+                    "Guided adoption: generate artifacts and wait for explicit approval before consequential changes."
+                    if args.automation_mode == "guided" else
+                    "No automation mode selected; assessment remains read-only."),
+    }
 
     try:
         manifest = load_json(manifest_path)
@@ -902,6 +933,11 @@ def main() -> int:
     check_skill(manifest, manifest_path, report)
     check_environment(report)
     units, config = check_target(project, report, manifest)
+    try:
+        report.module_map = discover_module_map(project, config=config)
+    except (ModuleMapError, OSError) as error:
+        report.add("MMP-001", "warn", f"module-map discovery did not complete: {error}",
+                   "complete discovery manually; do not infer ownership from the failure")
 
     if args.deep:
         check_deep(manifest, report)
@@ -958,6 +994,8 @@ def main() -> int:
             "warnings": [check.id for check in report.warnings],
             "findings": report.findings,
             "proposedUnits": units,
+            "moduleMap": report.module_map,
+            "automation": report.automation,
             "next": report.next_steps,
         }
         print(json.dumps(payload, indent=2))
@@ -991,11 +1029,26 @@ def print_text(report: Report, manifest: dict, project: Path, units: list[dict],
     print(f"  target   {project}")
     print(f"  mode     {report.mode} · architecture {report.architecture_mode} · "
           f"language {report.language}")
+    if report.automation.get("mode"):
+        print(f"  workflow guided={report.automation['mode'] == 'guided'} · "
+              f"full automation authorized={report.automation.get('fullAutomationAuthorized', False)}")
     print()
     for check in report.checks:
         print(f"  {symbols.get(check.status, '?   ')}{check.id:<8} {check.detail}")
         if check.status in ("fail", "warn") and check.remedy:
             print(f"          -> {check.remedy}")
+
+    module_map = report.module_map or {}
+    if module_map:
+        print()
+        authority = module_map.get("authoritativeMap") or {}
+        print(f"  module map  {authority.get('status', 'not established')} · "
+              f"{authority.get('summary', 'No summary recorded.')}")
+        proposal = module_map.get("proposal") or {}
+        if proposal:
+            print(f"  proposal    {len(proposal.get('modules', []))} candidate module(s), "
+                  f"{len(proposal.get('recommendations', []))} recommendation(s), "
+                  f"{len(proposal.get('unassigned', []))} unassigned path(s) — review required")
 
     if units and report.mode != "adopting":
         print()

@@ -22,18 +22,23 @@ CATALOG_SHA256 = hashlib.sha256((ROOT / "tools/acima-spec/rules.json").read_byte
 def valid_document(root: Path) -> dict:
     source = root / "src" / "sample.py"
     source.parent.mkdir(parents=True, exist_ok=True)
-    source.write_text("# Architecture ownership evidence\nclass Sample:\n    pass\n", encoding="utf-8")
+    evidence_lines = [f"# Evidence for {rule['id']}: {rule['title']}" for rule in CATALOG["rules"]]
+    source.write_text("\n".join(evidence_lines) + "\n", encoding="utf-8")
+    reviews = []
+    for index, rule in enumerate(CATALOG["rules"], start=1):
+        reviews.append({
+            "rule": rule["id"], "status": "conforms",
+            "rationale": (f"Reviewed {rule['title']}. The inspected source location was considered "
+                          f"against this requirement: {rule['summary']}"),
+            "evidence": [{"path": "src/sample.py", "kind": "source",
+                          "startLine": index, "endLine": index,
+                          "quote": evidence_lines[index - 1],
+                          "observation": f"Inspected the dedicated evidence location for {rule['title']}."}],
+        })
     return {
         "schemaVersion": "1.0", "reviewer": "Architecture reviewer",
         "reviewedOn": "2026-11-10", "catalogSha256": CATALOG_SHA256,
-        "rules": [{
-            "rule": rule["id"], "status": "conforms",
-            "rationale": "Inspected the implementation and found the requirement satisfied.",
-            "evidence": [{"path": "src/sample.py", "kind": "source",
-                          "startLine": 1, "endLine": 3,
-                          "quote": "# Architecture ownership evidence",
-                          "observation": "Inspected the source implementation and its ownership boundary."}],
-        } for rule in CATALOG["rules"]],
+        "rules": reviews,
     }
 
 
@@ -46,6 +51,18 @@ class QualitativeReviewTests(unittest.TestCase):
             self.assertEqual(result["required"], 55)
             self.assertEqual(result["reviewed"], 55)
             self.assertEqual(result["pending"], 0)
+
+    def test_boilerplate_rationale_and_reused_evidence_are_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            document = valid_document(root)
+            document["rules"][1]["rationale"] = document["rules"][0]["rationale"]
+            document["rules"][1]["evidence"] = [dict(document["rules"][0]["evidence"][0])]
+            result = validate_review(document, root, CATALOG, CATALOG_SHA256)
+            self.assertFalse(result["coverageComplete"])
+            joined = " ".join(problem for item in result["problems"] for problem in item["problems"])
+            self.assertIn("rationale is duplicated", joined)
+            self.assertIn("duplicates the exact evidence", joined)
 
     def test_catalog_hash_mismatch_prevents_completion(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -135,7 +152,10 @@ class QualitativeReviewTests(unittest.TestCase):
             document["rules"][0]["rationale"] = "Insufficient evidence exists to decide this requirement."
             result = validate_review(document, root, CATALOG, CATALOG_SHA256)
             self.assertFalse(result["complete"])
+            self.assertTrue(result["coverageComplete"])
+            self.assertFalse(result["decisionComplete"])
             self.assertEqual(result["reviewed"], 55)
+            self.assertEqual(result["evidenceBackedDispositions"], 55)
             self.assertEqual(result["unresolved"], 1)
 
     def test_assessment_completes_only_with_all_rules_unit_map_and_successful_run(self) -> None:
@@ -174,6 +194,14 @@ class QualitativeReviewTests(unittest.TestCase):
                  redirect_stdout(StringIO()):
                 self.assertEqual(acima.main(), 0)
             document = valid_document(root)
+            document["rules"][0]["status"] = "insufficient_evidence"
+            document["rules"][0]["rationale"] = "Insufficient evidence exists to decide this requirement."
+            review_path.write_text(json.dumps(document), encoding="utf-8")
+            with patch.object(sys, "argv", ["acima", "validate-review", "--root", str(root),
+                                             "--file", str(review_path), "--format", "json"]), \
+                 redirect_stdout(StringIO()):
+                # Explicitly unresolved is still a valid disposition and full catalog coverage.
+                self.assertEqual(acima.main(), 0)
             document["rules"].pop()
             review_path.write_text(json.dumps(document), encoding="utf-8")
             with patch.object(sys, "argv", ["acima", "validate-review", "--root", str(root),
@@ -186,7 +214,37 @@ class QualitativeReviewTests(unittest.TestCase):
             root = Path(directory)
             code, report = acima.assess_project(root)
             self.assertFalse(report["assessmentCompletion"]["complete"])
+            self.assertFalse(report["assessmentCompletion"]["qualitativeReviewCoverageComplete"])
             self.assertFalse(report["comprehensiveRuleReview"]["complete"])
+            self.assertEqual(report["assessmentResult"]["fit"], acima.OUTCOME_INSUFFICIENT)
+            self.assertIn("55", report["assessmentResult"]["recommendation"])
+
+    def test_full_qualitative_coverage_is_retained_when_module_map_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "src").mkdir()
+            (root / "src/app.py").write_text("VALUE = 1\\n", encoding="utf-8")
+            review_path = root / "qualitative-review.json"
+            document = valid_document(root)
+            document["rules"][0]["status"] = "insufficient_evidence"
+            document["rules"][0]["rationale"] = "Insufficient evidence exists to decide this requirement."
+            review_path.write_text(json.dumps(document), encoding="utf-8")
+
+            code, report = acima.assess_project(root, review_path=review_path)
+
+            self.assertEqual(code, 0)
+            self.assertEqual(report["verdict"], "NEEDS_UNIT_MAP")
+            review = report["comprehensiveRuleReview"]
+            self.assertEqual(review["required"], 55)
+            self.assertEqual(review["reviewed"], 55)
+            self.assertEqual(review["pending"], 0)
+            self.assertTrue(review["coverageComplete"])
+            self.assertFalse(review["decisionComplete"])
+            self.assertTrue(report["assessmentCompletion"]["qualitativeReviewCoverageComplete"])
+            self.assertFalse(report["assessmentCompletion"]["deterministicAssessmentComplete"])
+            self.assertFalse(report["assessmentCompletion"]["complete"])
+            self.assertEqual(report["assessmentResult"]["fit"], acima.OUTCOME_INSUFFICIENT)
+            self.assertIn("1 remain unresolved", report["assessmentResult"]["recommendation"])
 
 
 if __name__ == "__main__":

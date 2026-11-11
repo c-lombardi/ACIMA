@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv"}
+SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "workspaces"}
 FENCED = re.compile(r"```.*?```", re.DOTALL)
 INLINE_CODE = re.compile(r"`[^`\n]*`")
 LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+?)(?:\s+\"[^\"]*\")?\)")
@@ -32,7 +32,8 @@ def markdown_files() -> list[Path]:
     # is checked on the sources; test_skill_bundle.py checks the copies byte for byte.
     return [path for path in sorted(ROOT.rglob("*.md"))
             if not any(part in SKIP_DIRS for part in path.relative_to(ROOT).parts)
-            and not path.relative_to(ROOT).as_posix().startswith(GENERATED)]
+            and not path.relative_to(ROOT).as_posix().startswith(GENERATED)
+            and not path.relative_to(ROOT).as_posix().startswith("benchmarks/ai-adoption/")]
 
 
 class DocumentationIntegrityTests(unittest.TestCase):

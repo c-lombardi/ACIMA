@@ -1,6 +1,6 @@
 # Capability status
 
-Last verified: 2026-11-09.
+Last verified: 2026-11-11.
 
 ACIMA is a draft standard with working reference tooling. This page separates what is
 executable from what is documented, proposed, or known to be incomplete. A claim in the
@@ -28,6 +28,7 @@ README or a guide should resolve to one of these rows.
 | Unified `acima` CLI | **Implemented and verified** | [`tools/acima.py`](../tools/acima.py); `conformance/test_cli.py` | `assess` (read-only), `inspect`, `analyze`, `report`, `claim`, `verify`. `adopt` is not implemented; use the skill preflight. |
 | Executable violation-to-fix walkthrough | **Implemented and verified** | [`tools/acima_walkthrough.py`](../tools/acima_walkthrough.py); `conformance/test_walkthrough.py` | One D001 path through the Python example. The gallery covers the rest. |
 | Architecture evidence report | **Implemented and verified** | `acima report --root <repo> --format markdown` | Reports executed rules and explicitly lists unevaluated rules. It does not compute a health score. |
+| Offline HTML report accessibility | **Implemented; automated baseline verified** | [`conformance/test_html_report.py`](../conformance/test_html_report.py); [`90-html-outcome-reports.md`](../skills/acima-adoption/references/90-html-outcome-reports.md) | Targets WCAG 2.2 AA for the report's content and interaction. Automated checks cover document structure, table semantics, contrast tokens, focus styling, reduced motion, forced colours and responsive rules. Screen-reader behaviour and real-browser zoom/reflow remain manual release checks and are not recorded here. |
 | Brownfield preflight and draft units | **Implemented and verified for base mode** | [`skills/acima-adoption/scripts/preflight.py`](../skills/acima-adoption/scripts/preflight.py) | Heuristic draft; a human must review module names and ownership. No service-profile workflow. |
 | Waiver baseline generation | **Implemented and verified** | `preflight.py --write-waivers` | Writes `owner: unassigned`; a human must replace every owner before merging the gate. |
 | GitHub Actions conformance workflow | **Implemented, not yet observed in hosted CI** | [`.github/workflows/acima.yml`](../.github/workflows/acima.yml) | The workflow file is present in this checkout, but this environment cannot execute GitHub Actions. Run it once on a branch before relying on it. |
