@@ -30,6 +30,7 @@ owner's architectural decision. Those actions need a separate authorization.
 | CI | workflow or provider-specific instructions | an existing provider is integrated where safe, or concrete manual steps are recorded |
 | Immediate remediation | none, selected, or all decision and result | a separate final decision is recorded after CI; authorized changes are applied or explicitly deferred |
 | Verification | fresh map assessment and run results | the post-remediation assessment distinguishes implemented and verified |
+| AI agent guidance | root instructions plus architecture, enforcement, judgment and workflow support files | convention discovery, preservation, complete catalog coverage and references validate |
 | Handoff | changes, commands, limits, reassessment triggers | no dangling stage remains |
 
 For Python and TypeScript targets, the workflow may copy the reference enforcer into
@@ -60,6 +61,15 @@ is required.
 - `docs/acima/ci-integration.json` — provider discovery, integration status and limits.
 - `docs/acima/verification.json` — fresh assessment, positive run and controlled negative probe.
 - `docs/acima/adoption-handoff.md` — outcome, commands, limitations and reassessment triggers.
+- `AGENTS.md` (or the repository's primary established convention) and
+  `docs/architecture/acima/` — generated AI agent guidance; proposal and validation are recorded in
+  `docs/acima/agent-guidance-proposal.md` and `.acima/agent-guidance.json`.
+
+AI guidance is generated from the approved map and actual enforcement, not from a speculative
+proposal. Guided mode preserves user-authored instructions and waits for approval if the adoption
+scope did not include `agent-guidance`; full automation applies it within the authorized scope. The
+supporting guidance covers all catalog requirements, including judgment-dependent portions of
+automated rules. See [14-ai-agent-guidance](14-ai-agent-guidance.md).
 
 ## Final remediation decision
 

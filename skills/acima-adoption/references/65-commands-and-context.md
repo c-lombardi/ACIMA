@@ -24,6 +24,8 @@ Every command below is read-only unless marked.
 | `acima.py adoption remediate --root <target> --choice selected --selected <id> --confirm` | apply named ready fixes after review | selected source files and focused tests |
 | `acima.py adoption remediate --root <target> --choice all --confirm` | apply all applicable ready fixes | all ready recommendations, never manual ones |
 | `acima.py adoption remediate ... --confirm-scope` then `--confirm-implementation` | large brownfield two-step authorization | source changes only after the second confirmation |
+| `acima.py adoption guidance --root <target>` | apply generated agent guidance when the scope already authorized it, otherwise show the proposal | instruction files and support documents |
+| `acima.py adoption guidance --root <target> --approve` | approve and apply generated agent guidance without repeating discovery | generated instructions, validation record and final handoff |
 | `module_map.py discover --project <target>` | read-only candidate boundaries, evidence, recommendations and decisions | `--write-proposal` only |
 | `module_map.py review --project <target> --proposal <json> --decisions <json>` | validate explicit per-boundary and per-recommendation decisions | `--write-approval`, `--write-config` only |
 | `inject_violation.py --project <target> --out docs/acima/proof.json` | prove the enforcer detects controlled input | `--out` only |

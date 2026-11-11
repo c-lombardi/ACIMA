@@ -138,6 +138,7 @@ def check_tools() -> bool:
                  "conformance/test_html_report.py",
                  "conformance/test_module_map.py",
                  "conformance/test_adoption_workflow.py",
+                 "conformance/test_agent_guidance.py",
                  "conformance/test_third_party_governance.py",
                  "conformance/test_explicit_inputs.py",
                  "conformance/test_values_config.py",

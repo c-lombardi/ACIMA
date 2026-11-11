@@ -31,6 +31,13 @@ risk, all recommendations and their readiness; the result records none/selected/
 manual or failed items, deferred items, before/after verification and the post-remediation review.
 Only deterministic changes are applied; manual recommendations remain explicit work.
 
+Agent guidance is another first-class deliverable: a concise root instruction update or creation plus
+`docs/architecture/acima/agent-architecture-guidance.md`, `enforcement.md`, `judgment-guidance.md`
+and `architectural-workflow.md`. Existing user-authored instruction content is preserved. The
+proposal and validation record live in `docs/acima/agent-guidance-proposal.md` and
+`.acima/agent-guidance.json`; the guidance is refreshed after remediation and never claims agent
+behavior was empirically guaranteed.
+
 ## Module-map proposal and scoped approval
 
 When no sufficient authoritative map exists, the assessment includes an automatic module-map

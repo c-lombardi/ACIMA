@@ -39,6 +39,7 @@ from module_map import (  # noqa: E402
     APPROVAL_FILE, CONFIG_NAME, ModuleMapError, apply_review, build_config,
     discover as discover_module_map, load_proposal, load_review,
 )
+import agent_guidance  # noqa: E402
 
 STATE_FILE = ".acima/adoption-workflow.json"
 PROPOSAL_JSON = ".acima/module-map.proposal.json"
@@ -57,7 +58,8 @@ WAIVERS_FILE = ".acima/waivers.json"
 MODES = ("guided", "full")
 STAGE_ORDER = (
     "preflight", "discovery", "module_map", "adoption_proposal",
-    "implementation", "architecture_tests", "ci", "remediation", "verification", "handoff",
+    "implementation", "architecture_tests", "ci", "remediation", "verification",
+    "agent_guidance", "handoff",
 )
 STAGE_LABEL = {
     "preflight": "Pre-flight authorization",
@@ -69,6 +71,7 @@ STAGE_LABEL = {
     "ci": "CI integration",
     "remediation": "Immediate remediation",
     "verification": "Fresh verification",
+    "agent_guidance": "AI agent guidance",
     "handoff": "Final handoff",
 }
 COMPLETE = "complete"
@@ -354,6 +357,7 @@ def _summary(state: dict) -> dict:
         "decisions": state.get("decisions", []),
         "blockers": state.get("blockers", []),
         "remediation": state.get("remediation", {}),
+        "agentGuidance": state.get("agentGuidance", {}),
         "verificationAfterRemediation": state.get("verificationAfterRemediation"),
         "next": state.get("next", {}),
     }
@@ -595,6 +599,7 @@ def _scope_document(state: dict, root: Path, *, ci_available: bool) -> dict:
         {"id": "ci-enforcement", "disposition": "approved" if ci_available else "deferred",
          "reason": "" if ci_available else "No supported CI provider was detected."},
         {"id": "developer-handoff", "disposition": "approved"},
+        {"id": "agent-guidance", "disposition": "approved"},
         {"id": "full-conformance", "disposition": "deferred",
          "reason": "Verification evidence is not a full-conformance claim."},
         {"id": "communication-governance", "disposition": "optional"},
@@ -962,6 +967,39 @@ def _fresh_assessment(root: Path, state: dict, config: dict) -> dict:
     return verification
 
 
+def _apply_agent_guidance(root: Path, state: dict, *, approve: bool = False) -> dict | None:
+    """Refresh the proposal, then apply it only within the approved adoption scope."""
+    proposal = agent_guidance.proposal(root, state)
+    state["artifacts"]["agentGuidanceProposal"] = agent_guidance.PROPOSAL_FILE
+    state["artifacts"]["agentGuidanceData"] = agent_guidance.RESULT_FILE
+    state["agentGuidance"] = proposal
+    if not (approve or agent_guidance.authorize(root, state)):
+        _stage(state, "agent_guidance", AWAITING,
+               "The instructions are proposed but existing instruction files are not modified without approval.",
+               evidence=agent_guidance.PROPOSAL_FILE)
+        _next(state, "Review the proposed AI agent instructions",
+              "python3 tools/acima.py adoption guidance --root . --approve",
+              approval=True, writes=True,
+              why="Updating repository instructions changes future agent behavior and may alter user-authored guidance.",
+              done="The owner approves the generated instruction update; existing content remains preserved.")
+        _save(root, state)
+        return None
+    result = agent_guidance.apply(root, state)
+    validation = result.get("validation") or {}
+    good = validation.get("status") == "valid" and result.get("preservedExisting", True)
+    _stage(state, "agent_guidance",
+           COMPLETE if good else BLOCKED,
+           "Generated agent instructions: %s; preserved existing content: %s; validation: %s." %
+           (result.get("status"), result.get("preservedExisting"), validation.get("status")),
+           evidence={agent_guidance.RESULT_FILE: True, "primary": result.get("primaryFile")})
+    state["agentGuidance"] = result
+    state["decisions"].append({"id": "agent-guidance", "decision": "applied" if good else "blocked",
+                               "by": state.get("authorizedBy") or state.get("mode"), "on": _today(),
+                               "basis": "generated from the approved map and actual enforcement record"})
+    _save(root, state)
+    return result
+
+
 def remediate(root: Path, choice: str, *, selected: list[str] | None = None,
               approved_by: str = "", confirm: bool = False,
               confirm_scope: bool = False, confirm_implementation: bool = False,
@@ -1122,7 +1160,11 @@ def remediate(root: Path, choice: str, *, selected: list[str] | None = None,
            (choice, outcome, len(changes), len(failures)), evidence=REMEDIATION_RESULT)
     _stage(state, "verification", COMPLETE if verification.get("status") == "verified" else BLOCKED,
            "Fresh post-remediation assessment: %s." % verification.get("status"), evidence=VERIFICATION_FILE)
-    _stage(state, "handoff", COMPLETE, "The handoff includes the remediation outcome.", evidence=HANDOFF_FILE)
+    guidance = _apply_agent_guidance(root, state)
+    if guidance is None:
+        _save(root, state)
+        return state
+    _stage(state, "handoff", COMPLETE, "The handoff includes remediation and AI guidance outcomes.", evidence=HANDOFF_FILE)
     _handoff(root, state, verification)
     # These source edits were explicitly authorized; measure later edits from the new baseline.
     state["repository"]["applicationRevision"] = _application_revision(root)
@@ -1148,6 +1190,35 @@ def remediate(root: Path, choice: str, *, selected: list[str] | None = None,
     return state
 
 
+def guidance(root: Path, *, approve: bool = False) -> dict:
+    """Approve and apply generated agent instructions, then write the final handoff."""
+    root = root.resolve()
+    state = _load(root)
+    if state["stages"].get("agent_guidance", {}).get("status") == COMPLETE:
+        return state
+    if state["stages"].get("remediation", {}).get("status") not in (COMPLETE, NOT_APPLICABLE):
+        raise WorkflowError("decide immediate remediation before applying agent guidance")
+    result = _apply_agent_guidance(root, state, approve=approve)
+    if result is None:
+        return state
+    verification = _read_json(root / VERIFICATION_FILE) if (root / VERIFICATION_FILE).is_file() else {}
+    _stage(state, "handoff", COMPLETE, "The handoff includes the AI guidance validation.", evidence=HANDOFF_FILE)
+    _handoff(root, state, verification)
+    if state["stages"].get("agent_guidance", {}).get("status") == COMPLETE:
+        _next(state, "No further action in the authorized scope",
+              "Review the handoff and refresh agent guidance when the map, enforcement or CI changes.",
+              why="The instructions were generated from the approved architecture and validated against the actual artifacts.",
+              done="Ownership, enforcement, CI or adoption decisions change; then refresh the guidance.")
+    else:
+        _next(state, "Resolve the AI guidance validation problem",
+              "Inspect .acima/agent-guidance.json and docs/architecture/acima; correct the missing or stale reference.",
+              approval=True, writes=True,
+              why="Invalid or incomplete agent guidance must not be presented as a completed adoption deliverable.",
+              done="The primary instructions and support references validate against the repository.")
+    _save(root, state)
+    return state
+
+
 def _handoff(root: Path, state: dict, verification: dict) -> str:
     stages = _summary(state)["stages"]
     remediation = _read_json(root / REMEDIATION_RESULT) if (root / REMEDIATION_RESULT).is_file() else {}
@@ -1169,7 +1240,15 @@ def _handoff(root: Path, state: dict, verification: dict) -> str:
     ]
     for name, value in state.get("artifacts", {}).items():
         lines.append("- %s: `%s`" % (name, value))
-    lines += ["", "## Immediate remediation", "",
+    guidance = state.get("agentGuidance") or {}
+    guidance_validation = guidance.get("validation") or {}
+    lines += ["", "## AI agent guidance", "",
+              "- Primary instruction file: `%s`." % (guidance.get("primaryFile") or "not recorded"),
+              "- Support files: `%s`." % "`, `".join(guidance.get("supportFiles") or []),
+              "- Validation: %s; existing content preserved: %s." %
+              (guidance_validation.get("status") or "not recorded", guidance.get("preservedExisting")),
+              "- Agent behavior is not guaranteed by file validation; representative tasks remain a manual evaluation.",
+              "", "## Immediate remediation", "",
               "- Decision: %s" % (remediation.get("choice") or "not recorded"),
               "- Outcome: %s" % (remediation.get("status") or "not recorded"),
               "- Changed files: %s" % (len(remediation.get("changed") or [])),
@@ -1230,6 +1309,13 @@ def _apply(root: Path, state: dict) -> dict:
     _stage(state, "ci", COMPLETE if ci.get("status") in ("configured", "already_present", "no_provider",
                                                          "manual_instructions") else BLOCKED,
            ci.get("claim", "No CI claim recorded."), evidence=CI_FILE)
+    guidance_proposal = agent_guidance.proposal(root, state)
+    state["artifacts"]["agentGuidanceProposal"] = agent_guidance.PROPOSAL_FILE
+    state["artifacts"]["agentGuidanceData"] = agent_guidance.RESULT_FILE
+    state["agentGuidance"] = guidance_proposal
+    _stage(state, "agent_guidance", IN_PROGRESS,
+           "Proposed repository instructions were generated; they will be applied after remediation and verification.",
+           evidence=agent_guidance.PROPOSAL_FILE)
     write_remediation_plan(root, state)
     _stage(state, "remediation", AWAITING,
            "Enforcement and CI are complete. Choose none, selected, or all recommended fixes.",
@@ -1415,6 +1501,14 @@ def continue_workflow(root: Path) -> dict:
     state = _load(root)
     if state["stages"].get("handoff", {}).get("status") == COMPLETE:
         return state
+    if state["stages"].get("agent_guidance", {}).get("status") == AWAITING:
+        _next(state, "Review the proposed AI agent instructions",
+              "python3 tools/acima.py adoption guidance --root . --approve",
+              approval=True, writes=True,
+              why="The instruction update is a separate consequential change to future agent behavior.",
+              done="The owner approves the generated instructions and their validation passes.")
+        _save(root, state)
+        return state
     if state["stages"].get("remediation", {}).get("status") == AWAITING:
         _next(state, "Choose immediate remediation: none, selected, or all",
               "python3 tools/acima.py adoption remediate --root . --choice none|selected|all",
@@ -1447,6 +1541,15 @@ def status(root: Path) -> dict:
     current = next((stage for stage in summary["stages"]
                     if stage["status"] not in (COMPLETE, NOT_APPLICABLE)), None)
     summary["currentStage"] = current
+    guidance = summary.get("agentGuidance") or {}
+    if guidance.get("status") == "applied":
+        stale, changed = agent_guidance.stale(root, guidance)
+        guidance["stale"] = stale
+        guidance["staleSources"] = changed
+        if stale:
+            summary["staleWarning"] = ("AI agent guidance references changed sources: %s. "
+                                       "Refresh it before treating the instructions as current." %
+                                       ", ".join(changed))
     remediation = summary.get("remediation") or {}
     result_path = remediation.get("result")
     if result_path and (root / result_path).is_file():
@@ -1462,7 +1565,7 @@ def status(root: Path) -> dict:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="ACIMA end-to-end adoption workflow")
     sub = parser.add_subparsers(dest="command", required=True)
-    for name in ("start", "status", "approve", "apply", "continue", "remediate"):
+    for name in ("start", "status", "approve", "apply", "continue", "remediate", "guidance"):
         command = sub.add_parser(name)
         command.add_argument("--project", default=".")
         command.add_argument("--format", choices=("json", "text"), default="json")
@@ -1474,6 +1577,8 @@ def main(argv: list[str] | None = None) -> int:
             command.add_argument("--map-decisions", default=None)
             command.add_argument("--scope", default=None)
             command.add_argument("--reviewer", default=None)
+        elif name == "guidance":
+            command.add_argument("--approve", action="store_true")
         elif name == "remediate":
             command.add_argument("--choice", choices=("none", "selected", "all"), required=True)
             command.add_argument("--maturity-choice", choices=("greenfield", "brownfield"), default=None)
@@ -1498,6 +1603,8 @@ def main(argv: list[str] | None = None) -> int:
                              reviewer=args.reviewer)
         elif args.command == "apply":
             result = _apply(root, _load(root))
+        elif args.command == "guidance":
+            result = guidance(root, approve=args.approve)
         elif args.command == "remediate":
             result = remediate(root, args.choice, selected=args.selected,
                                approved_by=args.approved_by, confirm=args.confirm,

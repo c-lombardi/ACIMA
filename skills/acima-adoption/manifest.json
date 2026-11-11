@@ -1,6 +1,6 @@
 {
   "skill": "acima-adoption",
-  "skillVersion": "1.31.0",
+  "skillVersion": "1.32.0",
   "standard": "1.9.0-draft.1",
   "verifiedAt": "2026-11-10",
   "catalog": {
@@ -143,6 +143,7 @@
     "references/12-getting-started.md",
     "references/22-workflow.md",
     "references/13-adoption-orchestration.md",
+    "references/14-ai-agent-guidance.md",
     "references/45-discovery.md",
     "references/55-status-and-evidence.md",
     "references/42-communication-and-interaction.md",

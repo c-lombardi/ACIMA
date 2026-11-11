@@ -61,6 +61,7 @@ def scope(root: Path) -> Path:
             {"id": "baseline-waivers", "disposition": "approved"},
             {"id": "ci-enforcement", "disposition": "deferred"},
             {"id": "developer-handoff", "disposition": "approved"},
+            {"id": "agent-guidance", "disposition": "approved"},
         ],
     }), encoding="utf-8")
     return path

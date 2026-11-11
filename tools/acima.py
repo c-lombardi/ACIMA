@@ -4482,7 +4482,7 @@ def main() -> int:
     verify.add_argument("profiles", nargs="*")
 
     adoption = sub.add_parser("adoption", help="end-to-end guided or explicitly authorized adoption")
-    adoption.add_argument("action", choices=("start", "status", "approve", "apply", "continue", "remediate"))
+    adoption.add_argument("action", choices=("start", "status", "approve", "apply", "continue", "remediate", "guidance"))
     adoption.add_argument("--root", default=".")
     adoption.add_argument("--mode", choices=("guided", "full"), default=None,
                           help="required for start: guided or explicit full automation")
@@ -4493,6 +4493,7 @@ def main() -> int:
     adoption.add_argument("--scope", default=None)
     adoption.add_argument("--choice", choices=("none", "selected", "all"), default=None)
     adoption.add_argument("--maturity-choice", choices=("greenfield", "brownfield"), default=None)
+    adoption.add_argument("--approve", action="store_true")
     adoption.add_argument("--selected", action="append", default=[])
     adoption.add_argument("--approved-by", default="Repository owner")
     adoption.add_argument("--confirm", action="store_true")
@@ -4528,6 +4529,8 @@ def main() -> int:
                     reviewer=args.reviewer)
             elif args.action == "apply":
                 result = adoption_workflow._apply(root, adoption_workflow._load(root))
+            elif args.action == "guidance":
+                result = adoption_workflow.guidance(root, approve=args.approve)
             elif args.action == "remediate":
                 if not args.choice:
                     print("acima: adoption remediate requires --choice none, selected, or all",

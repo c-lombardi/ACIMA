@@ -440,6 +440,29 @@
       },
       "additionalProperties": true
     },
+    "agentGuidance": {
+      "type": "object",
+      "description": "Generated repository-level AI agent instructions and their structural validation.",
+      "properties": {
+        "convention": { "type": "object" },
+        "primaryFile": { "type": "string" },
+        "supportFiles": { "type": "array", "items": { "type": "string" } },
+        "files": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string" },
+        "preservedExisting": { "type": "boolean" },
+        "validation": {
+          "type": "object",
+          "properties": {
+            "status": { "enum": ["valid", "invalid", "not run"] },
+            "rulesCovered": { "type": "integer" },
+            "rulesRequired": { "type": "integer" },
+            "agentBehaviorGuaranteed": { "type": "boolean" }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
     "remediation": {
       "type": "object",
       "description": "The final none/selected/all decision and its independently verified outcome.",

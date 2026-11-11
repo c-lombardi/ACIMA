@@ -78,6 +78,12 @@ remediation decision separately: none/declined, selected/all, completed, partial
 files, deferred recommendations and the fresh verification result. Do not present an unselected,
 manual or failed recommendation as resolved.
 
+Show AI agent guidance as a first-class section: the discovered convention, primary instruction
+file, generated support files, whether existing content was preserved, every rule identifier
+covered, validation problems, and the limitation that structural validation does not prove every
+coding agent will follow the guidance. Never describe a generated instruction file as empirically
+verified agent behavior.
+
 ## Accessibility baseline
 
 The generated report targets **WCAG 2.2 AA** for the content and interaction it provides. Criteria
