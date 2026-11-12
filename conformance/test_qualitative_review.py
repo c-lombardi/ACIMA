@@ -83,6 +83,8 @@ class QualitativeReviewTests(unittest.TestCase):
             result = validate_review(document, root, CATALOG, CATALOG_SHA256)
             self.assertTrue(result["complete"])
             self.assertEqual(result["counts"]["gap"], 1)
+            self.assertEqual(result["gapRegister"][0]["rule"], CATALOG["rules"][0]["id"])
+            self.assertEqual(result["gapRegister"][0]["status"], "gap")
 
     def test_missing_rule_prevents_completion(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -157,6 +159,8 @@ class QualitativeReviewTests(unittest.TestCase):
             self.assertEqual(result["reviewed"], 56)
             self.assertEqual(result["evidenceBackedDispositions"], 56)
             self.assertEqual(result["unresolved"], 1)
+            self.assertEqual(result["unresolvedRules"], [CATALOG["rules"][0]["id"]])
+            self.assertEqual(result["gapRegister"][0]["rule"], CATALOG["rules"][0]["id"])
 
     def test_assessment_completes_only_with_all_rules_unit_map_and_successful_run(self) -> None:
         from unittest.mock import patch

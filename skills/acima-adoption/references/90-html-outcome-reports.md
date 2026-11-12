@@ -149,7 +149,7 @@ Every outcome also states why it matters, the practical engineering change, appl
 
 Findings separate conformance disposition from action classification. Dispositions retain unresolved states such as unverified, not assessed, unsupported and blocked. Recommendation classifications are required, recommended, optional, or owner-decision. Do not translate optional preferences into normative requirements.
 
-A finding may include an optional `rule` or `requirementRefs` entry. The report reconciles only explicit references to the requirement results; a finding without one remains a grouped problem and must not be counted as a conformance result. Findings and requirement results are separate ledgers and are not expected to match one-to-one.
+Every schema 1.1 finding MUST name at least one current catalog rule in `rule` or `requirementRefs`, and every named rule must exist in the pinned catalog. The renderer rejects an unlinked or unknown finding, so a human-readable item cannot enter a decision-ready report without a requirement identity. The finding details show that internal reference after the plain-language explanation. Findings and requirement results remain separate ledgers and are not expected to match one-to-one; the requirement reference makes the link traceable without turning the finding into a conformance result. Schema 1.0 remains accepted for legacy reports, where a finding without a reference is still only a grouped problem.
 
 fileImpact groups inspect, create, modify and preserve actions. A file examined as evidence is not automatically a proposed change. The renderer treats these as proposals only; no report action authorizes editing.
 

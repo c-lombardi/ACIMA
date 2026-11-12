@@ -173,6 +173,32 @@ def validate_review(document: Any, root: Path, catalog: dict,
     duplicate = sorted(rule_id for rule_id, values in by_id.items() if len(values) != 1)
     reviewed = sum(1 for item in validated if item["valid"])
     unresolved = counts["insufficient_evidence"]
+    gap_register = []
+    unresolved_rules = []
+    for item in validated:
+        if not item["valid"] or item["status"] not in ("gap", "insufficient_evidence"):
+            continue
+        evidence_refs = []
+        for evidence in item["evidence"]:
+            path = evidence.get("path")
+            if not path:
+                continue
+            if evidence.get("kind") == "absence" or evidence.get("startLine") is None:
+                ref = str(path)
+            else:
+                ref = "%s:%s-%s" % (path, evidence.get("startLine"), evidence.get("endLine"))
+            if ref not in evidence_refs:
+                evidence_refs.append(ref)
+        gap_register.append({
+            "rule": item["rule"],
+            "level": item.get("level"),
+            "title": item.get("title"),
+            "status": item["status"],
+            "rationale": item.get("rationale"),
+            "evidenceRefs": evidence_refs,
+        })
+        if item["status"] == "insufficient_evidence":
+            unresolved_rules.append(item["rule"])
     coverage_complete = (not problems and reviewed == len(expected) and not missing
                          and not extra and not duplicate)
     decision_complete = coverage_complete and unresolved == 0
@@ -188,6 +214,8 @@ def validate_review(document: Any, root: Path, catalog: dict,
         "required": len(expected),
         "pending": len(expected) - reviewed,
         "unresolved": unresolved,
+        "unresolvedRules": unresolved_rules,
+        "gapRegister": gap_register,
         "evidenceBackedDispositions": reviewed,
         "counts": counts,
         "missing": missing,
@@ -195,7 +223,7 @@ def validate_review(document: Any, root: Path, catalog: dict,
         "duplicates": duplicate,
         "problems": problems,
         "rules": validated,
-        "meaning": "A complete qualitative review means every catalog rule has one structurally valid disposition anchored to repository evidence. Validation checks provenance and structure, not the semantic correctness of the reviewer's interpretation. It does not mean every rule conforms or that ACIMA conformance has been achieved.",
+        "meaning": "A complete qualitative review means every catalog rule has one structurally valid disposition anchored to repository evidence. The gapRegister enumerates every gap and insufficient-evidence item by catalog rule. Validation checks provenance and structure, not the semantic correctness of the reviewer's interpretation. It does not mean every rule conforms or that ACIMA conformance has been achieved.",
     }
 
 

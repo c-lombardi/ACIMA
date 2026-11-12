@@ -4,6 +4,36 @@ All normative changes to the ACIMA standard. The machine-readable catalog is
 [`tools/acima-spec/rules.json`](tools/acima-spec/rules.json); this file explains *why* it changed and
 what an adopting repository has to do about it.
 
+## Unreleased — traceable qualitative gaps
+
+**Skill change only.** The catalog, standard version, rule ids, levels, severity and claim semantics
+are unchanged; `acima-adoption` moves from 1.36.0 to 1.36.1. No adopting repository has to change
+configuration, waivers or evidence.
+
+### Why
+
+A qualitative review could report a gap count by theme without every item remaining tied to a
+catalog rule. Schema 1.1 findings could also cite no rule, or a rule that is not in the pinned
+catalog, while the renderer treated the item as a grouped problem. That made it possible to present
+an unlinked finding or an unreconciled count as if it belonged to the assessment.
+
+### What changed
+
+- The review validator now returns `gapRegister` (every valid `gap` and `insufficient_evidence`
+  disposition with its rule, level, title, rationale and evidence references) and
+  `unresolvedRules`.
+- Schema 1.1 report findings must name at least one current catalog rule, and unknown rule ids are
+  rejected by the renderer. Schema 1.0 remains accepted for legacy reports.
+- Rendered finding details show the internal requirement reference after the plain-language
+  explanation.
+- The skill requires gap summaries to enumerate the register and to reconcile every theme count
+  with the distinct rule ids beneath it.
+
+### Adopting repositories
+
+No action. A report that previously rendered with an unlinked schema 1.1 finding will now be
+rejected; attach that finding to its catalog rule, or remove it if it is not a requirement finding.
+
 ## Unreleased — one enforceable waiver contract
 
 **Enforcement and skill change.** The catalog, standard version, rule ids, levels, severity and claim

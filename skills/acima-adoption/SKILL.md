@@ -6,7 +6,7 @@ compatibility: Python 3.9+ for the preflight script. The target language toolcha
 allowed-tools: Read Grep Glob Bash Edit Write
 metadata:
   standard: "1.9.0-draft.2"
-  skill-version: "1.36.0"
+  skill-version: "1.36.1"
   catalog-sha256: "e3b0926d571d24673b0f4e821ede042a208f3a5e961e5502ffc15cde024ee11c"
 ---
 
@@ -54,7 +54,7 @@ need adaptation, and which are not established — [05-architecture-families](re
 ## Execution context
 Detect whether this is an ACIMA checkout, an installed skill, or a separate target before printing or running commands. In a copied skill, the vendored CLI is `<skill>/vendor/tools/acima.py`; in a source checkout use `tools/acima.py`. Load [12-getting-started](references/12-getting-started.md) only when choosing invocation paths or routing an ambiguous request.
 ## Workflow
-Use the sequence: read-only preflight; complete the 56-requirement evidence-backed qualitative review; run supported deterministic checks where an approved unit map exists; explain fit and value; prepare a scoped proposal; obtain explicit approval; implement only approved changes; verify and hand off. Do not issue an adoption recommendation or decision-ready HTML report until all 56 requirements have valid dispositions. Unresolved dispositions require an insufficient-evidence recommendation. Assessment is never authorization. Load [22-workflow](references/22-workflow.md) when executing or resuming an engagement.
+Use the sequence: read-only preflight; complete the 56-requirement evidence-backed qualitative review; run supported deterministic checks where an approved unit map exists; explain fit and value; prepare a scoped proposal; obtain explicit approval; implement only approved changes; verify and hand off. Do not issue an adoption recommendation or decision-ready HTML report until all 56 requirements have valid dispositions. Unresolved dispositions require an insufficient-evidence recommendation. Report gaps from the validator's `gapRegister`, keep every item attached to its catalog rule, and never present a thematic count that does not reconcile with the enumerated rule ids. Assessment is never authorization. Load [22-workflow](references/22-workflow.md) when executing or resuming an engagement.
 
 ### Start and the five phases
 

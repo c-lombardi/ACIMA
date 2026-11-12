@@ -134,6 +134,12 @@ the identifier. Never merge a defect with a detector artefact, and never merge t
 different remedies: give the triage entry a `cluster` and a `label` when one rule has unrelated
 causes.
 
+For a qualitative review, enumerate the validator's `gapRegister` instead of grouping from memory.
+Every `gap` and `insufficient_evidence` entry stays attached to its catalog rule, and every
+human-readable finding must name at least one current catalog rule. A theme count that does not
+reconcile with the distinct rule ids beneath it is a reporting defect; correct the summary before
+presenting it.
+
 A group's remedy is the catalog `fix`, quoted rather than paraphrased. If the catalog has no fix,
 say so and link the rule page; do not invent one.
 

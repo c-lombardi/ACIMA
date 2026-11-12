@@ -547,6 +547,20 @@
   "allOf": [{
     "if": { "properties": { "schemaVersion": { "const": "1.1" } } },
     "then": { "required": ["outcomes", "outcomesStatus", "decisions", "decisionsStatus", "proposedChanges", "fileImpact", "fileImpactStatus", "roadmap", "roadmapStatus", "preservation", "preservationStatus", "conformance", "qualitativeReview", "coverage"] }
+  }, {
+    "if": { "properties": { "schemaVersion": { "const": "1.1" } } },
+    "then": {
+      "properties": {
+        "findings": {
+          "items": {
+            "anyOf": [
+              { "required": ["rule"] },
+              { "required": ["requirementRefs"], "properties": { "requirementRefs": { "minItems": 1 } } }
+            ]
+          }
+        }
+      }
+    }
   }],
   "$defs": {
     "benefit": {

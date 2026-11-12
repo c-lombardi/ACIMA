@@ -343,5 +343,8 @@ python3 tools/acima.py validate-review --root /path/to/repository --file /path/t
 Attach the validated review to a read-only compatibility assessment with `assess --review`.
 The validator requires exact catalog coverage, one disposition per rule, reviewer/date metadata,
 a matching catalog SHA-256, repository-local evidence paths, valid line ranges and exact quoted
-source text. `insufficient_evidence` remains unresolved. Assessment completion additionally requires
-a declared unit map and successful deterministic assessment; completion is not conformance.
+source text. `insufficient_evidence` remains unresolved. Its JSON result includes `gapRegister`,
+which enumerates every gap and insufficient-evidence item by catalog rule, and `unresolvedRules`.
+Report those items from the register; a gap count that does not reconcile with the listed rule ids
+is a reporting defect. Assessment completion additionally requires a declared unit map and
+successful deterministic assessment; completion is not conformance.

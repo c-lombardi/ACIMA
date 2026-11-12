@@ -36,12 +36,12 @@
       "bytes": 82001
     },
     "conformance/qualitative_review.py": {
-      "sha256": "ddff1ea20ac1305ea3f48a685234baa04e8bbf5bb73c2e8d747d271bef5613a3",
-      "bytes": 11732
+      "sha256": "d37e5b7f69040a6c00b8e319c7591f81786fdf40c77691d108baf68478ecdee5",
+      "bytes": 12944
     },
     "docs/commands.md": {
-      "sha256": "dfb061bb1e7d21f44ae865bfe8d31b64cc7b79a2eb7a4f18763cbd0e31e6fc06",
-      "bytes": 21057
+      "sha256": "818e3b06755125763f74034fece33a08c2a99af571a7899ae3a0d8304dced568",
+      "bytes": 21317
     },
     "docs/guides/architecture-families.md": {
       "sha256": "085a46846351515784b7c82565df28552b25bb230df774ccce7838d017d777a4",
@@ -520,8 +520,8 @@
       "bytes": 35524
     },
     "tools/acima.py": {
-      "sha256": "ad514420baa0187ed9b9bb35e1f81cbbeb3fa9d88df4b5e2752ae0eab9cc1b81",
-      "bytes": 247603
+      "sha256": "f2680af4dfc39cc1175de7a2cb6c01c4ed941a6f057f7bfc110b4246cc517c78",
+      "bytes": 248093
     },
     "tools/qualitative-review.schema.json": {
       "sha256": "6ea25cfab4d824979aa889a22b1e0977c7367cbbc9888da60feabd8ace235528",

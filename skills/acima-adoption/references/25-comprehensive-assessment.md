@@ -170,6 +170,14 @@ correctness. If the validator returns nonzero, do not produce a decision-ready a
 or HTML outcome report. Continue the review or report only a clearly labelled preliminary discovery
 result with no adoption recommendation.
 
+The validator returns a `gapRegister` with one entry for every valid `gap` and
+`insufficient_evidence` disposition, including the exact catalog rule, level, title, rationale and
+evidence references, plus `unresolvedRules`. Report a gap count only by enumerating that register;
+do not replace it with a thematic count. Themes may group entries for readability, but every item in
+a theme must still name its catalog rule and the theme's stated count must equal the number of
+distinct rule ids beneath it. If the numbers do not reconcile, the summary is a reporting defect,
+not a finding.
+
 An assessment may be called **complete** only when all 56 rule entries validate, none is
 `insufficient_evidence`, the ACIMA unit map is declared, and the deterministic assessment finishes
 successfully. This is assessment completeness, not `FULL CONFORMANCE`. A complete assessment may

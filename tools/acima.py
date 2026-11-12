@@ -1450,6 +1450,8 @@ def assess_project(root: Path, language: str | None = None,
                 "decisionComplete": review["decisionComplete"],
                 "complete": review["complete"], "status": review["status"],
                 "counts": review["counts"], "unresolved": review["unresolved"],
+                "unresolvedRules": review["unresolvedRules"],
+                "gapRegister": review["gapRegister"],
                 "evidenceBackedDispositions": review["evidenceBackedDispositions"],
                 "rules": merged_rules,
                 "validation": {key: value for key, value in review.items() if key != "rules"},
@@ -4722,6 +4724,11 @@ def main() -> int:
             print("  pending: %s" % validation["pending"])
             for status, count in validation["counts"].items():
                 print("  %-22s %s" % (status, count))
+            print("  gap register: %s item(s)" % len(validation["gapRegister"]))
+            for item in validation["gapRegister"]:
+                print("    %-12s %-20s %s" % (item["rule"], item["status"], item.get("title") or ""))
+            if validation["unresolvedRules"]:
+                print("  unresolved rule ids: %s" % ", ".join(validation["unresolvedRules"]))
             for issue in validation["problems"]:
                 print("  %s: %s" % (issue.get("rule", issue.get("scope", "document")), "; ".join(issue["problems"])))
             print("  disposition coverage: %s" % ("complete" if validation["coverageComplete"] else "incomplete"))
