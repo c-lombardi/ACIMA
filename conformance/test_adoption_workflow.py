@@ -266,6 +266,14 @@ class AdoptionWorkflowTests(unittest.TestCase):
             self.assertTrue((Path(report["directory"]) / "plan.html").is_file())
             self.assertTrue((Path(report["directory"]) / "evidence.html").is_file())
             self.assertIn(report["sha256"], state["next"]["command"])
+            report_data = json.loads((Path(report["directory"]) / "report-data.json").read_text(encoding="utf-8"))
+            self.assertEqual(report_data["adoptionWorkflow"]["mode"], "full")
+            self.assertEqual(report_data["moduleMap"]["authoritativeMap"]["unitCount"],
+                             len(report_data["moduleMap"]["authoritativeUnits"]))
+            proposal_page = (Path(report["directory"]) / "proposal.html").read_text(encoding="utf-8")
+            self.assertIn("Proposed module boundaries", proposal_page)
+            self.assertIn("CANDIDATE MODULES", proposal_page)
+            self.assertNotIn("Existing authoritative ownership units", proposal_page)
             self.assertEqual(state["next"]["approvalRequired"], True)
             self.assertTrue(all(item.get("decision") != "accept" for item in
                                     state["artifacts"].get("moduleMap", {}).get("modules", []))
@@ -285,6 +293,16 @@ class AdoptionWorkflowTests(unittest.TestCase):
             self.assertEqual(workflow.report_digest(Path(report["directory"])), report["sha256"])
             self.assertTrue((Path(report["directory"]) / "index.html").is_file())
             self.assertTrue((Path(report["directory"]) / "proposal.html").is_file())
+            report_data = json.loads((Path(report["directory"]) / "report-data.json").read_text(encoding="utf-8"))
+            gap_ids = {item["rule"] for item in report_data["qualitativeReview"]["rules"] if item["status"] == "gap"}
+            finding_ids = {ref for item in report_data["findings"] for ref in (item.get("requirementRefs") or [item.get("rule")]) if ref}
+            self.assertEqual(gap_ids, finding_ids)
+            benefit_details = report_data["assessmentSummary"]["benefitDetails"]
+            self.assertEqual(len(report_data["outcomes"]), len(benefit_details))
+            self.assertEqual(len(report_data["value"]["benefits"]), len(benefit_details))
+            self.assertEqual(report_data["adoptionWorkflow"]["mode"], "guided")
+            self.assertEqual(report_data["moduleMap"]["authoritativeMap"]["unitCount"],
+                             len(report_data["moduleMap"]["authoritativeUnits"]))
             self.assertTrue((root / "docs/acima/adoption-proposal.md").is_file())
             state = approve_scope(root, scope(root))
             self.assertEqual(state["stages"]["adoption_proposal"]["status"], "complete")
@@ -298,6 +316,14 @@ class AdoptionWorkflowTests(unittest.TestCase):
             fixture(root)
             state = full_start(root)
             ci = json.loads((root / "docs/acima/ci-integration.json").read_text(encoding="utf-8"))
+            report = state["artifacts"]["proposalReport"]
+            report_data = json.loads((Path(report["directory"]) / "report-data.json").read_text(encoding="utf-8"))
+            self.assertGreater(report_data["moduleMap"]["authoritativeMap"]["unitCount"], 0)
+            self.assertEqual(report_data["moduleMap"]["authoritativeMap"]["unitCount"],
+                             len(report_data["moduleMap"]["authoritativeUnits"]))
+            proposal_page = (Path(report["directory"]) / "proposal.html").read_text(encoding="utf-8")
+            self.assertIn("Existing authoritative ownership units", proposal_page)
+            self.assertIn("Existing authoritative map", proposal_page)
             self.assertEqual(ci["provider"], None)
             self.assertEqual(ci["status"], "no_provider")
             self.assertTrue(ci["instructions"])

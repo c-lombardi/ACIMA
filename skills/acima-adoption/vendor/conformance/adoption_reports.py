@@ -132,6 +132,133 @@ def _phase(name: str, purpose: str, deliverable: str, verification: str,
     }
 
 
+def _finding_records(review_validation: dict, catalog: dict) -> list[dict]:
+    """Project reviewed requirement gaps into human-readable findings.
+
+    One finding is emitted per nonconforming requirement. The qualitative review
+    does not claim semantic clustering across unrelated requirements.
+    """
+    rules_by_id = {item["id"]: item for item in catalog.get("rules", [])}
+    findings = []
+    for item in review_validation.get("rules", []):
+        if item.get("status") != "gap":
+            continue
+        rule = rules_by_id.get(item.get("rule"))
+        if not rule:
+            raise AdoptionReportError(
+                "qualitative gap references a rule missing from the current catalog: %s"
+                % item.get("rule")
+            )
+        evidence = item.get("evidence") or []
+        paths = sorted({str(ref["path"]) for ref in evidence if ref.get("path")})
+        refs = []
+        for ref in evidence:
+            path = ref.get("path")
+            if not path:
+                continue
+            if ref.get("kind") == "absence":
+                value = str(path)
+            else:
+                value = "%s:%s-%s" % (
+                    path, ref.get("startLine"), ref.get("endLine")
+                )
+            if value not in refs:
+                refs.append(value)
+        severity = rule.get("severity")
+        classification = {
+            "error": "required", "warning": "recommended", "info": "optional"
+        }.get(severity, "owner-decision")
+        automated = rule.get("automation") == "automated"
+        verification = (
+            "After the owner approves the relevant enforcement stage, run the supported "
+            "language enforcer against a known-compliant fixture and a controlled violation. "
+            "The qualitative review itself is not an automated test."
+            if automated else
+            "This requirement needs evidence-backed human review in the applicable design, "
+            "runtime or operational context. A clean static scan cannot establish it."
+        )
+        findings.append({
+            "title": rule["title"],
+            "what": item.get("rationale") or "The qualitative reviewer recorded a gap.",
+            "why": rule["summary"],
+            "rule": rule["id"],
+            "requirementRefs": [rule["id"]],
+            "paths": paths,
+            "status": "Reviewed gap",
+            "confidence": "Evidence-backed qualitative judgement; not a deterministic proof.",
+            "recommendation": rule.get("fix") or "Review the requirement and select an owner-approved correction.",
+            "classification": classification,
+            "disposition": "does-not-conform",
+            "requirementMeaning": rule["summary"],
+            "expectedOutcome": rule.get("fix") or "The implementation satisfies the stated requirement.",
+            "verification": verification,
+            "limitations": (
+                "The finding is based on the recorded reviewer interpretation and cited evidence. "
+                "The evidence validator proves provenance, not semantic correctness."
+            ),
+            "evidenceRefs": refs,
+        })
+    return findings
+
+
+def _benefit_records(assessment_result: dict) -> tuple[list[dict], list[dict]]:
+    """Create benefit and outcome projections without claiming future outcomes are realized."""
+    details = assessment_result.get("benefitDetails") or []
+    benefits = []
+    outcomes = []
+    class_map = {
+        "available-today": ("optional", "not-established", "Available today"),
+        "achievable-through-adoption": ("recommended", "implementation-dependent", "Achievable through adoption"),
+        "requires-additional-work": ("required", "implementation-dependent", "Requires additional work"),
+        "not-applicable": ("optional", "not-established", "Not applicable to the observed architecture"),
+    }
+    for index, item in enumerate(details, 1):
+        if not isinstance(item, dict) or not item.get("benefit"):
+            continue
+        benefit = str(item["benefit"])
+        classification, realization, availability = class_map.get(
+            item.get("classification"), ("owner-decision", "not-established", "Not established")
+        )
+        basis = str(item.get("basis") or "The assessment did not record a specific basis.")
+        implementation = (
+            "Already available in the assessed repository or its current tooling; this is not "
+            "a claim that ACIMA adoption changes it."
+            if item.get("classification") == "available-today" else
+            "This capability depends on the owner approving and completing the relevant adoption work."
+        )
+        verification = (
+            "The assessment identified this capability from existing repository evidence. "
+            "It has not been independently validated as a production outcome."
+            if item.get("classification") == "available-today" else
+            "Not yet realized or verified. After approved implementation, validate the behavior "
+            "with the stated positive and negative checks and observe the relevant workflow."
+        )
+        benefits.append({
+            "title": benefit,
+            "description": benefit,
+            "availability": availability,
+            "whyItMatters": basis,
+            "practicalChange": implementation,
+            "implementation": implementation,
+            "classification": classification,
+            "realization": realization,
+            "verification": verification,
+            "limitations": "Assessment benefit classification is not evidence of a realized business outcome.",
+        })
+        outcomes.append({
+            "title": benefit,
+            "description": benefit,
+            "whyItMatters": basis,
+            "practicalChange": implementation,
+            "classification": classification,
+            "realization": realization,
+            "verification": verification,
+            "limitations": "No post-implementation outcome has been measured in this assessment.",
+            "status": availability,
+        })
+    return benefits, outcomes
+
+
 def build_report_model(root: Path, review_path: Path, module_map: dict,
                        proposal: dict, state: dict) -> dict:
     """Build and independently validate the schema 1.1 report model."""
@@ -181,14 +308,20 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
     if not authoritative.get("status"):
         authoritative["status"] = "unknown"
     module_proposal = mapping.get("proposal")
+    existing_architecture = mapping.get("existingArchitecture") or (
+        module_proposal.get("existingArchitecture") if isinstance(module_proposal, dict) else {}
+    ) or {}
     map_section = {
         "status": mapping.get("status") or ("proposed" if module_proposal else authoritative.get("status")),
         "proposalId": mapping.get("proposalId"),
         "summary": mapping.get("summary") or "The module map is shown with observed evidence and unresolved ownership decisions.",
         "nextDecision": mapping.get("nextDecision") or "Review the module boundaries before approving any implementation.",
         "authoritativeMap": authoritative,
+        "authoritativeUnits": authoritative.get("units") or [],
         "proposal": module_proposal,
         "review": mapping.get("review"),
+        "existingArchitecture": existing_architecture,
+        "quality": mapping.get("quality") or {},
     }
 
     conformance = _human_review(review_validation, catalog)
@@ -215,13 +348,17 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
     }
 
     create_changes = []
+    preserve_changes = []
     for item in (proposal.get("implementationImpact") or {}).get("create", []):
         if not isinstance(item, dict) or not item.get("path"):
             continue
-        create_changes.append(_file_change(
-            str(item["path"]), "create", item.get("purpose") or "Create an ACIMA adoption artifact.",
+        action = "no-change" if item.get("action") == "preserve" else "create"
+        destination = preserve_changes if action == "no-change" else create_changes
+        destination.append(_file_change(
+            str(item["path"]), action, item.get("purpose") or "Create or preserve an ACIMA adoption artifact.",
             item.get("expectedOutcome") or "The approved adoption capability becomes available.",
             "required" if item.get("status") == "required" else "owner-decision",
+            "Preserve" if action == "no-change" else "Not approved",
         ))
     modify_changes = []
     for item in (proposal.get("implementationImpact") or {}).get("modify", []):
@@ -245,17 +382,32 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
         for collection in ("contracts", "implementation"):
             for path in ((module.get(collection) or {}).get("paths") or []):
                 inspect_paths.add(str(path))
+    for path in (existing_architecture.get("paths") or []):
+        if path:
+            inspect_paths.add(str(path))
+    for path in (existing_architecture.get("solutions") or []):
+        if path:
+            inspect_paths.add(str(path))
+    for path in (existing_architecture.get("dotnetProjects") or []):
+        if path:
+            inspect_paths.add(str(path))
+    preserve_text = (proposal.get("implementationImpact") or {}).get("preserve") or []
+    preserve_candidates = []
+    if isinstance(existing_architecture, dict):
+        preserve_candidates = (
+            existing_architecture.get("files", [])
+            or existing_architecture.get("artifacts", [])
+            or existing_architecture.get("paths", [])
+        )
+    preserved_paths = {
+        str(entry.get("path") if isinstance(entry, dict) else entry)
+        for entry in preserve_candidates if (entry.get("path") if isinstance(entry, dict) else entry)
+    }
     inspect_changes = [
         _file_change(path, "inspect", "Inspected as repository evidence; inspection does not propose a modification.",
                      "The assessment is traceable to the actual repository file.", "required", "Inspected")
-        for path in sorted(inspect_paths)
+        for path in sorted(inspect_paths - preserved_paths)
     ]
-    preserve_text = (proposal.get("implementationImpact") or {}).get("preserve") or []
-    preserve_changes = []
-    existing_architecture = map_section["proposal"].get("existingArchitecture", {}) if map_section["proposal"] else {}
-    preserve_candidates = []
-    if isinstance(existing_architecture, dict):
-        preserve_candidates = existing_architecture.get("files", []) or existing_architecture.get("artifacts", [])
     for entry in preserve_candidates:
         path = entry.get("path") if isinstance(entry, dict) else str(entry)
         if path:
@@ -353,10 +505,15 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
     })
 
     repo_name = root.name or str(root)
-    try:
-        revision = cli._revision(root).get("head")
-    except Exception:
-        revision = None
+    revision_record = (state.get("repository") or {}).get("revision") or {}
+    if isinstance(revision_record, dict):
+        revision = revision_record.get("head") or cli._git_head(root)
+        branch = revision_record.get("branch")
+        working_tree_digest = revision_record.get("workingTree")
+    else:
+        revision = cli._git_head(root)
+        branch = None
+        working_tree_digest = None
     repo_mode = (proposal.get("maturity") or {}).get("mode") or "unknown"
     if repo_mode not in {"greenfield", "brownfield", "mixed", "unknown"}:
         repo_mode = "unknown"
@@ -371,6 +528,63 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
         "nextAction": "Review the proposed module map and the HTML adoption proposal.",
         "nextActionWhy": "The report must be inspected and its exact version explicitly approved before ACIMA applies enforcement, CI, agent-guidance, or source changes.",
     }
+    findings = _finding_records(review_validation, catalog)
+    benefits, outcomes = _benefit_records(assessment_result)
+    existing_enforcement = assessment_result.get("existingEnforcement") or {}
+    target_capabilities = []
+    level_guidance = assessment_result.get("levelGuidance") or {}
+    for key, label in (
+        ("establishes", "What the selected ACIMA level establishes"),
+        ("checks", "What the selected ACIMA level checks"),
+        ("requires", "Prerequisites for the selected ACIMA level"),
+        ("doesNotProve", "What the selected ACIMA level does not prove"),
+    ):
+        value = level_guidance.get(key)
+        if value:
+            target_capabilities.append({
+                "capability": label, "change": str(value),
+                "outcome": "This describes the standard's intended guarantee, not an implementation result.",
+            })
+    for mechanism in existing_enforcement.get("mechanisms") or []:
+        if isinstance(mechanism, dict):
+            description = mechanism.get("path") or mechanism.get("name") or mechanism.get("kind")
+            if description:
+                target_capabilities.append({
+                    "capability": "Existing architecture enforcement",
+                    "change": str(description),
+                    "outcome": mechanism.get("purpose") or mechanism.get("status") or
+                               "Existing mechanism identified by read-only assessment.",
+                })
+
+    current_state_parts = []
+    if existing_architecture.get("paths"):
+        current_state_parts.append(
+            "Existing architecture and enforcement assets: " +
+            ", ".join(str(path) for path in existing_architecture.get("paths", []))
+        )
+    if existing_enforcement.get("summary"):
+        current_state_parts.append(str(existing_enforcement["summary"]))
+    if proposal.get("summary"):
+        current_state_parts.append(str(proposal["summary"]))
+    current_state = " ".join(current_state_parts) or (
+        "Current architecture was inspected; see the ownership, findings and evidence sections."
+    )
+    preserved_assets = sorted({
+        str(path) for path in (
+            (existing_architecture.get("paths") or [])
+            + (existing_architecture.get("solutions") or [])
+            + (existing_architecture.get("dotnetProjects") or [])
+        ) if path
+    })
+    preservation = list(preserve_text) if isinstance(preserve_text, list) else []
+    if existing_architecture.get("note"):
+        preservation.append(str(existing_architecture["note"]))
+    if preserved_assets:
+        preservation.append(
+            "Existing architecture assets are inspected and preserved by default: " +
+            ", ".join(preserved_assets) + ". They are not replaced merely to introduce ACIMA."
+        )
+
     workflow_stages = []
     for name, stage in (state.get("stages") or {}).items():
         if isinstance(stage, dict):
@@ -387,6 +601,13 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
         "standardVersion": json.loads((skill / "manifest.json").read_text(encoding="utf-8"))["standard"],
         "catalogSha256": catalog_sha,
         "qualitativeReview": review_document,
+        "assessmentSummary": {
+            "benefitDetails": assessment_result.get("benefitDetails") or [],
+            "existingEnforcement": existing_enforcement,
+            "dimensions": assessment_result.get("dimensions") or {},
+            "sourceFiles": assessment.get("sourceFiles", 0),
+            "language": assessment.get("language"),
+        },
         "assessmentStatus": "Qualitative review complete; module ownership and implementation review are pending.",
         "milestones": {
             "assessmentComplete": True,
@@ -395,7 +616,13 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
             "implementationComplete": False,
             "conformanceVerified": False,
         },
-        "repository": {"name": repo_name, "path": str(root), "commit": revision, "mode": repo_mode},
+        "repository": {
+            "name": repo_name, "path": str(root),
+            **({"commit": revision} if revision else {}),
+            **({"branch": branch} if branch else {}),
+            **({"workingTreeDigest": working_tree_digest} if working_tree_digest else {}),
+            "mode": repo_mode,
+        },
         "recommendation": {
             "status": recommendation,
             "summary": recommendation_summary,
@@ -407,24 +634,36 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
         },
         "overview": overview,
         "value": {
-            "benefits": [],
-            "adds": ["Evidence-backed module ownership", "Explicit contract-only dependencies", "Repeatable architecture verification after the owner approves the implementation scope."],
+            "benefits": benefits,
+            "adds": [item["capability"] for item in target_capabilities],
             "costs": ["Ongoing maintenance of the approved architecture map and checks."],
             "risks": (proposal.get("risks") or []),
         },
         "architecture": {
             "family": architecture_family,
-            "currentState": proposal.get("summary") or "Current architecture was inspected; see the evidence and module-map sections.",
-            "proposedState": "Implement only the modules, contracts, enforcement, agent instructions, and CI stages explicitly selected by the owner.",
-            "targetCapabilities": [],
+            "currentState": current_state,
+            "proposedState": "Preserve sound existing architecture and add only the missing, owner-approved ownership, enforcement, guidance and CI capabilities.",
+            "targetCapabilities": target_capabilities,
+            "existingEnforcement": existing_enforcement,
+            "existingArchitecture": existing_architecture,
         },
         "coverage": coverage,
         "conformance": conformance,
-        "strengths": proposal.get("existingStrengths") or [],
-        "findings": [],
+        "strengths": list(dict.fromkeys(
+            (proposal.get("existingStrengths") or [])
+            + [item["benefit"] for item in (assessment_result.get("benefitDetails") or [])
+               if item.get("classification") == "available-today"]
+            + ([existing_enforcement.get("summary")] if existing_enforcement.get("status") not in (None, "none")
+               and existing_enforcement.get("summary") else [])
+        )),
+        "findings": findings,
         "proposedChanges": proposed_changes,
-        "outcomes": [],
-        "outcomesStatus": "Specific realized outcomes cannot be claimed before the owner approves and verifies implementation.",
+        "outcomes": outcomes,
+        "outcomesStatus": (
+            "Potential outcomes are derived from the assessment's benefit analysis. They are not realized or verified until the owner approves the relevant work and post-implementation checks confirm them."
+            if outcomes else
+            "The assessment did not establish a distinct adoption outcome beyond the recorded requirement findings; no business benefit is inferred."
+        ),
         "decisions": decisions,
         "decisionsStatus": "The report identifies decisions requiring the repository owner's review. No decision is inferred from a branch selection.",
         "fileImpact": {"inspect": inspect_changes, "create": create_changes,
@@ -434,8 +673,12 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
                     "phases": phases},
         "roadmapStatus": "The implementation roadmap is a proposal, not an execution order until the owner approves its exact scope.",
         "phases": phases,
-        "preservation": preserve_text,
-        "preservationStatus": "Existing architecture and application behavior must be preserved unless an exact path is explicitly approved for change.",
+        "preservation": list(dict.fromkeys(preservation)),
+        "preservationStatus": (
+            "Existing architecture assets are listed from repository evidence. Preserve them unless an explicit, reviewed change is justified and approved."
+            if preservation else
+            "No specific preservation inventory was established; do not infer that existing architecture can be discarded."
+        ),
         "outOfScope": ["No branch creation or switching is authorized by this report.",
                        "No source modification, build change, dependency change, CI change, commit, push, release, or deployment is authorized by report review alone."],
         "limitations": [
@@ -451,6 +694,7 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
             "deterministicChecksBlocked": True, "proposalReviewRequired": True,
         },
         "adoptionWorkflow": {"mode": state.get("mode", "guided"), "authorized": False,
+                             "repositoryRevision": revision_record,
                              "stages": workflow_stages, "next": state.get("next", {})},
     }
 

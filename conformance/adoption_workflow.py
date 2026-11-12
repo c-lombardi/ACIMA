@@ -493,30 +493,39 @@ def _summary(state: dict) -> dict:
 def _proposal_document(root: Path, module_map: dict, state: dict) -> dict:
     proposal = module_map.get("proposal") or {}
     modules = proposal.get("modules") or []
+    units = (module_map.get("authoritativeMap") or {}).get("units") or []
     if not modules:
         # An authoritative map is already the ownership input; describe its declared units
         # instead of treating the absence of a proposal as absent ownership.
-        units = (module_map.get("authoritativeMap") or {}).get("units") or []
         grouped: dict[str, dict] = {}
         for unit in units:
             if not isinstance(unit, dict) or not unit.get("module"):
                 continue
             item = grouped.setdefault(str(unit["module"]), {
-                "name": str(unit["module"]), "confidence": "high",
-                "contracts": {"paths": []}, "implementation": {"paths": []},
+                "name": str(unit["module"]), "confidence": "declared",
+                "unitRoles": {}, "contracts": {"paths": []},
+                "implementation": {"paths": []},
             })
-            key = "contracts" if unit.get("role") == "contracts" else "implementation"
-            item[key]["paths"].extend(unit.get("paths") or [])
+            role = str(unit.get("role") or "unclassified")
+            item["unitRoles"].setdefault(role, []).extend(unit.get("paths") or [])
+            if role == "contracts":
+                item["contracts"]["paths"].extend(unit.get("paths") or [])
+            elif role == "implementation":
+                item["implementation"]["paths"].extend(unit.get("paths") or [])
         modules = list(grouped.values())
     recommendations = proposal.get("recommendations") or []
-    existing_architecture = proposal.get("existingArchitecture") or {}
+    existing_architecture = (
+        proposal.get("existingArchitecture")
+        or module_map.get("existingArchitecture")
+        or {}
+    )
     strengths = []
     if existing_architecture.get("paths"):
         strengths.append("Existing architecture or enforcement evidence was found at: %s." %
                          ", ".join(existing_architecture["paths"][:8]))
     contract_modules = [module for module in modules if module.get("contracts", {}).get("paths")]
     if contract_modules:
-        strengths.append("%s of %s candidate modules have an identified contract-shaped area "
+        strengths.append("%s of %s declared or proposed modules have an identified contract-shaped area "
                          "that can be preserved or made explicit." %
                          (len(contract_modules), len(modules)))
     manifest_modules = [module for module in modules
@@ -545,14 +554,15 @@ def _proposal_document(root: Path, module_map: dict, state: dict) -> dict:
             "prerequisites": item.get("prerequisites") or [],
             "risks": item.get("risks") or [],
         })
-    if not required:
+    authoritative_status = (module_map.get("authoritativeMap") or {}).get("status")
+    if not required and authoritative_status != "complete":
         required.append({
-            "id": "preserve-boundaries",
-            "title": "Preserve the discovered boundaries",
-            "requirement": "The repository has no structural recommendation from discovery; this is a proposal judgement, not proof of conformance.",
-            "outcome": "No boundary is changed without evidence.",
-            "implementation": "Keep the current implementation, record the boundary decision, and verify it with the enforcer.",
-            "status": "proposed",
+            "id": "owner-led-ownership-review",
+            "title": "Resolve module ownership before enforcement",
+            "requirement": "The current evidence does not establish a complete authoritative ownership map.",
+            "outcome": "Every production source path has an owner-approved module or explicit non-module disposition.",
+            "implementation": "Complete owner-led discovery and review. ACIMA will not infer ownership from project, package or directory layout.",
+            "status": "blocked",
         })
     config = {"path": CONFIG_NAME, "purpose": "Declare the approved module ownership and level.",
               "status": "required", "action": "create" if not (root / CONFIG_NAME).exists() else "preserve"}
@@ -567,14 +577,24 @@ def _proposal_document(root: Path, module_map: dict, state: dict) -> dict:
     return {
         "schemaVersion": 1,
         "status": "proposed",
+        "maturity": _maturity(root, {"units": units}),
         "mode": state["mode"],
         "recommendation": "RECOMMENDED_WITH_LIMITATIONS" if modules else "INSUFFICIENT_EVIDENCE",
-        "summary": ("Adopt the proposed module boundaries incrementally, preserve existing "
-                    "architecture, and make enforcement executable." if modules else
-                    "No safe ownership proposal is available; complete owner discovery first."),
+        "summary": (
+            "A complete authoritative module map already exists. Preserve it and evaluate which enforcement, governance and developer-guidance capabilities are still missing."
+            if authoritative_status == "complete" else
+            ("Adopt the proposed module boundaries incrementally, preserve existing "
+             "architecture, and make enforcement executable." if modules else
+             "No safe ownership proposal is available; complete owner discovery first.")
+        ),
         "existingStrengths": strengths,
         "existingArchitecture": existing_architecture,
-        "coverage": proposal.get("coverage", {}),
+        "coverage": proposal.get("coverage") or {
+            "sourceFiles": (module_map.get("authoritativeMap") or {}).get("productionFiles", 0),
+            "moduleCovered": (module_map.get("authoritativeMap") or {}).get("coveredProduction", 0),
+            "classifiedNonModule": (module_map.get("authoritativeMap") or {}).get("classifiedNonModule", 0),
+            "unresolvedProduction": len((module_map.get("authoritativeMap") or {}).get("unownedPaths", [])),
+        },
         "pathDispositions": proposal.get("pathDispositions", []),
         "requiredChanges": required,
         "enforcementStrategy": {
@@ -646,6 +666,12 @@ def _proposal_markdown(document: dict, root: Path) -> str:
                           item.get("confidence"), item.get("reason", "")))
         lines.append("")
     lines += ["## 4. Required changes", ""]
+    if not document["requiredChanges"]:
+        if (document.get("moduleMap") or {}).get("status") == "authoritative":
+            lines.append("- No module ownership rewrite is proposed. The existing authoritative map is preserved; remaining adoption work is evaluated separately.")
+        else:
+            lines.append("- No implementation change is proposed from the current discovery evidence. Resolve the outstanding ownership or evidence questions before enforcement.")
+        lines.append("")
     for item in document["requiredChanges"]:
         lines += [
             "### %s" % item["title"],

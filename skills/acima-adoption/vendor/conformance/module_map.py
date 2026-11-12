@@ -619,6 +619,10 @@ def _authoritative_review(root: Path, config: dict | None, source: list[Path]) -
         "units": units if isinstance(units, list) else [],
         "dispositions": dispositions,
         "classification": "observed" if config is not None else "absence",
+        "approvalProvenance": (
+            (config or {}).get("_moduleMapApproval")
+            if isinstance((config or {}).get("_moduleMapApproval"), dict) else None
+        ),
     }
 
 
@@ -908,6 +912,16 @@ def discover(root: Path, *, config: dict | None = None) -> dict:
     existing_architecture = _existing_architecture(root)
     if authoritative["status"] == "complete":
         review = _read_review(root)
+        if review is None and authoritative.get("approvalProvenance"):
+            marker = authoritative["approvalProvenance"]
+            if marker.get("status") == "approved":
+                review = {
+                    "status": "approved",
+                    "reviewer": marker.get("reviewer"),
+                    "reviewedOn": marker.get("reviewedOn"),
+                    "approval": marker,
+                    "source": "authoritative-config-approval-marker",
+                }
         return {
             "schemaVersion": SCHEMA_VERSION,
             "status": "authoritative",

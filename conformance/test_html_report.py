@@ -337,4 +337,100 @@ class HtmlReportTests(unittest.TestCase):
             self.assertEqual(result.returncode,2)
             self.assertIn("cannot be marked complete",result.stderr)
 
+    def test_existing_authoritative_map_renders_declared_units_and_roles_without_proposal(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            d=model()
+            d.update({
+                "schemaVersion":"1.1",
+                "outcomesStatus":"No future outcome is claimed by this renderer fixture.",
+                "decisions":[],"decisionsStatus":"No additional ownership decision is pending; the existing map is authoritative.",
+                "proposedChanges":[],"fileImpactStatus":"No file changes are proposed by this renderer fixture.",
+                "fileImpact":{"inspect":[],"create":[],"modify":[],"preserve":[]},
+                "phases":[],"roadmapStatus":"No implementation roadmap is asserted by this renderer fixture.",
+                "roadmap":{"status":"No implementation is proposed.","phases":[]},
+                "preservation":[],"preservationStatus":"No preservation change is proposed.",
+                "assessmentSummary":{"benefitDetails":[]},
+                "moduleMap":{
+                    "status":"authoritative",
+                    "summary":"The existing map was evaluated without replacement.",
+                    "proposal":None,
+                    "review":{"status":"approved","approval":{"status":"approved","reviewer":"Repository owner","reviewedOn":"2026-11-12"}},
+                    "authoritativeMap":{
+                        "present":True,"status":"complete","unitCount":4,
+                        "coveredProduction":4,"productionFiles":4,"unownedPaths":[],"issues":[],
+                        "units":[
+                            {"id":"orders-impl","module":"orders","role":"implementation","paths":["src/orders"]},
+                            {"id":"orders-contracts","module":"orders","role":"contracts","paths":["src/orders/contracts"]},
+                            {"id":"host","module":"application","role":"host","paths":["src/host"]},
+                            {"id":"shared-kernel","module":"shared","role":"shared-kernel","paths":["src/shared"]}
+                        ]
+                    },
+                    "authoritativeUnits":[
+                        {"id":"orders-impl","module":"orders","role":"implementation","paths":["src/orders"]},
+                        {"id":"orders-contracts","module":"orders","role":"contracts","paths":["src/orders/contracts"]},
+                        {"id":"host","module":"application","role":"host","paths":["src/host"]},
+                        {"id":"shared-kernel","module":"shared","role":"shared-kernel","paths":["src/shared"]}
+                    ],
+                    "existingArchitecture":{"paths":["arch/architecture-rules.json"],"solutions":[],"dotnetProjects":[]}
+                },
+                "ownershipGate":{"status":"ready","deterministicChecksBlocked":False,"ownershipDependentRules":[],"independentReviewContinues":True}
+            })
+            d["findings"][0].update({
+                "classification":"recommended","disposition":"not-applicable","confidence":"reviewed",
+                "requirementMeaning":"This requirement is not applicable to the declared fixture scope.",
+                "expectedOutcome":"The applicability decision remains explicit and evidence-backed.",
+                "verification":"Review the applicability record and evidence.",
+            })
+            d["outcomes"][0].update({
+                "whyItMatters":"A controlled example demonstrates the capability.",
+                "practicalChange":"The selected enforcement reports the violation before merge.",
+                "classification":"recommended","realization":"implementation-dependent",
+                "verification":"Run positive and negative fixtures after implementation.",
+            })
+            add_complete_review(d,root)
+            src=root/"model.json"; out=root/"report"
+            src.write_text(json.dumps(d),encoding="utf-8")
+            result=subprocess.run([sys.executable,str(SCRIPT),"--input",str(src),"--out-dir",str(out)],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+            page=(out/"proposal.html").read_text(encoding="utf-8")
+            self.assertIn("Existing authoritative ownership units",page)
+            self.assertIn("AUTHORITATIVE UNITS",page)
+            for value in ("orders-impl","orders-contracts","application","host","shared-kernel","arch/architecture-rules.json"):
+                self.assertIn(value,page)
+            self.assertNotIn("CANDIDATE MODULES",page)
+            self.assertIn("reviewer Repository owner",page)
+
+    def test_schema_11_rejects_missing_findings_for_requirement_gaps_and_missing_outcomes(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); d=model()
+            d.update({
+                "schemaVersion":"1.1",
+                "outcomesStatus":"Outcome mapping is pending.",
+                "decisions":[],"decisionsStatus":"No owner decisions are required for this fixture.",
+                "proposedChanges":[],"fileImpactStatus":"No file changes are proposed.",
+                "fileImpact":{"inspect":[],"create":[],"modify":[],"preserve":[]},
+                "phases":[],"roadmapStatus":"No implementation roadmap is asserted.",
+                "roadmap":{"status":"No implementation roadmap.","phases":[]},
+                "preservation":[],"preservationStatus":"No preservation action is proposed.",
+                "assessmentSummary":{"benefitDetails":[{"benefit":"A gate can prevent new boundary violations.","classification":"achievable-through-adoption","basis":"A gate must be implemented."}]},
+            })
+            add_complete_review(d,root)
+            d["qualitativeReview"]["rules"][0]["status"]="gap"
+            d["qualitativeReview"]["rules"][0]["rationale"]="The inspected evidence shows a reviewed architectural gap for this requirement."
+            d["conformance"][0]["disposition"]="does-not-conform"
+            d["conformance"][0]["rationale"]=d["qualitativeReview"]["rules"][0]["rationale"]
+            d["coverage"]["dispositionCounts"]["conforms"]-=1
+            d["coverage"]["dispositionCounts"]["doesNotConform"]+=1
+            d["findings"]=[]
+            d["outcomes"]=[]
+            d["value"]["benefits"]=[]
+            src=root/"model.json"; out=root/"report"
+            src.write_text(json.dumps(d),encoding="utf-8")
+            result=subprocess.run([sys.executable,str(SCRIPT),"--input",str(src),"--out-dir",str(out)],capture_output=True,text=True)
+            self.assertEqual(result.returncode,2)
+            self.assertIn("Every nonconforming requirement",result.stderr)
+            self.assertIn("Every assessment benefit detail",result.stderr)
+            self.assertIn("The value summary must reconcile",result.stderr)
+
 if __name__=='__main__': unittest.main()
