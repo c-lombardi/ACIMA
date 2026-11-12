@@ -64,3 +64,46 @@ jobs:
           path: |
             acima-report.md
             acima-artifacts/
+
+  crlf-bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Convert checkout to CRLF and prove it
+        run: |
+          python3 - <<'PY'
+          import subprocess
+          from pathlib import Path
+
+          tracked = subprocess.check_output(["git", "ls-files", "-z"]).decode("utf-8").split("\0")
+          converted = 0
+          for relative in tracked:
+              if not relative:
+                  continue
+              path = Path(relative)
+              if not path.is_file():
+                  continue
+              data = path.read_bytes()
+              if b"\0" in data:
+                  continue
+              crlf = data.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
+              if crlf != data:
+                  path.write_bytes(crlf)
+                  converted += 1
+          if converted == 0:
+              raise SystemExit("no tracked files were converted to CRLF")
+          sample = Path("tools/acima.py").read_bytes()
+          if b"\r\n" not in sample:
+              raise SystemExit("tools/acima.py is not CRLF after conversion")
+          print(f"converted {converted} tracked files to CRLF")
+          PY
+
+      - name: Bundle check on CRLF checkout
+        run: |
+          python3 tools/bundle_skill.py --check
+          python3 conformance/test_skill_bundle.py -v
