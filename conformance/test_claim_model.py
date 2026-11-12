@@ -218,6 +218,28 @@ class WaiverValidationTests(unittest.TestCase):
                             for entry in reversed_dates["invalid"]
                             for problem in entry["problems"]))
 
+    def test_waiver_path_globs_share_one_grammar(self) -> None:
+        for pattern in ("src/*.py", "src/**/*.py", "src/**", "?oo/bar.py"):
+            with self.subTest(pattern=pattern):
+                report = self.validate(scope=f"path:{pattern}")
+                self.assertEqual(len(report["valid"]), 1, report)
+        for pattern in ("", "/src/*.py", "src/", "src//x.py", "src/**bad/x.py",
+                        "src/foo**/x.py", "src/../x.py"):
+            with self.subTest(pattern=pattern):
+                report = self.validate(scope=f"path:{pattern}")
+                self.assertEqual(report["valid"], [], report)
+                self.assertTrue(report["invalid"], report)
+
+    def test_waiver_path_glob_matching_is_segment_aware(self) -> None:
+        self.assertTrue(claim.waiver_glob_match("**/*.py", "a.py"))
+        self.assertTrue(claim.waiver_glob_match("**/*.py", "src/a.py"))
+        self.assertTrue(claim.waiver_glob_match("**/*.py", "src/x/a.py"))
+        self.assertTrue(claim.waiver_glob_match("src/**/a.py", "src/a.py"))
+        self.assertTrue(claim.waiver_glob_match("src/**/a.py", "src/x/a.py"))
+        self.assertFalse(claim.waiver_glob_match("src/*", "src/x/a.py"))
+        self.assertTrue(claim.waiver_glob_match("src/?/a.py", "src/x/a.py"))
+        self.assertFalse(claim.waiver_glob_match("src/?/a.py", "src/xy/a.py"))
+
 
 class ClaimCliTests(unittest.TestCase):
     def _run(self, report: Path, evidence: Path | None, require: str,

@@ -83,6 +83,55 @@ function utcToday() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function escapeGlobCharacter(character) {
+  return character.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function waiverGlobProblem(pattern) {
+  if (!pattern) return 'the pattern is empty';
+  if (pattern !== pattern.trim()) return 'the pattern has leading or trailing whitespace';
+  if (pattern.includes('\\')) return 'use forward slashes';
+  if (pattern.startsWith('/') || pattern.endsWith('/')) {
+    return 'the pattern must be relative and must not end with a slash';
+  }
+  if (pattern.includes('//')) return 'the pattern contains an empty segment';
+  if (pattern.split('/').some((part) => part === '' || part === '.' || part === '..')) {
+    return "the pattern must not contain empty, '.' or '..' segments";
+  }
+  for (let index = 0; index < pattern.length; index += 1) {
+    if (pattern[index] === '*' && pattern[index + 1] === '*') {
+      const before = index === 0 || pattern[index - 1] === '/';
+      const after = index + 2 === pattern.length || pattern[index + 2] === '/';
+      if (!before || !after) return "'**' must be a whole path segment";
+      index += 1;
+    }
+  }
+  return null;
+}
+
+function waiverGlobMatch(pattern, value) {
+  if (waiverGlobProblem(pattern)) return false;
+  let source = '^';
+  for (let index = 0; index < pattern.length; index += 1) {
+    if (pattern[index] === '*' && pattern[index + 1] === '*') {
+      if (pattern[index + 2] === '/') {
+        source += '(?:[^/]+/)*';
+        index += 2;
+      } else {
+        source += '.*';
+        index += 1;
+      }
+    } else if (pattern[index] === '*') {
+      source += '[^/]*';
+    } else if (pattern[index] === '?') {
+      source += '[^/]';
+    } else {
+      source += escapeGlobCharacter(pattern[index]);
+    }
+  }
+  return new RegExp(`${source}$`).test(value);
+}
+
 const args = process.argv.slice(2);
 const arg = (name, fallback) => {
   const i = args.indexOf(`--${name}`);
@@ -1733,6 +1782,12 @@ function checkWaivers() {
       add('ACIMA-G001', `Waiver for ${waiver.rule} is owned by 'unassigned'; an unowned exception is not an accepted exception.`, path, index + 1);
       return;
     }
+    const scope = String(waiver.scope || '');
+    const globProblem = scope.startsWith('path:') ? waiverGlobProblem(scope.slice(5)) : null;
+    if (globProblem) {
+      add('ACIMA-G001', `Waiver for ${waiver.rule} has an invalid path scope: ${globProblem}.`, path, index + 1);
+      return;
+    }
     const expiry = waiverDate(waiver.expires);
     const reviewed = waiverDate(waiver.reviewedOn);
     const today = utcToday();
@@ -1775,7 +1830,7 @@ function applyWaivers(waivers) {
       if (!waiver.fingerprint || waiver.fingerprint !== finding.fingerprint) return false;
       if (waiver.scope === `unit:${unit?.id}`) return true;
       if (waiver.scope === `module:${unit?.module}`) return true;
-      return waiver.scope.startsWith('path:') && globMatch(finding.path, waiver.scope.slice(5));
+      return waiver.scope.startsWith('path:') && waiverGlobMatch(waiver.scope.slice(5), finding.path);
     });
   });
   findings.length = 0;

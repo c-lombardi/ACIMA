@@ -672,6 +672,68 @@ func fingerprint(rule, path, evidence string) string {
 
 var waiverFingerprint = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 
+func waiverGlobProblem(pattern string) string {
+	if pattern == "" {
+		return "the pattern is empty"
+	}
+	if pattern != strings.TrimSpace(pattern) {
+		return "the pattern has leading or trailing whitespace"
+	}
+	if strings.Contains(pattern, `\`) {
+		return "use forward slashes"
+	}
+	if strings.HasPrefix(pattern, "/") || strings.HasSuffix(pattern, "/") {
+		return "the pattern must be relative and must not end with a slash"
+	}
+	if strings.Contains(pattern, "//") {
+		return "the pattern contains an empty segment"
+	}
+	for _, part := range strings.Split(pattern, "/") {
+		if part == "" || part == "." || part == ".." {
+			return "the pattern must not contain empty, '.' or '..' segments"
+		}
+	}
+	for index := 0; index < len(pattern); index++ {
+		if pattern[index] == '*' && index+1 < len(pattern) && pattern[index+1] == '*' {
+			before := index == 0 || pattern[index-1] == '/'
+			after := index+2 == len(pattern) || pattern[index+2] == '/'
+			if !before || !after {
+				return "'**' must be a whole path segment"
+			}
+			index++
+		}
+	}
+	return ""
+}
+
+func waiverGlobMatch(pattern, value string) bool {
+	if waiverGlobProblem(pattern) != "" {
+		return false
+	}
+	var source strings.Builder
+	source.WriteString("^")
+	for index := 0; index < len(pattern); index++ {
+		if pattern[index] == '*' && index+1 < len(pattern) && pattern[index+1] == '*' {
+			if index+2 < len(pattern) && pattern[index+2] == '/' {
+				source.WriteString("([^/]+/)*")
+				index += 2
+			} else {
+				source.WriteString(".*")
+				index++
+			}
+		} else if pattern[index] == '*' {
+			source.WriteString("[^/]*")
+		} else if pattern[index] == '?' {
+			source.WriteString("[^/]")
+		} else {
+			source.WriteString(regexp.QuoteMeta(string(pattern[index])))
+		}
+	}
+	source.WriteString("$")
+	expression, err := regexp.Compile(source.String())
+	return err == nil && expression.MatchString(value)
+}
+
 func globMatch(pattern, value string) bool {
 	matched, err := filepath.Match(pattern, value)
 	return err == nil && matched
@@ -803,6 +865,12 @@ func applyWaivers(add func(string, string, string, int, string), findings []find
 			add("ACIMA-G001", fmt.Sprintf("Waiver for %s is owned by 'unassigned'; an unowned exception is not an accepted exception.", w.Rule), cfg.Waivers, i+1, "")
 			continue
 		}
+		if strings.HasPrefix(w.Scope, "path:") {
+			if problem := waiverGlobProblem(w.Scope[5:]); problem != "" {
+				add("ACIMA-G001", fmt.Sprintf("Waiver for %s has an invalid path scope: %s.", w.Rule, problem), cfg.Waivers, i+1, "")
+				continue
+			}
+		}
 		expiry, err := parseDate(w.Expires)
 		if err != nil {
 			add("ACIMA-G001", fmt.Sprintf("Waiver expiry is not a strict ISO date (YYYY-MM-DD): %s.", w.Expires), cfg.Waivers, i+1, "")
@@ -851,7 +919,7 @@ func applyWaivers(add func(string, string, string, int, string), findings []find
 					continue
 				}
 				if w.Scope == "unit:"+unit.unit.ID || w.Scope == "module:"+unit.unit.Module ||
-					(strings.HasPrefix(w.Scope, "path:") && globMatch(w.Scope[5:], f.Path)) {
+					(strings.HasPrefix(w.Scope, "path:") && waiverGlobMatch(w.Scope[5:], f.Path)) {
 					waived = true
 				}
 			}

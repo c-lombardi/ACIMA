@@ -101,6 +101,59 @@ def waiver_date(value: object) -> date | None:
     except ValueError:
         return None
 
+
+def waiver_glob_problem(pattern: str) -> str | None:
+    """Validate the shared waiver glob grammar before it can suppress anything."""
+    if not pattern:
+        return "the pattern is empty"
+    if pattern != pattern.strip():
+        return "the pattern has leading or trailing whitespace"
+    if "\\" in pattern:
+        return "use forward slashes"
+    if pattern.startswith("/") or pattern.endswith("/"):
+        return "the pattern must be relative and must not end with a slash"
+    if "//" in pattern:
+        return "the pattern contains an empty segment"
+    if any(part in ("", ".", "..") for part in pattern.split("/")):
+        return "the pattern must not contain empty, '.' or '..' segments"
+    index = 0
+    while index < len(pattern):
+        if pattern[index] == "*" and index + 1 < len(pattern) and pattern[index + 1] == "*":
+            before = index == 0 or pattern[index - 1] == "/"
+            after = index + 2 == len(pattern) or pattern[index + 2] == "/"
+            if not (before and after):
+                return "'**' must be a whole path segment"
+            index += 2
+            continue
+        index += 1
+    return None
+
+
+def waiver_glob_match(pattern: str, value: str) -> bool:
+    if waiver_glob_problem(pattern) is not None:
+        return False
+    parts = ["^"]
+    index = 0
+    while index < len(pattern):
+        if pattern[index] == "*" and index + 1 < len(pattern) and pattern[index + 1] == "*":
+            if index + 2 < len(pattern) and pattern[index + 2] == "/":
+                parts.append("(?:[^/]+/)*")
+                index += 3
+            else:
+                parts.append(".*")
+                index += 2
+        elif pattern[index] == "*":
+            parts.append("[^/]*")
+            index += 1
+        elif pattern[index] == "?":
+            parts.append("[^/]")
+            index += 1
+        else:
+            parts.append(re.escape(pattern[index]))
+            index += 1
+    parts.append("$")
+    return re.match("".join(parts), value) is not None
+
 EXCLUDE_DEFAULT = ["tests", "violations"]
 
 
@@ -631,6 +684,14 @@ class Enforcer:
                          f"Waiver for {waiver['rule']} is owned by 'unassigned'; "
                          "an unowned exception is not an accepted exception.", path, i)
                 continue
+            scope = str(waiver["scope"])
+            glob_problem = (waiver_glob_problem(scope[5:])
+                            if scope.startswith("path:") else None)
+            if glob_problem:
+                self.add("ACIMA-G001",
+                         f"Waiver for {waiver['rule']} has an invalid path scope: "
+                         f"{glob_problem}.", path, i)
+                continue
             expiry = waiver_date(waiver["expires"])
             if expiry is None:
                 self.add("ACIMA-G001",
@@ -680,7 +741,8 @@ class Enforcer:
                 and w.get("fingerprint") == finding.fingerprint
                 and (
                     (unit is not None and w["scope"] == f"unit:{unit.id}")
-                    or (w["scope"].startswith("path:") and fnmatch.fnmatch(finding.path, w["scope"][5:]))
+                    or (w["scope"].startswith("path:")
+                        and waiver_glob_match(w["scope"][5:], finding.path))
                     or (unit is not None and w["scope"] == f"module:{unit.module}")
                 )
                 for w in waivers

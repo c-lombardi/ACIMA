@@ -52,10 +52,10 @@ def run(case: dict, root: Path) -> dict:
 
 def write_waiver(root: Path, finding: dict, fingerprint: str | None, *,
                  owner: str = "regression-test", expires: str = "2099-01-01",
-                 reviewed_on: str = "2026-11-08") -> None:
+                 reviewed_on: str = "2026-11-08", scope: str | None = None) -> None:
     waiver = {
         "rule": finding["rule"],
-        "scope": f"path:{finding['path']}",
+        "scope": scope or f"path:{finding['path']}",
         "owner": owner,
         "reason": "prove that a baseline is finding-scoped",
         "expires": expires,
@@ -189,6 +189,57 @@ class WaiverFingerprintTests(unittest.TestCase):
                                              f"{language}: {label} suppressed findings")
                             self.assertIn("ACIMA-G001", rules,
                                           f"{language}: {label} must be reported as G001")
+
+    def test_waiver_path_globs_share_one_contract(self) -> None:
+        for language, case in CASES.items():
+            if shutil.which(case["tool"]) is None:
+                self.skipTest(f"{case['tool']} is not installed")
+            with self.subTest(language=language), tempfile.TemporaryDirectory() as temporary:
+                target = Path(temporary) / language
+                shutil.copytree(ROOT / case["dir"], target,
+                                ignore=shutil.ignore_patterns("bin", "obj", "__pycache__",
+                                                              "node_modules", ".git"))
+                before = run(case, target)["findings"]
+                nested = next((finding for finding in before
+                               if finding.get("fingerprint") and finding["path"].count("/") >= 3),
+                              None)
+                direct = next((finding for finding in before
+                               if finding.get("fingerprint") and finding["path"].count("/") == 1),
+                              None)
+                self.assertIsNotNone(nested, f"{language}: no nested finding to test")
+                self.assertIsNotNone(direct, f"{language}: no direct finding to test")
+                assert nested is not None and direct is not None
+
+                parts = nested["path"].split("/")
+                recursive = f"{parts[0]}/**/{parts[-1]}"
+                write_waiver(target, nested, nested["fingerprint"], scope=f"path:{recursive}")
+                after = run(case, target)["findings"]
+                matches = {(finding["rule"], finding["path"]) for finding in after}
+                self.assertNotIn((nested["rule"], nested["path"]), matches,
+                                 f"{language}: **/ did not match at a segment boundary")
+
+                crossing = f"{parts[0]}/*"
+                write_waiver(target, nested, nested["fingerprint"], scope=f"path:{crossing}")
+                after = run(case, target)["findings"]
+                matches = {(finding["rule"], finding["path"]) for finding in after}
+                self.assertIn((nested["rule"], nested["path"]), matches,
+                              f"{language}: * crossed a path separator")
+
+                direct_pattern = f"**/{direct['path'].split('/')[-1]}"
+                write_waiver(target, direct, direct["fingerprint"], scope=f"path:{direct_pattern}")
+                after = run(case, target)["findings"]
+                matches = {(finding["rule"], finding["path"]) for finding in after}
+                self.assertNotIn((direct["rule"], direct["path"]), matches,
+                                 f"{language}: **/ did not match zero directories")
+
+                invalid = f"{parts[0]}/**bad/{parts[-1]}"
+                write_waiver(target, nested, nested["fingerprint"], scope=f"path:{invalid}")
+                after = run(case, target)["findings"]
+                matches = {(finding["rule"], finding["path"]) for finding in after}
+                self.assertIn((nested["rule"], nested["path"]), matches,
+                              f"{language}: an invalid glob suppressed a finding")
+                self.assertIn("ACIMA-G001", {finding["rule"] for finding in after},
+                              f"{language}: an invalid glob must be reported as G001")
 
 
 class AdoptionPreflightTests(unittest.TestCase):

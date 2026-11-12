@@ -1443,6 +1443,14 @@ internal sealed class Enforcer
                 continue;
             }
 
+            var globProblem = waiver.Scope!.StartsWith("path:", StringComparison.Ordinal)
+                ? WaiverGlobProblem(waiver.Scope[5..]) : null;
+            if (globProblem is not null)
+            {
+                Add(G001, $"Waiver for {waiver.Rule} has an invalid path scope: {globProblem}.", _cfg.Waivers, index + 1, string.Empty);
+                continue;
+            }
+
             if (!DateOnly.TryParseExact(waiver.Expires, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var expiry))
             {
                 Add(G001, $"Waiver expiry is not a strict ISO date (YYYY-MM-DD): {waiver.Expires}.", _cfg.Waivers, index + 1, string.Empty);
@@ -1507,7 +1515,7 @@ internal sealed class Enforcer
                         && (waiver.Scope == "unit:" + unit.Id
                             || waiver.Scope == "module:" + unit.Module))
                     || (waiver.Scope!.StartsWith("path:", StringComparison.Ordinal)
-                        && GlobMatch(waiver.Scope[5..], finding.Path))));
+                        && WaiverGlobMatch(waiver.Scope[5..], finding.Path))));
         });
     }
 
@@ -1524,6 +1532,70 @@ internal sealed class Enforcer
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes($"{rule}\0{path}\0{evidence}"));
         return "sha256:" + Convert.ToHexString(bytes).ToLowerInvariant();
+    }
+
+    private static string? WaiverGlobProblem(string pattern)
+    {
+        if (pattern.Length == 0) return "the pattern is empty";
+        if (pattern != pattern.Trim()) return "the pattern has leading or trailing whitespace";
+        if (pattern.Contains('\\')) return "use forward slashes";
+        if (pattern.StartsWith("/", StringComparison.Ordinal) ||
+            pattern.EndsWith("/", StringComparison.Ordinal))
+            return "the pattern must be relative and must not end with a slash";
+        if (pattern.Contains("//", StringComparison.Ordinal)) return "the pattern contains an empty segment";
+        if (pattern.Split('/').Any(part => part is "" or "." or ".."))
+            return "the pattern must not contain empty, '.' or '..' segments";
+        for (var index = 0; index < pattern.Length; index++)
+        {
+            if (pattern[index] != '*' || index + 1 >= pattern.Length || pattern[index + 1] != '*') continue;
+            var before = index == 0 || pattern[index - 1] == '/';
+            var after = index + 2 == pattern.Length || pattern[index + 2] == '/';
+            if (!before || !after) return "'**' must be a whole path segment";
+            index++;
+        }
+
+        return null;
+    }
+
+    private static bool WaiverGlobMatch(string pattern, string value)
+    {
+        if (WaiverGlobProblem(pattern) is not null) return false;
+        var regex = new StringBuilder("^");
+        for (var index = 0; index < pattern.Length; index++)
+        {
+            var character = pattern[index];
+            if (character == '*')
+            {
+                if (index + 1 < pattern.Length && pattern[index + 1] == '*')
+                {
+                    index++;
+                    if (index + 1 < pattern.Length && pattern[index + 1] == '/')
+                    {
+                        index++;
+                        regex.Append("(?:[^/]+/)*");
+                    }
+                    else
+                    {
+                        regex.Append(".*");
+                    }
+                }
+                else
+                {
+                    regex.Append("[^/]*");
+                }
+            }
+            else if (character == '?')
+            {
+                regex.Append("[^/]");
+            }
+            else
+            {
+                regex.Append(Regex.Escape(character.ToString()));
+            }
+        }
+
+        regex.Append('$');
+        return Regex.IsMatch(value, regex.ToString());
     }
 
     private static bool GlobMatch(string pattern, string value)

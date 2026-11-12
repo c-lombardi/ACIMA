@@ -48,6 +48,70 @@ FINGERPRINT_PATTERN = re.compile(r"sha256:[0-9a-f]{64}$")
 ISO_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
+def _waiver_glob_problem(pattern: str) -> str | None:
+    """Return why ``pattern`` is not a valid waiver path glob.
+
+    The contract is deliberately small and shared by every enforcer: ``*`` and ``?``
+    match within one path segment, and ``**`` is a whole segment matching zero or more
+    segments. Character classes and brace expansion are literals, not syntax.
+    """
+    if not pattern:
+        return "the pattern is empty"
+    if pattern != pattern.strip():
+        return "the pattern has leading or trailing whitespace"
+    if "\\" in pattern:
+        return "use forward slashes"
+    if pattern.startswith("/") or pattern.endswith("/"):
+        return "the pattern must be relative and must not end with a slash"
+    if "//" in pattern:
+        return "the pattern contains an empty segment"
+    if any(part in ("", ".", "..") for part in pattern.split("/")):
+        return "the pattern must not contain empty, '.' or '..' segments"
+    index = 0
+    while index < len(pattern):
+        if pattern[index] == "*" and index + 1 < len(pattern) and pattern[index + 1] == "*":
+            before = index == 0 or pattern[index - 1] == "/"
+            after = index + 2 == len(pattern) or pattern[index + 2] == "/"
+            if not (before and after):
+                return "'**' must be a whole path segment"
+            index += 2
+            continue
+        index += 1
+    return None
+
+
+def _waiver_glob_regex(pattern: str) -> re.Pattern[str] | None:
+    if _waiver_glob_problem(pattern) is not None:
+        return None
+    parts = ["^"]
+    index = 0
+    while index < len(pattern):
+        if pattern[index] == "*" and index + 1 < len(pattern) and pattern[index + 1] == "*":
+            if index + 2 < len(pattern) and pattern[index + 2] == "/":
+                parts.append("(?:[^/]+/)*")
+                index += 3
+            else:
+                parts.append(".*")
+                index += 2
+        elif pattern[index] == "*":
+            parts.append("[^/]*")
+            index += 1
+        elif pattern[index] == "?":
+            parts.append("[^/]")
+            index += 1
+        else:
+            parts.append(re.escape(pattern[index]))
+            index += 1
+    parts.append("$")
+    return re.compile("".join(parts))
+
+
+def waiver_glob_match(pattern: str, value: str) -> bool:
+    """Match one repository-relative path using the shared waiver glob contract."""
+    expression = _waiver_glob_regex(pattern)
+    return expression is not None and expression.match(value) is not None
+
+
 def _waiver_scope_is_known(scope: str, scopes: set[str]) -> bool:
     """Match the enforcers' waiver scope vocabulary exactly.
 
@@ -55,7 +119,8 @@ def _waiver_scope_is_known(scope: str, scopes: set[str]) -> bool:
     ``path:<glob>`` against finding paths. ``repository`` is manual-evidence scope, not a
     waiver scope, so accepting it here would approve an exception the gate never applies.
     """
-    return scope in scopes or (scope.startswith("path:") and bool(scope[5:].strip()))
+    return scope in scopes or (scope.startswith("path:")
+                               and _waiver_glob_problem(scope[5:]) is None)
 
 
 def _iso_date(value: Any) -> date | None:
@@ -140,6 +205,10 @@ def validate_waivers(document: Any, *, today: date | None = None,
         if reviewed and expiry and reviewed > expiry:
             problems.append("reviewedOn is after expires")
         scope = str(waiver.get("scope", "")).strip()
+        glob_problem = (_waiver_glob_problem(scope[5:])
+                        if scope.startswith("path:") else None)
+        if glob_problem:
+            problems.append(f"path scope is invalid: {glob_problem}")
         entry = {"index": index, "rule": waiver.get("rule"), "problems": problems}
         if missing:
             result["missing"].append(entry)
@@ -150,7 +219,7 @@ def validate_waivers(document: Any, *, today: date | None = None,
         if str(waiver.get("owner", "")).strip().lower() in ("", "unassigned"):
             result["unowned"].append(entry)
         scope_known = bool(scope) and _waiver_scope_is_known(scope, scopes)
-        if scope and not scope_known:
+        if scope and not scope_known and not glob_problem:
             result["scopeMismatch"].append(entry)
             result["invalid"].append({**entry, "problems": problems + [
                 f"scope {scope!r} matches no declared unit/module or path: pattern"]})
