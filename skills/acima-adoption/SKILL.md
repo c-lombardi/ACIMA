@@ -7,7 +7,7 @@ allowed-tools: Read Grep Glob Bash Edit Write
 metadata:
   standard: "1.9.0-draft.2"
   skill-version: "1.35.0"
-  catalog-sha256: "293fa208a68bd3e0da13f380feaa90288292cf26e2373cae8af0e122230448a0"
+  catalog-sha256: "3ec87d8dbf5f9ed80ce783d20c4763d4b358c00eb7697254d4235135c5e23d6e"
 ---
 
 # ACIMA adoption

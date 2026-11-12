@@ -82,8 +82,17 @@ SOURCES = [
 ]
 
 
+def canonical_bytes(data: bytes) -> bytes:
+    """Return text bytes with every line ending normalized to LF."""
+    return data.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+
+
+def digest_bytes(data: bytes) -> str:
+    return hashlib.sha256(canonical_bytes(data)).hexdigest()
+
+
 def digest(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return digest_bytes(path.read_bytes())
 
 
 def build() -> int:
@@ -98,14 +107,16 @@ def build() -> int:
         target = VENDOR / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
-        files[relative] = {"sha256": digest(source), "bytes": source.stat().st_size}
+        canonical = canonical_bytes(source.read_bytes())
+        files[relative] = {"sha256": hashlib.sha256(canonical).hexdigest(),
+                           "bytes": len(canonical)}
     manifest = {
         "purpose": "files the adoption skill reads when it is copied out of the standard repository",
         "layout": "paths mirror the repository root, so STANDARD_ROOT can point at vendor/ unchanged",
         "catalogSha256": files["tools/acima-spec/rules.json"]["sha256"],
         "files": dict(sorted(files.items())),
     }
-    (VENDOR / "MANIFEST.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    (VENDOR / "MANIFEST.json").write_bytes((json.dumps(manifest, indent=2) + "\n").encode("utf-8"))
     print(f"bundle_skill: wrote {len(files)} files and MANIFEST.json")
     return 0
 

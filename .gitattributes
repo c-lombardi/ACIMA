@@ -1,0 +1,3 @@
+# Keep text files canonical in the repository and in every checkout.
+# The vendor manifest hashes these files, so CRLF must never change the bytes Git stores or checks out.
+* text=auto eol=lf
