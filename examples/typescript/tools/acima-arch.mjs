@@ -68,6 +68,7 @@ const FRAMEWORK = ['express', 'fastify', 'koa', '@nestjs/core', 'hono', 'next', 
 const AMBIENT = [/new Date\(/, /Date\.now\(/, /crypto\.randomUUID\(/, /Math\.random\(/, /performance\.now\(/];
 const SQL = /\b(?:from|into|update|join)\s+([a-z][a-z0-9_]*)/gi;
 const UNTYPED = /:\s*(any|unknown|object)\b|Record<string,\s*(any|unknown|object)>/;
+const WAIVER_FINGERPRINT = /^sha256:[0-9a-f]{64}$/;
 
 const args = process.argv.slice(2);
 const arg = (name, fallback) => {
@@ -1715,6 +1716,10 @@ function checkWaivers() {
       add('ACIMA-G001', `Waiver names an unknown rule: ${waiver.rule}.`, path, index + 1);
       return;
     }
+    if (String(waiver.owner || '').trim().toLowerCase() === 'unassigned') {
+      add('ACIMA-G001', `Waiver for ${waiver.rule} is owned by 'unassigned'; an unowned exception is not an accepted exception.`, path, index + 1);
+      return;
+    }
     const expiry = new Date(waiver.expires);
     if (Number.isNaN(expiry.getTime())) {
       add('ACIMA-G001', `Waiver expiry is not an ISO date: ${waiver.expires}.`, path, index + 1);
@@ -1722,7 +1727,10 @@ function checkWaivers() {
       add('ACIMA-G002', `Waiver for ${waiver.rule} expired on ${waiver.expires} (owner: ${waiver.owner}).`, path, index + 1);
     } else if (!String(waiver.fingerprint || '').trim()) {
       add('ACIMA-G001', `Waiver for ${waiver.rule} has no finding fingerprint; a broad waiver can hide future findings.`, path, index + 1);
+    } else if (!WAIVER_FINGERPRINT.test(String(waiver.fingerprint).trim())) {
+      add('ACIMA-G001', `Waiver for ${waiver.rule} has a malformed fingerprint; expected sha256:<64 lowercase hex>.`, path, index + 1);
     } else {
+      waiver.fingerprint = String(waiver.fingerprint).trim();
       waivers.push(waiver);
     }
   });

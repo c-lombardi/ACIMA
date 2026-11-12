@@ -49,14 +49,16 @@ def run(case: dict, root: Path) -> dict:
     return json.loads(result.stdout)
 
 
-def write_waiver(root: Path, finding: dict, fingerprint: str | None) -> None:
+def write_waiver(root: Path, finding: dict, fingerprint: str | None, *,
+                 owner: str = "regression-test", expires: str = "2099-01-01",
+                 reviewed_on: str = "2026-11-08") -> None:
     waiver = {
         "rule": finding["rule"],
         "scope": f"path:{finding['path']}",
-        "owner": "regression-test",
+        "owner": owner,
         "reason": "prove that a baseline is finding-scoped",
-        "expires": "2099-01-01",
-        "reviewedOn": "2026-11-08",
+        "expires": expires,
+        "reviewedOn": reviewed_on,
     }
     if fingerprint is not None:
         waiver["fingerprint"] = fingerprint
@@ -112,6 +114,38 @@ class WaiverFingerprintTests(unittest.TestCase):
                                  f"{language}: a fingerprint-less waiver hid findings")
                 self.assertIn("ACIMA-G001", {finding["rule"] for finding in broad},
                               f"{language}: a broad waiver must be reported as G001")
+
+    def test_unassigned_owner_and_malformed_fingerprint_are_rejected(self) -> None:
+        for language, case in CASES.items():
+            if shutil.which(case["tool"]) is None:
+                self.skipTest(f"{case['tool']} is not installed")
+            with self.subTest(language=language), tempfile.TemporaryDirectory() as temporary:
+                target = Path(temporary) / language
+                shutil.copytree(ROOT / case["dir"], target,
+                                ignore=shutil.ignore_patterns("bin", "obj", "__pycache__",
+                                                              "node_modules", ".git"))
+                before = run(case, target)["findings"]
+                counts = Counter(finding["rule"] for finding in before)
+                candidates = [finding for finding in before
+                              if finding.get("fingerprint") and counts[finding["rule"]] >= 2]
+                if not candidates:
+                    candidates = [finding for finding in before if finding.get("fingerprint")]
+                self.assertTrue(candidates, f"{language}: no repeatable finding to test")
+                chosen = candidates[0]
+                baseline = counts[chosen["rule"]]
+                cases = {
+                    "unassigned owner": ("unassigned", chosen["fingerprint"]),
+                    "malformed fingerprint": ("regression-test", "sha256:" + "0" * 63),
+                }
+                for label, (owner, fingerprint) in cases.items():
+                    with self.subTest(language=language, case=label):
+                        write_waiver(target, chosen, fingerprint, owner=owner)
+                        after = run(case, target)["findings"]
+                        count = sum(1 for finding in after if finding["rule"] == chosen["rule"])
+                        self.assertEqual(count, baseline,
+                                         f"{language}: {label} suppressed findings")
+                        self.assertIn("ACIMA-G001", {finding["rule"] for finding in after},
+                                      f"{language}: {label} must be reported as G001")
 
 
 class AdoptionPreflightTests(unittest.TestCase):

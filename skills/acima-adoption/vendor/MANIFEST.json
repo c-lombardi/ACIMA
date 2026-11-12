@@ -244,8 +244,8 @@
       "bytes": 326
     },
     "examples/dotnet/tools/Acima.ArchTests/Program.cs": {
-      "sha256": "1a4e09de93e84bfe1ff0162a8e67b0b4fbc6273e1a899bd8311a408c7230775f",
-      "bytes": 84375
+      "sha256": "529cc3f1ea4cba9dc257f7dfdde3b864d2a70a15617d71ab961ac03416f5350c",
+      "bytes": 85151
     },
     "examples/dotnet/violations/expected.json": {
       "sha256": "c770bb7a336dbb30dc2442c07584dae96f2acdd6002620a1b3491861b993eb80",
@@ -312,8 +312,8 @@
       "bytes": 1633
     },
     "examples/go/tools/archtest/main.go": {
-      "sha256": "aa097d0df1eb306a29f5579b2cfda6840c3fb6ce03b00c92c7d097b46e4e8bbc",
-      "bytes": 30483
+      "sha256": "a019af6b85959ce3ac78ba84e006d8b9afe3234a8585736bf24f2e5a2f97663d",
+      "bytes": 31065
     },
     "examples/go/violations/expected.json": {
       "sha256": "a8235fb6d880ad997a2603b54bafebea61234c00bd03d21b05943235f04adf48",
@@ -436,8 +436,8 @@
       "bytes": 556
     },
     "examples/python/tools/acima_arch.py": {
-      "sha256": "3e9ca673a197cc1e6761c8a2392dbd59d71e0cba8c8cd3d0ca82d8afe687d046",
-      "bytes": 93790
+      "sha256": "e4909ef022a714e96988355f3212950290064303586672bb697dedce1170f0f3",
+      "bytes": 94509
     },
     "examples/python/violations/expected.json": {
       "sha256": "cbbc143e50775edb73d46017e5b8675291130e2db30d6e3aa1d41d955ed1b403",
@@ -504,8 +504,8 @@
       "bytes": 1118
     },
     "examples/typescript/tools/acima-arch.mjs": {
-      "sha256": "2917777dd5a962ce63bfdc75e05b15e16853161183d0a63286e6cbdc292f8fc1",
-      "bytes": 79669
+      "sha256": "a8bb3313bb650db6acfd7149e2dac17a99447d4fa5eafe0e7c03edb4a3784b8a",
+      "bytes": 80241
     },
     "examples/typescript/tsconfig.json": {
       "sha256": "d84e8d5af0502995f3146c10b211bea5d42c04b1b33e279418db475e568eb09b",

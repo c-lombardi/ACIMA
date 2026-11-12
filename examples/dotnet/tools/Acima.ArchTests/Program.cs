@@ -218,6 +218,7 @@ internal sealed class Enforcer
     private static readonly Regex InternalStatic = new(@"^\s*public\s+static\s+(?!readonly\b)[\w<>,\[\]\.\?]+\s+(\w+)\s*(?:=\s*(?!=)|;)", RegexOptions.Multiline | RegexOptions.Compiled);
     private static readonly Regex StringLiteral = new("\"((?:[^\"\\\\]|\\\\.)*)\"", RegexOptions.Compiled);
     private static readonly Regex SqlTable = new(@"(?i)\b(?:from|into|update|join)\s+([a-z][a-z0-9_]*)", RegexOptions.Compiled);
+    private static readonly Regex WaiverFingerprint = new(@"^sha256:[0-9a-f]{64}$", RegexOptions.Compiled);
 
     private readonly string _root;
     private readonly Config _cfg;
@@ -1435,6 +1436,12 @@ internal sealed class Enforcer
                 continue;
             }
 
+            if (waiver.Owner!.Trim().Equals("unassigned", StringComparison.OrdinalIgnoreCase))
+            {
+                Add(G001, $"Waiver for {waiver.Rule} is owned by 'unassigned'; an unowned exception is not an accepted exception.", _cfg.Waivers, index + 1, string.Empty);
+                continue;
+            }
+
             if (!DateTime.TryParse(waiver.Expires, out var expiry) || expiry.Date < DateTime.UtcNow.Date)
             {
                 Add(G002, $"Waiver for {waiver.Rule} expired on {waiver.Expires} (owner: {waiver.Owner}).", _cfg.Waivers, index + 1, string.Empty);
@@ -1447,6 +1454,13 @@ internal sealed class Enforcer
                 continue;
             }
 
+            if (!WaiverFingerprint.IsMatch(waiver.Fingerprint.Trim()))
+            {
+                Add(G001, $"Waiver for {waiver.Rule} has a malformed fingerprint; expected sha256:<64 lowercase hex>.", _cfg.Waivers, index + 1, string.Empty);
+                continue;
+            }
+
+            waiver.Fingerprint = waiver.Fingerprint.Trim();
             active.Add(waiver);
         }
 

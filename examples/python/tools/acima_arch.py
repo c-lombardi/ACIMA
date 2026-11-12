@@ -88,6 +88,7 @@ AMBIENT = (r"datetime\.now\b", r"datetime\.utcnow\b", r"date\.today\b", r"time\.
            r"uuid4\b", r"uuid\.uuid1\b", r"\brandom\.")
 SQL = re.compile(r"(?is)\b(?:from|into|update|join)\s+[\"'`]?([a-z][a-z0-9_]*)")
 WRITE_SQL = re.compile(r"(?is)\b(?:insert\s+into|update|delete\s+from|join)\s+[\"'`]?([a-z][a-z0-9_]*)")
+FINGERPRINT_PATTERN = re.compile(r"sha256:[0-9a-f]{64}$")
 
 EXCLUDE_DEFAULT = ["tests", "violations"]
 
@@ -614,6 +615,11 @@ class Enforcer:
             if waiver["rule"] not in CATALOG:
                 self.add("ACIMA-G001", f"Waiver names an unknown rule: {waiver['rule']}.", path, i)
                 continue
+            if str(waiver["owner"]).strip().lower() == "unassigned":
+                self.add("ACIMA-G001",
+                         f"Waiver for {waiver['rule']} is owned by 'unassigned'; "
+                         "an unowned exception is not an accepted exception.", path, i)
+                continue
             try:
                 expired = date.fromisoformat(waiver["expires"]) < date.today()
             except ValueError:
@@ -628,7 +634,12 @@ class Enforcer:
                 self.add("ACIMA-G001",
                          f"Waiver for {waiver['rule']} has no finding fingerprint; "
                          "a broad waiver can hide future findings.", path, i)
+            elif not FINGERPRINT_PATTERN.match(str(waiver["fingerprint"]).strip()):
+                self.add("ACIMA-G001",
+                         f"Waiver for {waiver['rule']} has a malformed fingerprint; "
+                         "expected sha256:<64 lowercase hex>.", path, i)
             else:
+                waiver["fingerprint"] = str(waiver["fingerprint"]).strip()
                 waivers.append(waiver)
         return waivers
 

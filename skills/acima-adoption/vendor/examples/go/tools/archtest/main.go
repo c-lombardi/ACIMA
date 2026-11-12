@@ -670,6 +670,8 @@ func fingerprint(rule, path, evidence string) string {
 	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
+var waiverFingerprint = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+
 func globMatch(pattern, value string) bool {
 	matched, err := filepath.Match(pattern, value)
 	return err == nil && matched
@@ -797,6 +799,10 @@ func applyWaivers(add func(string, string, string, int, string), findings []find
 			add("ACIMA-G001", fmt.Sprintf("Waiver names an unknown rule: %s.", w.Rule), cfg.Waivers, i+1, "")
 			continue
 		}
+		if strings.EqualFold(strings.TrimSpace(w.Owner), "unassigned") {
+			add("ACIMA-G001", fmt.Sprintf("Waiver for %s is owned by 'unassigned'; an unowned exception is not an accepted exception.", w.Rule), cfg.Waivers, i+1, "")
+			continue
+		}
 		expiry, err := parseDate(w.Expires)
 		if err != nil {
 			add("ACIMA-G001", fmt.Sprintf("Waiver expiry is not an ISO date: %s.", w.Expires), cfg.Waivers, i+1, "")
@@ -806,10 +812,16 @@ func applyWaivers(add func(string, string, string, int, string), findings []find
 			add("ACIMA-G002", fmt.Sprintf("Waiver for %s expired on %s (owner: %s).", w.Rule, w.Expires, w.Owner), cfg.Waivers, i+1, "")
 			continue
 		}
-		if strings.TrimSpace(w.Fingerprint) == "" {
+		fingerprint := strings.TrimSpace(w.Fingerprint)
+		if fingerprint == "" {
 			add("ACIMA-G001", fmt.Sprintf("Waiver for %s has no finding fingerprint; a broad waiver can hide future findings.", w.Rule), cfg.Waivers, i+1, "")
 			continue
 		}
+		if !waiverFingerprint.MatchString(fingerprint) {
+			add("ACIMA-G001", fmt.Sprintf("Waiver for %s has a malformed fingerprint; expected sha256:<64 lowercase hex>.", w.Rule), cfg.Waivers, i+1, "")
+			continue
+		}
+		w.Fingerprint = fingerprint
 		active = append(active, w)
 	}
 	kept := []finding{}
