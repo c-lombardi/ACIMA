@@ -3867,8 +3867,8 @@ def status_project(root: Path) -> dict:
     calibration = _calibration()
     waiver_path = root / ((config or {}).get("waivers") or "acima/evidence/waivers.json")
     waivers = _waiver_document(waiver_path) if waiver_path.is_file() else {"waivers": []}
-    scopes = {str(unit.get("id")) for unit in units if unit.get("id")}
-    scopes |= {str(unit.get("module")) for unit in units if unit.get("module")}
+    scopes = {f"unit:{unit.get('id')}" for unit in units if unit.get("id")}
+    scopes |= {f"module:{unit.get('module')}" for unit in units if unit.get("module")}
     waiver_report = validate_waivers(waivers, valid_scopes=scopes)
     fingerprinted = _waiver_document(_artifact_path(
         root, "acima/evidence/baseline.json", ".acima/baseline.json")).get("fingerprints")

@@ -80,7 +80,7 @@ Only run when `acima.config.json` exists.
 | `GOV-001` | units are declared and the level is `L1`, `L2` or `L3` | repair the config; an empty config classifies nothing |
 | `GOV-002` | the enforcer runs, and reports the baseline; a profile with no runner blocks | exit `2` is a tool failure — stop; exit `1` is a baseline, expected on day one; no reference runner is `fail` (unsupported, not clean) |
 | `GOV-003` | waivers have rule, scope, fingerprint (`sha256:<64 hex>`), owner, reason, expiry and review date; none are expired or unowned | `G001`/`G002`: complete them or renew deliberately; replace `unassigned` with a real owner |
-| `GOV-004` | each waiver scope is `repository` or a declared unit id/module | correct the scope; it is a filter, not permission to suppress a unit |
+| `GOV-004` | each waiver scope is `unit:<id>`, `module:<name>` or `path:<glob>` | correct the scope; it is a filter, not permission to suppress a unit |
 
 `GOV-002` deliberately distinguishes four outcomes: clean (`pass`), baseline findings (`warn`),
 enforcer failure (`fail`), and unsupported language profile (`fail`). Collapsing the first two

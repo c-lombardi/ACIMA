@@ -714,8 +714,9 @@ def check_target(project: Path, report: Report, manifest: dict) -> tuple[list[di
                     waivers = []
                     document = {}
                 if document:
-                    scopes = {str(unit.get("id")) for unit in config.get("units", []) if unit.get("id")}
-                    scopes |= {str(unit.get("module")) for unit in config.get("units", [])
+                    scopes = {f"unit:{unit.get('id')}" for unit in config.get("units", [])
+                              if unit.get("id")}
+                    scopes |= {f"module:{unit.get('module')}" for unit in config.get("units", [])
                                if unit.get("module")}
                     validation = validate_waivers(document, valid_scopes=scopes)
                     if validation["invalid"]:
@@ -741,7 +742,7 @@ def check_target(project: Path, report: Report, manifest: dict) -> tuple[list[di
                         report.add("GOV-004", "warn",
                                    f"{len(validation['scopeMismatch'])} waiver(s) name a scope that "
                                    "no declared unit owns",
-                                   "use 'repository' or a declared unit id/module")
+                                   "use 'unit:<id>', 'module:<name>' or 'path:<glob>'")
     else:
         if (project / PROFILE_MANIFEST).is_file():
             report.add("TGT-006", "fail",

@@ -47,6 +47,16 @@ WAIVER_FIELDS = ("rule", "scope", "fingerprint", "owner", "reason", "expires", "
 FINGERPRINT_PATTERN = re.compile(r"sha256:[0-9a-f]{64}$")
 
 
+def _waiver_scope_is_known(scope: str, scopes: set[str]) -> bool:
+    """Match the enforcers' waiver scope vocabulary exactly.
+
+    Enforcers apply ``unit:<id>`` and ``module:<name>`` against declared units, and
+    ``path:<glob>`` against finding paths. ``repository`` is manual-evidence scope, not a
+    waiver scope, so accepting it here would approve an exception the gate never applies.
+    """
+    return scope in scopes or (scope.startswith("path:") and bool(scope[5:].strip()))
+
+
 def _iso_date(value: Any) -> date | None:
     try:
         return date.fromisoformat(str(value)[:10])
@@ -101,7 +111,7 @@ def validate_waivers(document: Any, *, today: date | None = None,
                                   "problems": ["waivers is not a list"]})
         return result
     result["total"] = len(waivers)
-    scopes = set(valid_scopes or set()) | {FULL_SCOPE}
+    scopes = set(valid_scopes or set())
     for index, waiver in enumerate(waivers):
         if not isinstance(waiver, dict):
             result["invalid"].append({"index": index, "rule": None,
@@ -133,11 +143,12 @@ def validate_waivers(document: Any, *, today: date | None = None,
             result["expired"].append(entry)
         if str(waiver.get("owner", "")).strip().lower() in ("", "unassigned"):
             result["unowned"].append(entry)
-        if scope and scopes and scope not in scopes:
+        scope_known = bool(scope) and _waiver_scope_is_known(scope, scopes)
+        if scope and not scope_known:
             result["scopeMismatch"].append(entry)
             result["invalid"].append({**entry, "problems": problems + [
-                f"scope {scope!r} matches no declared unit"]})
-        if not problems and not (expiry and expiry < today) and scope in scopes:
+                f"scope {scope!r} matches no declared unit/module or path: pattern"]})
+        if not problems and not (expiry and expiry < today) and scope_known:
             result["valid"].append(entry)
     return result
 

@@ -312,6 +312,53 @@ class AdoptionExperienceTests(unittest.TestCase):
             self.assertEqual(own["state"], "BLOCKED")
             self.assertIn("matches no declared unit", own["evidence"])
 
+    def test_preflight_accepts_enforcer_waiver_scopes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_json(root, "acima.config.json", {
+                "standard": CATALOG["version"], "language": "python", "level": "L1",
+                "mode": "base", "units": [{"id": "u0", "module": "orders",
+                                            "role": "implementation", "paths": ["src/u0"]}],
+            })
+            (root / "src/u0").mkdir(parents=True)
+            (root / "src/u0/app.py").write_text("VALUE = 1\n", encoding="utf-8")
+            waiver = {
+                "rule": "ACIMA-D001", "fingerprint": "sha256:" + "a" * 64,
+                "owner": "team-orders", "reason": "tracked migration",
+                "expires": "2027-01-01", "reviewedOn": "2026-01-01",
+            }
+            write_json(root, "acima/evidence/waivers.json", {"waivers": [
+                {**waiver, "scope": "unit:u0"},
+                {**waiver, "scope": "module:orders"},
+            ]})
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "skills/acima-adoption/scripts/preflight.py"),
+                 "--project", str(root), "--format", "json"],
+                capture_output=True, text=True, timeout=180,
+            )
+            payload = json.loads(result.stdout)
+            checks = {check["id"]: check for check in payload["checks"]}
+            self.assertEqual(result.returncode, 0, result.stderr[-800:])
+            self.assertEqual(checks["GOV-003"]["status"], "pass", checks["GOV-003"])
+
+    def test_status_accepts_enforcer_waiver_scopes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_json(root, "acima.config.json", {
+                "standard": CATALOG["version"], "language": "python", "level": "L2",
+                "mode": "base", "units": [{"id": "u0", "module": "orders",
+                                            "role": "implementation", "paths": ["src/u0"]}],
+            })
+            baseline(root, findings=[error("a")])
+            write_json(root, "acima/evidence/waivers.json", {"waivers": [{
+                "rule": "ACIMA-D001", "scope": "unit:u0",
+                "fingerprint": "sha256:" + "a" * 64, "owner": "team-orders",
+                "reason": "tracked migration", "expires": "2027-01-01",
+                "reviewedOn": "2026-01-01"}]})
+            own = step(acima.status_project(root), "own")
+            self.assertEqual(own["state"], "COMPLETE", own)
+            self.assertIn("valid", own["evidence"])
+
     def test_zero_source_run_is_rejected_as_a_baseline(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

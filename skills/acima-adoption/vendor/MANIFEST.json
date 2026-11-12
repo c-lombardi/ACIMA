@@ -4,8 +4,8 @@
   "catalogSha256": "e3b0926d571d24673b0f4e821ede042a208f3a5e961e5502ffc15cde024ee11c",
   "files": {
     "conformance/acima_claim.py": {
-      "sha256": "d8b5c4eee67e35495b974a014fafa89f935de78527f6aa61ce438ef10dab1216",
-      "bytes": 17703
+      "sha256": "1606eeda4825211fec16b7ff7e5e030c393ce0a2c06bcd42aa3b242ebb297580",
+      "bytes": 18257
     },
     "conformance/acima_paths.py": {
       "sha256": "15a893c7f0b727151f8a75b593aae1efd5984fb629350320f4f041ac93744b2d",
@@ -520,8 +520,8 @@
       "bytes": 35524
     },
     "tools/acima.py": {
-      "sha256": "7a887ed3a90897798ef7c72c06bae0b67704f5da91d0f756807dde8221b2b581",
-      "bytes": 247591
+      "sha256": "ad514420baa0187ed9b9bb35e1f81cbbeb3fa9d88df4b5e2752ae0eab9cc1b81",
+      "bytes": 247603
     },
     "tools/qualitative-review.schema.json": {
       "sha256": "6ea25cfab4d824979aa889a22b1e0977c7367cbbc9888da60feabd8ace235528",
