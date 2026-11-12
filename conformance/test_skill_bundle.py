@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -31,6 +33,33 @@ class SkillBundleTests(unittest.TestCase):
         skill = json.loads((SKILL / "manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(skill["catalog"]["sha256"], self.bundle["catalogSha256"])
         self.assertEqual(digest(VENDOR / "tools/acima-spec/rules.json"), self.bundle["catalogSha256"])
+
+    def test_vendored_skill_can_run_every_positive_control(self) -> None:
+        self.assertIn("conformance/coverage.json", self.bundle["files"])
+        for language, executable in (("python", sys.executable),
+                                     ("typescript", shutil.which("node")),
+                                     ("go", shutil.which("go")),
+                                     ("dotnet", shutil.which("dotnet"))):
+            with self.subTest(language):
+                self.assertIsNotNone(executable, f"{language} toolchain is required")
+                script = (
+                    "import json, sys\n"
+                    "from pathlib import Path\n"
+                    "vendor = Path(sys.argv[1])\n"
+                    "sys.path.insert(0, str(vendor / 'conformance'))\n"
+                    "import adoption_workflow\n"
+                    "print(json.dumps(adoption_workflow._positive_fixture(sys.argv[2])))\n"
+                )
+                result = subprocess.run(
+                    [sys.executable, "-c", script, str(VENDOR), language],
+                    cwd=ROOT, capture_output=True, text=True, timeout=300,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr[-1000:])
+                payload = json.loads(result.stdout)
+                self.assertEqual(payload.get("status"), "valid", payload)
+                self.assertEqual(payload.get("exitCode"), 0, payload)
+                self.assertGreater(payload.get("sourceFiles", 0), 0, payload)
+                self.assertEqual(payload.get("findingCount"), 0, payload)
 
     def test_digest_is_line_ending_independent(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -1,0 +1,83 @@
+{
+  "standard": "1.0.0",
+  "mode": "base",
+  "language": "go",
+  "level": "L3",
+  "root": ".",
+  "modulePath": "acima.example",
+  "units": [
+    {
+      "id": "catalog.contracts",
+      "module": "catalog",
+      "role": "contracts",
+      "paths": [
+        "internal/catalog/contracts"
+      ]
+    },
+    {
+      "id": "catalog",
+      "module": "catalog",
+      "role": "implementation",
+      "paths": [
+        "internal/catalog/impl"
+      ]
+    },
+    {
+      "id": "orders.contracts",
+      "module": "orders",
+      "role": "contracts",
+      "paths": [
+        "internal/orders/contracts"
+      ]
+    },
+    {
+      "id": "orders",
+      "module": "orders",
+      "role": "implementation",
+      "paths": [
+        "internal/orders/impl"
+      ]
+    },
+    {
+      "id": "payments.contracts",
+      "module": "payments",
+      "role": "contracts",
+      "paths": [
+        "internal/payments/contracts"
+      ]
+    },
+    {
+      "id": "payments",
+      "module": "payments",
+      "role": "implementation",
+      "paths": [
+        "internal/payments/impl"
+      ]
+    },
+    {
+      "id": "host",
+      "role": "host",
+      "paths": [
+        "cmd/host"
+      ]
+    },
+    {
+      "id": "tools",
+      "role": "tooling",
+      "paths": [
+        "tools"
+      ]
+    },
+    {
+      "id": "shared-kernel",
+      "role": "shared-kernel",
+      "paths": [
+        "violations/d007_kernel.go"
+      ]
+    }
+  ],
+  "exclude": [
+    "tests"
+  ],
+  "waivers": "violations/waivers.json"
+}

@@ -23,6 +23,10 @@
       "sha256": "2f9118435338ec32efea067c3f16514edf67d1c240b374f73384fa6351ae0550",
       "bytes": 32576
     },
+    "conformance/coverage.json": {
+      "sha256": "9d46ba8ea177d81b7dfff4bae31eda63a94b9d535c269ac63c7bdfe80f17e944",
+      "bytes": 8338
+    },
     "conformance/executables.py": {
       "sha256": "78d738cb647594e11fc9cbb68f8c57a7b28488da13f31bf1b40ef19bc3754cd8",
       "bytes": 968
@@ -151,9 +155,89 @@
       "sha256": "e6dc8c672b965d7810315da4481fbb8078ce69b25887fd362b691462e71400d1",
       "bytes": 19808
     },
+    "examples/dotnet/.acima/waivers.json": {
+      "sha256": "e362570ed7a8bf05f80e20f7f8ebec6c71de956b670f5c3e32948487c98ff2d3",
+      "bytes": 39
+    },
     "examples/dotnet/Directory.Build.props": {
       "sha256": "9717424e63376b68652b8250d784ecf53e3971559fd58bf187fea8c2129c3318",
       "bytes": 274
+    },
+    "examples/dotnet/acima.config.json": {
+      "sha256": "efc58cfff6ebd62d88a6b51f5474a4a4d3b6a636da14acb6337c6374add0da4c",
+      "bytes": 1826
+    },
+    "examples/dotnet/acima.gallery.config.json": {
+      "sha256": "e143341a463ab9c7a49ae9170a7b8acda14b1e325a91c02d3574f7029a343efa",
+      "bytes": 2006
+    },
+    "examples/dotnet/host/Host/Host.csproj": {
+      "sha256": "09ed9a42b197c2e489c6f47c9bbce50cb9f1aef77fd1508a0f60bf859dd65995",
+      "bytes": 462
+    },
+    "examples/dotnet/host/Host/Program.cs": {
+      "sha256": "9b43c814993a91ec905defd01870bdd4531c7e112e38d9d35f77693b6a6be3b9",
+      "bytes": 2284
+    },
+    "examples/dotnet/src/Catalog/Catalog.Contracts/Catalog.Contracts.csproj": {
+      "sha256": "042f805ff16fdc811d9a660cccf85115a66fab86f50794d65df26bbb3f630376",
+      "bytes": 227
+    },
+    "examples/dotnet/src/Catalog/Catalog.Contracts/CatalogContracts.cs": {
+      "sha256": "6fbb40965b5f579ba35e59f9de066ca9d63797501fedc5b5876e994b04a1cf77",
+      "bytes": 498
+    },
+    "examples/dotnet/src/Catalog/Catalog.Contracts/Values.cs": {
+      "sha256": "aaf648cac6d778da99ec8a8a8de14ae5d852bc443b9f938f600e688c8f7a5263",
+      "bytes": 2767
+    },
+    "examples/dotnet/src/Catalog/Catalog/Catalog.csproj": {
+      "sha256": "33b4641d76cd2bcd92c3557ed7e7b68bde1cd719712de5bb2f6bd42d009c7b0a",
+      "bytes": 288
+    },
+    "examples/dotnet/src/Catalog/Catalog/CatalogModule.cs": {
+      "sha256": "dd82c71594b470913cf9c18fa507c19661d3704980d90dbfbabdaaa09c87379e",
+      "bytes": 1265
+    },
+    "examples/dotnet/src/Orders/Orders.Contracts/OrderContracts.cs": {
+      "sha256": "3419539dc50f0d85bb8d78c6c402ade55a39dbfea827d5934e90c31ccdcf5a4f",
+      "bytes": 1462
+    },
+    "examples/dotnet/src/Orders/Orders.Contracts/Orders.Contracts.csproj": {
+      "sha256": "df0dc2d7060976d959f8fc94332d9d2ba7eeb37509cb95f70552e8081c1e0245",
+      "bytes": 225
+    },
+    "examples/dotnet/src/Orders/Orders.Contracts/Values.cs": {
+      "sha256": "4002a1cc39a817250b924331517cd49f6cd4fb3b1f9e49556f165b6d2fb55474",
+      "bytes": 2766
+    },
+    "examples/dotnet/src/Orders/Orders/Orders.csproj": {
+      "sha256": "ec783e440269d117308375886e08d2559f23a535420ba990ad27f46159423cd2",
+      "bytes": 471
+    },
+    "examples/dotnet/src/Orders/Orders/OrdersModule.cs": {
+      "sha256": "2e874b3a47094c5b654056afa0c18318a25f1a522aa0277ae381dfffb42db922",
+      "bytes": 4180
+    },
+    "examples/dotnet/src/Payments/Payments.Contracts/PaymentContracts.cs": {
+      "sha256": "86fe396a7398ee201f7402e683fd1de31ceea7c372a02adf4435df683307599f",
+      "bytes": 668
+    },
+    "examples/dotnet/src/Payments/Payments.Contracts/Payments.Contracts.csproj": {
+      "sha256": "9925f5bb3f4958c1216ae782df4f43f061936d2d2e8f594c67af73260feca84b",
+      "bytes": 229
+    },
+    "examples/dotnet/src/Payments/Payments.Contracts/Values.cs": {
+      "sha256": "6c8618a8eb91db152b46de2622b5eff16db195005b7169f746a5b428128a0950",
+      "bytes": 2768
+    },
+    "examples/dotnet/src/Payments/Payments/Payments.csproj": {
+      "sha256": "4f207e083f650863f9977d087cb0bd146925ba88552d7531096d5c640820d01a",
+      "bytes": 292
+    },
+    "examples/dotnet/src/Payments/Payments/PaymentsModule.cs": {
+      "sha256": "4bcb2483608e3e8da6161bbe2a906b727eee6a4202e3c76dbe6d2fddaf3f34b6",
+      "bytes": 1200
     },
     "examples/dotnet/tools/Acima.ArchTests/Acima.ArchTests.csproj": {
       "sha256": "607b3cb1be3ed75613854b0de094324d4a373e7c87e24a7f3d7bd4f66f111bcf",
@@ -167,9 +251,65 @@
       "sha256": "c770bb7a336dbb30dc2442c07584dae96f2acdd6002620a1b3491861b993eb80",
       "bytes": 1857
     },
+    "examples/go/.acima/waivers.json": {
+      "sha256": "e362570ed7a8bf05f80e20f7f8ebec6c71de956b670f5c3e32948487c98ff2d3",
+      "bytes": 39
+    },
+    "examples/go/acima.config.json": {
+      "sha256": "80061daa485f0fbf60eae723c361370b71bb3b305787a1093182b57f2311d2d7",
+      "bytes": 1373
+    },
+    "examples/go/acima.gallery.config.json": {
+      "sha256": "22a2ee2f677755eee8857ac2b56fddb1244f397b2ca53e68c1c1cf82c13580bc",
+      "bytes": 1493
+    },
+    "examples/go/cmd/host/main.go": {
+      "sha256": "5f16e2b97b4eb809a93cfa53ab12f11734aa8187b7a53805471d17f516584231",
+      "bytes": 1463
+    },
     "examples/go/go.mod": {
       "sha256": "6e608ab82c89d6f5fe4a9e26dfd64846365adabaef104f4a41cc135f6417a1f7",
       "bytes": 30
+    },
+    "examples/go/internal/catalog/contracts/contracts.go": {
+      "sha256": "5df4ce65d6c2224c33017d24d047f8fa4bb1b7fd5b90bee0b670912a8416ca64",
+      "bytes": 414
+    },
+    "examples/go/internal/catalog/contracts/values.go": {
+      "sha256": "2c0804d53bcab6f7a0bcef5d7cc75f39837242186fd862cf0153334f734dab02",
+      "bytes": 2048
+    },
+    "examples/go/internal/catalog/impl/module.go": {
+      "sha256": "706c35224e781ea4bc107137dccf5c2dfbabec20359ba197c28669001cc9d340",
+      "bytes": 1467
+    },
+    "examples/go/internal/orders/contracts/contracts.go": {
+      "sha256": "cbd791d84ce6edb67713cf68045a2471cd8ff80ad2e57772f44078e985ea6b4b",
+      "bytes": 2307
+    },
+    "examples/go/internal/orders/contracts/values.go": {
+      "sha256": "955facc2dd00c37a049c7e93b062050b31e943ad2b5a1db12dbd68acf4b9eb9a",
+      "bytes": 2047
+    },
+    "examples/go/internal/orders/impl/module.go": {
+      "sha256": "8679207508b516d90171c189d99e26f97b000d550b696aeb36754df35107d23b",
+      "bytes": 3646
+    },
+    "examples/go/internal/orders/impl/order.go": {
+      "sha256": "473dd9ce9523ef7868fb852fb0820b6c409908ec5eb90a684b67c5b4a0871eb1",
+      "bytes": 953
+    },
+    "examples/go/internal/payments/contracts/contracts.go": {
+      "sha256": "fc757843eb124368df7ee6d335bf153dc1f15738a90b440bdfd3afae30b2795b",
+      "bytes": 629
+    },
+    "examples/go/internal/payments/contracts/values.go": {
+      "sha256": "64d49beb2d48f0b89fea9a07863d9a944a9d7b5e52c4efe65a10a98484f6cfea",
+      "bytes": 2049
+    },
+    "examples/go/internal/payments/impl/module.go": {
+      "sha256": "7965579b33b7ce96984e2db667ea45d4028a9e410cf073d7b9907a018f188f2d",
+      "bytes": 1633
     },
     "examples/go/tools/archtest/main.go": {
       "sha256": "aa097d0df1eb306a29f5579b2cfda6840c3fb6ce03b00c92c7d097b46e4e8bbc",
@@ -179,6 +319,122 @@
       "sha256": "a8235fb6d880ad997a2603b54bafebea61234c00bd03d21b05943235f04adf48",
       "bytes": 1662
     },
+    "examples/python/.acima/waivers.json": {
+      "sha256": "e7701d0f2f9589d09be84dea509f3f08e1cdedfb8ec231d5828acba033bddd9e",
+      "bytes": 43
+    },
+    "examples/python/acima.config.json": {
+      "sha256": "e140fd5100d1cbbd55581679ce2a64d9b6e99b9bad324413858d0ac4e2fc7620",
+      "bytes": 1929
+    },
+    "examples/python/acima.gallery.config.json": {
+      "sha256": "5f92f76f7f91daf13918553e1ee129acd944ef1bb1cef013e8ff7f425a08efa0",
+      "bytes": 4365
+    },
+    "examples/python/src/acima/__init__.py": {
+      "sha256": "7081847496c11c03e74fe3cf67c84d9992b76018a07cd4b8c8c0437b56f74c3a",
+      "bytes": 70
+    },
+    "examples/python/src/acima/catalog/__init__.py": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "examples/python/src/acima/catalog/contracts/__init__.py": {
+      "sha256": "dee2f5450ab7691d187d19b8c4b6bfcaea19ee9ba76ba794e53bb71d1c481991",
+      "bytes": 1130
+    },
+    "examples/python/src/acima/catalog/contracts/values.py": {
+      "sha256": "2dea780a1f371e687f33b40898f876339d7a88cfe51502e75acbbd60e80103fd",
+      "bytes": 2306
+    },
+    "examples/python/src/acima/catalog/impl/__init__.py": {
+      "sha256": "1f36375697865d84349c3d59960fe5cac3d9d2eced35cc4929a862a79b0f814a",
+      "bytes": 152
+    },
+    "examples/python/src/acima/catalog/impl/module.py": {
+      "sha256": "4eeae97afa2eedfe1f573b933e9fe140d185eda76315fe82781eacf430238e6a",
+      "bytes": 1034
+    },
+    "examples/python/src/acima/catalog/impl/repository.py": {
+      "sha256": "257de94c23056a91d4f7129ba1e8b85f58b3033177a8aaf588292baa008d54e3",
+      "bytes": 1125
+    },
+    "examples/python/src/acima/customers/__init__.py": {
+      "sha256": "64ab1ab0cafa94417dc296cad528ea1c3a9d4ff15154672cb3bb00a85795c2d6",
+      "bytes": 61
+    },
+    "examples/python/src/acima/customers/contracts/__init__.py": {
+      "sha256": "7d1193c7ed2ba1146adb277eae99d39e14f468b3865a3198ffab292588219a65",
+      "bytes": 1023
+    },
+    "examples/python/src/acima/customers/contracts/values.py": {
+      "sha256": "4226395c456b006ff8db85c0435088a505c00ee54e5d3c200966ad088fc33b59",
+      "bytes": 406
+    },
+    "examples/python/src/acima/customers/impl/__init__.py": {
+      "sha256": "c14ba77a84c1e0b283f5e489b01aa676f76a393533bca6280179b3027a0a0827",
+      "bytes": 105
+    },
+    "examples/python/src/acima/customers/impl/module.py": {
+      "sha256": "e40f0b22ae63082e308d545d6b52e7b27dd96d512308ca1135dcf8a292675571",
+      "bytes": 1080
+    },
+    "examples/python/src/acima/host/__init__.py": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "examples/python/src/acima/host/main.py": {
+      "sha256": "9e3e33b7e4ae105322d0e40e40cef13a4b72eb831536b10aedf6d1f8a5218e5a",
+      "bytes": 2698
+    },
+    "examples/python/src/acima/orders/__init__.py": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "examples/python/src/acima/orders/contracts/__init__.py": {
+      "sha256": "8695aff589755a2910b0d564cdec315531dada14125142323290c70fdd6c2547",
+      "bytes": 2635
+    },
+    "examples/python/src/acima/orders/contracts/values.py": {
+      "sha256": "2dea780a1f371e687f33b40898f876339d7a88cfe51502e75acbbd60e80103fd",
+      "bytes": 2306
+    },
+    "examples/python/src/acima/orders/impl/__init__.py": {
+      "sha256": "ce115d8269b6750fba3786d1396571e3a9bd809edababa47fc809114080069e2",
+      "bytes": 99
+    },
+    "examples/python/src/acima/orders/impl/module.py": {
+      "sha256": "792d09634fb3c79e457eab923219c258c1d760839e33c68106245f4e8e9b8058",
+      "bytes": 3627
+    },
+    "examples/python/src/acima/orders/impl/order.py": {
+      "sha256": "c2d85cbab99a30e74854e601b7e65c8cbae5e878a4546a9983b7e2ec4e99ecc9",
+      "bytes": 1059
+    },
+    "examples/python/src/acima/payments/__init__.py": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "examples/python/src/acima/payments/contracts/__init__.py": {
+      "sha256": "e44c2fb50af06686d921f9ddf7f3b0ea5d12c1602ed9b8a40ab4da22930e16ea",
+      "bytes": 1504
+    },
+    "examples/python/src/acima/payments/contracts/values.py": {
+      "sha256": "2dea780a1f371e687f33b40898f876339d7a88cfe51502e75acbbd60e80103fd",
+      "bytes": 2306
+    },
+    "examples/python/src/acima/payments/impl/__init__.py": {
+      "sha256": "7f744d2750cd751390d32fee893afefde800cd04537d1f7c8665402d87aa9e3f",
+      "bytes": 105
+    },
+    "examples/python/src/acima/payments/impl/gateway.py": {
+      "sha256": "d62eea6db573a1e4b5a9b6acee90acd1b3bdba8f3af4988498c460a5718fb4b4",
+      "bytes": 1405
+    },
+    "examples/python/src/acima/payments/impl/module.py": {
+      "sha256": "563264f817cb950b4f3cd652144a29bbca992f0ebb51fd63daff59b181dd862d",
+      "bytes": 556
+    },
     "examples/python/tools/acima_arch.py": {
       "sha256": "3e9ca673a197cc1e6761c8a2392dbd59d71e0cba8c8cd3d0ca82d8afe687d046",
       "bytes": 93790
@@ -187,9 +443,73 @@
       "sha256": "cbbc143e50775edb73d46017e5b8675291130e2db30d6e3aa1d41d955ed1b403",
       "bytes": 3298
     },
+    "examples/typescript/.acima/waivers.json": {
+      "sha256": "e362570ed7a8bf05f80e20f7f8ebec6c71de956b670f5c3e32948487c98ff2d3",
+      "bytes": 39
+    },
+    "examples/typescript/acima.config.json": {
+      "sha256": "8814a18ecf0a045277d5b1fb326707eeed2c3e44b2b6d840f5c4830cf091f04c",
+      "bytes": 1357
+    },
+    "examples/typescript/acima.gallery.config.json": {
+      "sha256": "d249ac1a6542c21bc93daeea6690280612cca094b1e7e300e07716c8cfc488e9",
+      "bytes": 3848
+    },
+    "examples/typescript/package.json": {
+      "sha256": "c10b2a27b3c5c48cb939eb646cf38c66149f6bba07aeeb4e9383a4744c424bf2",
+      "bytes": 348
+    },
+    "examples/typescript/src/catalog/contracts/index.ts": {
+      "sha256": "911b9ccb1f82b906d2c414bb7afd527ab8cfa2856f4d42cb9e640dec63eda094",
+      "bytes": 667
+    },
+    "examples/typescript/src/catalog/contracts/values.ts": {
+      "sha256": "20f8c688511066183b47bb30a1880b172a30abefd9fbfa57555145cf0319f190",
+      "bytes": 1860
+    },
+    "examples/typescript/src/catalog/impl/module.ts": {
+      "sha256": "7a563f54ddd57c77f24ef49d2cb4666f31198425f4aa3087c9e4adcb7713d566",
+      "bytes": 1498
+    },
+    "examples/typescript/src/host/main.ts": {
+      "sha256": "a1429cfdec14aca452a1a0872572f583e1c9a00e30d8f674363da45ca7480ce7",
+      "bytes": 1276
+    },
+    "examples/typescript/src/orders/contracts/index.ts": {
+      "sha256": "337817623c762e999216aaedf1ae02a428a6789c00d8648499c072df11b3df5b",
+      "bytes": 1595
+    },
+    "examples/typescript/src/orders/contracts/values.ts": {
+      "sha256": "20f8c688511066183b47bb30a1880b172a30abefd9fbfa57555145cf0319f190",
+      "bytes": 1860
+    },
+    "examples/typescript/src/orders/impl/module.ts": {
+      "sha256": "7cd310b7046dfc73557aa3ea2f1972063623c88342037dc98e984b410bd4ac30",
+      "bytes": 2652
+    },
+    "examples/typescript/src/orders/impl/order.ts": {
+      "sha256": "2c122971b7062abb384d61b31c97017a3dd86ba91ca9d046a11ef7b84867c802",
+      "bytes": 889
+    },
+    "examples/typescript/src/payments/contracts/index.ts": {
+      "sha256": "a28846b33228805d188ac01dc58a5c7239e164c4977d20dcf54dbd229c4fb384",
+      "bytes": 938
+    },
+    "examples/typescript/src/payments/contracts/values.ts": {
+      "sha256": "20f8c688511066183b47bb30a1880b172a30abefd9fbfa57555145cf0319f190",
+      "bytes": 1860
+    },
+    "examples/typescript/src/payments/impl/module.ts": {
+      "sha256": "47deff65e582ad2023b6ed54b16bd135ae9f60310ba8d64dca599bbcf2e5b258",
+      "bytes": 1118
+    },
     "examples/typescript/tools/acima-arch.mjs": {
       "sha256": "2917777dd5a962ce63bfdc75e05b15e16853161183d0a63286e6cbdc292f8fc1",
       "bytes": 79669
+    },
+    "examples/typescript/tsconfig.json": {
+      "sha256": "d84e8d5af0502995f3146c10b211bea5d42c04b1b33e279418db475e568eb09b",
+      "bytes": 441
     },
     "examples/typescript/violations/expected.json": {
       "sha256": "8b7db497ee2e7a71314c194566382cd8e5eb89fac1fbe8f6dd32490335a7d694",

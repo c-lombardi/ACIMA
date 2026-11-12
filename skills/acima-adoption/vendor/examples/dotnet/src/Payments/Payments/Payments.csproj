@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Acima.Payments</RootNamespace>
+    <AssemblyName>Acima.Payments</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Payments.Contracts/Payments.Contracts.csproj" />
+  </ItemGroup>
+</Project>

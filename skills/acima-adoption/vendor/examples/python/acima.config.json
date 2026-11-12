@@ -1,0 +1,107 @@
+{
+  "standard": "1.0.0",
+  "mode": "base",
+  "language": "python",
+  "level": "L3",
+  "root": ".",
+  "units": [
+    {
+      "id": "catalog.contracts",
+      "module": "catalog",
+      "role": "contracts",
+      "paths": [
+        "src/acima/catalog/contracts"
+      ]
+    },
+    {
+      "id": "catalog",
+      "module": "catalog",
+      "role": "implementation",
+      "paths": [
+        "src/acima/catalog/impl"
+      ]
+    },
+    {
+      "id": "customers.contracts",
+      "module": "customers",
+      "role": "contracts",
+      "paths": [
+        "src/acima/customers/contracts"
+      ]
+    },
+    {
+      "id": "customers",
+      "module": "customers",
+      "role": "implementation",
+      "paths": [
+        "src/acima/customers/impl"
+      ]
+    },
+    {
+      "id": "orders.contracts",
+      "module": "orders",
+      "role": "contracts",
+      "paths": [
+        "src/acima/orders/contracts"
+      ]
+    },
+    {
+      "id": "orders",
+      "module": "orders",
+      "role": "implementation",
+      "paths": [
+        "src/acima/orders/impl"
+      ]
+    },
+    {
+      "id": "payments.contracts",
+      "module": "payments",
+      "role": "contracts",
+      "paths": [
+        "src/acima/payments/contracts"
+      ]
+    },
+    {
+      "id": "payments",
+      "module": "payments",
+      "role": "implementation",
+      "paths": [
+        "src/acima/payments/impl"
+      ]
+    },
+    {
+      "id": "host",
+      "role": "host",
+      "paths": [
+        "src/acima/host"
+      ]
+    },
+    {
+      "id": "namespace",
+      "role": "tooling",
+      "paths": [
+        "src/acima"
+      ]
+    },
+    {
+      "id": "tools",
+      "role": "tooling",
+      "paths": [
+        "tools"
+      ]
+    }
+  ],
+  "exclude": [
+    "tests",
+    "violations",
+    "**/__pycache__/**"
+  ],
+  "budgets": {
+    "catalog": 0,
+    "payments": 1,
+    "orders": 4,
+    "customers": 0
+  },
+  "externals": {},
+  "waivers": ".acima/waivers.json"
+}

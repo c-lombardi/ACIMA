@@ -534,11 +534,11 @@ def scenario_k(root: Path) -> str:
                               "--project", target, "--deep", "--format", "json"])
     assert code in (0, 1), deep
     deep_checks = {check["id"]: check for check in deep["checks"]}
-    assert "ENF-python" in deep_checks, sorted(deep_checks)
-    assert deep_checks["ENF-python"]["status"] == "warn", deep_checks["ENF-python"]
-    assert "not bundled" in deep_checks["ENF-python"]["detail"].lower()
+    for language in ("python", "typescript", "go", "dotnet"):
+        assert f"ENF-{language}" in deep_checks, sorted(deep_checks)
+        assert deep_checks[f"ENF-{language}"]["status"] == "pass", deep_checks[f"ENF-{language}"]
     assert snapshot(target) == before
-    return "vendor context resolves existing files; --deep explains the missing checkout"
+    return "vendor context resolves existing files and runs every bundled positive fixture"
 
 
 def scenario_l(root: Path) -> str:

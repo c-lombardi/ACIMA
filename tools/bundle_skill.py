@@ -37,6 +37,7 @@ SOURCES = [
     "conformance/adoption_reports.py",
     "conformance/agent_guidance.py",
     "conformance/acima_paths.py",
+    "conformance/coverage.json",
     # reference enforcers, with the minimum build context each needs
     "examples/python/tools/acima_arch.py",
     "examples/typescript/tools/acima-arch.mjs",
@@ -81,6 +82,30 @@ SOURCES = [
     "docs/guides/review-and-decisions.md",
     "docs/commands.md",
 ]
+
+# The architectural-tests positive control copies examples/<language> and runs its enforcer
+# against a clean tree. Keep that clean fixture in the bundle for every language; violations
+# and tests are not part of the positive control and would only add packaging weight.
+FIXTURE_EXCLUDES = {".git", "bin", "obj", "node_modules", "__pycache__", "tests", "violations"}
+FIXTURE_LANGUAGES = ("python", "typescript", "go", "dotnet")
+
+
+def _fixture_sources() -> list[str]:
+    found = []
+    for language in FIXTURE_LANGUAGES:
+        fixture = ROOT / "examples" / language
+        for path in sorted(fixture.rglob("*")):
+            if not path.is_file() or path.suffix == ".pyc":
+                continue
+            relative = path.relative_to(fixture)
+            if any(part in FIXTURE_EXCLUDES for part in relative.parts):
+                continue
+            found.append(path.relative_to(ROOT).as_posix())
+    return found
+
+
+SOURCES.extend(_fixture_sources())
+SOURCES = list(dict.fromkeys(SOURCES))
 
 
 def canonical_bytes(data: bytes) -> bytes:

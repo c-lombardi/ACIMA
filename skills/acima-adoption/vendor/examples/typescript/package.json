@@ -1,0 +1,12 @@
+{
+  "name": "@acima/example-typescript",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "arch": "node tools/acima-arch.mjs --root . --format text",
+    "arch:json": "node tools/acima-arch.mjs --root . --format json",
+    "start": "node src/host/main.ts"
+  }
+}

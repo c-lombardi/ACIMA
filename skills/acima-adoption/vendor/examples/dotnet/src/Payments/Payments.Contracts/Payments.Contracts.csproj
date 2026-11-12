@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Acima.Payments.Contracts</RootNamespace>
+    <AssemblyName>Acima.Payments.Contracts</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+  </ItemGroup>
+</Project>

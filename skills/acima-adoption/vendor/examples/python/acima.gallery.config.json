@@ -1,0 +1,211 @@
+{
+  "standard": "1.0.0",
+  "mode": "base",
+  "language": "python",
+  "level": "L3",
+  "root": ".",
+  "units": [
+    {
+      "id": "catalog.contracts",
+      "module": "catalog",
+      "role": "contracts",
+      "paths": [
+        "src/acima/catalog/contracts"
+      ]
+    },
+    {
+      "id": "catalog",
+      "module": "catalog",
+      "role": "implementation",
+      "paths": [
+        "src/acima/catalog/impl"
+      ]
+    },
+    {
+      "id": "customers.contracts",
+      "module": "customers",
+      "role": "contracts",
+      "paths": [
+        "src/acima/customers/contracts"
+      ]
+    },
+    {
+      "id": "customers",
+      "module": "customers",
+      "role": "implementation",
+      "paths": [
+        "src/acima/customers/impl"
+      ]
+    },
+    {
+      "id": "orders.contracts",
+      "module": "orders",
+      "role": "contracts",
+      "paths": [
+        "src/acima/orders/contracts"
+      ]
+    },
+    {
+      "id": "orders",
+      "module": "orders",
+      "role": "implementation",
+      "paths": [
+        "src/acima/orders/impl"
+      ]
+    },
+    {
+      "id": "payments.contracts",
+      "module": "payments",
+      "role": "contracts",
+      "paths": [
+        "src/acima/payments/contracts"
+      ]
+    },
+    {
+      "id": "payments",
+      "module": "payments",
+      "role": "implementation",
+      "paths": [
+        "src/acima/payments/impl"
+      ]
+    },
+    {
+      "id": "host",
+      "role": "host",
+      "paths": [
+        "src/acima/host"
+      ]
+    },
+    {
+      "id": "namespace",
+      "role": "tooling",
+      "paths": [
+        "src/acima"
+      ]
+    },
+    {
+      "id": "tools",
+      "role": "tooling",
+      "paths": [
+        "tools"
+      ]
+    },
+    {
+      "id": "shared-kernel",
+      "role": "shared-kernel",
+      "paths": [
+        "violations/d007_kernel_imports_contracts.py"
+      ]
+    },
+    {
+      "id": "editor.port",
+      "role": "port",
+      "paths": [
+        "violations/d010_port_vendor.py"
+      ]
+    },
+    {
+      "id": "editor.monaco",
+      "module": "editor",
+      "role": "adapter",
+      "paths": [
+        "violations/adapter_monaco.py"
+      ]
+    },
+    {
+      "id": "legacy.pdf",
+      "module": "legacy",
+      "role": "adapter",
+      "paths": [
+        "violations/l006_adapter_without_port.py"
+      ]
+    },
+    {
+      "id": "explicit.inputs",
+      "module": "notes",
+      "role": "implementation",
+      "paths": [
+        "violations/d011_optional_constructor_dependency.py",
+        "violations/d012_hidden_default.py"
+      ]
+    },
+    {
+      "id": "values.config",
+      "module": "notes",
+      "role": "implementation",
+      "paths": [
+        "violations/a005_ambient_config.py",
+        "violations/a006_inline_operational.py"
+      ]
+    },
+    {
+      "id": "composition.host",
+      "role": "host",
+      "paths": [
+        "violations/d013_dynamic_registration.py"
+      ]
+    },
+    {
+      "id": "composition.injection",
+      "module": "notes",
+      "role": "implementation",
+      "paths": [
+        "violations/d014_property_injection.py"
+      ]
+    },
+    {
+      "id": "functional.capture",
+      "module": "notes",
+      "role": "implementation",
+      "paths": [
+        "violations/d015_closure_capture.py",
+        "violations/d016_partial_dependency.py"
+      ]
+    },
+    {
+      "id": "lifecycle.host",
+      "role": "host",
+      "paths": [
+        "violations/lifecycle_registration.py"
+      ]
+    },
+    {
+      "id": "naming.host",
+      "role": "host",
+      "paths": [
+        "violations/naming_conventions.py"
+      ]
+    }
+  ],
+  "exclude": [
+    "tests"
+  ],
+  "manifests": [
+    "violations/requirements.gallery.txt"
+  ],
+  "externals": {
+    "monaco-editor": {
+      "tier": "integration",
+      "owner": "team-editor",
+      "reason": "Browser code editor for note authoring; the adapter is the only importer.",
+      "adapter": "editor.monaco",
+      "port": "editor.port",
+      "reviewedOn": "2026-11-09",
+      "expires": "2027-11-09",
+      "specifiers": [
+        "monaco_editor"
+      ],
+      "types": [
+        "IEditor"
+      ]
+    },
+    "left-pad": {
+      "tier": "utility",
+      "owner": "team-platform",
+      "reason": "String padding kept for the legacy report; scheduled for removal.",
+      "reviewedOn": "2025-01-01",
+      "expires": "2025-12-31"
+    }
+  },
+  "waivers": "violations/waivers.json"
+}
