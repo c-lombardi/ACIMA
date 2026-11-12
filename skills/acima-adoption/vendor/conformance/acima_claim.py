@@ -216,14 +216,15 @@ def validate_waivers(document: Any, *, today: date | None = None,
             result["invalid"].append(entry)
         if expiry and expiry < today:
             result["expired"].append(entry)
-        if str(waiver.get("owner", "")).strip().lower() in ("", "unassigned"):
+        unowned = str(waiver.get("owner", "")).strip().lower() in ("", "unassigned")
+        if unowned:
             result["unowned"].append(entry)
         scope_known = bool(scope) and _waiver_scope_is_known(scope, scopes)
         if scope and not scope_known and not glob_problem:
             result["scopeMismatch"].append(entry)
             result["invalid"].append({**entry, "problems": problems + [
                 f"scope {scope!r} matches no declared unit/module or path: pattern"]})
-        if not problems and not (expiry and expiry < today) and scope_known:
+        if not problems and not (expiry and expiry < today) and scope_known and not unowned:
             result["valid"].append(entry)
     return result
 

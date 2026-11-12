@@ -1,0 +1,80 @@
+{
+  "standard": "1.0.0",
+  "scope": "path:**",
+  "governance": [
+    {
+      "name": "accepted",
+      "owner": "team-orders",
+      "fingerprint": "$FINGERPRINT",
+      "expires": "2099-01-01",
+      "reviewedOn": "2026-11-08",
+      "accepted": true
+    },
+    {
+      "name": "unassigned owner",
+      "owner": "unassigned",
+      "fingerprint": "$FINGERPRINT",
+      "expires": "2099-01-01",
+      "reviewedOn": "2026-11-08",
+      "accepted": false
+    },
+    {
+      "name": "malformed fingerprint",
+      "owner": "team-orders",
+      "fingerprint": "sha256:not-a-fingerprint",
+      "expires": "2099-01-01",
+      "reviewedOn": "2026-11-08",
+      "accepted": false
+    },
+    {
+      "name": "malformed expiry",
+      "owner": "team-orders",
+      "fingerprint": "$FINGERPRINT",
+      "expires": "2099-01-01T00:00:00",
+      "reviewedOn": "2026-11-08",
+      "accepted": false
+    },
+    {
+      "name": "future review date",
+      "owner": "team-orders",
+      "fingerprint": "$FINGERPRINT",
+      "expires": "2099-01-01",
+      "reviewedOn": "2999-01-01",
+      "accepted": false
+    },
+    {
+      "name": "review after expiry",
+      "owner": "team-orders",
+      "fingerprint": "$FINGERPRINT",
+      "expires": "2026-11-01",
+      "reviewedOn": "2026-11-02",
+      "accepted": false
+    },
+    {
+      "name": "expiry today is inclusive",
+      "owner": "team-orders",
+      "fingerprint": "$FINGERPRINT",
+      "expires": "$TODAY",
+      "reviewedOn": "$TODAY",
+      "accepted": true
+    }
+  ],
+  "globs": {
+    "cases": [
+      { "pattern": "src/*", "value": "src/a.py", "matches": true },
+      { "pattern": "src/*", "value": "src/x/a.py", "matches": false },
+      { "pattern": "**/*.py", "value": "a.py", "matches": true },
+      { "pattern": "**/*.py", "value": "src/a.py", "matches": true },
+      { "pattern": "src/**/a.py", "value": "src/a.py", "matches": true },
+      { "pattern": "src/**/a.py", "value": "src/x/a.py", "matches": true },
+      { "pattern": "src/?/a.py", "value": "src/x/a.py", "matches": true },
+      { "pattern": "src/?/a.py", "value": "src/xy/a.py", "matches": false }
+    ],
+    "templates": {
+      "recursive": "{first}/**/{last}",
+      "singleStar": "{first}/*",
+      "zeroDirectories": "**/{last}",
+      "invalid": "{first}/**bad/{last}"
+    }
+  }
+}

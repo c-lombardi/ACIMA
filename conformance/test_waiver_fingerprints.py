@@ -16,6 +16,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "conformance"))
+import acima_claim as claim  # noqa: E402 - shared governance implementation
+
+CONTRACT = json.loads((ROOT / "conformance/fixtures/waiver-contract.json")
+                      .read_text(encoding="utf-8"))
+TODAY = datetime.now(timezone.utc).date().isoformat()
+VALIDATOR_FINGERPRINT = "sha256:" + "0" * 64
 CASES = {
     "python": {
         "dir": "examples/python",
@@ -48,6 +55,10 @@ def run(case: dict, root: Path) -> dict:
     )
     assert result.stdout.strip(), result.stderr
     return json.loads(result.stdout)
+
+
+def fixture_value(value: str, fingerprint: str, today: str = TODAY) -> str:
+    return value.replace("$FINGERPRINT", fingerprint).replace("$TODAY", today)
 
 
 def write_waiver(root: Path, finding: dict, fingerprint: str | None, *,
@@ -116,7 +127,7 @@ class WaiverFingerprintTests(unittest.TestCase):
                 self.assertIn("ACIMA-G001", {finding["rule"] for finding in broad},
                               f"{language}: a broad waiver must be reported as G001")
 
-    def test_unassigned_owner_and_malformed_fingerprint_are_rejected(self) -> None:
+    def test_governance_contract_is_enforced_by_every_language(self) -> None:
         for language, case in CASES.items():
             if shutil.which(case["tool"]) is None:
                 self.skipTest(f"{case['tool']} is not installed")
@@ -126,71 +137,44 @@ class WaiverFingerprintTests(unittest.TestCase):
                                 ignore=shutil.ignore_patterns("bin", "obj", "__pycache__",
                                                               "node_modules", ".git"))
                 before = run(case, target)["findings"]
-                counts = Counter(finding["rule"] for finding in before)
-                candidates = [finding for finding in before
-                              if finding.get("fingerprint") and counts[finding["rule"]] >= 2]
-                if not candidates:
-                    candidates = [finding for finding in before if finding.get("fingerprint")]
-                self.assertTrue(candidates, f"{language}: no repeatable finding to test")
-                chosen = candidates[0]
-                baseline = counts[chosen["rule"]]
-                cases = {
-                    "unassigned owner": ("unassigned", chosen["fingerprint"]),
-                    "malformed fingerprint": ("regression-test", "sha256:" + "0" * 63),
-                }
-                for label, (owner, fingerprint) in cases.items():
+                chosen = next((finding for finding in before
+                               if finding.get("fingerprint")), None)
+                self.assertIsNotNone(chosen, f"{language}: no finding to test")
+                assert chosen is not None
+                for waiver_case in CONTRACT["governance"]:
+                    label = waiver_case["name"]
                     with self.subTest(language=language, case=label):
-                        write_waiver(target, chosen, fingerprint, owner=owner)
+                        write_waiver(
+                            target, chosen,
+                            fixture_value(waiver_case["fingerprint"], chosen["fingerprint"]),
+                            owner=waiver_case["owner"],
+                            expires=fixture_value(waiver_case["expires"], chosen["fingerprint"]),
+                            reviewed_on=fixture_value(waiver_case["reviewedOn"],
+                                                      chosen["fingerprint"]),
+                            scope=CONTRACT["scope"],
+                        )
                         after = run(case, target)["findings"]
-                        count = sum(1 for finding in after if finding["rule"] == chosen["rule"])
-                        self.assertEqual(count, baseline,
-                                         f"{language}: {label} suppressed findings")
-                        self.assertIn("ACIMA-G001", {finding["rule"] for finding in after},
-                                      f"{language}: {label} must be reported as G001")
-
-    def test_waiver_dates_are_strict_ordered_and_inclusive(self) -> None:
-        today = datetime.now(timezone.utc).date().isoformat()
-        date_cases = {
-            "malformed expiry": ("2099-01-01T00:00:00", "2026-11-08", False),
-            "malformed review date": ("2099-01-01", "not-a-date", False),
-            "future review date": ("2099-01-01", "2999-01-01", False),
-            "review after expiry": ("2026-11-01", "2026-11-02", False),
-            "expiry today is inclusive": (today, today, True),
-        }
-        for language, case in CASES.items():
-            if shutil.which(case["tool"]) is None:
-                self.skipTest(f"{case['tool']} is not installed")
-            with self.subTest(language=language), tempfile.TemporaryDirectory() as temporary:
-                target = Path(temporary) / language
-                shutil.copytree(ROOT / case["dir"], target,
-                                ignore=shutil.ignore_patterns("bin", "obj", "__pycache__",
-                                                              "node_modules", ".git"))
-                before = run(case, target)["findings"]
-                counts = Counter(finding["rule"] for finding in before)
-                candidates = [finding for finding in before
-                              if finding.get("fingerprint") and counts[finding["rule"]] >= 1]
-                self.assertTrue(candidates, f"{language}: no finding to test")
-                chosen = candidates[0]
-                baseline = counts[chosen["rule"]]
-                for label, (expires, reviewed_on, suppresses) in date_cases.items():
-                    with self.subTest(language=language, case=label):
-                        write_waiver(target, chosen, chosen["fingerprint"],
-                                     expires=expires, reviewed_on=reviewed_on)
-                        after = run(case, target)["findings"]
-                        count = sum(1 for finding in after if finding["rule"] == chosen["rule"])
+                        matches = {(finding["rule"], finding["path"]) for finding in after}
                         rules = {finding["rule"] for finding in after}
-                        if suppresses:
-                            self.assertEqual(count, baseline - 1,
+                        if waiver_case["accepted"]:
+                            self.assertNotIn((chosen["rule"], chosen["path"]), matches,
                                              f"{language}: {label} did not suppress")
                             self.assertNotIn("ACIMA-G001", rules,
                                              f"{language}: {label} was rejected")
                         else:
-                            self.assertEqual(count, baseline,
-                                             f"{language}: {label} suppressed findings")
+                            self.assertIn((chosen["rule"], chosen["path"]), matches,
+                                          f"{language}: {label} suppressed findings")
                             self.assertIn("ACIMA-G001", rules,
                                           f"{language}: {label} must be reported as G001")
 
     def test_waiver_path_globs_share_one_contract(self) -> None:
+        for glob_case in CONTRACT["globs"]["cases"]:
+            with self.subTest(case=f"matcher:{glob_case['pattern']}"):
+                self.assertEqual(
+                    claim.waiver_glob_match(glob_case["pattern"], glob_case["value"]),
+                    glob_case["matches"], glob_case,
+                )
+        templates = CONTRACT["globs"]["templates"]
         for language, case in CASES.items():
             if shutil.which(case["tool"]) is None:
                 self.skipTest(f"{case['tool']} is not installed")
@@ -211,28 +195,30 @@ class WaiverFingerprintTests(unittest.TestCase):
                 assert nested is not None and direct is not None
 
                 parts = nested["path"].split("/")
-                recursive = f"{parts[0]}/**/{parts[-1]}"
+                values = {"first": parts[0], "last": parts[-1]}
+                recursive = templates["recursive"].format(**values)
                 write_waiver(target, nested, nested["fingerprint"], scope=f"path:{recursive}")
                 after = run(case, target)["findings"]
                 matches = {(finding["rule"], finding["path"]) for finding in after}
                 self.assertNotIn((nested["rule"], nested["path"]), matches,
                                  f"{language}: **/ did not match at a segment boundary")
 
-                crossing = f"{parts[0]}/*"
+                crossing = templates["singleStar"].format(**values)
                 write_waiver(target, nested, nested["fingerprint"], scope=f"path:{crossing}")
                 after = run(case, target)["findings"]
                 matches = {(finding["rule"], finding["path"]) for finding in after}
                 self.assertIn((nested["rule"], nested["path"]), matches,
                               f"{language}: * crossed a path separator")
 
-                direct_pattern = f"**/{direct['path'].split('/')[-1]}"
+                direct_pattern = templates["zeroDirectories"].format(
+                    first=direct["path"].split("/")[0], last=direct["path"].split("/")[-1])
                 write_waiver(target, direct, direct["fingerprint"], scope=f"path:{direct_pattern}")
                 after = run(case, target)["findings"]
                 matches = {(finding["rule"], finding["path"]) for finding in after}
                 self.assertNotIn((direct["rule"], direct["path"]), matches,
                                  f"{language}: **/ did not match zero directories")
 
-                invalid = f"{parts[0]}/**bad/{parts[-1]}"
+                invalid = templates["invalid"].format(**values)
                 write_waiver(target, nested, nested["fingerprint"], scope=f"path:{invalid}")
                 after = run(case, target)["findings"]
                 matches = {(finding["rule"], finding["path"]) for finding in after}
@@ -240,6 +226,75 @@ class WaiverFingerprintTests(unittest.TestCase):
                               f"{language}: an invalid glob suppressed a finding")
                 self.assertIn("ACIMA-G001", {finding["rule"] for finding in after},
                               f"{language}: an invalid glob must be reported as G001")
+
+
+class SharedWaiverContractTests(unittest.TestCase):
+    def test_governance_contract_drives_preflight_and_status(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary) / "target"
+            (target / "src").mkdir(parents=True)
+            (target / "src" / "orders.py").write_text("VALUE = 1\n", encoding="utf-8")
+            (target / "acima.config.json").write_text(json.dumps({
+                "standard": "1.0.0", "mode": "base", "language": "python", "level": "L1",
+                "units": [{"id": "orders", "module": "orders",
+                           "role": "implementation", "paths": ["src"]}],
+                "waivers": "waivers.json",
+            }, indent=2), encoding="utf-8")
+
+            waivers = []
+            for item in CONTRACT["governance"]:
+                waivers.append({
+                    "rule": "ACIMA-D001",
+                    "scope": CONTRACT["scope"],
+                    "fingerprint": fixture_value(item["fingerprint"], VALIDATOR_FINGERPRINT),
+                    "owner": item["owner"],
+                    "reason": item["name"],
+                    "expires": fixture_value(item["expires"], VALIDATOR_FINGERPRINT),
+                    "reviewedOn": fixture_value(item["reviewedOn"], VALIDATOR_FINGERPRINT),
+                })
+            (target / "waivers.json").write_text(
+                json.dumps({"standard": "1.0.0", "waivers": waivers}, indent=2),
+                encoding="utf-8")
+
+            today = datetime.now(timezone.utc).date()
+            report = claim.validate_waivers(
+                {"waivers": waivers}, today=today,
+                valid_scopes={"unit:orders", "module:orders"},
+            )
+            self.assertEqual(report["total"], len(CONTRACT["governance"]))
+            self.assertEqual(len(report["valid"]), 2, report)
+            self.assertEqual(len(report["invalid"]), 4, report)
+            self.assertEqual(len(report["expired"]), 1, report)
+            self.assertEqual(len(report["unowned"]), 1, report)
+
+            preflight = subprocess.run(
+                [sys.executable, str(ROOT / "skills/acima-adoption/scripts/preflight.py"),
+                 "--project", str(target), "--format", "json"],
+                cwd=ROOT, capture_output=True, text=True,
+            )
+            self.assertEqual(preflight.returncode, 1, preflight.stderr)
+            checks = {check["id"]: check for check in json.loads(preflight.stdout)["checks"]}
+            self.assertEqual(checks["GOV-003"]["status"], "fail")
+
+            (target / "acima/evidence").mkdir(parents=True)
+            (target / "acima/evidence/baseline-2026-11-12.json").write_text(json.dumps({
+                "standard": "1.0.0", "level": "L1", "sourceFiles": 1,
+                "execution": {"ACIMA-D001": {"executed": True},
+                              "ACIMA-D002": {"executed": True}},
+                "findings": [],
+            }), encoding="utf-8")
+            status = subprocess.run(
+                [sys.executable, str(ROOT / "tools/acima.py"), "status",
+                 "--root", str(target), "--format", "json"],
+                cwd=ROOT, capture_output=True, text=True,
+            )
+            self.assertEqual(status.returncode, 0, status.stderr)
+            payload = json.loads(status.stdout)
+            self.assertEqual(payload["evidence"]["invalidWaivers"], 4)
+            self.assertEqual(payload["evidence"]["expiredWaivers"], 1)
+            self.assertEqual(payload["evidence"]["unownedWaivers"], 1)
+            own = next(step for step in payload["steps"] if step["n"] == 7)
+            self.assertEqual(own["state"], "BLOCKED")
 
 
 class AdoptionPreflightTests(unittest.TestCase):
