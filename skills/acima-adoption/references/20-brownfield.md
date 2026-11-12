@@ -62,7 +62,10 @@ python3 skills/acima-adoption/scripts/preflight.py --project . --write-waivers a
 
 The waiver writer emits one waiver per exact finding fingerprint and marks owners `unassigned`.
 That is structurally valid and socially useless: replace **every** owner with a person before the
-gate merges.
+gate merges; every enforcer rejects an unassigned owner. Keep the fingerprint in canonical
+`sha256:<64 lowercase hex>` form and use strict `YYYY-MM-DD` dates. A `path:` waiver is
+segment-aware: `*` and `?` do not cross `/`, and `**` is a whole segment matching zero or more
+segments.
 
 Rules for the baseline:
 

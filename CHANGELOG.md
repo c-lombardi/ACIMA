@@ -4,6 +4,39 @@ All normative changes to the ACIMA standard. The machine-readable catalog is
 [`tools/acima-spec/rules.json`](tools/acima-spec/rules.json); this file explains *why* it changed and
 what an adopting repository has to do about it.
 
+## Unreleased — one enforceable waiver contract
+
+**Enforcement and skill change.** The catalog, standard version, rule ids, levels, severity and claim
+semantics are unchanged; `acima-adoption` moves from 1.35.0 to 1.36.0. Preflight, status and all four
+enforcers now apply the same waiver governance and path-glob rules.
+
+### Why
+
+Preflight and the gates disagreed about what a valid waiver was. An `unassigned` owner or a malformed
+fingerprint could pass a gate that preflight rejected; strict and loose date parsers disagreed about
+expiry; Python let `*` cross `/`, Go had no recursive wildcard, and TypeScript and .NET interpreted
+`**` differently. The same exception could therefore suppress different findings depending on the
+language.
+
+### What changed
+
+- `owner: unassigned` and fingerprints that are not exactly `sha256:<64 lowercase hex>` are rejected
+  by every enforcer as `G001`.
+- `expires` and `reviewedOn` are strict `YYYY-MM-DD` dates. `reviewedOn` cannot be in the future or
+  after `expires`; expiry is inclusive through the expiry date and evaluated on the UTC date.
+- `path:` globs use one grammar everywhere: `*` matches within one segment, `?` matches one
+  non-separator character, and `**` is a whole segment matching zero or more segments. Malformed
+  patterns are `G001`.
+- A shared conformance fixture drives the same governance and glob cases through preflight, status
+  and the Python, TypeScript, Go and .NET enforcers.
+
+### Adopting repositories
+
+Run preflight and the gate after upgrading. Replace every `unassigned` owner, make accepted
+fingerprints canonical, and rewrite date fields rejected as non-ISO. Review `path:` waivers that
+relied on the old Python `*` crossing directories or on language-specific `**` behaviour: use `**`
+explicitly for recursive matches, otherwise the finding is expected to return.
+
 ## Unreleased — optional parameters are prohibited inputs
 
 **Catalog change.** `D011` and `D012` are now `error` rules. Their `severityRatchet` entries are

@@ -182,12 +182,22 @@ Semantics, all mandatory:
    `unit:<id>`, `path:<glob>` or `module:<name>`. The fingerprint is the hash of the finding's
    identity (rule, path, evidence); scope alone MUST NOT suppress a finding, because it would hide
    every future finding in that scope.
-2. A waiver is valid only if `fingerprint`, `owner`, `reason`, `expires` and `reviewedOn` are present
-   and non-empty (`G001`).
-3. Past `expires`, the waiver no longer matches and the finding returns (`G002`).
-4. A waiver for an unknown rule id is itself a finding (`G001`) — a typo must never silently excuse
+2. A waiver is valid only when `fingerprint` is exactly `sha256:` followed by 64 lowercase
+   hexadecimal characters, `owner` is present and is not `unassigned`, `reason` is present,
+   `expires` and `reviewedOn` are strict `YYYY-MM-DD` dates, `reviewedOn` is not in the future and
+   `reviewedOn` is not after `expires` (`G001`).
+3. Expiry is inclusive on the UTC date: a waiver remains active through `expires`, then the finding
+   returns (`G002`).
+4. `path:` globs are segment-aware. `*` matches zero or more characters within one path segment and
+   never crosses `/`; `?` matches exactly one character other than `/`; `**` is a whole path segment
+   and matches zero or more segments. Preflight and every enforcer use this grammar, and a malformed
+   pattern is itself `G001`.
+5. A waiver for an unknown rule id is itself a finding (`G001`) — a typo must never silently excuse
    nothing.
-5. Waiving is per finding, never global. There is no "skip" switch in `acima.config.json`.
+6. Waiving is per finding, never global. There is no "skip" switch in `acima.config.json`.
+
+For example, `path:src/**/*.py` matches `src/a.py` and `src/orders/a.py`, while `path:src/*.py`
+matches only the first. `path:src/**bad/a.py` is invalid because `**` is not a whole segment.
 
 P9.5 is **advisory in Draft 1**. A C001–C006 waiver should not outlive one minor version and
 must be reviewed at every contract release, but the waiver schema has no standard-version or

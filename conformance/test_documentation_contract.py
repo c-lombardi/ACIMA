@@ -76,6 +76,16 @@ class DocumentationContractTests(unittest.TestCase):
         self.assertIn("`rule`, `scope` and `fingerprint` all match", governance)
         self.assertNotIn("`rule` and `scope` both match", governance)
         self.assertIn('"fingerprint": "sha256:', governance)
+        self.assertIn("not `unassigned`", governance)
+        self.assertIn("64 lowercase", governance)
+        self.assertIn("inclusive on the UTC date", governance)
+        self.assertIn("whole path segment", governance)
+
+    def test_preflight_documents_the_shared_waiver_contract(self) -> None:
+        preflight = read("skills/acima-adoption/references/00-preflight.md")
+        self.assertIn("canonical fingerprint", preflight)
+        self.assertIn("strict `YYYY-MM-DD`", preflight)
+        self.assertIn("`**` is a whole segment", preflight)
 
     def test_catalog_marks_automation_and_manual_evidence(self) -> None:
         catalog = json.loads(read("tools/acima-spec/rules.json"))

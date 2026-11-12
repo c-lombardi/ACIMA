@@ -38,7 +38,7 @@ The working surfaces are the `acima` CLI, the adoption skill used by AI agents, 
 - Enforcers analyse source and project metadata, not runtime behaviour. They do not prove isolation, type correctness, framework behaviour, tenant isolation, or ownership.
 - Findings carry a rule, severity, message, path, line, evidence, and fingerprint. Rule and requirement identifiers are internal navigation and traceability keys, not the explanation.
 - Assessment is read-only. Adoption writes require explicit approval of named paths, scope, and level; partial approval is supported.
-- Waivers require an owner, reason, fingerprint, expiry, and review date. Broad or fingerprint-less waivers are rejected.
+- Waivers require a named owner (not `unassigned`), reason, canonical `sha256:<64 lowercase hex>` fingerprint, and strict `YYYY-MM-DD` review and expiry dates. Broad or malformed waivers are rejected. `path:` scopes use segment-aware globs: `*` and `?` stay within a segment, and `**` spans whole segments.
 - There is no health score, trend dashboard, hosted service, organizational metrics product, or `acima adopt` command.
 - The generated report must not infer a clean result from empty findings or style an incomplete assessment as verified.
 

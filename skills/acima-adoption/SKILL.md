@@ -6,7 +6,7 @@ compatibility: Python 3.9+ for the preflight script. The target language toolcha
 allowed-tools: Read Grep Glob Bash Edit Write
 metadata:
   standard: "1.9.0-draft.2"
-  skill-version: "1.35.0"
+  skill-version: "1.36.0"
   catalog-sha256: "e3b0926d571d24673b0f4e821ede042a208f3a5e961e5502ffc15cde024ee11c"
 ---
 
@@ -105,7 +105,10 @@ Verify executable paths and supported flags in the active environment. Load [65-
    user-facing explanation translates the catalog title, summary, remedy and limits. An unresolved
    identifier is a reporting defect, never a guessed meaning.
 2. **Never edit the catalog, a fixture's `expected.json`, or a manifest hash to make a check pass.**
-3. **Never waive without owner, reason, scope, fingerprint, expiry and review date.**
+3. **Never waive without a named owner, reason, scope, canonical fingerprint, expiry and review date.**
+   `owner` cannot be `unassigned`; the fingerprint is exactly `sha256:<64 lowercase hex>`; dates are
+   strict `YYYY-MM-DD`; and a `path:` scope uses `*`/`?` within one segment and `**` for whole
+   segments.
 4. **Never bulk-renew waivers.** Renewal is one owner's decision at a time.
 5. **Never declare conformance without a run.** Zero findings require `sourceFiles > 0`, a complete
    execution map, exit `0`/`1`, valid JSON, the expected catalog and level, and controlled violations
