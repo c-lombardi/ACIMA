@@ -12,16 +12,16 @@
       "bytes": 28650
     },
     "conformance/adoption_workflow.py": {
-      "sha256": "fd653f2c06e7ae83ae8565139df60f6297e68445f33285ac93a03937dfbcbbe6",
-      "bytes": 146027
+      "sha256": "c4d0dc9ee1fac681af1be8565ef814d6d55f5a28514e55e7b028e166546b1b13",
+      "bytes": 151569
     },
     "conformance/agent_guidance.py": {
       "sha256": "65ea05853f7214219dcdc5b0d69d2519df83f3d2b77df75a3b648cd36e939dc4",
       "bytes": 31612
     },
     "conformance/module_map.py": {
-      "sha256": "8f218df540f6d863d28bd0db6682193587fa5c968c47a9b8ea4e5089d6297fc1",
-      "bytes": 79155
+      "sha256": "ed86c1bab146b9207ce227116e0f5868048193a44e53b5bf2a4c0044d7e6fff0",
+      "bytes": 82650
     },
     "conformance/qualitative_review.py": {
       "sha256": "24e52211c9117e7cd9eed1581d5694c5bbca557655ea83954e9483a22d938a6c",

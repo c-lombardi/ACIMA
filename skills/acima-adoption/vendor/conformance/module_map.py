@@ -1400,14 +1400,52 @@ def units_from_approved(modules: list[dict]) -> list[dict]:
     return units
 
 
+def _merge_approved_units(existing_units: list[dict], generated_units: list[dict]) -> list[dict]:
+    """Merge generated roles while preserving all explicitly declared unit roles.
+
+    Existing units match generated units by (module, role), not derived ids.
+    Existing ids and custom metadata survive; other declared roles remain intact.
+    """
+    result = [json.loads(json.dumps(unit)) for unit in existing_units
+              if isinstance(unit, dict)]
+    indexes: dict[tuple[str, str], int] = {}
+    for index, unit in enumerate(result):
+        key = (str(unit.get("module") or unit.get("id") or ""),
+               str(unit.get("role") or ""))
+        if key in indexes:
+            raise ModuleMapError(
+                "existing configuration contains multiple units for module/role %r" % (key,)
+            )
+        indexes[key] = index
+    for generated in generated_units:
+        if not isinstance(generated, dict):
+            raise ModuleMapError("approved unit must be an object")
+        key = (str(generated.get("module") or generated.get("id") or ""),
+               str(generated.get("role") or ""))
+        if not key[0] or not key[1]:
+            raise ModuleMapError("approved unit requires module and role")
+        if key in indexes:
+            current = result[indexes[key]]
+            merged = dict(current)
+            merged["paths"] = list(generated.get("paths") or [])
+            merged["source"] = "proposal-approved"
+            result[indexes[key]] = merged
+        else:
+            indexes[key] = len(result)
+            result.append(json.loads(json.dumps(generated)))
+    return result
+
+
 def build_config(proposal: dict, review_result: dict, *, existing: dict | None = None,
                  language: str | None = None) -> dict:
     approval = review_result.get("approval") or {}
     if not approval.get("canWriteConfig"):
         raise ModuleMapError("the review does not authorize a complete authoritative map")
-    units = review_result.get("approvedUnits") or []
-    if not units:
+    generated_units = review_result.get("approvedUnits") or []
+    if not generated_units:
         raise ModuleMapError("the approved review contains no units")
+    # Refine the existing ownership contract without flattening owner-declared roles.
+    units = _merge_approved_units((existing or {}).get("units") or [], generated_units)
     seen = set()
     for unit in units:
         if unit["id"] in seen:

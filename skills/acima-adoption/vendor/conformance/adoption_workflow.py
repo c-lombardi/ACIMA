@@ -46,6 +46,7 @@ from adoption_reports import AdoptionReportError, render_proposal_report, report
 STATE_FILE = ".acima/adoption-workflow.json"
 PREFLIGHT_FILE = ".acima/preflight.json"
 PROPOSAL_JSON = ".acima/module-map.proposal.json"
+OWNER_MAP_REVIEW_FILE = "docs/acima/module-map-decisions.json"
 SCOPE_FILE = ".acima/adoption-scope.json"
 ADOPTION_PROPOSAL = "docs/acima/adoption-proposal.md"
 ADOPTION_PROPOSAL_JSON = "docs/acima/adoption-proposal.json"
@@ -2378,11 +2379,116 @@ def approve(root: Path, *, map_decisions: Path | None = None,
     return state
 
 
+def _reconcile_owner_approved_module_map(root: Path, state: dict) -> bool:
+    """Recover an owner-approved map written before workflow state was advanced.
+
+    A complete config alone is not consent. Reconciliation requires the exact
+    proposal review, a matching provenance marker in the config, a structurally
+    valid approval, and an authoritative map that covers the current source.
+    """
+    stage = state.get("stages", {}).get("module_map", {})
+    if stage.get("status") not in (AWAITING, BLOCKED):
+        return False
+    config_path = root / CONFIG_NAME
+    proposal_path = root / PROPOSAL_JSON
+    if not config_path.is_file() or not proposal_path.is_file():
+        return False
+    decision_candidates = (
+        root / OWNER_MAP_REVIEW_FILE,
+        root / ".acima/module-map-decisions.json",
+    )
+    decisions_path = next((path for path in decision_candidates if path.is_file()), None)
+    if decisions_path is None:
+        return False
+
+    config = _read_json(config_path)
+    marker = config.get("_moduleMapApproval") or {}
+    proposal = _read_json(proposal_path)
+    proposal_id = proposal.get("proposalId")
+    decisions = _read_json(decisions_path)
+    if (not proposal_id or decisions.get("proposalId") != proposal_id
+            or marker.get("proposalId") != proposal_id
+            or marker.get("status") != "approved"
+            or marker.get("reviewer") != decisions.get("reviewer")
+            or marker.get("reviewedOn") != decisions.get("reviewedOn")):
+        raise WorkflowError(
+            "an existing module map cannot advance adoption: the map review, config approval provenance, "
+            "and current discovery proposal do not identify the same owner decision"
+        )
+
+    wrapper = {"proposal": proposal, "proposalId": proposal_id}
+    review_result = apply_review(wrapper, decisions, root=root)
+    if (review_result.get("status") != "approved"
+            or not (review_result.get("approval") or {}).get("canWriteConfig")):
+        raise WorkflowError(
+            "the persisted module-map decisions are not a complete approval; unresolved ownership remains"
+        )
+    expected = build_config(wrapper, review_result, existing=config, language=_language(root))
+    if expected.get("units") != config.get("units"):
+        raise WorkflowError(
+            "the persisted module map does not preserve the approved review's unit paths and roles; "
+            "no workflow stage was advanced"
+        )
+    authoritative = discover_module_map(root).get("authoritativeMap") or {}
+    if authoritative.get("status") != "complete":
+        raise WorkflowError(
+            "the owner-reviewed module map is not authoritative for the current source inventory: %s"
+            % (authoritative.get("summary") or authoritative.get("status") or "unknown")
+        )
+
+    _write_json(root, APPROVAL_FILE, review_result)
+    state.setdefault("artifacts", {})["moduleMapApproval"] = APPROVAL_FILE
+    state["artifacts"]["moduleMap"] = CONFIG_NAME
+    state["decisions"].append({
+        "id": "module-map", "decision": "accepted",
+        "by": decisions.get("reviewer"), "on": decisions.get("reviewedOn"),
+        "proposalId": proposal_id, "reconciled": True,
+        "decisionFile": decisions_path.relative_to(root).as_posix(),
+    })
+    _stage(
+        state, "module_map", COMPLETE,
+        "The previously recorded owner approval was validated against the current proposal and authoritative config.",
+        evidence={"config": CONFIG_NAME, "approval": APPROVAL_FILE,
+                  "decisionFile": decisions_path.relative_to(root).as_posix(),
+                  "proposalId": proposal_id},
+    )
+    state["repository"]["revision"] = _revision(root)
+    state["repository"]["applicationRevision"] = _application_revision(root)
+    if state.get("mode") == "guided":
+        reviewed_map = discover_module_map(root)
+        proposal_document = _write_proposal(root, reviewed_map, state)
+        _stage(
+            state, "adoption_proposal", COMPLETE,
+            "The reconciled owner-approved module map is reflected in the adoption proposal.",
+            evidence=ADOPTION_PROPOSAL,
+        )
+        _proposal_report(root, state, reviewed_map, proposal_document)
+    return True
+
+
 def continue_workflow(root: Path) -> dict:
     root = root.resolve()
     state = _load(root)
     if state["stages"].get("handoff", {}).get("status") == COMPLETE:
         return state
+    if state["stages"].get("module_map", {}).get("status") in (AWAITING, BLOCKED):
+        try:
+            reconciled = _reconcile_owner_approved_module_map(root, state)
+        except (WorkflowError, ModuleMapError, OSError, ValueError) as error:
+            _stage(state, "module_map", BLOCKED, "Persisted map approval could not be reconciled safely: %s" % error)
+            state.setdefault("blockers", []).append("module map approval reconciliation failed")
+            _next(
+                state, "Resolve the module-map approval record",
+                "Review the current proposal, decisions file and acima.config.json; do not implement until they agree.",
+                approval=True, writes=False,
+                why="ACIMA cannot infer consent from a config file or a conversation summary when approval provenance is inconsistent.",
+                done="The proposal id, owner decisions, config approval marker and authoritative source coverage agree.",
+            )
+            _save(root, state)
+            return state
+        if reconciled:
+            _save(root, state)
+            return state
     if (state.get("adoptionNotifications", {}).get("status") == "proposal_prepared"
             and not state.get("adoptionNotifications", {}).get("implementationDecision")):
         _next(state, "Review the separate ACIMA adoption-notifications proposal",

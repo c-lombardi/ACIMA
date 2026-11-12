@@ -375,5 +375,49 @@ class ModuleMapTests(unittest.TestCase):
             self.assertIn("inferred or layout-only ownership", reason)
 
 
+    def test_approved_map_merge_preserves_custom_roles_and_unit_metadata(self) -> None:
+        existing = [
+            {"id": "orders-runtime", "module": "orders", "role": "implementation",
+             "paths": ["src/orders/old"], "owner": "Orders team"},
+            {"id": "orders-public-contracts", "module": "orders", "role": "contracts",
+             "paths": ["src/orders/contracts"], "apiVersion": "v1"},
+            {"id": "application-host", "module": "application", "role": "host",
+             "paths": ["src/host"]},
+            {"id": "shared-kernel", "module": "shared-kernel", "role": "shared-kernel",
+             "paths": ["src/shared"]},
+            {"id": "eventing-adapter", "module": "eventing", "role": "adapter",
+             "paths": ["src/eventing/adapter"]},
+        ]
+        generated = [
+            {"id": "orders", "module": "orders", "role": "implementation",
+             "paths": ["src/orders"], "source": "proposal-approved"},
+            {"id": "orders.contracts", "module": "orders", "role": "contracts",
+             "paths": ["src/orders/contracts/v2"], "source": "proposal-approved"},
+        ]
+        merged = module_map._merge_approved_units(existing, generated)
+        by_id = {unit["id"]: unit for unit in merged}
+        self.assertEqual(set(by_id), {
+            "orders-runtime", "orders-public-contracts", "application-host",
+            "shared-kernel", "eventing-adapter",
+        })
+        self.assertEqual(by_id["orders-runtime"]["paths"], ["src/orders"])
+        self.assertEqual(by_id["orders-runtime"]["owner"], "Orders team")
+        self.assertEqual(by_id["orders-public-contracts"]["paths"], ["src/orders/contracts/v2"])
+        self.assertEqual(by_id["orders-public-contracts"]["apiVersion"], "v1")
+        self.assertEqual(by_id["application-host"]["role"], "host")
+        self.assertEqual(by_id["shared-kernel"]["role"], "shared-kernel")
+        self.assertEqual(by_id["eventing-adapter"]["role"], "adapter")
+
+    def test_approved_map_merge_rejects_ambiguous_existing_module_roles(self) -> None:
+        existing = [
+            {"id": "orders-a", "module": "orders", "role": "implementation", "paths": ["src/a"]},
+            {"id": "orders-b", "module": "orders", "role": "implementation", "paths": ["src/b"]},
+        ]
+        with self.assertRaisesRegex(module_map.ModuleMapError, "multiple units"):
+            module_map._merge_approved_units(existing, [
+                {"id": "orders", "module": "orders", "role": "implementation", "paths": ["src/orders"]}
+            ])
+
+
 if __name__ == "__main__":
     unittest.main()

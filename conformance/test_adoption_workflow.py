@@ -718,5 +718,60 @@ class AdoptionWorkflowTests(unittest.TestCase):
         self.assertEqual(result["evidenceType"], "isolated-known-compliant-fixture")
 
 
+    def test_resume_reconciles_persisted_owner_map_approval_and_generates_report(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            state = workflow.start(root, "guided")
+            proposal = json.loads((root / workflow.PROPOSAL_JSON).read_text(encoding="utf-8"))
+            wrapper = {"proposal": proposal, "proposalId": proposal["proposalId"]}
+            review_path = map_review(root)
+            decisions = json.loads(review_path.read_text(encoding="utf-8"))
+            write(root, workflow.OWNER_MAP_REVIEW_FILE, json.dumps(decisions))
+            reviewed = workflow.apply_review(wrapper, decisions, root=root)
+            self.assertEqual(reviewed["status"], "approved", reviewed.get("approval"))
+            approved_config = workflow.build_config(
+                wrapper, reviewed, language=workflow._language(root)
+            )
+            write(root, workflow.CONFIG_NAME, json.dumps(approved_config))
+            # Simulate the agent having persisted the owner's approval/config after
+            # the workflow checkpoint was created, but before the state was advanced.
+            self.assertEqual(state["stages"]["module_map"]["status"], "awaiting_approval")
+            self.assertFalse((Path(state["artifacts"].get("proposalReport", {}).get("directory", "missing"))
+                              / "index.html").exists())
+
+            resumed = workflow.continue_workflow(root)
+            self.assertEqual(resumed["stages"]["module_map"]["status"], "complete")
+            self.assertEqual(resumed["stages"]["adoption_proposal"]["status"], "complete")
+            self.assertEqual(resumed["stages"]["proposal_report"]["status"], "awaiting_approval")
+            self.assertTrue(resumed["decisions"][-1]["reconciled"])
+            self.assertIn("HTML adoption proposal", resumed["next"]["action"])
+            report = resumed["artifacts"]["proposalReport"]
+            directory = Path(report["directory"])
+            for page in ("index.html", "proposal.html", "findings.html",
+                         "files.html", "plan.html", "evidence.html"):
+                self.assertTrue((directory / page).is_file(), page)
+            self.assertFalse((root / "tools/acima_arch.py").exists())
+            self.assertFalse((root / ".acima/adoption-scope.json").exists())
+
+    def test_resume_does_not_infer_map_consent_from_config_without_matching_review(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            workflow.start(root, "guided")
+            write(root, workflow.CONFIG_NAME, json.dumps({
+                "standard": "1.9.0-draft.2", "mode": "base", "language": "python",
+                "level": "L1", "root": ".", "units": [
+                    {"id": "orders", "module": "orders", "role": "implementation",
+                     "paths": ["src/orders"]},
+                    {"id": "billing", "module": "billing", "role": "implementation",
+                     "paths": ["src/billing"]},
+                ],
+            }))
+            state = workflow.continue_workflow(root)
+            self.assertEqual(state["stages"]["module_map"]["status"], "awaiting_approval")
+            self.assertFalse((root / "docs/acima/adoption-proposal.json").exists())
+            self.assertFalse((root / "tools/acima_arch.py").exists())
+
 if __name__ == "__main__":
     unittest.main()
