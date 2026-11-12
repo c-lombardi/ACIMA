@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -45,6 +45,7 @@ FULL_SCOPE = "repository"
 PASS_RESULT = "pass"
 WAIVER_FIELDS = ("rule", "scope", "fingerprint", "owner", "reason", "expires", "reviewedOn")
 FINGERPRINT_PATTERN = re.compile(r"sha256:[0-9a-f]{64}$")
+ISO_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _waiver_scope_is_known(scope: str, scopes: set[str]) -> bool:
@@ -58,9 +59,12 @@ def _waiver_scope_is_known(scope: str, scopes: set[str]) -> bool:
 
 
 def _iso_date(value: Any) -> date | None:
+    text = str(value or "").strip()
+    if not ISO_DATE_PATTERN.match(text):
+        return None
     try:
-        return date.fromisoformat(str(value)[:10])
-    except (TypeError, ValueError):
+        return date.fromisoformat(text)
+    except ValueError:
         return None
 
 
@@ -100,7 +104,7 @@ def validate_waivers(document: Any, *, today: date | None = None,
     An invalid, expired or unowned waiver is never treated as an accepted exception. The result
     counts every waiver once and names the entries that fail each rule.
     """
-    today = today or date.today()
+    today = today or datetime.now(timezone.utc).date()
     result: dict[str, Any] = {
         "total": 0, "valid": [], "invalid": [], "expired": [], "unowned": [],
         "missing": [], "scopeMismatch": [],
@@ -133,6 +137,8 @@ def validate_waivers(document: Any, *, today: date | None = None,
             problems.append("reviewedOn is not an ISO date")
         if reviewed and reviewed > today:
             problems.append("reviewedOn is in the future")
+        if reviewed and expiry and reviewed > expiry:
+            problems.append("reviewedOn is after expires")
         scope = str(waiver.get("scope", "")).strip()
         entry = {"index": index, "rule": waiver.get("rule"), "problems": problems}
         if missing:

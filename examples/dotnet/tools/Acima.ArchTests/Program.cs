@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -1442,7 +1443,32 @@ internal sealed class Enforcer
                 continue;
             }
 
-            if (!DateTime.TryParse(waiver.Expires, out var expiry) || expiry.Date < DateTime.UtcNow.Date)
+            if (!DateOnly.TryParseExact(waiver.Expires, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var expiry))
+            {
+                Add(G001, $"Waiver expiry is not a strict ISO date (YYYY-MM-DD): {waiver.Expires}.", _cfg.Waivers, index + 1, string.Empty);
+                continue;
+            }
+
+            if (!DateOnly.TryParseExact(waiver.ReviewedOn, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var reviewed))
+            {
+                Add(G001, $"Waiver reviewedOn is not a strict ISO date (YYYY-MM-DD): {waiver.ReviewedOn}.", _cfg.Waivers, index + 1, string.Empty);
+                continue;
+            }
+
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            if (reviewed > today)
+            {
+                Add(G001, $"Waiver for {waiver.Rule} was reviewed in the future: {waiver.ReviewedOn}.", _cfg.Waivers, index + 1, string.Empty);
+                continue;
+            }
+
+            if (reviewed > expiry)
+            {
+                Add(G001, $"Waiver for {waiver.Rule} was reviewed after it expires: {waiver.ReviewedOn} > {waiver.Expires}.", _cfg.Waivers, index + 1, string.Empty);
+                continue;
+            }
+
+            if (expiry < today)
             {
                 Add(G002, $"Waiver for {waiver.Rule} expired on {waiver.Expires} (owner: {waiver.Owner}).", _cfg.Waivers, index + 1, string.Empty);
                 continue;

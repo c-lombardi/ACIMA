@@ -169,6 +169,56 @@ class ClaimModelTests(unittest.TestCase):
             claim.assess(payload("L2"), CATALOG, level="L3")
 
 
+class WaiverValidationTests(unittest.TestCase):
+    def validate(self, **overrides: str) -> dict:
+        waiver = {
+            "rule": "ACIMA-D001",
+            "scope": "unit:orders",
+            "fingerprint": "sha256:" + "0" * 64,
+            "owner": "team-orders",
+            "reason": "test",
+            "expires": "2026-11-12",
+            "reviewedOn": "2026-11-11",
+        }
+        waiver.update(overrides)
+        return claim.validate_waivers(
+            {"waivers": [waiver]}, today=date(2026, 11, 12),
+            valid_scopes={"unit:orders"},
+        )
+
+    def test_expiry_date_is_inclusive(self) -> None:
+        report = self.validate()
+        self.assertEqual(len(report["valid"]), 1)
+        self.assertEqual(report["expired"], [])
+
+    def test_expired_waiver_is_not_valid(self) -> None:
+        report = self.validate(expires="2026-11-11", reviewedOn="2026-11-10")
+        self.assertEqual(report["valid"], [])
+        self.assertEqual(len(report["expired"]), 1)
+
+    def test_dates_must_be_strict_iso_dates(self) -> None:
+        for field in ("expires", "reviewedOn"):
+            with self.subTest(field=field):
+                report = self.validate(**{field: "2026-11-12T00:00:00"})
+                self.assertEqual(report["valid"], [])
+                self.assertTrue(any("ISO date" in problem
+                                    for entry in report["invalid"]
+                                    for problem in entry["problems"]))
+
+    def test_review_date_cannot_be_future_or_after_expiry(self) -> None:
+        future = self.validate(reviewedOn="2026-11-13")
+        self.assertEqual(future["valid"], [])
+        self.assertTrue(any("future" in problem
+                            for entry in future["invalid"]
+                            for problem in entry["problems"]))
+
+        reversed_dates = self.validate(expires="2026-11-10", reviewedOn="2026-11-11")
+        self.assertEqual(reversed_dates["valid"], [])
+        self.assertTrue(any("after expires" in problem
+                            for entry in reversed_dates["invalid"]
+                            for problem in entry["problems"]))
+
+
 class ClaimCliTests(unittest.TestCase):
     def _run(self, report: Path, evidence: Path | None, require: str,
              root: Path | None = None) -> subprocess.CompletedProcess:

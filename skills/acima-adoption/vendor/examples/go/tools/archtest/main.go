@@ -805,10 +805,24 @@ func applyWaivers(add func(string, string, string, int, string), findings []find
 		}
 		expiry, err := parseDate(w.Expires)
 		if err != nil {
-			add("ACIMA-G001", fmt.Sprintf("Waiver expiry is not an ISO date: %s.", w.Expires), cfg.Waivers, i+1, "")
+			add("ACIMA-G001", fmt.Sprintf("Waiver expiry is not a strict ISO date (YYYY-MM-DD): %s.", w.Expires), cfg.Waivers, i+1, "")
 			continue
 		}
-		if expiry.Before(now()) {
+		reviewed, err := parseDate(w.ReviewedOn)
+		if err != nil {
+			add("ACIMA-G001", fmt.Sprintf("Waiver reviewedOn is not a strict ISO date (YYYY-MM-DD): %s.", w.ReviewedOn), cfg.Waivers, i+1, "")
+			continue
+		}
+		today := todayUTC()
+		if reviewed.After(today) {
+			add("ACIMA-G001", fmt.Sprintf("Waiver for %s was reviewed in the future: %s.", w.Rule, w.ReviewedOn), cfg.Waivers, i+1, "")
+			continue
+		}
+		if reviewed.After(expiry) {
+			add("ACIMA-G001", fmt.Sprintf("Waiver for %s was reviewed after it expires: %s > %s.", w.Rule, w.ReviewedOn, w.Expires), cfg.Waivers, i+1, "")
+			continue
+		}
+		if expiry.Before(today) {
 			add("ACIMA-G002", fmt.Sprintf("Waiver for %s expired on %s (owner: %s).", w.Rule, w.Expires, w.Owner), cfg.Waivers, i+1, "")
 			continue
 		}
@@ -875,7 +889,10 @@ func parseDate(value string) (time.Time, error) {
 	return time.Parse("2006-01-02", value)
 }
 
-func now() time.Time { return time.Now() }
+func todayUTC() time.Time {
+	now := time.Now().UTC()
+	return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+}
 
 func lineOf(text string, index int) int {
 	return strings.Count(text[:index], "\n") + 1

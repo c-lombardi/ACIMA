@@ -18,7 +18,7 @@ import json
 import re
 import sys
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 CATALOG: dict[str, tuple[str, str]] = {
@@ -89,6 +89,17 @@ AMBIENT = (r"datetime\.now\b", r"datetime\.utcnow\b", r"date\.today\b", r"time\.
 SQL = re.compile(r"(?is)\b(?:from|into|update|join)\s+[\"'`]?([a-z][a-z0-9_]*)")
 WRITE_SQL = re.compile(r"(?is)\b(?:insert\s+into|update|delete\s+from|join)\s+[\"'`]?([a-z][a-z0-9_]*)")
 FINGERPRINT_PATTERN = re.compile(r"sha256:[0-9a-f]{64}$")
+ISO_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def waiver_date(value: object) -> date | None:
+    text = str(value or "").strip()
+    if not ISO_DATE_PATTERN.match(text):
+        return None
+    try:
+        return date.fromisoformat(text)
+    except ValueError:
+        return None
 
 EXCLUDE_DEFAULT = ["tests", "violations"]
 
@@ -620,13 +631,30 @@ class Enforcer:
                          f"Waiver for {waiver['rule']} is owned by 'unassigned'; "
                          "an unowned exception is not an accepted exception.", path, i)
                 continue
-            try:
-                expired = date.fromisoformat(waiver["expires"]) < date.today()
-            except ValueError:
+            expiry = waiver_date(waiver["expires"])
+            if expiry is None:
                 self.add("ACIMA-G001",
-                         f"Waiver expiry is not an ISO date: {waiver['expires']}.", path, i)
+                         f"Waiver expiry is not a strict ISO date (YYYY-MM-DD): "
+                         f"{waiver['expires']}.", path, i)
                 continue
-            if expired:
+            reviewed = waiver_date(waiver["reviewedOn"])
+            if reviewed is None:
+                self.add("ACIMA-G001",
+                         f"Waiver reviewedOn is not a strict ISO date (YYYY-MM-DD): "
+                         f"{waiver['reviewedOn']}.", path, i)
+                continue
+            today = datetime.now(timezone.utc).date()
+            if reviewed > today:
+                self.add("ACIMA-G001",
+                         f"Waiver for {waiver['rule']} was reviewed in the future: "
+                         f"{waiver['reviewedOn']}.", path, i)
+                continue
+            if reviewed > expiry:
+                self.add("ACIMA-G001",
+                         f"Waiver for {waiver['rule']} was reviewed after it expires: "
+                         f"{waiver['reviewedOn']} > {waiver['expires']}.", path, i)
+                continue
+            if expiry < today:
                 self.add("ACIMA-G002",
                          f"Waiver for {waiver['rule']} expired on {waiver['expires']} "
                          f"(owner: {waiver['owner']}).", path, i)

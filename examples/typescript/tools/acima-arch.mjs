@@ -69,6 +69,19 @@ const AMBIENT = [/new Date\(/, /Date\.now\(/, /crypto\.randomUUID\(/, /Math\.ran
 const SQL = /\b(?:from|into|update|join)\s+([a-z][a-z0-9_]*)/gi;
 const UNTYPED = /:\s*(any|unknown|object)\b|Record<string,\s*(any|unknown|object)>/;
 const WAIVER_FINGERPRINT = /^sha256:[0-9a-f]{64}$/;
+const WAIVER_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function waiverDate(value) {
+  const text = String(value || '').trim();
+  if (!WAIVER_DATE.test(text)) return null;
+  const parsed = new Date(`${text}T00:00:00Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === text
+    ? text : null;
+}
+
+function utcToday() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 const args = process.argv.slice(2);
 const arg = (name, fallback) => {
@@ -1720,10 +1733,18 @@ function checkWaivers() {
       add('ACIMA-G001', `Waiver for ${waiver.rule} is owned by 'unassigned'; an unowned exception is not an accepted exception.`, path, index + 1);
       return;
     }
-    const expiry = new Date(waiver.expires);
-    if (Number.isNaN(expiry.getTime())) {
-      add('ACIMA-G001', `Waiver expiry is not an ISO date: ${waiver.expires}.`, path, index + 1);
-    } else if (expiry < new Date()) {
+    const expiry = waiverDate(waiver.expires);
+    const reviewed = waiverDate(waiver.reviewedOn);
+    const today = utcToday();
+    if (!expiry) {
+      add('ACIMA-G001', `Waiver expiry is not a strict ISO date (YYYY-MM-DD): ${waiver.expires}.`, path, index + 1);
+    } else if (!reviewed) {
+      add('ACIMA-G001', `Waiver reviewedOn is not a strict ISO date (YYYY-MM-DD): ${waiver.reviewedOn}.`, path, index + 1);
+    } else if (reviewed > today) {
+      add('ACIMA-G001', `Waiver for ${waiver.rule} was reviewed in the future: ${waiver.reviewedOn}.`, path, index + 1);
+    } else if (reviewed > expiry) {
+      add('ACIMA-G001', `Waiver for ${waiver.rule} was reviewed after it expires: ${waiver.reviewedOn} > ${waiver.expires}.`, path, index + 1);
+    } else if (expiry < today) {
       add('ACIMA-G002', `Waiver for ${waiver.rule} expired on ${waiver.expires} (owner: ${waiver.owner}).`, path, index + 1);
     } else if (!String(waiver.fingerprint || '').trim()) {
       add('ACIMA-G001', `Waiver for ${waiver.rule} has no finding fingerprint; a broad waiver can hide future findings.`, path, index + 1);

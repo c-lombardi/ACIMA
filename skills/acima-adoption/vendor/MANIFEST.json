@@ -4,8 +4,8 @@
   "catalogSha256": "e3b0926d571d24673b0f4e821ede042a208f3a5e961e5502ffc15cde024ee11c",
   "files": {
     "conformance/acima_claim.py": {
-      "sha256": "1606eeda4825211fec16b7ff7e5e030c393ce0a2c06bcd42aa3b242ebb297580",
-      "bytes": 18257
+      "sha256": "33e098f0a543b2e32f3f091ccdcde81c7a79bd88f098066e9c78d4ef9b05a3d0",
+      "bytes": 18538
     },
     "conformance/acima_paths.py": {
       "sha256": "15a893c7f0b727151f8a75b593aae1efd5984fb629350320f4f041ac93744b2d",
@@ -244,8 +244,8 @@
       "bytes": 326
     },
     "examples/dotnet/tools/Acima.ArchTests/Program.cs": {
-      "sha256": "529cc3f1ea4cba9dc257f7dfdde3b864d2a70a15617d71ab961ac03416f5350c",
-      "bytes": 85151
+      "sha256": "8478b5b138346647ad90a12e54b65d1a28a69457f6485c4910a23023a6471305",
+      "bytes": 86338
     },
     "examples/dotnet/violations/expected.json": {
       "sha256": "c770bb7a336dbb30dc2442c07584dae96f2acdd6002620a1b3491861b993eb80",
@@ -312,8 +312,8 @@
       "bytes": 1633
     },
     "examples/go/tools/archtest/main.go": {
-      "sha256": "a019af6b85959ce3ac78ba84e006d8b9afe3234a8585736bf24f2e5a2f97663d",
-      "bytes": 31065
+      "sha256": "a17a05f7abdce2a9fc3464b1cd7ec598df4b3f00b4ec310c87c95fde5ab7ab8c",
+      "bytes": 31769
     },
     "examples/go/violations/expected.json": {
       "sha256": "a8235fb6d880ad997a2603b54bafebea61234c00bd03d21b05943235f04adf48",
@@ -436,8 +436,8 @@
       "bytes": 556
     },
     "examples/python/tools/acima_arch.py": {
-      "sha256": "e4909ef022a714e96988355f3212950290064303586672bb697dedce1170f0f3",
-      "bytes": 94509
+      "sha256": "50552279a938bf0bf3e9eefb4f353876e63a99891985b741f5b2bb7bab95b797",
+      "bytes": 95702
     },
     "examples/python/violations/expected.json": {
       "sha256": "cbbc143e50775edb73d46017e5b8675291130e2db30d6e3aa1d41d955ed1b403",
@@ -504,8 +504,8 @@
       "bytes": 1118
     },
     "examples/typescript/tools/acima-arch.mjs": {
-      "sha256": "a8bb3313bb650db6acfd7149e2dac17a99447d4fa5eafe0e7c03edb4a3784b8a",
-      "bytes": 80241
+      "sha256": "8a653ad6d63512a70f42763916f0b072187ec7018424706700edd8d8a4b18d45",
+      "bytes": 81193
     },
     "examples/typescript/tsconfig.json": {
       "sha256": "d84e8d5af0502995f3146c10b211bea5d42c04b1b33e279418db475e568eb09b",

@@ -12,6 +12,7 @@ import sys
 import tempfile
 import unittest
 from collections import Counter
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -146,6 +147,48 @@ class WaiverFingerprintTests(unittest.TestCase):
                                          f"{language}: {label} suppressed findings")
                         self.assertIn("ACIMA-G001", {finding["rule"] for finding in after},
                                       f"{language}: {label} must be reported as G001")
+
+    def test_waiver_dates_are_strict_ordered_and_inclusive(self) -> None:
+        today = datetime.now(timezone.utc).date().isoformat()
+        date_cases = {
+            "malformed expiry": ("2099-01-01T00:00:00", "2026-11-08", False),
+            "malformed review date": ("2099-01-01", "not-a-date", False),
+            "future review date": ("2099-01-01", "2999-01-01", False),
+            "review after expiry": ("2026-11-01", "2026-11-02", False),
+            "expiry today is inclusive": (today, today, True),
+        }
+        for language, case in CASES.items():
+            if shutil.which(case["tool"]) is None:
+                self.skipTest(f"{case['tool']} is not installed")
+            with self.subTest(language=language), tempfile.TemporaryDirectory() as temporary:
+                target = Path(temporary) / language
+                shutil.copytree(ROOT / case["dir"], target,
+                                ignore=shutil.ignore_patterns("bin", "obj", "__pycache__",
+                                                              "node_modules", ".git"))
+                before = run(case, target)["findings"]
+                counts = Counter(finding["rule"] for finding in before)
+                candidates = [finding for finding in before
+                              if finding.get("fingerprint") and counts[finding["rule"]] >= 1]
+                self.assertTrue(candidates, f"{language}: no finding to test")
+                chosen = candidates[0]
+                baseline = counts[chosen["rule"]]
+                for label, (expires, reviewed_on, suppresses) in date_cases.items():
+                    with self.subTest(language=language, case=label):
+                        write_waiver(target, chosen, chosen["fingerprint"],
+                                     expires=expires, reviewed_on=reviewed_on)
+                        after = run(case, target)["findings"]
+                        count = sum(1 for finding in after if finding["rule"] == chosen["rule"])
+                        rules = {finding["rule"] for finding in after}
+                        if suppresses:
+                            self.assertEqual(count, baseline - 1,
+                                             f"{language}: {label} did not suppress")
+                            self.assertNotIn("ACIMA-G001", rules,
+                                             f"{language}: {label} was rejected")
+                        else:
+                            self.assertEqual(count, baseline,
+                                             f"{language}: {label} suppressed findings")
+                            self.assertIn("ACIMA-G001", rules,
+                                          f"{language}: {label} must be reported as G001")
 
 
 class AdoptionPreflightTests(unittest.TestCase):
