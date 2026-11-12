@@ -156,7 +156,7 @@ class HumanCommunicationTests(unittest.TestCase):
     def test_approval_explains_the_actual_changes(self) -> None:
         section = reporting_section("### An approval request", "### An unresolved identifier")
         self.assertIn("`acima.config.json`", section)
-        self.assertIn("`.acima/baseline.json`", section)
+        self.assertIn("`acima/evidence/baseline.json`", section)
         self.assertIn("five discovered modules and their roles", section)
         self.assertIn("It does not add CI, change source code or suppress any finding", section)
         self.assertIn("May I create those two files", section)

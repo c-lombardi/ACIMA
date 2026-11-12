@@ -5,7 +5,7 @@
   "verifiedAt": "2026-11-12",
   "catalog": {
     "path": "tools/acima-spec/rules.json",
-    "sha256": "3ec87d8dbf5f9ed80ce783d20c4763d4b358c00eb7697254d4235135c5e23d6e",
+    "sha256": "e3b0926d571d24673b0f4e821ede042a208f3a5e961e5502ffc15cde024ee11c",
     "rules": 56,
     "portable": 42,
     "portableIds": [

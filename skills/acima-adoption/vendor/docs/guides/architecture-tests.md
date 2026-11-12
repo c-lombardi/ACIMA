@@ -72,7 +72,7 @@ failure distinguishable from architecture debt.
     { "id": "tools", "role": "tooling", "paths": ["tools"] }
   ],
   "exclude": ["node_modules", "tests", "violations"],
-  "waivers": ".acima/waivers.json"
+  "waivers": "acima/evidence/waivers.json"
 }
 ```
 

@@ -25,7 +25,7 @@ def execution_map() -> dict:
 def run(tmp: Path, report: dict, claim: dict | None = None,
         initial: dict | None = None) -> dict:
     root = tmp / "target"
-    (root / ".acima").mkdir(parents=True, exist_ok=True)
+    (root / "acima/evidence").mkdir(parents=True, exist_ok=True)
     (root / "acima.config.json").write_text(json.dumps({
         "standard": "1.0.0-draft.1", "level": "L1", "language": "dotnet",
         "units": [{"id": "orders", "module": "orders", "role": "implementation",
@@ -33,27 +33,26 @@ def run(tmp: Path, report: dict, claim: dict | None = None,
                   {"id": "billing", "module": "billing", "role": "implementation",
                    "paths": ["src/Billing"]}],
     }), encoding="utf-8")
-    (root / ".acima/baseline.json").write_text(json.dumps({
+    (root / "acima/evidence/baseline.json").write_text(json.dumps({
         "standard": "1.0.0-draft.1", "level": "L1", "sourceFiles": 2,
         "generatedOn": "2026-11-09",
         "fingerprints": [f["fingerprint"] for f in report.get("findings", [])],
         "findingCount": len(report.get("findings", [])),
     }), encoding="utf-8")
-    (root / ".acima/waivers.json").write_text(json.dumps({
+    (root / "acima/evidence/waivers.json").write_text(json.dumps({
         "standard": "1.0.0-draft.1",
         "waivers": [{"rule": "ACIMA-D001", "scope": "unit:orders",
                      "fingerprint": "sha256:waived1", "owner": "owner",
                      "reason": "baseline", "expires": "2099-01-01",
                      "reviewedOn": "2026-11-09"}],
     }), encoding="utf-8")
-    (root / ".acima/triage.json").write_text(json.dumps({
+    (root / "acima/evidence/triage.json").write_text(json.dumps({
         "triage": [{"rule": "ACIMA-D009", "classification": "detector-artifact",
                     "owner": "owner", "reason": "bare identifier match"}],
     }), encoding="utf-8")
-    (root / "docs/acima").mkdir(parents=True, exist_ok=True)
     (root / ".github/workflows").mkdir(parents=True, exist_ok=True)
     (root / ".github/workflows/acima.yml").write_text("name: gate\n", encoding="utf-8")
-    report_path = root / "docs/acima/gate.json"
+    report_path = root / "acima/evidence/gate.json"
     report_path.write_text(json.dumps(report), encoding="utf-8")
     command = [sys.executable, str(SCRIPT), "--root", str(root),
                "--report", str(report_path), "--catalog", str(CATALOG),
@@ -63,7 +62,7 @@ def run(tmp: Path, report: dict, claim: dict | None = None,
         claim_path.write_text(json.dumps(claim), encoding="utf-8")
         command += ["--claim", str(claim_path)]
     if initial:
-        initial_path = root / "docs/acima/gate-initial.json"
+        initial_path = root / "acima/evidence/gate-initial.json"
         initial_path.write_text(json.dumps(initial), encoding="utf-8")
         command += ["--initial-report", str(initial_path)]
     result = subprocess.run(command, capture_output=True, text=True)
@@ -149,7 +148,7 @@ def test_reconciliation_names_the_difference() -> None:
         first = {"standard": "1.0.0-draft.1", "level": "L1", "sourceFiles": 2,
                  "newFindings": 1, "execution": execution_map(),
                  "findings": [finding("ACIMA-G001", "sha256:g001",
-                                      ".acima/waivers.json")]}
+                                      "acima/evidence/waivers.json")]}
         report = {"standard": "1.0.0-draft.1", "level": "L1", "sourceFiles": 2,
                   "newFindings": 0, "execution": execution_map(), "findings": []}
         data = run(Path(directory), report, initial=first)

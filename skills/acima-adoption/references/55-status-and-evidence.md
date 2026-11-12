@@ -8,14 +8,14 @@ The vocabulary is `NOT_STARTED`, `READY`, `IN_PROGRESS`, `BLOCKED`, `COMPLETE`, 
 and `UNKNOWN`; objective dispositions also distinguish `declined`, `deferred`, `optional` and
 `not-applicable`. A step or objective is complete only when its criterion is verified:
 
-- **scope** is an explicit owner artifact (`.acima/adoption-scope.json` or an `adoption` object in
+- **scope** is an explicit owner artifact (`acima/evidence/adoption-scope.json` or an `adoption` object in
   the config) naming `required`, `approved`, `declined`, `deferred`, `optional` and
   `not-applicable` objectives. File presence never implies approval, and a missing scope is
   `UNKNOWN`, not full adoption. Required and approved objectives must complete; the others never
   block. A prerequisite is promoted to required, and a declined prerequisite for an approved
   objective is a scope conflict.
 - **fit** is complete only when the approved scope exists and a read-only assessment artifact
-  (`docs/acima/assessment.json`) records a valid verdict for this repository. A config file proves
+  (`acima/evidence/assessment.json`) records a valid verdict for this repository. A config file proves
   neither fit nor approval.
 - **trust the tool** requires a proof record naming the standard and catalog hash with `L001` and
   `D001` detected; an empty or stale record blocks.

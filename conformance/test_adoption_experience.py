@@ -47,14 +47,14 @@ def config(root: Path, level: str = "L2", units: int = 1) -> None:
 
 
 def assessment(root: Path) -> None:
-    write_json(root, "docs/acima/assessment.json", {
+    write_json(root, "acima/evidence/assessment.json", {
         "readOnly": True, "root": str(root.resolve()), "verdict": "ASSESSED",
         "verdictMeaning": acima.VERDICT_MEANING["ASSESSED"], "sourceFiles": 4,
     })
 
 
 def scope(root: Path, objectives: dict[str, str]) -> None:
-    write_json(root, ".acima/adoption-scope.json", {
+    write_json(root, "acima/evidence/adoption-scope.json", {
         "version": 1, "approvedBy": "repository-owner", "approvedOn": "2026-01-01",
         "objectives": [{"id": key, "disposition": value}
                        for key, value in objectives.items()],
@@ -74,7 +74,7 @@ def run_payload(findings: list[dict] | None = None, sources: int = 4,
 
 
 def baseline(root: Path, name: str = "baseline-2026-01-01.json", **kwargs) -> None:
-    write_json(root, f"docs/acima/{name}", run_payload(**kwargs))
+    write_json(root, f"acima/evidence/{name}", run_payload(**kwargs))
 
 
 def error(fingerprint: str, path: str = "src/a.py") -> dict:
@@ -97,7 +97,7 @@ def observation(root: Path, **overrides) -> None:
         "catalogSha256": CATALOG_SHA, "level": "L2", "exitCode": 0, "sourceFiles": 4,
     }
     payload.update(overrides)
-    write_json(root, "docs/acima/gate-observed.json", payload)
+    write_json(root, "acima/evidence/gate-observed.json", payload)
 
 
 def step(report: dict, name: str) -> dict:
@@ -182,7 +182,7 @@ class AdoptionExperienceTests(unittest.TestCase):
             root = Path(directory)
             config(root)
             baseline(root)
-            write_json(root, "docs/acima/gate-observed.json", {"exitCode": 0})
+            write_json(root, "acima/evidence/gate-observed.json", {"exitCode": 0})
             gate = step(acima.status_project(root), "gate")
             self.assertEqual(gate["state"], "BLOCKED")
             self.assertIn("missing commit", gate["evidence"])
@@ -224,7 +224,7 @@ class AdoptionExperienceTests(unittest.TestCase):
             config(root)
             payload = run_payload()
             payload["standard"] = "1.0.0"
-            write_json(root, "docs/acima/baseline-2026-01-01.json", payload)
+            write_json(root, "acima/evidence/baseline-2026-01-01.json", payload)
             self.assertEqual(acima.validate_run_artefact(payload, CATALOG["version"]), [])
             freeze = step(acima.status_project(root), "freeze")
             self.assertEqual(freeze["state"], "COMPLETE", freeze)
@@ -246,7 +246,7 @@ class AdoptionExperienceTests(unittest.TestCase):
             root = Path(directory)
             config(root)
             baseline(root)
-            write_json(root, "docs/acima/proof.json", {
+            write_json(root, "acima/evidence/proof.json", {
                 "standard": CATALOG["version"], "catalogSha256": CATALOG_SHA,
                 "results": [{"rule": "ACIMA-L001", "detected": True, "exitCode": 1}]})
             trust = step(acima.status_project(root), "trust the tool")
@@ -291,7 +291,7 @@ class AdoptionExperienceTests(unittest.TestCase):
             root = Path(directory)
             config(root)
             baseline(root, findings=[error("a")])
-            write_json(root, ".acima/waivers.json", {"waivers": [{
+            write_json(root, "acima/evidence/waivers.json", {"waivers": [{
                 "rule": "ACIMA-D001", "scope": "u0", "fingerprint": "not-a-hash",
                 "owner": "team", "reason": "legacy", "expires": "2027-01-01",
                 "reviewedOn": "2026-01-01"}]})
@@ -304,7 +304,7 @@ class AdoptionExperienceTests(unittest.TestCase):
             root = Path(directory)
             config(root)
             baseline(root, findings=[error("a")])
-            write_json(root, ".acima/waivers.json", {"waivers": [{
+            write_json(root, "acima/evidence/waivers.json", {"waivers": [{
                 "rule": "ACIMA-D001", "scope": "billing", "fingerprint": "sha256:" + "a" * 64,
                 "owner": "team", "reason": "legacy", "expires": "2027-01-01",
                 "reviewedOn": "2026-01-01"}]})
@@ -330,7 +330,7 @@ class AdoptionExperienceTests(unittest.TestCase):
             root = Path(directory)
             config(root)
             baseline(root)
-            write_json(root, ".acima/manual-evidence.json",
+            write_json(root, "acima/evidence/manual-evidence.json",
                        {"standard": CATALOG["version"], "evidence": []})
             report = acima.status_project(root)
             claim_step = step(report, "claim")
@@ -346,7 +346,7 @@ class AdoptionExperienceTests(unittest.TestCase):
             artifact = root / "docs/reviews/C003.md"
             artifact.parent.mkdir(parents=True)
             artifact.write_text("reviewed\n", encoding="utf-8")
-            write_json(root, ".acima/manual-evidence.json", {
+            write_json(root, "acima/evidence/manual-evidence.json", {
                 "standard": CATALOG["version"],
                 "evidence": [{
                     "rule": "ACIMA-C003", "scope": "repository", "owner": "team",
@@ -449,7 +449,7 @@ class AdoptionExperienceTests(unittest.TestCase):
             root = Path(directory)
             config(root)
             baseline(root, findings=[])
-            proof = root / "docs/acima/proof.json"
+            proof = root / "acima/evidence/proof.json"
             result = subprocess.run(
                 [sys.executable, str(ROOT / "skills/acima-adoption/scripts/inject_violation.py"),
                  "--project", str(ROOT / "examples/python"), "--out", str(proof),
@@ -469,7 +469,7 @@ class AdoptionExperienceTests(unittest.TestCase):
             (root / "src/u0").mkdir(parents=True)
             (root / "src/u0/app.py").write_text("VALUE = 1\n", encoding="utf-8")
             baseline(root, findings=[error("a")])
-            write_json(root, ".acima/waivers.json", {"waivers": [{
+            write_json(root, "acima/evidence/waivers.json", {"waivers": [{
                 "rule": "ACIMA-D001", "scope": "u0", "fingerprint": "not-a-hash",
                 "owner": "team", "reason": "legacy", "expires": "2027-01-01",
                 "reviewedOn": "2026-01-01"}]})

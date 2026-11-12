@@ -813,7 +813,7 @@ states and the recovery path with its owner. A transaction API in the code prove
 
 ```
 ACIMA-G001  error  Waiver for ACIMA-D001 on unit:orders is missing owner, reason, expires, reviewedOn.
-  .acima/waivers.json:4
+  acima/evidence/waivers.json:4
 ```
 
 ### Why
@@ -852,7 +852,7 @@ catalogue — a typo must not silently excuse nothing.
 
 ```
 ACIMA-G002  error  Waiver for ACIMA-C001 on unit:legacy expired on 2026-01-01 (owner: team-a).
-  .acima/waivers.json:11
+  acima/evidence/waivers.json:11
 ```
 
 ### Why
@@ -918,13 +918,13 @@ contracts unit. Warning severity: it must be reported, not block a hotfix.
 ### Violation
 
 A breaking change (`ProductView.Price` changed from `Money` to `decimal`) with an unchanged
-`.acima/api-surface.json`.
+`acima/evidence/api-surface.json`.
 
 ### Finding
 
 ```
 ACIMA-G004  error  Breaking change to catalog.contracts: ProductView.Price (Money -> decimal).
-  baseline: .acima/api-surface.json:14
+  baseline: acima/evidence/api-surface.json:14
 ```
 
 ### Why

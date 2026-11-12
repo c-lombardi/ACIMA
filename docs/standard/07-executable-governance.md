@@ -8,9 +8,9 @@ language's enforcer interoperates with any other.
 | Artefact | Location | Purpose |
 |---|---|---|
 | `acima.config.json` | repository root or per solution | Declares units, target level, budgets, excludes |
-| `.acima/waivers.json` | repository root | Every permitted departure, with owner and expiry |
-| `.acima/api-surface.json` | repository root | The reviewed baseline of every contracts surface |
-| `.acima/manual-evidence.json` | repository root | Review evidence for normative rules the portable enforcers cannot execute |
+| `acima/evidence/waivers.json` | `acima/evidence/` | Every permitted departure, with owner and expiry |
+| `acima/evidence/api-surface.json` | `acima/evidence/` | The reviewed baseline of every contracts surface |
+| `acima/evidence/manual-evidence.json` | `acima/evidence/` | Review evidence for normative rules the portable enforcers cannot execute |
 
 All four are version-controlled, reviewed in pull requests, and owned by the same people who own the
 code. The first three are mandatory for an assessment; manual evidence is required only for a full
@@ -199,7 +199,7 @@ summary is the only mechanism that reliably gets debt paid.
 
 ## 7.6 API baseline
 
-`.acima/api-surface.json` is a sorted record of every public type in every contracts unit:
+`acima/evidence/api-surface.json` is a sorted record of every public type in every contracts unit:
 
 ```json
 {

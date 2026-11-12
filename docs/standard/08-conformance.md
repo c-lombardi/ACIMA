@@ -143,7 +143,7 @@ A conformance claim is credible when all six exist:
    errors;
 3. **the manual evidence** — for a **full conformance claim**, every rule required by that level
    that the run reports as `executed: false` must have a repository-scoped entry in
-   `.acima/manual-evidence.json`;
+   `acima/evidence/manual-evidence.json`;
 4. **the artefact** — the JSON findings file from that run, retained with the build;
 5. **the waiver report** — count, owners, soonest expiry, expired count;
 6. **the pipeline** — the gate runs on every pull request and blocks merges on `error`.
@@ -164,7 +164,7 @@ enforcers in this repository fail when a suite finds zero files.
 - Language profile: dotnet
 - Enforcer: tests/Acima.ArchTests
 - CI gate: <link to the required check>
-- Manual evidence: `.acima/manual-evidence.json` (<n> accepted entries)
+- Manual evidence: `acima/evidence/manual-evidence.json` (<n> accepted entries)
 
 | Check | Result |
 |---|---|
@@ -202,7 +202,7 @@ The claim class is computed, not chosen by the author:
 
 ```bash
 python3 tools/acima.py claim --report acima.json \
-  --evidence .acima/manual-evidence.json --level L2 --require full
+  --evidence acima/evidence/manual-evidence.json --level L2 --require full
 ```
 
 `claim` exits `0` only when the requested class is satisfied **and** the claim is current. It exits
@@ -283,7 +283,7 @@ that command to the same pull-request job as its language enforcer.
 
 ## 8.9 Manual evidence for full claims
 
-`.acima/manual-evidence.json` is version-controlled with the config and waivers. It records the
+`acima/evidence/manual-evidence.json` is version-controlled with the config and waivers. It records the
 review that replaces an automated rule, not a promise to review later:
 
 ```json

@@ -12,5 +12,5 @@
     { "id": "host", "role": "host", "paths": ["host/Host"] }
   ],
   "exclude": ["bin", "obj", "tests", "violations"],
-  "waivers": ".acima/waivers.json"
+  "waivers": "acima/evidence/waivers.json"
 }

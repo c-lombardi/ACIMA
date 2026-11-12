@@ -334,6 +334,10 @@ func walk(root, dir string, exclude []string, files map[string]*source) {
 
 func excluded(path string, patterns []string) bool {
 	trimmed := strings.TrimSuffix(path, "/")
+	// The generated ACIMA workspace is not application source.
+	if trimmed == "acima" || strings.HasPrefix(trimmed, "acima/") {
+		return true
+	}
 	for _, pattern := range patterns {
 		clean := strings.ReplaceAll(strings.ReplaceAll(pattern, "**", ""), "*", "")
 		if trimmed == clean || strings.HasPrefix(trimmed, clean+"/") {

@@ -1,9 +1,9 @@
 # ACIMA status — <repository>
 
 Updated: <date> by <name>   Phase: <assess | propose | authorize | implement | verify>
-Approved scope: `.acima/adoption-scope.json` — <approved by / date>
+Approved scope: `acima/evidence/adoption-scope.json` — <approved by / date>
 Declared level: <L1 | L2 | L3 | none>   Run artefact: <path to baseline JSON>
-Reader report: `docs/acima/adoption-summary.md`   Evidence: <path to gate-status / assessment>
+Reader report: `acima/handoff/adoption-summary.md`   Evidence: <path to gate-status / assessment>
 
 ## 1. Where you are
 
@@ -58,7 +58,7 @@ summary. Do not turn an absent optional document into an outstanding requirement
 
 - Findings detail: `<path>` — <what it contains, why to open it>
 - Raw run: `<path>` — <command that regenerates it>
-- Plans (optional, if created): `docs/acima/adoption-plan.md`, `docs/acima/communication-plan.md`
+- Plans (optional, if created): `acima/optional/adoption-plan.md`, `acima/optional/communication-plan.md`
 - Explanation sources: the catalog and standard pages that define the checks.
 - Correction recipes: the catalog fix text and the relevant standard page.
 - Commands: `docs/commands.md` in the ACIMA repository — run one, not a programme

@@ -41,7 +41,7 @@ from module_map import (  # noqa: E402
 )
 CONFIG_NAME = "acima.config.json"
 PRUNE = {".git", "node_modules", "bin", "obj", "dist", "build", "target", "out",
-         ".venv", "venv", "__pycache__", ".next", ".nuxt", "coverage"}
+         ".venv", "venv", "__pycache__", ".next", ".nuxt", "coverage", "acima"}
 SOURCE_EXTENSIONS = {".py", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".cs", ".go", ".java"}
 ENFORCER_VERSION = "acima-reference-1"
 PROVENANCE_VERSION = 1
@@ -1954,23 +1954,28 @@ def _catalog_version_and_hash() -> tuple[str | None, str | None]:
 
 
 def _run_artefacts(root: Path, catalog_version: str | None) -> tuple[list[dict], list[str]]:
-    directory = root / "docs/acima"
+    directories = (root / "acima/evidence", root / "docs/acima")
     usable: list[dict] = []
     rejected: list[str] = []
-    if not directory.is_dir():
-        return usable, rejected
-    for path in sorted(list(directory.glob("baseline-*.json")) + list(directory.glob("gate-*.json"))):
-        name = path.relative_to(root).as_posix()
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            rejected.append(f"{name}: not valid JSON")
+    seen: set[str] = set()
+    for directory in directories:
+        if not directory.is_dir():
             continue
-        problems = validate_run_artefact(payload, catalog_version)
-        if problems:
-            rejected.append(f"{name}: " + "; ".join(problems))
-            continue
-        usable.append({"path": name, "payload": payload, "mtime": path.stat().st_mtime})
+        for path in sorted(list(directory.glob("baseline-*.json")) + list(directory.glob("gate-*.json"))):
+            name = path.relative_to(root).as_posix()
+            if name in seen:
+                continue
+            seen.add(name)
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                rejected.append(f"{name}: not valid JSON")
+                continue
+            problems = validate_run_artefact(payload, catalog_version)
+            if problems:
+                rejected.append(f"{name}: " + "; ".join(problems))
+                continue
+            usable.append({"path": name, "payload": payload, "mtime": path.stat().st_mtime})
     usable.sort(key=lambda entry: entry["mtime"])
     return usable, rejected
 
@@ -2007,6 +2012,15 @@ def _sha256_file(path: Path) -> str | None:
         return None
 
 
+def _artifact_path(root: Path, canonical: str, *legacy: str) -> Path:
+    """Prefer the canonical artifact, but keep older repositories readable."""
+    for relative in (canonical, *legacy):
+        path = root / relative
+        if path.is_file():
+            return path
+    return root / canonical
+
+
 def _git_dirty(root: Path) -> list[str] | None:
     """Tracked changes in the working tree, or None when Git cannot answer."""
     try:
@@ -2031,9 +2045,9 @@ def _git_dirty(root: Path) -> list[str] | None:
 
 def _relevant_change(path: str) -> bool:
     normalized = path.replace("\\", "/")
-    if normalized in (CONFIG_NAME, ".acima/baseline.json", EVIDENCE_FILE):
+    if normalized in (CONFIG_NAME, "acima/evidence/baseline.json", EVIDENCE_FILE):
         return True
-    if normalized.startswith((".acima/", ".github/workflows/")):
+    if normalized.startswith(("acima/evidence/", ".github/workflows/")):
         return True
     return Path(normalized).suffix.lower() in SOURCE_EXTENSIONS
 
@@ -2187,7 +2201,8 @@ def _claim_currentness(root: Path, payload: dict, config: dict | None, level: st
         return _currentness_result("missing-provenance",
                                    "the run has no positive source-file count.", checks, head,
                                    current_repository)
-    baseline_sha = _sha256_file(root / ".acima/baseline.json")
+    baseline_sha = _sha256_file(_artifact_path(root, "acima/evidence/baseline.json",
+                                                 ".acima/baseline.json"))
     run_baseline = str(payload.get("baselineSha256") or "").strip().lower()
     if baseline_sha:
         checks["baselineSha256"] = run_baseline or "missing"
@@ -2233,7 +2248,8 @@ def _attach_run_provenance(root: Path, payload: dict) -> dict:
     updated.setdefault("sourceInventorySha256", _source_inventory_digest(inventory))
     updated.setdefault("enforcerVersion", ENFORCER_VERSION)
     updated.setdefault("provenanceVersion", PROVENANCE_VERSION)
-    baseline_sha = _sha256_file(root / ".acima/baseline.json")
+    baseline_sha = _sha256_file(_artifact_path(root, "acima/evidence/baseline.json",
+                                                 ".acima/baseline.json"))
     if baseline_sha:
         updated.setdefault("baselineSha256", baseline_sha)
     return updated
@@ -2244,7 +2260,7 @@ def _proof_step(root: Path, catalog_version: str | None, catalog_sha: str | None
     if not path.is_file():
         return _step(3, "trust the tool", STEP_UNKNOWN,
                      "no proof artefact; detection is unproven",
-                     "run inject_violation.py with --out docs/acima/proof.json")
+                     "run inject_violation.py with --out acima/evidence/proof.json")
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
@@ -2276,8 +2292,8 @@ def _proof_step(root: Path, catalog_version: str | None, catalog_sha: str | None
 
 GATE_TOKENS = ("acima_arch.py", "acima-arch.mjs", "./tools/archtest",
                "Acima.ArchTests", "acima.py analyze")
-GATE_OBSERVATION = "docs/acima/gate-observed.json"
-PROOF_ARTEFACT = "docs/acima/proof.json"
+GATE_OBSERVATION = "acima/evidence/gate-observed.json"
+PROOF_ARTEFACT = "acima/evidence/proof.json"
 COMPARISON_FIELDS = ("standard", "level", "sourceFiles", "catalog", "executed")
 GATE_PROVIDERS = {"github", "github-actions"}
 PR_TRIGGERS = {"pull_request", "pull_request_target", "merge_group"}
@@ -3048,9 +3064,10 @@ def _claim_step(root: Path, runs: list[dict], level: str | None, config: dict | 
         "record repository-scoped manual evidence for the named rules, then measure again")
 
 
-ADOPTION_SCOPE_FILE = ".acima/adoption-scope.json"
-ADOPTION_SCOPE_ALT = "docs/acima/adoption-scope.json"
-ASSESSMENT_EVIDENCE = "docs/acima/assessment.json"
+ADOPTION_SCOPE_FILE = "acima/evidence/adoption-scope.json"
+ADOPTION_SCOPE_ALT = ".acima/adoption-scope.json"
+ADOPTION_SCOPE_DOCS = "docs/acima/adoption-scope.json"
+ASSESSMENT_EVIDENCE = "acima/evidence/assessment.json"
 SCOPE_DISPOSITIONS = ("required", "approved", "declined", "deferred", "optional",
                       "not-applicable")
 OBJECTIVE_DEFS = (
@@ -3082,8 +3099,8 @@ OBJECTIVE_ALIASES = {
 }
 OBJECTIVE_LABEL = dict(STATE_LABEL, DECLINED="declined", DEFERRED="deferred",
                        OPTIONAL="optional, not required", UNSUPPORTED="unsupported")
-HANDOFF_DOCUMENTS = ("docs/acima/handoff.md", "docs/acima/developer-guide.md")
-COMMUNICATION_DOCUMENTS = ("docs/acima/communication-plan.md", "docs/acima/governance.md")
+HANDOFF_DOCUMENTS = ("acima/handoff/handoff.md", "acima/handoff/developer-guide.md")
+COMMUNICATION_DOCUMENTS = ("acima/optional/communication-plan.md", "acima/optional/governance.md")
 
 
 def _next_action(action: str = "", *, why: str = "", command: str = "", done: str = "",
@@ -3288,7 +3305,7 @@ def _normalise_scope(document: dict, source: str) -> dict:
 
 def _load_adoption_scope(root: Path, config: dict | None) -> dict:
     found: list[tuple[str, object]] = []
-    for relative in (ADOPTION_SCOPE_FILE, ADOPTION_SCOPE_ALT):
+    for relative in (ADOPTION_SCOPE_FILE, ADOPTION_SCOPE_ALT, ADOPTION_SCOPE_DOCS):
         path = root / relative
         if not path.is_file():
             continue
@@ -3325,7 +3342,8 @@ def _assessment_evidence(root: Path, scope: dict) -> dict:
             and configured["artifact"].strip():
         candidates.append(configured["artifact"].strip())
     else:
-        candidates.extend((ASSESSMENT_EVIDENCE, ".acima/assessment.json"))
+        candidates.extend((ASSESSMENT_EVIDENCE, "docs/acima/assessment.json",
+                           ".acima/assessment.json"))
     for relative in candidates:
         path = root / relative
         if not path.is_file():
@@ -3392,7 +3410,7 @@ def _scope_remedy(scope: dict) -> dict:
     return _next_action(
         "Correct the adoption scope record before acting on it",
         why="The owner's approved scope is the only basis for completion and next actions.",
-        command="edit .acima/adoption-scope.json: fix approvedBy, approvedOn and objective dispositions",
+        command="edit acima/evidence/adoption-scope.json: fix approvedBy, approvedOn and objective dispositions",
         done="status accepts the scope and names every required, declined and deferred objective.",
         approval=True, writes=True,
         effect="Only the scope record changes; no architecture, evidence or CI is modified. "
@@ -3588,7 +3606,7 @@ def _build_objectives(root: Path, scope: dict, assessment: dict, steps: list[dic
                 action = _next_action(
                     "Produce a valid local measurement", why=local["evidence"],
                     command=enforcer, done="the JSON parses, sourceFiles > 0 and the execution map is complete.",
-                    effect="Prints a measurement; save its unmodified JSON under docs/acima/.")
+                    effect="Prints a measurement; save its unmodified JSON under acima/evidence/.")
             elif local["state"] != STEP_COMPLETE:
                 state = STEP_READY
                 evidence = "units declared; no validated run" if not runs else local["evidence"]
@@ -3597,7 +3615,7 @@ def _build_objectives(root: Path, scope: dict, assessment: dict, steps: list[dic
                     why="Without a validated run, findings and local enforcement are guesses.",
                     command=enforcer,
                     done="the JSON parses, sourceFiles > 0 and the execution map is complete.",
-                    effect="Prints a measurement; save it under docs/acima/ so status can verify it.")
+                    effect="Prints a measurement; save it under acima/evidence/ so status can verify it.")
             else:
                 state = STEP_COMPLETE
                 evidence = local["evidence"]
@@ -3618,7 +3636,7 @@ def _build_objectives(root: Path, scope: dict, assessment: dict, steps: list[dic
                 action = _next_action(
                     "Repair waiver governance before relying on the baseline",
                     why="An invalid, expired or unowned exception hides new findings.",
-                    command="edit .acima/waivers.json: complete every field, scope and expiry",
+                    command="edit acima/evidence/waivers.json: complete every field, scope and expiry",
                     done="every waiver validates and none is expired.", approval=True, writes=True,
                     effect="Changes only exception records; it does not hide or rewrite findings.")
             else:
@@ -3627,7 +3645,7 @@ def _build_objectives(root: Path, scope: dict, assessment: dict, steps: list[dic
                 action = _next_action(
                     "Ask the owner to approve owned exceptions for existing findings",
                     why="The baseline has errors but no accepted exception; the baseline is not owned yet.",
-                    command="propose scoped waivers, then write .acima/waivers.json only with approval",
+                    command="propose scoped waivers, then write acima/evidence/waivers.json only with approval",
                     done="each pre-existing finding has an owner, scope, fingerprint and expiry.",
                     approval=True, writes=True,
                     effect="Adds scoped exceptions only for named pre-existing findings; never suppresses new errors.")
@@ -3718,7 +3736,7 @@ def _build_objectives(root: Path, scope: dict, assessment: dict, steps: list[dic
                 action = _next_action(
                     "Correct the claim evidence",
                     why="The current claim record is invalid; it cannot be promoted to conformance.",
-                    command="repair .acima/manual-evidence.json and recompute the claim",
+                    command="repair acima/evidence/manual-evidence.json and recompute the claim",
                     done="the claim has valid, current repository and manual evidence.",
                     approval=True, writes=True,
                     effect="Changes only evidence for named manual rules; the claim itself is unchanged.")
@@ -3730,7 +3748,7 @@ def _build_objectives(root: Path, scope: dict, assessment: dict, steps: list[dic
                     action = _next_action(
                         "Record the evidence the claim still needs",
                         why="A partial assessment is honest; accepted evidence is what can make it full.",
-                        command="fill .acima/manual-evidence.json for the named manual rules",
+                        command="fill acima/evidence/manual-evidence.json for the named manual rules",
                         done="acima.py claim --require full exits 0 at the declared level.",
                         approval=True, writes=True,
                         effect="Adds accepted evidence for named manual rules; it does not waive automated findings.")
@@ -3813,7 +3831,7 @@ def _scope_aware_next(scope: dict, engagement: dict, config: dict | None,
         return _next_action(
             "Record the owner-approved adoption scope",
             why="Configuration and evidence exist, but no artefact records what the owner approved.",
-            command="create .acima/adoption-scope.json with approvedBy, approvedOn and objective dispositions",
+            command="create acima/evidence/adoption-scope.json with approvedBy, approvedOn and objective dispositions",
             done="status accepts the scope and separates approved, declined, deferred and optional work.",
             approval=True, writes=True,
             effect="Adds the scope record only; it does not approve or perform any other objective.")
@@ -3847,12 +3865,13 @@ def status_project(root: Path) -> dict:
 
     catalog_version, catalog_sha = _catalog_version_and_hash()
     calibration = _calibration()
-    waiver_path = root / ((config or {}).get("waivers") or ".acima/waivers.json")
+    waiver_path = root / ((config or {}).get("waivers") or "acima/evidence/waivers.json")
     waivers = _waiver_document(waiver_path) if waiver_path.is_file() else {"waivers": []}
     scopes = {str(unit.get("id")) for unit in units if unit.get("id")}
     scopes |= {str(unit.get("module")) for unit in units if unit.get("module")}
     waiver_report = validate_waivers(waivers, valid_scopes=scopes)
-    fingerprinted = _waiver_document(root / ".acima/baseline.json").get("fingerprints")
+    fingerprinted = _waiver_document(_artifact_path(
+        root, "acima/evidence/baseline.json", ".acima/baseline.json")).get("fingerprints")
     fingerprinted = fingerprinted if isinstance(fingerprinted, list) else []
 
     runs, rejected_runs = _run_artefacts(root, catalog_version)
@@ -3906,9 +3925,9 @@ def status_project(root: Path) -> dict:
         freeze = _step(6, "freeze", STEP_COMPLETE, detail)
     elif fingerprinted:
         freeze = _step(6, "freeze", STEP_IN_PROGRESS,
-                       f".acima/baseline.json holds {len(fingerprinted)} fingerprint(s), but no "
+                       f"acima/evidence/baseline.json holds {len(fingerprinted)} fingerprint(s), but no "
                        "valid measured run proves the measurement",
-                       "keep the enforcer's JSON as docs/acima/baseline-<date>.json")
+                       "keep the enforcer's JSON as acima/evidence/baseline-<date>.json")
     else:
         freeze = _step(6, "freeze", STEP_NOT_STARTED, "no measured run",
                        "measure the current state")
@@ -3948,8 +3967,8 @@ def status_project(root: Path) -> dict:
         root, scope, assessment, steps, config, config_problem, units, runs, newest,
         errors, waiver_report, language)
 
-    optional = [{"name": name, "path": f"docs/acima/{name}",
-                 "present": (root / "docs/acima" / name).is_file(),
+    optional = [{"name": name, "path": f"acima/optional/{name}",
+                 "present": (root / "acima/optional" / name).is_file(),
                  "disposition": "optional"}
                 for name in ("adoption-plan.md", "communication-plan.md", "STATUS.md")]
 
@@ -3984,7 +4003,7 @@ def status_project(root: Path) -> dict:
     elif steps[6]["state"] == STEP_BLOCKED:
         next_step.update(action="Repair waiver governance before relying on the gate",
                          why="An invalid, expired or unowned exception hides new findings.",
-                         command="edit .acima/waivers.json: complete every field, scope and expiry",
+                         command="edit acima/evidence/waivers.json: complete every field, scope and expiry",
                          doneWhen="every waiver validates and none is expired.",
                          approvalRequired=True, writes=True)
     elif steps[6]["state"] == STEP_NOT_STARTED and errors:
@@ -4064,7 +4083,7 @@ def status_project(root: Path) -> dict:
             next_step.update(action="Record the evidence the claim still needs",
                              why="A partial assessment is honest; accepted evidence is what can "
                                  "make it full.",
-                             command="fill .acima/manual-evidence.json for the named manual rules",
+                             command="fill acima/evidence/manual-evidence.json for the named manual rules",
                              doneWhen="acima.py claim --require full exits 0 at the declared level.",
                              approvalRequired=True, writes=True)
         else:
@@ -4079,7 +4098,7 @@ def status_project(root: Path) -> dict:
         next_step.update(action="Correct the claim evidence",
                          why="The current claim record is invalid; a partial or stale record cannot "
                              "be promoted to conformance.",
-                         command="repair .acima/manual-evidence.json and recompute the claim",
+                         command="repair acima/evidence/manual-evidence.json and recompute the claim",
                          doneWhen="the claim has valid, current repository and manual evidence.",
                          approvalRequired=True, writes=True)
     else:

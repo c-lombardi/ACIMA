@@ -88,7 +88,7 @@ class DocumentationContractTests(unittest.TestCase):
         self.assertEqual(sum(1 for rule in catalog["rules"]
                              if rule.get("automation") == "automated"), 42)
         self.assertEqual(catalog["claimModel"]["manualEvidencePath"],
-                         ".acima/manual-evidence.json")
+                         "acima/evidence/manual-evidence.json")
         for rule in catalog["rules"]:
             if rule["id"] in manual:
                 self.assertTrue(rule.get("manualEvidence"))
@@ -105,7 +105,7 @@ class DocumentationContractTests(unittest.TestCase):
         conformance = read("docs/standard/08-conformance.md")
         self.assertIn("FULL CONFORMANCE", conformance)
         self.assertIn("PARTIAL ASSESSMENT", conformance)
-        self.assertIn(".acima/manual-evidence.json", conformance)
+        self.assertIn("acima/evidence/manual-evidence.json", conformance)
         self.assertIn("acima.py claim", conformance)
         self.assertIn("8.9 Manual evidence for full claims", conformance)
         self.assertTrue((ROOT / "skills/acima-adoption/assets/manual-evidence.template.json").is_file())

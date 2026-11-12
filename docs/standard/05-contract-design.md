@@ -138,7 +138,7 @@ Contract changes are classified before they are written:
 | Remove a member | breaking | deprecate first, remove in the next major |
 | Change validation to reject previously valid input | breaking in practice | treat as breaking even though the shape is unchanged |
 
-`G004` turns the baseline into an artefact: `.acima/api-surface.json` records every public type,
+`G004` turns the baseline into an artefact: `acima/evidence/api-surface.json` records every public type,
 member and signature in every contracts unit. A change that is not additive fails until the baseline
 is regenerated **and reviewed**, which is the moment a human decides whether the change is allowed.
 

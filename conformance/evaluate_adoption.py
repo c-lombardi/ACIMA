@@ -47,18 +47,18 @@ def run_payload(findings: list[dict], sources: int = 2) -> dict:
 
 
 def baseline(root: Path, findings: list[dict], name: str = "baseline-a.json") -> None:
-    write(root / "docs/acima" / name, json.dumps(run_payload(findings)))
+    write(root / "acima/evidence" / name, json.dumps(run_payload(findings)))
 
 
 def assessment(root: Path) -> None:
-    write(root / "docs/acima/assessment.json", json.dumps({
+    write(root / "acima/evidence/assessment.json", json.dumps({
         "readOnly": True, "root": str(root.resolve()), "verdict": "ASSESSED",
         "verdictMeaning": acima.VERDICT_MEANING["ASSESSED"], "sourceFiles": 2,
     }))
 
 
 def scope(root: Path, objectives: dict[str, str]) -> None:
-    write(root / ".acima/adoption-scope.json", json.dumps({
+    write(root / "acima/evidence/adoption-scope.json", json.dumps({
         "version": 1, "approvedBy": "repository-owner", "approvedOn": "2026-01-01",
         "objectives": [{"id": key, "disposition": value}
                        for key, value in objectives.items()],
@@ -76,7 +76,7 @@ def observation(root: Path) -> None:
     write(root / ".github/workflows/acima.yml",
           "on: pull_request\njobs:\n  gate:\n    steps:\n"
           "      - run: python3 examples/python/tools/acima_arch.py --root . --level L2\n")
-    write(root / "docs/acima/gate-observed.json", json.dumps({
+    write(root / "acima/evidence/gate-observed.json", json.dumps({
         "manual": True, "repository": root.name, "commit": "a" * 40,
         "workflow": ".github/workflows/acima.yml",
         "command": "acima_arch.py --root .", "executedAt": "2026-11-09T10:00:00Z",

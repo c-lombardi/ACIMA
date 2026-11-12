@@ -198,7 +198,7 @@ not later — but do not create it before consent.
     { "id": "host", "role": "host", "paths": ["src/host"] }
   ],
   "exclude": ["node_modules", "tests", "violations"],
-  "waivers": ".acima/waivers.json"
+  "waivers": "acima/evidence/waivers.json"
 }
 ```
 

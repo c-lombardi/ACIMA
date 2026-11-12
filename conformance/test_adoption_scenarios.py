@@ -142,7 +142,7 @@ def enforcer(root: Path) -> dict:
 def record_baseline(root: Path, name: str = "baseline-2026-01-01.json") -> dict:
     payload = enforcer(root)
     assert payload.get("sourceFiles", 0) > 0, "a zero-source run cannot be a baseline"
-    write_json(root, f"docs/acima/{name}", payload)
+    write_json(root, f"acima/evidence/{name}", payload)
     return payload
 
 
@@ -155,12 +155,12 @@ def assess_tool(root: Path) -> dict:
 
 def record_assessment(root: Path) -> dict:
     payload = assess_tool(root)
-    write_json(root, "docs/acima/assessment.json", payload)
+    write_json(root, "acima/evidence/assessment.json", payload)
     return payload
 
 
 def scope(root: Path, objectives: dict[str, str], approved_on: str = "2026-01-01") -> None:
-    write_json(root, ".acima/adoption-scope.json", {
+    write_json(root, "acima/evidence/adoption-scope.json", {
         "version": 1, "approvedBy": "repository-owner", "approvedOn": approved_on,
         "objectives": [{"id": key, "disposition": value} for key, value in objectives.items()],
     })
@@ -182,7 +182,7 @@ def objective(report: dict, identifier: str) -> dict:
 
 def no_adoption_artifacts(root: Path) -> None:
     assert not (root / "acima.config.json").exists(), "config was written without approval"
-    assert not (root / ".acima").exists(), ".acima/ was written without approval"
+    assert not (root / "acima").exists(), "acima/ was written without approval"
     assert not (root / ".github").exists(), "CI was written without approval"
     assert not (root / "docs").exists(), "documents were written without approval"
 
@@ -366,8 +366,8 @@ def scenario_f(root: Path) -> str:
     text = acima.status_text(report)
     assert "adoption plan" not in text.lower()
     assert "communication plan" not in text.lower()
-    for relative in ("docs/acima/adoption-plan.md", "docs/acima/communication-plan.md",
-                     "docs/acima/STATUS.md"):
+    for relative in ("acima/optional/adoption-plan.md", "acima/optional/communication-plan.md",
+                     "acima/handoff/STATUS.md"):
         assert not (root / relative).exists(), relative
     assert snapshot(root) == before
     return "assessment-only/local scope completed without any optional document"
@@ -458,7 +458,7 @@ def scenario_i(root: Path) -> str:
     assert status["next"]["action"].startswith("No further action"), status["next"]
     assert status["next"]["writes"] is False and status["next"]["approvalRequired"] is False
     assert "declined" in acima.status_text(status).lower()
-    assert (root / "docs/acima/assessment.json").is_file(), "read-only findings were discarded"
+    assert (root / "acima/evidence/assessment.json").is_file(), "read-only findings were discarded"
     assert snapshot(root) == before
     assert not (root / ".github").exists()
     return "decline respected; findings retained; no workflow, source or further write proposed"
@@ -492,7 +492,7 @@ def scenario_j(root: Path) -> str:
     added, removed, modified = changed(before, after)
     assert not added and not removed and modified == {"src/orders/service.py"}, (added, removed,
                                                                                modified)
-    assert not (root / ".acima").exists() and not (root / ".github").exists()
+    assert not (root / "acima").exists() and not (root / ".github").exists()
     return "fix plan stayed read-only; one authorized source correction removed only its finding"
 
 

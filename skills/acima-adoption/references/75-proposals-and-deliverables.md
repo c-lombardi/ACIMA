@@ -19,23 +19,23 @@ before naming L1/L2/L3.
 ## Orchestrated deliverables
 
 When the workflow mode is selected, generate the module-map proposal, adoption proposal,
-`.acima/adoption-scope.json`, enforcement record, architecture-test record, CI decision and final
+`acima/evidence/adoption-scope.json`, enforcement record, architecture-test record, CI decision and final
 handoff as stage artifacts. Guided mode presents the map and scope for approval; full automation
 proceeds only within its explicit authorization. Every artifact records its status and every
 recommendation has an implementation path or an explicit deferral. A proposal is not an approved
 map, a written CI file is not a remote run, and a copied enforcer is not a conformance claim.
 
-The final remediation decision produces `docs/acima/remediation-plan.json` and
-`docs/acima/remediation-result.json`. The plan discloses maturity, affected files, prerequisites,
+The final remediation decision produces `acima/evidence/remediation-plan.json` and
+`acima/evidence/remediation-result.json`. The plan discloses maturity, affected files, prerequisites,
 risk, all recommendations and their readiness; the result records none/selected/all, changed files,
 manual or failed items, deferred items, before/after verification and the post-remediation review.
 Only deterministic changes are applied; manual recommendations remain explicit work.
 
 Agent guidance is another first-class deliverable: a concise root instruction update or creation plus
-`docs/architecture/acima/agent-architecture-guidance.md`, `enforcement.md`, `judgment-guidance.md`
+`acima/handoff/agent-guidance/agent-architecture-guidance.md`, `enforcement.md`, `judgment-guidance.md`
 and `architectural-workflow.md`. Existing user-authored instruction content is preserved. The
-proposal and validation record live in `docs/acima/agent-guidance-proposal.md` and
-`.acima/agent-guidance.json`; the guidance is refreshed after remediation and never claims agent
+proposal and validation record live in `acima/report/agent-guidance-proposal.md` and
+`acima/evidence/agent-guidance.json`; the guidance is refreshed after remediation and never claims agent
 behavior was empirically guaranteed.
 
 ## Module-map proposal and scoped approval

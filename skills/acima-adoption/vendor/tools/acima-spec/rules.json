@@ -371,7 +371,7 @@
       "level": "L2",
       "title": "Unreviewed contract change",
       "summary": "A change to a published contracts surface must be captured in the versioned API baseline.",
-      "fix": "Make the change additive, or regenerate .acima/api-surface.json in the same commit and mark the release as breaking.",
+      "fix": "Make the change additive, or regenerate acima/evidence/api-surface.json in the same commit and mark the release as breaking.",
       "automation": "manual",
       "manualEvidence": "Compare the contracts surface with the reviewed API baseline; record additive and breaking changes."
     },
@@ -662,7 +662,7 @@
       "every rule required by the declared level executed by its designated enforcement mechanism or covered by accepted, current, repository-scoped manual evidence",
       "zero unwaived error findings"
     ],
-    "manualEvidencePath": ".acima/manual-evidence.json",
+    "manualEvidencePath": "acima/evidence/manual-evidence.json",
     "manualEvidenceFields": [
       "rule",
       "scope",

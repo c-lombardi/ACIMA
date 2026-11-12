@@ -109,7 +109,7 @@ def test_partial_scope_does_not_grow_artifacts() -> None:
         invoke(PREFLIGHT, "--project", str(root),
                "--write-draft", "acima.config.json", "--format", "json")
 
-        assert not (root / ".acima").exists(), "partial scope created .acima/"
+        assert not (root / ".acima").exists(), "partial scope created acima/evidence/"
         assert not (root / ".github").exists(), "partial scope created CI"
         assert not (root / "docs").exists(), "partial scope created docs or plans"
         changed = {path for path, digest in snapshot(root).items()

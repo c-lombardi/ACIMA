@@ -38,7 +38,7 @@ def config(root: Path, level: str = "L2") -> None:
 
 
 def assessment(root: Path, verdict: str = "ASSESSED") -> None:
-    write_json(root, "docs/acima/assessment.json", {
+    write_json(root, "acima/evidence/assessment.json", {
         "readOnly": True, "root": str(root.resolve()), "verdict": verdict,
         "verdictMeaning": acima.VERDICT_MEANING[verdict], "sourceFiles": 4,
         "languages": ["python"],
@@ -56,12 +56,12 @@ def run_payload(findings: list[dict] | None = None) -> dict:
 
 
 def baseline(root: Path, findings: list[dict] | None = None) -> None:
-    write_json(root, "docs/acima/baseline-2026-01-01.json", run_payload(findings))
+    write_json(root, "acima/evidence/baseline-2026-01-01.json", run_payload(findings))
 
 
 def scope(root: Path, objectives: dict[str, str], *, approved_on: str = "2026-01-01",
           approved_by: str = "repository-owner") -> None:
-    write_json(root, ".acima/adoption-scope.json", {
+    write_json(root, "acima/evidence/adoption-scope.json", {
         "version": 1, "approvedBy": approved_by, "approvedOn": approved_on,
         "objectives": [{"id": key, "disposition": value} for key, value in objectives.items()],
     })
@@ -243,7 +243,7 @@ class ScopeAwareStatusTests(unittest.TestCase):
     def test_invalid_approval_metadata_blocks_before_any_action(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            write_json(root, ".acima/adoption-scope.json", {
+            write_json(root, "acima/evidence/adoption-scope.json", {
                 "version": 1, "approvedBy": "", "approvedOn": "not-a-date",
                 "objectives": [{"id": "assessment", "disposition": "required"}],
             })

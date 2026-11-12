@@ -15,27 +15,36 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from acima_paths import existing as _existing_artifact
+
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG_PATH = ROOT / "tools/acima-spec/rules.json"
-PROPOSAL_FILE = "docs/acima/agent-guidance-proposal.md"
-RESULT_FILE = ".acima/agent-guidance.json"
-SUPPORT_ROOT = "docs/architecture/acima"
+PROPOSAL_FILE = "acima/report/agent-guidance-proposal.md"
+RESULT_FILE = "acima/evidence/agent-guidance.json"
+SUPPORT_ROOT = "acima/handoff/agent-guidance"
 ARCH_FILE = SUPPORT_ROOT + "/agent-architecture-guidance.md"
 ENFORCEMENT_FILE = SUPPORT_ROOT + "/enforcement.md"
 JUDGMENT_FILE = SUPPORT_ROOT + "/judgment-guidance.md"
 WORKFLOW_FILE = SUPPORT_ROOT + "/architectural-workflow.md"
 CONFIG_FILE = "acima.config.json"
-APPROVAL_FILE = ".acima/module-map.approval.json"
-ADOPTION_PROPOSAL = "docs/acima/adoption-proposal.md"
-ENFORCEMENT_RECORD = "docs/acima/enforcement.json"
-VERIFICATION_RECORD = "docs/acima/verification.json"
-CI_RECORD = "docs/acima/ci-integration.json"
+APPROVAL_FILE = "acima/evidence/module-map.approval.json"
+ADOPTION_PROPOSAL = "acima/report/adoption-proposal.md"
+ENFORCEMENT_RECORD = "acima/evidence/enforcement.json"
+VERIFICATION_RECORD = "acima/evidence/verification.json"
+CI_RECORD = "acima/evidence/ci-integration.json"
 START = "<!-- acima-agent-guidance:start -->"
 END = "<!-- acima-agent-guidance:end -->"
 REF_START = "<!-- acima-agent-guidance-reference:start -->"
 REF_END = "<!-- acima-agent-guidance-reference:end -->"
 SOURCE_NAMES = (CONFIG_FILE, APPROVAL_FILE, ADOPTION_PROPOSAL, ENFORCEMENT_RECORD,
                 VERIFICATION_RECORD, CI_RECORD)
+LEGACY_SOURCES = {
+    APPROVAL_FILE: (".acima/module-map.approval.json",),
+    ADOPTION_PROPOSAL: ("docs/acima/adoption-proposal.md",),
+    ENFORCEMENT_RECORD: ("docs/acima/enforcement.json",),
+    VERIFICATION_RECORD: ("docs/acima/verification.json",),
+    CI_RECORD: ("docs/acima/ci-integration.json",),
+}
 
 
 class GuidanceError(ValueError):
@@ -76,6 +85,14 @@ def _relative(root: Path, path: Path) -> str:
     return path.relative_to(root).as_posix()
 
 
+def _artifact(root: Path, relative: str) -> Path | None:
+    return _existing_artifact(root, relative, *LEGACY_SOURCES.get(relative, ()))
+
+
+def _result_path(root: Path) -> Path | None:
+    return _existing_artifact(root, RESULT_FILE, ".acima/agent-guidance.json")
+
+
 def _safe_target(root: Path, relative: str) -> Path:
     value = Path(relative)
     if value.is_absolute() or ".." in value.parts:
@@ -111,7 +128,7 @@ def discover(root: Path) -> dict:
     for current, dirnames, filenames in os.walk(root):
         dirnames[:] = sorted(name for name in dirnames
                              if name not in {".git", "node_modules", "dist", "build", "target",
-                                             ".venv", "venv", "__pycache__"}
+                                             ".venv", "venv", "__pycache__", "acima"}
                              and not name.startswith("."))
         for name in filenames:
             if name not in ("AGENTS.md", "CLAUDE.md", "GEMINI.md"):
@@ -205,9 +222,12 @@ def _judgment_markdown(rules: list[dict]) -> str:
 
 
 def _checks(state: dict, root: Path) -> dict:
-    enforcement = _read_json(root / ENFORCEMENT_RECORD) if (root / ENFORCEMENT_RECORD).is_file() else {}
-    verification = _read_json(root / VERIFICATION_RECORD) if (root / VERIFICATION_RECORD).is_file() else {}
-    ci = _read_json(root / CI_RECORD) if (root / CI_RECORD).is_file() else {}
+    enforcement_path = _artifact(root, ENFORCEMENT_RECORD)
+    verification_path = _artifact(root, VERIFICATION_RECORD)
+    ci_path = _artifact(root, CI_RECORD)
+    enforcement = _read_json(enforcement_path) if enforcement_path else {}
+    verification = _read_json(verification_path) if verification_path else {}
+    ci = _read_json(ci_path) if ci_path else {}
     enforcer = enforcement.get("enforcer") or {}
     command = enforcer.get("command")
     enforcer_path = enforcer.get("path")
@@ -291,16 +311,19 @@ updated when the approved map, enforcement or CI changes; preserve user-authored
 
 
 def _read_scope(root: Path) -> dict:
-    path = root / ".acima/adoption-scope.json"
-    return _read_json(path) if path.is_file() else {}
+    path = _existing_artifact(root, "acima/evidence/adoption-scope.json",
+                              ".acima/adoption-scope.json",
+                              "docs/acima/adoption-scope.json")
+    return _read_json(path) if path else {}
 
 
 def _unresolved(root: Path, state: dict) -> list[str]:
     values = []
-    proposal = _read_json(root / "docs/acima/adoption-proposal.json") \
-        if (root / "docs/acima/adoption-proposal.json").is_file() else {}
-    approval_path = root / ".acima/module-map.approval.json"
-    approval = _read_json(approval_path) if approval_path.is_file() else {}
+    proposal_path = _existing_artifact(
+        root, "acima/report/adoption-proposal.json", "docs/acima/adoption-proposal.json")
+    proposal = _read_json(proposal_path) if proposal_path else {}
+    approval_path = _artifact(root, APPROVAL_FILE)
+    approval = _read_json(approval_path) if approval_path else {}
     resolved_ids = {
         item.get("id") for item in approval.get("modules", [])
         if isinstance(item, dict) and item.get("reviewDecision") in {"accept", "modify"}
@@ -334,8 +357,8 @@ def _unresolved(root: Path, state: dict) -> list[str]:
 def _source_hashes(root: Path) -> dict:
     result = {}
     for relative in SOURCE_NAMES:
-        path = root / relative
-        if path.is_file():
+        path = _artifact(root, relative)
+        if path is not None:
             result[relative] = _sha(path)
     result["catalog"] = _sha(CATALOG_PATH)
     return result
@@ -573,7 +596,8 @@ def _write(root: Path, relative: str, content: str) -> None:
 
 def apply(root: Path, state: dict) -> dict:
     root = root.resolve()
-    result = _read_json(root / RESULT_FILE) if (root / RESULT_FILE).is_file() else proposal(root, state)
+    result_path = _result_path(root)
+    result = _read_json(result_path) if result_path else proposal(root, state)
     discovery = result["convention"]
     rules = _rules()
     config = _read_json(root / CONFIG_FILE) if (root / CONFIG_FILE).is_file() else {}
@@ -607,7 +631,8 @@ def apply(root: Path, state: dict) -> dict:
 
 def validate(root: Path, result: dict | None = None) -> dict:
     root = root.resolve()
-    result = result or (_read_json(root / RESULT_FILE) if (root / RESULT_FILE).is_file() else {})
+    result_path = _result_path(root)
+    result = result or (_read_json(result_path) if result_path else {})
     discovery = result.get("convention") or discover(root)
     rules = _rules()
     problems: list[str] = []
@@ -653,7 +678,8 @@ def validate(root: Path, result: dict | None = None) -> dict:
 
 def stale(root: Path, result: dict | None = None) -> tuple[bool, list[str]]:
     root = root.resolve()
-    result = result or (_read_json(root / RESULT_FILE) if (root / RESULT_FILE).is_file() else {})
+    result_path = _result_path(root)
+    result = result or (_read_json(result_path) if result_path else {})
     old = result.get("sourceHashes") or {}
     new = _source_hashes(root)
     changed = sorted(key for key in set(old) | set(new) if old.get(key) != new.get(key))

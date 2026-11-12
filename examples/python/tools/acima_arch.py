@@ -150,6 +150,10 @@ class Enforcer:
 
     def excluded(self, rel: str) -> bool:
         value = rel.rstrip("/")
+        # ``acima/`` is the generated adoption workspace. Its copied tooling and evidence
+        # are not product source and must not be assigned to an application module.
+        if value == "acima" or value.startswith("acima/"):
+            return True
         parts = value.split("/")
         for raw in self.excludes:
             pattern = str(raw).strip().replace("\\", "/")

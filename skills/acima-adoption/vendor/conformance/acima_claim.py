@@ -29,7 +29,7 @@ PARTIAL = "PARTIAL ASSESSMENT"
 INVALID = "INVALID ASSESSMENT"
 LEVELS = ("L1", "L2", "L3")
 LEVEL_INDEX = {"L1": 1, "L2": 2, "L3": 3}
-EVIDENCE_FILE = ".acima/manual-evidence.json"
+EVIDENCE_FILE = "acima/evidence/manual-evidence.json"
 EVIDENCE_FIELDS = (
     "rule",
     "scope",
@@ -172,6 +172,10 @@ def load_evidence(path: Path) -> list[dict]:
     claim partial.  A malformed file is an error because the reviewer intended
     evidence and the tool cannot trust it.
     """
+    if not path.is_file() and path.parent.name == "evidence" and path.parent.parent.name == "acima":
+        legacy = path.parent.parent.parent / ".acima" / path.name
+        if legacy.is_file():
+            path = legacy
     if not path.is_file():
         return []
     try:

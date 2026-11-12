@@ -31,7 +31,7 @@ Owner: <name>            Audience size: <n>            Cadence: weekly + monthly
 |---|---|---|---|
 | Kickoff | 45-minute walkthrough, one real finding | all engineers | recording + this plan |
 | Weekly | office hours, 30 minutes | volunteers, owners | notes in channel |
-| Monthly | one-page status, waiver review | manager + owners | docs/acima/status-<month>.md |
+| Monthly | one-page status, waiver review | manager + owners | acima/evidence/status-<month>.md |
 | Quarterly | level review, rule amendments | architecture owner | decision record |
 
 ## 4. Escalation

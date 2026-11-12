@@ -68,7 +68,7 @@ If baseline and waivers are in the approved scope, write them:
 
 ```bash
 python3 skills/acima-adoption/scripts/preflight.py --project "$TARGET" \
-  --write-waivers .acima/waivers.json --format text
+  --write-waivers acima/evidence/waivers.json --format text
 ```
 
 The generated owners are `unassigned`. Replace every one with a person or team, and give

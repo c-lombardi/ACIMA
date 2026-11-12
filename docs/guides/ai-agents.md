@@ -28,7 +28,7 @@ An ACIMA-aware agent **must**:
 
 An agent **must not**:
 
-- create or modify `acima.config.json`, `.acima/`, CI, build files, plans or source during an
+- create or modify `acima.config.json`, `acima/evidence/`, CI, build files, plans or source during an
   assessment, or beyond an approved adoption scope;
 - edit `acima.config.json`, `expected.json` or the waiver file just to make a check pass;
 - suppress a finding without an owner, reason and expiry;
@@ -111,7 +111,7 @@ An agent's final message is a report, not a work log. Use the two-level model in
 [the reporting reference](../../skills/acima-adoption/references/80-reporting.md): generate
 the summary with `skills/acima-adoption/scripts/summarize.py`, and keep the JSON run as the evidence
 it links to. For an assessment, deliver it in the response or outside the target; writing into
-`docs/acima/` needs approval.
+`acima/evidence/` needs approval.
 
 - Name the consequence before the rule id; put the id in parentheses.
 - Group repeated findings by problem and remedy, never one row per file.

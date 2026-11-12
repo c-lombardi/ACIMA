@@ -33,11 +33,19 @@ When no mode has been selected in the current engagement, ask:
 
 Do not silently choose based on experience, repository maturity, or existing configuration. If a
 mode was explicitly selected in the current engagement, preserve it. Persist the mode in
-.acima/adoption-workflow.json. A mode choice authorizes analysis and preparation only; it does not
+acima/state.json. A mode choice authorizes analysis and preparation only; it does not
 authorize target implementation, source remediation, CI changes, commits, pushes, releases or
 deployment.
 
 ## Shared foundation: mandatory assessment and discovery
+
+Generated artifacts share one visible workspace. `acima/state.json` resumes the engagement;
+`acima/evidence/` holds assessment, review, approval, enforcement, verification, waiver and
+remediation records; `acima/report/` holds proposal inputs; `acima/handoff/` holds handoff and
+generated agent guidance; and copied enforcers live under `acima/tooling/`. The root
+`acima.config.json` remains the human-authored unit contract. Optional documents belong under
+`acima/optional/` and are created only when explicitly requested. Existing `.acima/` and
+`docs/acima/` evidence is read for migration but never written.
 
 Both workflows must complete the same foundation.
 
@@ -56,16 +64,16 @@ Both workflows must complete the same foundation.
    preserved, reused, extended or deferred.
 
 Before starting either adoption workflow, the agent must create a repository-specific review
-document at docs/acima/qualitative-review.json. Validate it with:
+document at acima/evidence/qualitative-review.json. Validate it with:
 
-    python tools/acima.py validate-review --root . --file docs/acima/qualitative-review.json --format json
+    python tools/acima.py validate-review --root . --file acima/evidence/qualitative-review.json --format json
 
 The validator must report decisionComplete=true, reviewed=56, required=56 and unresolved=0.
 Structural validation proves coverage and evidence provenance, not the semantic correctness of the
 agent's reasoning; the agent must independently inspect the evidence and author each disposition.
 Start adoption only after validation succeeds:
 
-    python tools/acima.py adoption start --root . --mode guided --review docs/acima/qualitative-review.json
+    python tools/acima.py adoption start --root . --mode guided --review acima/evidence/qualitative-review.json
 
 For automated adoption, use --mode full --authorize-full with the same --review argument.
 A decision-ready adoption proposal requires all 56 valid dispositions and a complete, reviewed

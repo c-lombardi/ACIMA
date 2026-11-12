@@ -8,8 +8,8 @@ fingerprints, so the technical report stays the record of what was found.
 
     python3 skills/acima-adoption/scripts/summarize.py \
         --root /path/to/repo \
-        --report /path/to/repo/docs/acima/gate-L1-latest.json \
-        --out /path/to/repo/docs/acima/adoption-summary.md
+        --report /path/to/repo/acima/evidence/gate-L1-latest.json \
+        --out /path/to/repo/acima/handoff/adoption-summary.md
 
 It does not edit the target, reclassify a finding, or turn a passing baseline into a
 conformance claim. Exit 0 when a summary was produced, 2 when the input cannot be read.
@@ -191,7 +191,7 @@ def load_triage(path: Path | None) -> tuple[dict, dict, list[str]]:
 
 
 def load_manual_evidence(root: Path, path: str | None) -> dict[str, dict]:
-    candidate = Path(path) if path else root / ".acima/manual-evidence.json"
+    candidate = Path(path) if path else root / "acima/evidence/manual-evidence.json"
     if not candidate.is_file():
         return {}
     data = load_json(candidate, "manual evidence")
@@ -605,7 +605,7 @@ def next_actions(groups: list[dict], missing_required: list[str], required: set[
                        "cannot execute, or run them where the toolchain exists."),
             "reason": ("Until every required rule has executed evidence, no conformance "
                        "claim can be more than partial."),
-            "where": "`.acima/manual-evidence.json` or the matching CI runner",
+            "where": "`acima/evidence/manual-evidence.json` or the matching CI runner",
             "done": "Every required rule at the declared level is executed or has accepted "
                     "evidence.",
             "verification": "`acima.py claim --report <run> --level <L> --require full` "
@@ -624,7 +624,7 @@ def next_actions(groups: list[dict], missing_required: list[str], required: set[
                        "proves the gate is enforcing."),
             "where": "the repository's CI provider",
             "done": "A red run names the expected rule, and the reverted change is green.",
-            "verification": "Link the run in `docs/acima/STATUS.md`.",
+            "verification": "Link the run in `acima/handoff/STATUS.md`.",
             "judgement": True,
             "count": 1,
         })
@@ -758,9 +758,9 @@ def build(args: argparse.Namespace) -> dict:
     except InputError:
         config = None
 
-    baseline_path = root / ".acima/baseline.json"
+    baseline_path = root / "acima/evidence/baseline.json"
     baseline = load_json(baseline_path, "baseline") if baseline_path.is_file() else None
-    waiver_path = root / ((config or {}).get("waivers") or ".acima/waivers.json")
+    waiver_path = root / ((config or {}).get("waivers") or "acima/evidence/waivers.json")
     waivers: dict[str, dict] = {}
     if waiver_path.is_file():
         waiver_data = load_json(waiver_path, "waiver file")
@@ -769,7 +769,7 @@ def build(args: argparse.Namespace) -> dict:
                 waivers[entry["fingerprint"]] = entry
     baseline_fingerprints = set((baseline or {}).get("fingerprints") or [])
 
-    triage_path = Path(args.triage) if args.triage else root / ".acima/triage.json"
+    triage_path = Path(args.triage) if args.triage else root / "acima/evidence/triage.json"
     triage_rules, triage_fingerprints, triage_notes = load_triage(
         triage_path if triage_path.is_file() else None)
     manual = load_manual_evidence(root, args.manual_evidence)
@@ -815,7 +815,7 @@ def build(args: argparse.Namespace) -> dict:
                           and "acima" in path.name.lower())
 
     architecture = args.architecture
-    plan_path = root / "docs/acima/adoption-plan.md"
+    plan_path = root / "acima/optional/adoption-plan.md"
     if not architecture and plan_path.is_file():
         lines = plan_path.read_text(encoding="utf-8", errors="replace").splitlines()
         for index, line in enumerate(lines):
@@ -900,8 +900,8 @@ def build(args: argparse.Namespace) -> dict:
         "waiver_path": waiver_path if waivers else None,
         "triage_path": triage_path if triage_rules or triage_fingerprints else None,
         "plan_path": plan_path if plan_path.is_file() else None,
-        "status_path": (root / "docs/acima/STATUS.md")
-        if (root / "docs/acima/STATUS.md").is_file() else None,
+        "status_path": (root / "acima/handoff/STATUS.md")
+        if (root / "acima/handoff/STATUS.md").is_file() else None,
         "catalog_path": catalog_path,
         "level": level,
         "required": sorted(required),
@@ -962,7 +962,7 @@ def main() -> int:
     parser.add_argument("--initial-report",
                         help="the first measurement, for baseline-count reconciliation")
     parser.add_argument("--catalog", help="rule catalog (defaults to the pinned catalog)")
-    parser.add_argument("--triage", help="triage file (default: <root>/.acima/triage.json)")
+    parser.add_argument("--triage", help="triage file (default: <root>/acima/evidence/triage.json)")
     parser.add_argument("--manual-evidence", help="manual evidence file")
     parser.add_argument("--claim", help="claim JSON produced by `acima.py claim --format json`")
     parser.add_argument("--architecture", help="architecture family, when no plan records it")

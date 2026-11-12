@@ -119,6 +119,8 @@ const edges = [];             // { from, to, line, evidence }
 const rel = (p) => relative(ROOT, p).split(sep).join('/');
 const excluded = (r) => {
   const value = r.replace(/\/$/, '');
+  // The generated ACIMA workspace is not application source.
+  if (value === 'acima' || value.startsWith('acima/')) return true;
   const parts = value.split('/');
   return excludes.some((raw) => {
     let pattern = String(raw).trim().replace(/\\/g, '/');

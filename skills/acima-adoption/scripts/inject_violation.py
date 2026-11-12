@@ -19,7 +19,7 @@ told what was injected.
 
     python3 inject_violation.py --project <target> [--rule L001|D001|both]
         [--format json|text] [--reveal] [--keep]
-        [--out docs/acima/proof.json]
+        [--out acima/evidence/proof.json]
 
 Exit codes: 0 all requested proofs passed, 1 not proven, 2 the tool could not run.
 """
@@ -519,7 +519,7 @@ def main() -> int:
                         help="include injected paths and fixture contents in the report")
     parser.add_argument("--keep", action="store_true", help="keep the disposable directories")
     parser.add_argument("--out", default=None,
-                        help="write a validated proof record (for example docs/acima/proof.json)")
+                        help="write a validated proof record (for example acima/evidence/proof.json)")
     args = parser.parse_args()
 
     requested = [L001, D001] if args.rule == "both" else (

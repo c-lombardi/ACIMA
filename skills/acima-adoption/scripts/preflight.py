@@ -9,7 +9,7 @@ Answers three questions with evidence, and never writes to the target unless ask
 
     python3 preflight.py --project <path> [--format json|text] [--deep]
                          [--write-draft acima.config.json]
-                         [--write-waivers .acima/waivers.json]
+                         [--write-waivers acima/evidence/waivers.json]
                          [--strict] [--manifest <path>]
 
 Exit codes: 0 ready, 1 blocked, 2 the tool could not run.
@@ -45,6 +45,7 @@ from module_map import (  # noqa: E402
 PRUNE = {
     ".git", "node_modules", "bin", "obj", "dist", "build", "target", "out",
     ".venv", "venv", "__pycache__", ".next", ".nuxt", "coverage", ".idea", ".vs",
+    "acima",
     # A copied skill carries a generated vendor snapshot. It is not target source, and
     # counting it as an unowned module would make the skill fail its own G005 check.
     "vendor",
@@ -296,7 +297,7 @@ def draft_config(manifest: dict, language: str, units: list[dict]) -> dict:
         "units": units,
         "exclude": ["bin", "obj", "node_modules", "dist", "build", "target",
                     "tests", "**/__pycache__"],
-        "waivers": ".acima/waivers.json",
+        "waivers": "acima/evidence/waivers.json",
     }
 
 
@@ -695,7 +696,7 @@ def check_target(project: Path, report: Report, manifest: dict) -> tuple[list[di
 
         waiver_name = config.get("waivers")
         explicit_waivers = bool(waiver_name)
-        waiver_name = waiver_name or ".acima/waivers.json"
+        waiver_name = waiver_name or "acima/evidence/waivers.json"
         if waiver_name:
             waiver_path = project / waiver_name
             if not waiver_path.is_file() and explicit_waivers:

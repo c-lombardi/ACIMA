@@ -57,7 +57,7 @@ subset.
 
 ```bash
 python3 skills/acima-adoption/scripts/preflight.py --project . --format json > acima-baseline.json
-python3 skills/acima-adoption/scripts/preflight.py --project . --write-waivers .acima/waivers.json
+python3 skills/acima-adoption/scripts/preflight.py --project . --write-waivers acima/evidence/waivers.json
 ```
 
 The waiver writer emits one waiver per exact finding fingerprint and marks owners `unassigned`.

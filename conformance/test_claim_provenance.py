@@ -89,7 +89,7 @@ def run_payload(root: Path, level: str = "L1", **overrides) -> dict:
 def baseline(root: Path, level: str = "L1", name: str = "baseline-2026-01-01.json",
              **overrides) -> Path:
     payload = run_payload(root, level, **overrides)
-    return write(root, f"docs/acima/{name}", json.dumps(payload))
+    return write(root, f"acima/evidence/{name}", json.dumps(payload))
 
 
 def manual_evidence(root: Path, rules: tuple[str, ...] = ("ACIMA-C003",),
@@ -106,7 +106,7 @@ def manual_evidence(root: Path, rules: tuple[str, ...] = ("ACIMA-C003",),
             "expires": expiry, "result": "pass",
         } for rule in rules],
     }
-    write(root, ".acima/manual-evidence.json", json.dumps(payload))
+    write(root, "acima/evidence/manual-evidence.json", json.dumps(payload))
 
 
 def status(root: Path) -> dict:
@@ -145,7 +145,7 @@ class ClaimProvenanceTests(unittest.TestCase):
             self.assertEqual(claim["claimState"], "historical", claim)
             self.assertNotEqual(claim["state"], "COMPLETE")
             self.assertIn("historical", claim["evidence"])
-            self.assertEqual(report["evidence"]["runArtefacts"], ["docs/acima/baseline-2026-01-01.json"])
+            self.assertEqual(report["evidence"]["runArtefacts"], ["acima/evidence/baseline-2026-01-01.json"])
 
     def test_source_change_after_measurement_is_stale(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -208,7 +208,7 @@ class ClaimProvenanceTests(unittest.TestCase):
             manual_evidence(root, ("ACIMA-L004",))
             payload = run_payload(root)
             payload.pop("catalogSha256")
-            write(root, "docs/acima/baseline-2026-01-01.json", json.dumps(payload))
+            write(root, "acima/evidence/baseline-2026-01-01.json", json.dumps(payload))
             claim = step(status(root), "claim")
             self.assertEqual(claim["claimState"], "incomplete", claim)
             self.assertNotEqual(claim["state"], "COMPLETE")
@@ -221,7 +221,7 @@ class ClaimProvenanceTests(unittest.TestCase):
             manual_evidence(root, ("ACIMA-L004",))
             payload = run_payload(root)
             payload.pop("commit")
-            write(root, "docs/acima/baseline-2026-01-01.json", json.dumps(payload))
+            write(root, "acima/evidence/baseline-2026-01-01.json", json.dumps(payload))
             claim = step(status(root), "claim")
             self.assertEqual(claim["claimState"], "incomplete", claim)
             self.assertNotEqual(claim["state"], "COMPLETE")
@@ -277,13 +277,13 @@ class ClaimProvenanceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             config(root)
-            baseline_path = write(root, ".acima/baseline.json", json.dumps(
+            baseline_path = write(root, "acima/evidence/baseline.json", json.dumps(
                 {"standard": CATALOG["version"], "level": "L1", "sourceFiles": 1,
                  "generatedOn": "2026-01-01", "fingerprints": []}))
             payload = run_payload(
                 root, baselineSha256=hashlib.sha256(baseline_path.read_bytes()).hexdigest())
             baseline(root, findings=[])
-            write(root, "docs/acima/gate-current.json", json.dumps(payload))
+            write(root, "acima/evidence/gate-current.json", json.dumps(payload))
             baseline_path.write_text(json.dumps(
                 {"standard": CATALOG["version"], "level": "L1", "sourceFiles": 1,
                  "generatedOn": "2026-01-01", "fingerprints": ["sha256:changed"]}),
@@ -303,7 +303,7 @@ class ClaimProvenanceTests(unittest.TestCase):
                 "rule": "ACIMA-D001", "severity": "error", "message": "bad import",
                 "path": "src/u0/app.py", "line": 1, "evidence": "",
                 "fingerprint": "sha256:" + "0" * 64, "status": "new"}])
-            recent = write(root, "docs/acima/gate-current.json", json.dumps(payload))
+            recent = write(root, "acima/evidence/gate-current.json", json.dumps(payload))
             os.utime(old, (1, 1))
             os.utime(recent, (2, 2))
             claim = step(status(root), "claim")

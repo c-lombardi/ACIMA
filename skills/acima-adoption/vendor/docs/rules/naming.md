@@ -174,7 +174,7 @@ Rewrite the name in the domain vocabulary:
 ### Detection
 
 Manual review in every profile. The reviewer records one repository-scoped entry per required
-scope in `.acima/manual-evidence.json`; without it, a full claim is a `PARTIAL ASSESSMENT`.
+scope in `acima/evidence/manual-evidence.json`; without it, a full claim is a `PARTIAL ASSESSMENT`.
 `N001` and `N002` can point at likely candidates, but they do not decide responsibility, side
 effects, units, domain consistency or boolean clarity.
 

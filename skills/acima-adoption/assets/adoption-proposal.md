@@ -97,16 +97,16 @@ The smallest useful scope that meets the stated objective:
 
 | Path | Contents | Purpose | Status |
 |---|---|---|---|
-| `.acima/adoption-scope.json` | approved objectives, dispositions and approval metadata | makes completion and the next action reflect what was actually approved | Required to record approval |
+| `acima/evidence/adoption-scope.json` | approved objectives, dispositions and approval metadata | makes completion and the next action reflect what was actually approved | Required to record approval |
 | `acima.config.json` | units, roles, paths, language, level, mode | makes the intended boundaries visible to tools and reviewers | Required |
-| `.acima/baseline.json` | measured fingerprints at adoption | distinguishes existing findings from new ones | Conditional |
-| `.acima/waivers.json` | owned, scoped, expiring exceptions | governs findings that will not be fixed now | Conditional |
+| `acima/evidence/baseline.json` | measured fingerprints at adoption | distinguishes existing findings from new ones | Conditional |
+| `acima/evidence/waivers.json` | owned, scoped, expiring exceptions | governs findings that will not be fixed now | Conditional |
 | `<enforcer invocation>` | the check developers run | makes the rules executable | Required for automated enforcement |
 | `.github/workflows/acima.yml` | runs the check on pull requests | prevents new violations from merging | Conditional |
-| `.acima/manual-evidence.json` | evidence for manual required rules | supports a level claim | Conditional |
-| `docs/acima/adoption-plan.md` | sequence, owners, metrics | coordinates a multi-person programme | Optional |
-| `docs/acima/communication-plan.md` | audiences and messages | coordinates affected teams | Optional |
-| `docs/acima/STATUS.md` | phase, findings, next action | lets a later session resume honestly | Conditional |
+| `acima/evidence/manual-evidence.json` | evidence for manual required rules | supports a level claim | Conditional |
+| `acima/optional/adoption-plan.md` | sequence, owners, metrics | coordinates a multi-person programme | Optional |
+| `acima/optional/communication-plan.md` | audiences and messages | coordinates affected teams | Optional |
+| `acima/handoff/STATUS.md` | phase, findings, next action | lets a later session resume honestly | Conditional |
 
 Remove rows that do not apply, add exact paths where they differ, and quote any change to an
 existing file. Never mark optional work as required.
@@ -161,7 +161,7 @@ Approval covers only the paths and scope above. Partial approval is supported: s
 approved. If implementation reveals a required change outside this list, I will stop and ask before
 making it. Approval does not authorize merge, release or publication.
 
-After approval I will record the accepted objectives in `.acima/adoption-scope.json` (approved,
+After approval I will record the accepted objectives in `acima/evidence/adoption-scope.json` (approved,
 declined, deferred, optional or not applicable) so later status reports name what remains without
 treating an absent file or template as approval. Declined and deferred work will not block the
 approved scope.

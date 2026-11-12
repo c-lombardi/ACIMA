@@ -133,7 +133,7 @@ overwritten unless `--overwrite` is explicitly supplied. Only use that flag when
 approved.
 
 When output is inside the target repository, obtain approval for the exact report directory first.
-Prefer `docs/acima/reports/<assessment-id>/` so generated pages remain separate from product source.
+Prefer `acima/report/<assessment-id>/` so generated pages remain separate from product source.
 
 ## Decision-ready model, schema 1.1
 

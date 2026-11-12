@@ -1,47 +1,51 @@
 {
   "purpose": "files the adoption skill reads when it is copied out of the standard repository",
   "layout": "paths mirror the repository root, so STANDARD_ROOT can point at vendor/ unchanged",
-  "catalogSha256": "3ec87d8dbf5f9ed80ce783d20c4763d4b358c00eb7697254d4235135c5e23d6e",
+  "catalogSha256": "e3b0926d571d24673b0f4e821ede042a208f3a5e961e5502ffc15cde024ee11c",
   "files": {
     "conformance/acima_claim.py": {
-      "sha256": "11790fbd0a69d8b43f892edb1e7e8423413e0544c2e226db1c9fc31fdf0e785f",
-      "bytes": 17473
+      "sha256": "d8b5c4eee67e35495b974a014fafa89f935de78527f6aa61ce438ef10dab1216",
+      "bytes": 17703
+    },
+    "conformance/acima_paths.py": {
+      "sha256": "15a893c7f0b727151f8a75b593aae1efd5984fb629350320f4f041ac93744b2d",
+      "bytes": 3263
     },
     "conformance/adoption_reports.py": {
-      "sha256": "9cf94c85320e3ac4c8148c2946d5734a7acb917e59606e1faeb8ef2b55d2f6a5",
-      "bytes": 40912
+      "sha256": "37865fe24785b61ebaead11bd3c30f14427d911694ad194d22d91f99ea005389",
+      "bytes": 40920
     },
     "conformance/adoption_workflow.py": {
-      "sha256": "c96e02e26cacdfb29945b630565a24b97f4390d7a53bebd62d1e6da2d4c4bcbc",
-      "bytes": 154967
+      "sha256": "9e1df9caaab7c76a18e6fa881e53363869314f13dd5b2845e2f571a132d71965",
+      "bytes": 157147
     },
     "conformance/agent_guidance.py": {
-      "sha256": "65ea05853f7214219dcdc5b0d69d2519df83f3d2b77df75a3b648cd36e939dc4",
-      "bytes": 31612
+      "sha256": "2f9118435338ec32efea067c3f16514edf67d1c240b374f73384fa6351ae0550",
+      "bytes": 32576
     },
     "conformance/executables.py": {
       "sha256": "78d738cb647594e11fc9cbb68f8c57a7b28488da13f31bf1b40ef19bc3754cd8",
       "bytes": 968
     },
     "conformance/module_map.py": {
-      "sha256": "5cd68ed5ce868acfb378fd54ed4e8a0c92b1c0bab9f61f87eed165c6543fcddb",
-      "bytes": 81842
+      "sha256": "28d1c108d4b66443c86e81b44c7929e2e25f5de2dc159c6f9365554c2942cedd",
+      "bytes": 82001
     },
     "conformance/qualitative_review.py": {
       "sha256": "ddff1ea20ac1305ea3f48a685234baa04e8bbf5bb73c2e8d747d271bef5613a3",
       "bytes": 11732
     },
     "docs/commands.md": {
-      "sha256": "6f74acf206951f20b363790734b9a67dc44221637169894a2d85a68d19e1cbc3",
-      "bytes": 20984
+      "sha256": "dfb061bb1e7d21f44ae865bfe8d31b64cc7b79a2eb7a4f18763cbd0e31e6fc06",
+      "bytes": 21057
     },
     "docs/guides/architecture-families.md": {
       "sha256": "085a46846351515784b7c82565df28552b25bb230df774ccce7838d017d777a4",
       "bytes": 13121
     },
     "docs/guides/architecture-tests.md": {
-      "sha256": "bb5629c8bf5c5307f1a8b04837116688f53d281c643f2ffc20fd463edfcbb8c7",
-      "bytes": 8267
+      "sha256": "f117bc7af51dbb88d7be0461d226802d017cead95c7606fc1dd5d22033a99f97",
+      "bytes": 8275
     },
     "docs/guides/review-and-decisions.md": {
       "sha256": "1938cf0f92d563597b9d929e5570e23e2ea39eef3ec54754723adbee082013ef",
@@ -68,12 +72,12 @@
       "bytes": 14509
     },
     "docs/rules/README.md": {
-      "sha256": "6961768a9ed57e9ca9dbc495d56ccf81dc6a52eb59ab5a48a5a8e6b5928ba9fd",
-      "bytes": 4610
+      "sha256": "1ab075bcae08bcb325d7fcc1f681c25c1289fafd802dfc3db260df8036b40c05",
+      "bytes": 4618
     },
     "docs/rules/autonomy.md": {
-      "sha256": "b41bf50fde0eebbccef712913600f2f17bce21073ded04506f2be89fbb2ae5c0",
-      "bytes": 37205
+      "sha256": "c98a880aae9ab2947f85f3cdfee94d38c75e26031b26790d5ad7f19055b489b1",
+      "bytes": 37237
     },
     "docs/rules/contracts.md": {
       "sha256": "88bb04bb6c9c0eb931f517166ca74ad5db374de1f1a6043cfe84135251d3cf2c",
@@ -84,32 +88,32 @@
       "bytes": 38562
     },
     "docs/rules/index.md": {
-      "sha256": "84e2ed53f6bebb0acf82d4de94e421c841c45d5d4816693a63d5ae0692f4debd",
-      "bytes": 10759
+      "sha256": "179491aa18ae30c16d84ba84b6a3cf9a4b1cddb8c89a15e1b42edc5a2ac2c026",
+      "bytes": 10767
     },
     "docs/rules/naming.md": {
-      "sha256": "11e9b93213a526e644c265dfb62add19abe6c7db3b34a5a70186124245411b7a",
-      "bytes": 7478
+      "sha256": "0f263011ec103f065561cfb549817185cfda9deb08c631e143d98c0e5d1a2912",
+      "bytes": 7486
     },
     "docs/standard/04-dependency-model.md": {
       "sha256": "37def61919a429f368201337001a4d0b168545ea6f8f04e58849993ee9ba7d97",
       "bytes": 14646
     },
     "docs/standard/05-contract-design.md": {
-      "sha256": "b9c79fe061787e5c5204c62a4232a3d7aa0c3021234b6d2e2d6596abae8037b0",
-      "bytes": 15588
+      "sha256": "747bacac74213fee2811d39942ffa6781ae8da5d7cbf63adc5f5ebd52f985669",
+      "bytes": 15596
     },
     "docs/standard/06-runtime-boundaries.md": {
       "sha256": "989c9acbd81f3dc4da426e33c47ac4c9d21661fbb164de8ae994a9a3e69775dc",
       "bytes": 18208
     },
     "docs/standard/07-executable-governance.md": {
-      "sha256": "4f41693c05b58c5865cb290746b0bebd7330c27a43c28bae6eb96b4dc7580a0b",
-      "bytes": 13777
+      "sha256": "1aef14c589888622a14f4ec481c469ed40c7be95dd2116f645b76b0e32667647",
+      "bytes": 13815
     },
     "docs/standard/08-conformance.md": {
-      "sha256": "3b7557f416446c033010bf1ec69c7c3f496c0e3e3672db7d6029897e53060d52",
-      "bytes": 21357
+      "sha256": "cef8d128d88d480eda1626952185dde5d43d04ccf87cdd5c077afdcfd0d4d9af",
+      "bytes": 21389
     },
     "docs/standard/09-adoption.md": {
       "sha256": "8acfd9e0e754f0bf2b644064ff813659ee719d927ff519bcf569bd46f85d92f1",
@@ -156,8 +160,8 @@
       "bytes": 326
     },
     "examples/dotnet/tools/Acima.ArchTests/Program.cs": {
-      "sha256": "230042cb2589cee56c57ccfc35b07f76729a1a354bdd7d41396036d882e1338d",
-      "bytes": 84141
+      "sha256": "1a4e09de93e84bfe1ff0162a8e67b0b4fbc6273e1a899bd8311a408c7230775f",
+      "bytes": 84375
     },
     "examples/dotnet/violations/expected.json": {
       "sha256": "c770bb7a336dbb30dc2442c07584dae96f2acdd6002620a1b3491861b993eb80",
@@ -168,36 +172,36 @@
       "bytes": 30
     },
     "examples/go/tools/archtest/main.go": {
-      "sha256": "971f4329f71854d8b042af38974425f8aebc98b2b19f51c6f8fa938302e96ab5",
-      "bytes": 30340
+      "sha256": "aa097d0df1eb306a29f5579b2cfda6840c3fb6ce03b00c92c7d097b46e4e8bbc",
+      "bytes": 30483
     },
     "examples/go/violations/expected.json": {
       "sha256": "a8235fb6d880ad997a2603b54bafebea61234c00bd03d21b05943235f04adf48",
       "bytes": 1662
     },
     "examples/python/tools/acima_arch.py": {
-      "sha256": "f7795bd545f6435edf6af5e073f2adfd5d3f8d97c68d3eab3c957b30158c9e03",
-      "bytes": 93533
+      "sha256": "3e9ca673a197cc1e6761c8a2392dbd59d71e0cba8c8cd3d0ca82d8afe687d046",
+      "bytes": 93790
     },
     "examples/python/violations/expected.json": {
       "sha256": "cbbc143e50775edb73d46017e5b8675291130e2db30d6e3aa1d41d955ed1b403",
       "bytes": 3298
     },
     "examples/typescript/tools/acima-arch.mjs": {
-      "sha256": "8705328f4dc77f777f191997050227493aa96b3985f67bc57631425ecf58e484",
-      "bytes": 79539
+      "sha256": "2917777dd5a962ce63bfdc75e05b15e16853161183d0a63286e6cbdc292f8fc1",
+      "bytes": 79669
     },
     "examples/typescript/violations/expected.json": {
       "sha256": "8b7db497ee2e7a71314c194566382cd8e5eb89fac1fbe8f6dd32490335a7d694",
       "bytes": 2949
     },
     "tools/acima-spec/rules.json": {
-      "sha256": "3ec87d8dbf5f9ed80ce783d20c4763d4b358c00eb7697254d4235135c5e23d6e",
-      "bytes": 35508
+      "sha256": "e3b0926d571d24673b0f4e821ede042a208f3a5e961e5502ffc15cde024ee11c",
+      "bytes": 35524
     },
     "tools/acima.py": {
-      "sha256": "2f80b4e83cedafe45954c78c9bddbf8012d314f027b30785e005fed186e6fc2f",
-      "bytes": 246528
+      "sha256": "7a887ed3a90897798ef7c72c06bae0b67704f5da91d0f756807dde8221b2b581",
+      "bytes": 247591
     },
     "tools/qualitative-review.schema.json": {
       "sha256": "6ea25cfab4d824979aa889a22b1e0977c7367cbbc9888da60feabd8ace235528",

@@ -36,6 +36,7 @@ SOURCES = [
     "conformance/adoption_workflow.py",
     "conformance/adoption_reports.py",
     "conformance/agent_guidance.py",
+    "conformance/acima_paths.py",
     # reference enforcers, with the minimum build context each needs
     "examples/python/tools/acima_arch.py",
     "examples/typescript/tools/acima-arch.mjs",

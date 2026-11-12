@@ -81,8 +81,8 @@ class AssessmentCoverageTests(unittest.TestCase):
                     "result": "pass",
                 }]
             }
-            (root / ".acima").mkdir()
-            (root / ".acima/manual-evidence.json").write_text(
+            (root / "acima/evidence").mkdir(parents=True)
+            (root / "acima/evidence/manual-evidence.json").write_text(
                 json.dumps(evidence), encoding="utf-8")
             coverage = acima._assessment_rule_coverage(
                 root, CATALOG, "L1", execution_map("L1"))
@@ -96,14 +96,14 @@ class AssessmentCoverageTests(unittest.TestCase):
             root = Path(directory)
             rule = next(item for item in acima_claim.required_rules(CATALOG, "L1")
                         if item["automation"] == "manual")
-            (root / ".acima").mkdir()
+            (root / "acima/evidence").mkdir(parents=True)
             evidence = {"evidence": [{
                 "rule": rule["id"], "scope": "repository", "owner": "team",
                 "reviewer": "reviewer", "method": "review", "artifact": "missing.md",
                 "reviewedOn": date.today().isoformat(),
                 "expires": (date.today() + timedelta(days=30)).isoformat(), "result": "pass",
             }]}
-            (root / ".acima/manual-evidence.json").write_text(
+            (root / "acima/evidence/manual-evidence.json").write_text(
                 json.dumps(evidence), encoding="utf-8")
             coverage = acima._assessment_rule_coverage(
                 root, CATALOG, "L1", execution_map("L1"))

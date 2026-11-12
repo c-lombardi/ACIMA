@@ -90,8 +90,8 @@ response contains `scope`, `objectives`, `engagement` and one `next` action.
 ### The scope record
 
 Approval is explicit. It is not inferred from `acima.config.json`, a template, a baseline or the
-presence of a document. Record it in `.acima/adoption-scope.json` (or
-`docs/acima/adoption-scope.json`; a config's `adoption` object is also accepted, but an external
+presence of a document. Record it in `acima/evidence/adoption-scope.json` (or
+`acima/evidence/adoption-scope.json`; a config's `adoption` object is also accepted, but an external
 file is preferred because it does not change the configuration hash):
 
 ```json
@@ -99,7 +99,7 @@ file is preferred because it does not change the configuration hash):
   "version": 1,
   "approvedBy": "repository-owner",
   "approvedOn": "2026-11-10",
-  "proposal": "docs/acima/adoption-proposal.md",
+  "proposal": "acima/report/adoption-proposal.md",
   "objectives": [
     {"id": "assessment", "disposition": "required"},
     {"id": "local-enforcement", "disposition": "approved"},
@@ -119,7 +119,7 @@ scope conflict, not silently ignored. Unknown ids, duplicate ids, a missing `app
 `approvedOn`, a future approval date and an invalid disposition make the scope `BLOCKED` before any
 action is proposed.
 
-Assessment evidence is `docs/acima/assessment.json` (or `.acima/assessment.json`), written by
+Assessment evidence is `acima/evidence/assessment.json` (or `acima/evidence/assessment.json`), written by
 redirecting `acima.py assess --format json`. It must be read-only, belong to this repository and
 record a recognized verdict. Assessment-only scope can complete without a config, baseline or CI.
 Local-only scope can complete without CI, waivers or optional documents. If full conformance is
@@ -151,7 +151,7 @@ show a fall.
 
 ### Evidence contracts
 
-**Gate observation** — `docs/acima/gate-observed.json`:
+**Gate observation** — `acima/evidence/gate-observed.json`:
 
 ```json
 {"repository": "owner/name", "commit": "<sha>", "workflow": ".github/workflows/acima.yml",
@@ -170,8 +170,8 @@ means the gate ran and rejected the commit — reported as a failure, never as a
 provider/run id never establishes a verified gate. `manual: true`, or a record without provider
 provenance, is `IN_PROGRESS` and is not independently verified.
 
-**Proof record** — `docs/acima/proof.json`, written by
-`inject_violation.py --project . --out docs/acima/proof.json`: `standard`, `catalogSha256`,
+**Proof record** — `acima/evidence/proof.json`, written by
+`inject_violation.py --project . --out acima/evidence/proof.json`: `standard`, `catalogSha256`,
 `generatedAt`, `sourceFiles` and one result per rule with `detected` and `exitCode`. Both
 `ACIMA-L001` and `ACIMA-D001` must be detected with exit `1`.
 
@@ -194,7 +194,7 @@ conformant at the level we claim.
 | 7 | Own | who answers for each finding? | `preflight.py --write-waivers` | no `unassigned` owners, every expiry set |
 | 8 | Gate | does CI block new debt? | enforcer in CI, `--baseline` where supported | a failing PR shows only `NEW` findings |
 | 9 | Slice | one boundary per pull request | enforcer locally | the count is flat or falling |
-| 10 | Claim | at what level is it conformant? | `acima.py claim` + `.acima/manual-evidence.json` | the claim class matches the evidence |
+| 10 | Claim | at what level is it conformant? | `acima.py claim` + `acima/evidence/manual-evidence.json` | the claim class matches the evidence |
 | 11 | Maintain | do the rules still fire? | `conformance/run.py` | every selected profile conforms |
 
 Steps 1–4 write nothing and are safe on any repository, including one you do not own. Steps 5–9
@@ -246,10 +246,10 @@ python3 tools/acima.py verify  python typescript
 ```bash
 python3 skills/acima-adoption/scripts/preflight.py --project <target> --format text
 python3 skills/acima-adoption/scripts/preflight.py --project . --write-draft acima.config.json
-python3 skills/acima-adoption/scripts/preflight.py --project . --write-waivers .acima/waivers.json
+python3 skills/acima-adoption/scripts/preflight.py --project . --write-waivers acima/evidence/waivers.json
 python3 skills/acima-adoption/scripts/preflight.py --project <target> --deep
 python3 skills/acima-adoption/scripts/inject_violation.py --project <target> --format json
-python3 skills/acima-adoption/scripts/inject_violation.py --project <target> --out docs/acima/proof.json
+python3 skills/acima-adoption/scripts/inject_violation.py --project <target> --out acima/evidence/proof.json
 ```
 
 | Flag | Meaning |
@@ -269,9 +269,9 @@ exit `1` means **not proven** — never report it as a pass.
 
 ```bash
 python3 skills/acima-adoption/scripts/summarize.py --root . --report acima.json \
-  --initial-report docs/acima/gate-L1-baseline.json \
-  --triage .acima/triage.json \
-  --out docs/acima/adoption-summary.md
+  --initial-report acima/evidence/gate-L1-baseline.json \
+  --triage acima/evidence/triage.json \
+  --out acima/handoff/adoption-summary.md
 ```
 
 An assessment summary goes in the response or outside the target; writing into the target needs

@@ -21,7 +21,7 @@ ACIMA makes declared architectural boundaries executable:
 - the **agent skill** preflights, proposes units, measures a baseline and helps an
   agent work within the boundaries;
 - a **claim gate** computes `FULL CONFORMANCE` or `PARTIAL ASSESSMENT` from the run and
-  `.acima/manual-evidence.json`; authors do not choose the label;
+  `acima/evidence/manual-evidence.json`; authors do not choose the label;
 - a **read-only assessment** (`acima assess`) inventories a repository, names the applicable
   requirements and the rules it could not decide, and never modifies the target.
 

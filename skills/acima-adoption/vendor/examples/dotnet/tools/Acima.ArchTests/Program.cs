@@ -313,6 +313,9 @@ internal sealed class Enforcer
     private bool Excluded(string rel)
     {
         var trimmed = rel.TrimEnd('/');
+        // The generated ACIMA workspace is not application source.
+        if (trimmed.Equals("acima", StringComparison.OrdinalIgnoreCase)
+            || trimmed.StartsWith("acima/", StringComparison.OrdinalIgnoreCase)) return true;
         foreach (var pattern in _cfg.Exclude)
         {
             var clean = pattern.Replace("**", string.Empty).Replace("*", string.Empty).TrimEnd('/');

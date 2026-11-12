@@ -109,7 +109,7 @@ and can take a minute for .NET.
 --write-draft acima.config.json
 
 # scoped waivers derived from the measured baseline
---write-waivers .acima/waivers.json
+--write-waivers acima/evidence/waivers.json
 ```
 
 The draft is a **draft**. It derives units from directory names, which is the least reliable

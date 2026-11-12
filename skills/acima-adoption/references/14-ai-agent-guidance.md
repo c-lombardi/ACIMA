@@ -24,7 +24,7 @@ The root file is concise and operational. It establishes ACIMA as mandatory, nam
 map and support files, gives the ownership snapshot, lists the actual local/CI checks, and states the
 approval boundary. It references the authoritative map instead of copying the whole configuration.
 
-Support files live under `docs/architecture/acima/`:
+Support files live under `acima/handoff/agent-guidance/`:
 
 - `agent-architecture-guidance.md` — ownership, contracts, dependency, data/configuration,
   composition and profile guidance.

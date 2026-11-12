@@ -41,7 +41,7 @@ There is exactly one catalog. Do not create a second one in a report, spreadshee
 | `N003` semantic naming clarity | human semantic review |
 | `G004` unreviewed contract change | API baseline comparison |
 
-A clean portable run is therefore **not** full conformance. A full claim needs a repository-scoped entry for each of these in `.acima/manual-evidence.json`; see [`../standard/08-conformance.md`](../standard/08-conformance.md#89-manual-evidence-for-full-claims).
+A clean portable run is therefore **not** full conformance. A full claim needs a repository-scoped entry for each of these in `acima/evidence/manual-evidence.json`; see [`../standard/08-conformance.md`](../standard/08-conformance.md#89-manual-evidence-for-full-claims).
 
 ## Where each rule is implemented
 

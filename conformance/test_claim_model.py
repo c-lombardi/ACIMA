@@ -196,8 +196,9 @@ class ClaimCliTests(unittest.TestCase):
             report = root / "acima.json"
             report.write_text(json.dumps(payload("L3", MANUAL)), encoding="utf-8")
             document = evidence_document(MANUAL, root)
-            evidence = root / ".acima" / "manual-evidence.json"
-            evidence.parent.mkdir(parents=True)
+            evidence = root / "acima/evidence" / "manual-evidence.json"
+            evidence.parent.mkdir(parents=True, exist_ok=True)
+            evidence.parent.mkdir(parents=True, exist_ok=True)
             evidence.write_text(json.dumps(document), encoding="utf-8")
             result = self._run(report, evidence, "full", root=root)
             self.assertEqual(result.returncode, 1, result.stdout + result.stderr)

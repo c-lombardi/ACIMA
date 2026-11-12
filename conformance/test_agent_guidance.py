@@ -43,7 +43,7 @@ def run_full(root: Path) -> dict:
 
 
 def map_review(root: Path) -> Path:
-    proposal = json.loads((root / ".acima/module-map.proposal.json").read_text(encoding="utf-8"))
+    proposal = json.loads((root / "acima/evidence/module-map.proposal.json").read_text(encoding="utf-8"))
     review = {
         "schemaVersion": "1.0", "proposalId": proposal["proposalId"],
         "reviewer": "Repository owner", "reviewedOn": workflow._today(),
@@ -139,7 +139,7 @@ class AgentGuidanceTests(unittest.TestCase):
             primary = (root / "AGENTS.md").read_text(encoding="utf-8")
             enforcement = (root / guidance.ENFORCEMENT_FILE).read_text(encoding="utf-8")
             self.assertIn("acima.config.json", primary)
-            self.assertIn("docs/architecture/acima/judgment-guidance.md", primary)
+            self.assertIn("acima/handoff/agent-guidance/judgment-guidance.md", primary)
             command = state["agentGuidance"]["checks"]["command"]
             self.assertTrue(command)
             self.assertIn(command, enforcement)
@@ -208,7 +208,7 @@ class AgentGuidanceTests(unittest.TestCase):
             from test_adoption_workflow import full_start
             full_start(root)
             state = workflow._load(root)
-            (root / "docs/acima/enforcement.json").unlink()
+            (root / "acima/evidence/enforcement.json").unlink()
             guidance.apply(root, state)
             text = (root / "AGENTS.md").read_text(encoding="utf-8")
             self.assertIn("No verified local architectural command", text)

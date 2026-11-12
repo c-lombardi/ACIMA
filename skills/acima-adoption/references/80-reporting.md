@@ -74,15 +74,15 @@ Normally omit identifiers unless the user asks for advanced traceability.
 
 | Level | Audience | Question it answers | Artefact |
 |---|---|---|---|
-| **Adoption summary** | developer, lead, architect | what was found, why it matters, what to do next, what is proven | `docs/acima/adoption-summary.md` |
-| **Technical evidence** | reviewer, auditor, future agent | exactly which rule, path, line, fingerprint and execution state supports the summary | the enforcer JSON, `.acima/baseline.json`, `.acima/waivers.json`, `.acima/triage.json`, `acima.py report` |
+| **Adoption summary** | developer, lead, architect | what was found, why it matters, what to do next, what is proven | `acima/handoff/adoption-summary.md` |
+| **Technical evidence** | reviewer, auditor, future agent | exactly which rule, path, line, fingerprint and execution state supports the summary | the enforcer JSON, `acima/evidence/baseline.json`, `acima/evidence/waivers.json`, `acima/evidence/triage.json`, `acima.py report` |
 
 The summary is generated, not improvised:
 
 ```bash
 python3 skills/acima-adoption/scripts/summarize.py --root <target> --report <run>.json \
-  --triage <target>/.acima/triage.json \
-  --out <target>/docs/acima/adoption-summary.md
+  --triage <target>/acima/evidence/triage.json \
+  --out <target>/acima/handoff/adoption-summary.md
 ```
 
 Optional flags: `--initial-report` (reconciles the first measurement with the frozen baseline),
@@ -154,7 +154,7 @@ that proves the remedy is a better first slice than the largest one.
 
 ## Defects, detector artefacts, review items
 
-Triage is a recorded decision, not a suppression. It lives in `.acima/triage.json`; the finding
+Triage is a recorded decision, not a suppression. It lives in `acima/evidence/triage.json`; the finding
 stays in the report and in the gate.
 
 ```json
@@ -265,7 +265,7 @@ sequence, and one question: "Would you like me to proceed with the listed files 
 **Handoff.**
 
 > **What changed:** five units declared, a local check wired, a baseline kept at
-> `docs/acima/baseline-2026-11-09.json`.
+> `acima/evidence/baseline-2026-11-09.json`.
 > **Verified:** the check runs, finds 14 pre-existing errors, and rejects a new cross-module import.
 > **Not verified:** CI is configured but has not been observed on a pull request; the manual rules
 > have no evidence, so the claim is a partial assessment.
@@ -334,7 +334,7 @@ Name which source applies rather than silently choosing.
 Source metadata may contain internal scope identifiers. The user hears the actual change:
 
 > I propose creating `acima.config.json` with the five discovered modules and their roles, and
-> `.acima/baseline.json` with the current findings frozen as the starting point. This lets the local
+> `acima/evidence/baseline.json` with the current findings frozen as the starting point. This lets the local
 > check distinguish existing problems from new ones. It does not add CI, change source code or
 > suppress any finding. May I create those two files at those paths?
 

@@ -65,8 +65,8 @@ class ExecutableLookupTests(unittest.TestCase):
             with mock.patch.object(workflow, "_dotnet_executable", return_value=None):
                 result = workflow._write_enforcement(root, state, {"language": "dotnet"})
             self.assertEqual(result["status"], "blocked")
-            self.assertFalse((root / ".acima/waivers.json").exists())
-            self.assertFalse((root / "docs/acima/enforcement.json").exists())
+            self.assertFalse((root / "acima/evidence/waivers.json").exists())
+            self.assertFalse((root / "acima/evidence/enforcement.json").exists())
 
     def test_verify_reports_a_blocked_dotnet_scan(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

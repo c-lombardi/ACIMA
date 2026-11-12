@@ -81,7 +81,7 @@ def observation(root: Path, **overrides) -> None:
         "runId": "42",
     }
     payload.update(overrides)
-    write(root, "docs/acima/gate-observed.json", json.dumps(payload))
+    write(root, "acima/evidence/gate-observed.json", json.dumps(payload))
 
 
 def gate(root: Path) -> dict:

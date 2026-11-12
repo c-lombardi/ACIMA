@@ -43,23 +43,26 @@ from executables import resolve_executable  # noqa: E402
 import agent_guidance  # noqa: E402
 from qualitative_review import ReviewValidationError, load_and_validate_review  # noqa: E402
 from adoption_reports import AdoptionReportError, render_proposal_report, report_digest  # noqa: E402
+from acima_paths import existing as _existing_artifact  # noqa: E402
 
-STATE_FILE = ".acima/adoption-workflow.json"
-PREFLIGHT_FILE = ".acima/preflight.json"
-PROPOSAL_JSON = ".acima/module-map.proposal.json"
-OWNER_MAP_REVIEW_FILE = "docs/acima/module-map-decisions.json"
-SCOPE_FILE = ".acima/adoption-scope.json"
-ADOPTION_PROPOSAL = "docs/acima/adoption-proposal.md"
-ADOPTION_PROPOSAL_JSON = "docs/acima/adoption-proposal.json"
-ADOPTION_NOTIFICATIONS_PROPOSAL = "docs/acima/adoption-notifications-proposal.json"
-ENFORCEMENT_FILE = "docs/acima/enforcement.json"
-ARCH_TESTS_FILE = ".acima/architecture-tests.json"
-CI_FILE = "docs/acima/ci-integration.json"
-VERIFICATION_FILE = "docs/acima/verification.json"
-REMEDIATION_PLAN = "docs/acima/remediation-plan.json"
-REMEDIATION_RESULT = "docs/acima/remediation-result.json"
-HANDOFF_FILE = "docs/acima/adoption-handoff.md"
-WAIVERS_FILE = ".acima/waivers.json"
+STATE_FILE = "acima/state.json"
+WORKSPACE_README = "acima/README.md"
+LEGACY_STATE_FILE = ".acima/adoption-workflow.json"
+PREFLIGHT_FILE = "acima/evidence/preflight.json"
+PROPOSAL_JSON = "acima/evidence/module-map.proposal.json"
+OWNER_MAP_REVIEW_FILE = "acima/evidence/module-map-decisions.json"
+SCOPE_FILE = "acima/evidence/adoption-scope.json"
+ADOPTION_PROPOSAL = "acima/report/adoption-proposal.md"
+ADOPTION_PROPOSAL_JSON = "acima/report/adoption-proposal.json"
+ADOPTION_NOTIFICATIONS_PROPOSAL = "acima/report/adoption-notifications-proposal.json"
+ENFORCEMENT_FILE = "acima/evidence/enforcement.json"
+ARCH_TESTS_FILE = "acima/evidence/architecture-tests.json"
+CI_FILE = "acima/evidence/ci-integration.json"
+VERIFICATION_FILE = "acima/evidence/verification.json"
+REMEDIATION_PLAN = "acima/evidence/remediation-plan.json"
+REMEDIATION_RESULT = "acima/evidence/remediation-result.json"
+HANDOFF_FILE = "acima/handoff/adoption-handoff.md"
+WAIVERS_FILE = "acima/evidence/waivers.json"
 
 MODES = ("guided", "full")
 STAGE_ORDER = (
@@ -221,16 +224,17 @@ def _revision(root: Path) -> dict:
         pass
     tracked = []
     workflow_owned = {
-        CONFIG_NAME, "tools/acima_arch.py", "tools/acima-arch.mjs",
-        "tools/Acima.ArchTests/Acima.ArchTests.csproj",
-        "tools/Acima.ArchTests/Program.cs",
+        CONFIG_NAME, "acima/tooling/python/acima_arch.py",
+        "acima/tooling/typescript/acima-arch.mjs",
+        "acima/tooling/dotnet/Acima.ArchTests/Acima.ArchTests.csproj",
+        "acima/tooling/dotnet/Acima.ArchTests/Program.cs",
         ".github/workflows/acima.yml",
     }
-    for path in _walk_files(root, {".git", ".acima"}):
+    for path in _walk_files(root, {".git", ".acima", "acima"}):
         relative = path.relative_to(root).as_posix()
-        if relative.startswith("docs/acima/") or relative in workflow_owned:
+        if relative.startswith(("acima/", "docs/acima/")) or relative in workflow_owned:
             continue
-        if relative.startswith("tools/Acima.ArchTests/"):
+        if relative.startswith("acima/tooling/dotnet/Acima.ArchTests/"):
             continue
         tracked.append("%s:%s" % (relative, hashlib.sha256(path.read_bytes()).hexdigest()))
     digest = hashlib.sha256("\n".join(tracked).encode("utf-8")).hexdigest()
@@ -240,9 +244,9 @@ def _revision(root: Path) -> dict:
 def _application_revision(root: Path) -> str:
     """Hash application source and behavior inputs, not workflow/enforcement artifacts."""
     tracked = []
-    for path in _walk_files(root, {".git", ".acima"}):
+    for path in _walk_files(root, {".git", ".acima", "acima"}):
         relative = path.relative_to(root).as_posix()
-        if (relative == CONFIG_NAME or relative.startswith("docs/acima/")
+        if (relative == CONFIG_NAME or relative.startswith(("acima/", "docs/acima/"))
                 or relative.startswith("tools/") or relative.startswith("examples/")
                 or relative.startswith(".github/")):
             continue
@@ -258,7 +262,7 @@ def _maturity(root: Path, config: dict | None = None) -> dict:
     tests = []
     for path in _walk_files(root, {".git", "node_modules", "dist", "build", "target",
                                    "bin", "obj", ".venv", "venv", "tools", "examples",
-                                   "docs", ".acima"}):
+                                   "docs", ".acima", "acima"}):
         relative = path.relative_to(root).as_posix().lower()
         if path.suffix.lower() not in source_suffixes:
             continue
@@ -315,22 +319,26 @@ def _enforcer(root: Path, language: str) -> dict | None:
         source = ROOT / "examples/python/tools/acima_arch.py"
         if not source.is_file():
             return None
+        target = "acima/tooling/python/acima_arch.py"
         return {
-            "language": language, "kind": "file", "target": "tools/acima_arch.py",
-            "files": [{"source": str(source), "target": "tools/acima_arch.py"}],
-            "command": "python3 tools/acima_arch.py --root . --config acima.config.json --format json",
-            "argv": [sys.executable, "tools/acima_arch.py", "--root", ".", "--config",
+            "language": language, "kind": "file", "target": target,
+            "files": [{"source": str(source), "target": target}],
+            "command": ("python3 acima/tooling/python/acima_arch.py --root . "
+                        "--config acima.config.json --format json"),
+            "argv": [sys.executable, target, "--root", ".", "--config",
                      CONFIG_NAME, "--format", "json"],
         }
     if language == "typescript":
         source = ROOT / "examples/typescript/tools/acima-arch.mjs"
         if not source.is_file():
             return None
+        target = "acima/tooling/typescript/acima-arch.mjs"
         return {
-            "language": language, "kind": "file", "target": "tools/acima-arch.mjs",
-            "files": [{"source": str(source), "target": "tools/acima-arch.mjs"}],
-            "command": "node tools/acima-arch.mjs --root . --config acima.config.json --format json",
-            "argv": ["node", "tools/acima-arch.mjs", "--root", ".", "--config",
+            "language": language, "kind": "file", "target": target,
+            "files": [{"source": str(source), "target": target}],
+            "command": ("node acima/tooling/typescript/acima-arch.mjs --root . "
+                        "--config acima.config.json --format json"),
+            "argv": ["node", target, "--root", ".", "--config",
                      CONFIG_NAME, "--format", "json"],
         }
     if language == "dotnet":
@@ -338,23 +346,24 @@ def _enforcer(root: Path, language: str) -> dict | None:
         if executable is None:
             return None
         source_root = ROOT / "examples/dotnet"
+        target = "acima/tooling/dotnet/Acima.ArchTests"
         files = [
             {"source": str(source_root / "tools/Acima.ArchTests/Program.cs"),
-             "target": "tools/Acima.ArchTests/Program.cs"},
+             "target": target + "/Program.cs"},
             {"source": str(source_root / "tools/Acima.ArchTests/Acima.ArchTests.csproj"),
-             "target": "tools/Acima.ArchTests/Acima.ArchTests.csproj"},
+             "target": target + "/Acima.ArchTests.csproj"},
             {"source": str(source_root / "Directory.Build.props"),
-             "target": "tools/Acima.ArchTests/Directory.Build.props"},
+             "target": target + "/Directory.Build.props"},
         ]
         if not all(Path(item["source"]).is_file() for item in files):
             return None
         return {
-            "language": language, "kind": "project", "target": "tools/Acima.ArchTests",
+            "language": language, "kind": "project", "target": target,
             "files": files,
-            "command": ("dotnet run --project tools/Acima.ArchTests -- --root . "
-                        "--config acima.config.json --format json"),
+            "command": ("dotnet run --project %s -- --root . "
+                        "--config acima.config.json --format json" % target),
             "argv": [executable, "run", "--project",
-                     "tools/Acima.ArchTests", "--", "--root", ".", "--config",
+                     target, "--", "--root", ".", "--config",
                      CONFIG_NAME, "--format", "json"],
         }
     return None
@@ -481,14 +490,45 @@ def _new_state(root: Path, mode: str, reviewer: str | None) -> dict:
     }
 
 
+def _workspace_readme() -> str:
+    return """# ACIMA adoption workspace
+
+This directory is generated and managed by ACIMA adoption. Keep application source outside it.
+`acima.config.json` remains at the repository root because it is the human-authored unit contract.
+
+| Path | Purpose |
+|---|---|
+| `acima/state.json` | Resumable adoption state and the single next action. |
+| `acima/evidence/` | Assessment, review, approval, enforcement, verification, waiver and remediation evidence. |
+| `acima/report/` | The adoption proposal and generated report inputs. |
+| `acima/handoff/` | Developer handoff, status and generated AI-agent guidance. |
+| `acima/tooling/` | Enforcers copied into this repository. Reuse them; do not fork them per application. |
+| `acima/optional/` | Documents created only when the owner explicitly requests them. |
+
+Scope determines the files that exist here: an assessment-only engagement writes nothing to the
+target; local enforcement adds the config, copied tooling and enforcement evidence; CI adds the
+workflow; the full adoption adds the report and handoff. Optional documents never appear by default.
+
+Do not edit generated evidence to make a check pass. Regenerate it from the approved workflow or
+record a reviewed waiver instead.
+"""
+
+
+def _write_workspace_readme(root: Path) -> None:
+    path = root / WORKSPACE_README
+    if path.exists():
+        return
+    _write(root, WORKSPACE_README, _workspace_readme())
+
+
 def _save(root: Path, state: dict) -> None:
     state["updatedAt"] = _now()
     _write_json(root, STATE_FILE, state)
 
 
 def _load(root: Path) -> dict:
-    path = root / STATE_FILE
-    if not path.is_file():
+    path = _existing_artifact(root, STATE_FILE, LEGACY_STATE_FILE)
+    if path is None:
         raise WorkflowError("no adoption workflow at %s; run `start --mode guided` or "
                             "`start --mode full --authorize-full` first" % STATE_FILE)
     state = _read_json(path)
@@ -908,7 +948,7 @@ def _copy_enforcer(root: Path, language: str) -> dict:
     missing = _dotnet_missing_reason() if language == "dotnet" else ""
     if missing:
         return {"status": "blocked", "reason": missing, "command": None,
-                "path": "tools/Acima.ArchTests", "files": []}
+                "path": "acima/tooling/dotnet/Acima.ArchTests", "files": []}
     plan = _enforcer(root, language)
     if not plan:
         return {"status": "unsupported", "reason": "No portable enforcer for %s." % language,
@@ -1608,7 +1648,7 @@ def remediate(root: Path, choice: str, *, selected: list[str] | None = None,
               done="The owner later selects a remediation scope or changes the architecture.")
     elif failures:
         _next(state, "Review the blocked or manual remediation items",
-              "Inspect docs/acima/remediation-result.json; implement or revalidate the remaining items.",
+              "Inspect acima/evidence/remediation-result.json; implement or revalidate the remaining items.",
               approval=True, writes=True,
               why="A partial or blocked fix set must not be reported as complete.",
               done="Each selected item has an implemented or explicitly deferred disposition.")
@@ -1656,7 +1696,7 @@ def guidance(root: Path, *, approve: bool = False) -> dict:
               done="Ownership, enforcement, CI or adoption decisions change; then refresh the guidance.")
     else:
         _next(state, "Resolve the AI guidance validation problem",
-              "Inspect .acima/agent-guidance.json and docs/architecture/acima; correct the missing or stale reference.",
+              "Inspect acima/evidence/agent-guidance.json and acima/handoff/agent-guidance; correct the missing or stale reference.",
               approval=True, writes=True,
               why="Invalid or incomplete agent guidance must not be presented as a completed adoption deliverable.",
               done="The primary instructions and support references validate against the repository.")
@@ -2099,8 +2139,9 @@ def _validate_qualitative_review(root: Path, review_path: Path | None) -> dict:
     if review_path is not None and not review_path.is_absolute():
         review_path = root / review_path
     candidates = [review_path] if review_path else [
-        root / "docs/acima/qualitative-review.json",
+        root / "acima/evidence/qualitative-review.json",
         root / ".acima/qualitative-review.json",
+        root / "docs/acima/qualitative-review.json",
     ]
     selected = next((path for path in candidates if path is not None and path.is_file()), None)
     catalog_path = ROOT / "tools/acima-spec/rules.json"
@@ -2109,8 +2150,8 @@ def _validate_qualitative_review(root: Path, review_path: Path | None) -> dict:
     if selected is None:
         raise WorkflowError(
             ("the %s-rule qualitative review is mandatory before adoption starts; " % required_rules)
-            + "create docs/acima/qualitative-review.json and validate it with "
-            "tools/acima.py validate-review --root . --file docs/acima/qualitative-review.json"
+            + "create acima/evidence/qualitative-review.json and validate it with "
+            "tools/acima.py validate-review --root . --file acima/evidence/qualitative-review.json"
         )
     selected = selected.resolve()
     try:
@@ -2152,8 +2193,8 @@ def start(root: Path, mode: str, *, authorize_full: bool = False,
         raise WorkflowError("full automation requires the explicit --authorize-full flag")
     if mode == "full" and not (reviewer or "").strip():
         reviewer = "Automated adoption mode selection"
-    state_path = root / STATE_FILE
-    if state_path.is_file():
+    state_path = _existing_artifact(root, STATE_FILE, LEGACY_STATE_FILE)
+    if state_path is not None:
         existing = _load(root)
         if existing.get("mode") != mode:
             raise WorkflowError("the repository already has a %s workflow; resume it or start a new "
@@ -2161,6 +2202,8 @@ def start(root: Path, mode: str, *, authorize_full: bool = False,
         return continue_workflow(root)
     assessment_review = _validate_qualitative_review(root, review_path)
     state = _new_state(root, mode, reviewer)
+    _write_workspace_readme(root)
+    state["artifacts"]["workspaceReadme"] = WORKSPACE_README
     state["assessmentReview"] = assessment_review
     if mode == "full":
         state["authorized"] = True
@@ -2252,7 +2295,7 @@ def start(root: Path, mode: str, *, authorize_full: bool = False,
             "existingArchitecture": module_map.get("existingArchitecture", {}),
             "claim": "No enforcement tooling has been installed or activated.",
         }
-        _write_json(root, "docs/acima/enforcement-proposal.json", enforcement_proposal)
+        _write_json(root, "acima/report/enforcement-proposal.json", enforcement_proposal)
         ci_discovery = _ci(root)
         ci_proposal = {
             "status": "proposed",
@@ -2260,12 +2303,12 @@ def start(root: Path, mode: str, *, authorize_full: bool = False,
             "userDecisionRequired": True,
             "claim": "No CI workflow has been changed.",
         }
-        _write_json(root, "docs/acima/ci-proposal.json", ci_proposal)
+        _write_json(root, "acima/report/ci-proposal.json", ci_proposal)
         # Do not create or replace repository-level agent instructions during preparation.
         # The agent-guidance proposal is a separately selectable implementation stage.
         remediation_proposal = write_remediation_plan(root, state)
-        state["artifacts"]["enforcementProposal"] = "docs/acima/enforcement-proposal.json"
-        state["artifacts"]["ciProposal"] = "docs/acima/ci-proposal.json"
+        state["artifacts"]["enforcementProposal"] = "acima/report/enforcement-proposal.json"
+        state["artifacts"]["ciProposal"] = "acima/report/ci-proposal.json"
         state["artifacts"]["remediationPlan"] = REMEDIATION_PLAN
     if mode == "guided":
         map_pending = state["stages"].get("module_map", {}).get("status") == AWAITING
@@ -2304,11 +2347,11 @@ def start(root: Path, mode: str, *, authorize_full: bool = False,
            evidence=ADOPTION_PROPOSAL)
     for stage_name, detail, evidence in (
         ("implementation", "Enforcement changes are proposed but await consolidated scope approval.",
-         "docs/acima/enforcement-proposal.json"),
+         "acima/report/enforcement-proposal.json"),
         ("agent_guidance", "Agent guidance is an optional stage and has not been applied.",
          None),
         ("ci", "CI integration is proposed and awaits the user's explicit CI decision.",
-         "docs/acima/ci-proposal.json"),
+         "acima/report/ci-proposal.json"),
         ("remediation", "Application source remediation is a separate later decision.",
          REMEDIATION_PLAN),
     ):
@@ -2530,7 +2573,7 @@ def _reconcile_owner_approved_module_map(root: Path, state: dict) -> bool:
         return False
     decision_candidates = (
         root / OWNER_MAP_REVIEW_FILE,
-        root / ".acima/module-map-decisions.json",
+        root / "acima/evidence/module-map-decisions.json",
     )
     decisions_path = next((path for path in decision_candidates if path.is_file()), None)
     if decisions_path is None:

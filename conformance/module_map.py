@@ -21,7 +21,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 CONFIG_NAME = "acima.config.json"
-APPROVAL_FILE = ".acima/module-map.approval.json"
+APPROVAL_FILE = "acima/evidence/module-map.approval.json"
 SCHEMA_VERSION = "1.0"
 SOURCE_EXTENSIONS = {
     ".py", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".cs", ".go", ".java",
@@ -30,7 +30,7 @@ SOURCE_EXTENSIONS = {
 PRUNE = {
     ".git", "node_modules", "bin", "obj", "dist", "build", "target", "out",
     ".venv", "venv", "__pycache__", ".next", ".nuxt", "coverage", ".idea", ".vs",
-    ".acima",
+    ".acima", "acima",
     # Generated vendor content is not product source. A copied skill carries its
     # dependency snapshot here; assigning it an application module would be false ownership.
     "vendor",
@@ -90,7 +90,7 @@ def _walk(root: Path):
     for current, dirnames, filenames in os.walk(root):
         dirnames[:] = sorted(
             name for name in dirnames
-            if name not in PRUNE and (not name.startswith(".") or name == ".acima")
+            if name not in PRUNE and not name.startswith(".")
         )
         for name in sorted(filenames):
             if name.startswith("."):
@@ -846,6 +846,8 @@ def _existing_architecture(root: Path) -> dict:
         "docs/architecture-map.md", "scripts/architecture-gate.mjs",
         "scripts/architecture-map.mjs", "scripts/architecture-analyzers.mjs",
         "tools/acima_arch.py", "tools/acima-arch.mjs", "tools/Acima.ArchTests/Program.cs",
+        "acima/tooling/python/acima_arch.py", "acima/tooling/typescript/acima-arch.mjs",
+        "acima/tooling/dotnet/Acima.ArchTests/Program.cs",
     ]
     paths = [path for path in candidates if (root / path).exists()]
     solutions = sorted(_relative(path, root) for path in _walk(root)
@@ -1492,7 +1494,7 @@ def build_config(proposal: dict, review_result: dict, *, existing: dict | None =
         "repositoryDispositions": dispositions,
         "exclude": base.get("exclude") or ["bin", "obj", "node_modules", "dist", "build",
                                             "target", "tests", "**/__pycache__"],
-        "waivers": base.get("waivers") or ".acima/waivers.json",
+        "waivers": base.get("waivers") or "acima/evidence/waivers.json",
         "_moduleMapApproval": {
             "proposalId": proposal.get("proposalId"),
             "reviewer": approval.get("reviewer"),
@@ -1653,7 +1655,7 @@ def main(argv: list[str] | None = None) -> int:
     review_parser.add_argument("--proposal", required=True)
     review_parser.add_argument("--decisions", required=True)
     review_parser.add_argument("--write-approval", default=None,
-                               help="write the review to this path (typically .acima/module-map.approval.json)")
+                               help="write the review to this path (typically acima/evidence/module-map.approval.json)")
     review_parser.add_argument("--write-config", default=None,
                                help="write acima.config.json only when the review approves a complete map")
     args = parser.parse_args(argv)
