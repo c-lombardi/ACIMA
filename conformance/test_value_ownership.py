@@ -121,7 +121,7 @@ class ValueOwnershipTests(unittest.TestCase):
             for finding in a006(report):
                 expected = "sha256:" + hashlib.sha256(
                     f"{finding['rule']}\0{finding['path']}\0{finding['evidence']}".encode("utf-8")
-                ).hexdigest()[:16]
+                ).hexdigest()
                 self.assertEqual(finding["fingerprint"], expected)
 
     def test_catalog_and_documentation_traceability(self) -> None:

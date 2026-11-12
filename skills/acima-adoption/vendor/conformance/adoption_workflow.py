@@ -39,6 +39,7 @@ from module_map import (  # noqa: E402
     build_config, discover as discover_module_map, language_for, load_proposal,
     load_review, mode_can_auto_accept, proposed_units,
 )
+from executables import resolve_executable  # noqa: E402
 import agent_guidance  # noqa: E402
 from qualitative_review import ReviewValidationError, load_and_validate_review  # noqa: E402
 from adoption_reports import AdoptionReportError, render_proposal_report, report_digest  # noqa: E402
@@ -81,6 +82,37 @@ STAGE_LABEL = {
     "agent_guidance": "AI agent guidance",
     "adoption_notifications": "ACIMA adoption notifications",
     "handoff": "Final handoff",
+}
+
+# The canonical product phases. The workflow records fine-grained stages; the product speaks in
+# phases. One vocabulary is shared by the CLI, the skill and the report.
+PHASE_ORDER = (
+    "start", "assess", "explain_and_propose", "review_and_authorize",
+    "implement", "verify_and_hand_off",
+)
+PHASE_LABEL = {
+    "start": "Start",
+    "assess": "Phase 1 — Assess",
+    "explain_and_propose": "Phase 2 — Explain and propose",
+    "review_and_authorize": "Phase 3 — Review and authorize",
+    "implement": "Phase 4 — Implement",
+    "verify_and_hand_off": "Phase 5 — Verify and hand off",
+}
+STAGE_PHASE = {
+    "preflight": "assess",
+    "discovery": "assess",
+    "assessment": "assess",
+    "module_map": "assess",
+    "adoption_proposal": "explain_and_propose",
+    "proposal_report": "review_and_authorize",
+    "implementation": "implement",
+    "architecture_tests": "implement",
+    "ci": "implement",
+    "remediation": "implement",
+    "agent_guidance": "implement",
+    "verification": "verify_and_hand_off",
+    "adoption_notifications": "verify_and_hand_off",
+    "handoff": "verify_and_hand_off",
 }
 COMPLETE = "complete"
 IN_PROGRESS = "in_progress"
@@ -266,20 +298,15 @@ def _language(root: Path) -> str:
 
 
 def _dotnet_executable() -> str | None:
-    found = shutil.which("dotnet")
-    if found:
-        return found
-    configured = os.environ.get("DOTNET_ROOT")
-    candidates = []
-    if configured:
-        candidates.append(Path(configured) / ("dotnet.exe" if os.name == "nt" else "dotnet"))
-    candidates.extend([Path("C:/Program Files/dotnet/dotnet.exe"),
-                       Path("C:/Program Files/dotnet/dotnet"),
-                       Path("/c/Program Files/dotnet/dotnet.exe"),
-                       Path("/mnt/c/Program Files/dotnet/dotnet.exe"),
-                       Path("/usr/local/share/dotnet/dotnet"),
-                       Path("/usr/bin/dotnet")])
-    return next((str(path) for path in candidates if path.is_file()), None)
+    """Resolve .NET from PATH or DOTNET_ROOT; do not assume an installation directory."""
+    return resolve_executable("dotnet")
+
+
+def _dotnet_missing_reason() -> str:
+    if _dotnet_executable() is not None:
+        return ""
+    return ("dotnet was not found on PATH or in DOTNET_ROOT; .NET enforcement "
+            "cannot be planned, copied, or verified")
 
 
 def _enforcer(root: Path, language: str) -> dict | None:
@@ -307,6 +334,9 @@ def _enforcer(root: Path, language: str) -> dict | None:
                      CONFIG_NAME, "--format", "json"],
         }
     if language == "dotnet":
+        executable = _dotnet_executable()
+        if executable is None:
+            return None
         source_root = ROOT / "examples/dotnet"
         files = [
             {"source": str(source_root / "tools/Acima.ArchTests/Program.cs"),
@@ -323,7 +353,7 @@ def _enforcer(root: Path, language: str) -> dict | None:
             "files": files,
             "command": ("dotnet run --project tools/Acima.ArchTests -- --root . "
                         "--config acima.config.json --format json"),
-            "argv": [_dotnet_executable() or "dotnet", "run", "--project",
+            "argv": [executable, "run", "--project",
                      "tools/Acima.ArchTests", "--", "--root", ".", "--config",
                      CONFIG_NAME, "--format", "json"],
         }
@@ -469,16 +499,76 @@ def _load(root: Path) -> dict:
     return state
 
 
+def _phase_of_stage(name: str) -> str:
+    return STAGE_PHASE.get(name, "start")
+
+
+TERMINAL_STATUSES = frozenset({DEFERRED, DECLINED, NOT_APPLICABLE})
+
+
+def _current_phase(state: dict) -> str:
+    """Return the canonical phase implied by the recorded stage statuses.
+
+    A blocked or active stage is current and cannot be skipped. Missing earlier records are never
+    treated as complete, so an older or partially populated state cannot silently jump ahead.
+    Deferred optional work stops the journey only when no later recorded stage has completed.
+    A workflow with nothing recorded is still at Start.
+    """
+    stages = state.get("stages") or {}
+    if not isinstance(stages, dict) or not stages:
+        return "start"
+    recorded = [(name, stages[name]) for name in STAGE_ORDER
+                if isinstance(stages.get(name), dict)]
+    if not recorded:
+        return "start"
+
+    # A blocked or failed stage remains the current phase even if later work was recorded.
+    for statuses in ((BLOCKED, "failed"), (IN_PROGRESS, AWAITING)):
+        for name, stage in recorded:
+            if stage.get("status") in statuses:
+                return _phase_of_stage(name)
+
+    # Do not infer that an absent earlier stage completed. If a later stage was recorded, the
+    # earliest missing stage is the furthest safe phase to report.
+    furthest = max(STAGE_ORDER.index(name) for name, _stage in recorded)
+    for name in STAGE_ORDER[:furthest]:
+        if not isinstance(stages.get(name), dict):
+            return _phase_of_stage(name)
+
+    furthest_complete = max(
+        (STAGE_ORDER.index(name) for name, stage in recorded
+         if stage.get("status") == COMPLETE),
+        default=-1,
+    )
+    for name in STAGE_ORDER:
+        stage = stages.get(name)
+        if not isinstance(stage, dict):
+            return _phase_of_stage(name)
+        status = stage.get("status")
+        if status == COMPLETE:
+            continue
+        index = STAGE_ORDER.index(name)
+        if status in TERMINAL_STATUSES and index < furthest_complete:
+            # The owner explicitly excluded this optional stage and later work has completed.
+            continue
+        return _phase_of_stage(name)
+    return "verify_and_hand_off"
+
+
 def _summary(state: dict) -> dict:
     stages = [state["stages"][name] for name in STAGE_ORDER if name in state["stages"]]
+    phase = _current_phase(state)
     return {
         "mode": state["mode"],
+        "phase": phase,
+        "phaseLabel": PHASE_LABEL[phase],
         "authorized": state.get("authorized", False),
         "repository": state.get("repository", {}),
         "stages": stages,
         "completed": [stage["name"] for stage in stages if stage["status"] == COMPLETE],
         "blocked": [stage["name"] for stage in stages if stage["status"] == BLOCKED],
         "awaiting": [stage["name"] for stage in stages if stage["status"] == AWAITING],
+        "phaseOrder": list(PHASE_ORDER),
         "inProgress": [stage["name"] for stage in stages if stage["status"] == IN_PROGRESS],
         "artifacts": state.get("artifacts", {}),
         "decisions": state.get("decisions", []),
@@ -815,6 +905,10 @@ def _write_scope(root: Path, state: dict) -> dict:
 
 
 def _copy_enforcer(root: Path, language: str) -> dict:
+    missing = _dotnet_missing_reason() if language == "dotnet" else ""
+    if missing:
+        return {"status": "blocked", "reason": missing, "command": None,
+                "path": "tools/Acima.ArchTests", "files": []}
     plan = _enforcer(root, language)
     if not plan:
         return {"status": "unsupported", "reason": "No portable enforcer for %s." % language,
@@ -858,6 +952,9 @@ def _run(command: list[str], cwd: Path, timeout: int = 120) -> tuple[int, str, s
 
 def _negative_probe(root: Path, language: str) -> dict:
     """Prove the copied enforcer rejects a controlled dependency violation."""
+    missing = _dotnet_missing_reason() if language == "dotnet" else ""
+    if missing:
+        return {"status": "blocked", "reason": missing}
     plan = _enforcer(root, language)
     if not plan:
         return {"status": "unsupported", "reason": "No portable enforcer for %s." % language}
@@ -917,6 +1014,8 @@ def _negative_probe(root: Path, language: str) -> dict:
 def _write_enforcement(root: Path, state: dict, config: dict) -> dict:
     language = config.get("language") or _language(root)
     result = _copy_enforcer(root, language)
+    if result.get("status") == "blocked":
+        return result
     _write_waivers(root, config)
     tests = {
         "schemaVersion": 1,
@@ -993,8 +1092,11 @@ def _positive_fixture(language: str) -> dict:
     example = ROOT / "examples" / language
     if not example.is_dir():
         return {"status": "unsupported", "reason": "No compliant reference fixture exists for %s." % language}
+    dotnet = _dotnet_executable() if language == "dotnet" else None
+    if language == "dotnet" and dotnet is None:
+        return {"status": "blocked", "reason": _dotnet_missing_reason()}
     commands = {
-        "dotnet": ["dotnet", "run", "--project", "tools/Acima.ArchTests", "--",
+        "dotnet": [dotnet or "dotnet", "run", "--project", "tools/Acima.ArchTests", "--",
                    "--root", ".", "--config", "acima.config.json", "--format", "json"],
         "python": [sys.executable, "tools/acima_arch.py", "--root", ".",
                    "--config", "acima.config.json", "--format", "json"],
@@ -1036,17 +1138,20 @@ def _positive_fixture(language: str) -> dict:
 
 def _verify(root: Path, state: dict, config: dict) -> dict:
     language = config.get("language") or _language(root)
-    item = _enforcer(root, language)
+    missing = _dotnet_missing_reason() if language == "dotnet" else ""
+    item = None if missing else _enforcer(root, language)
     result = {
         "schemaVersion": 1,
         "status": "not_run",
         "language": language,
         "assessment": {},
-        "positive": _positive_fixture(language),
+        "positive": ({"status": "blocked", "reason": missing} if missing
+                     else _positive_fixture(language)),
         "targetScan": {"status": "not_run"},
-        "negative": {"status": "not_run"},
+        "negative": ({"status": "blocked", "reason": missing} if missing
+                     else {"status": "not_run"}),
         "ci": {},
-        "limitations": [],
+        "limitations": [missing] if missing else [],
     }
     if item:
         targets = [root / entry["target"] for entry in item["files"]]
@@ -1068,9 +1173,12 @@ def _verify(root: Path, state: dict, config: dict) -> dict:
                 }
         else:
             result["targetScan"] = {"status": "blocked", "reason": "The enforcer is not present in the target."}
+    elif missing:
+        result["targetScan"] = {"status": "blocked", "reason": missing}
     else:
         result["targetScan"] = {"status": "unsupported", "reason": "No portable target enforcer."}
-    result["negative"] = _negative_probe(root, language)
+    if not missing:
+        result["negative"] = _negative_probe(root, language)
     map_now = discover_module_map(root)
     result["assessment"] = {
         "status": map_now.get("status"),
@@ -1916,8 +2024,9 @@ def _apply(root: Path, state: dict) -> dict:
     _stage(state, "implementation", IN_PROGRESS, "Writing the executable enforcement artifacts.")
     enforcement = _write_enforcement(root, state, config)
     if enforcement.get("status") == "blocked":
-        _stage(state, "implementation", BLOCKED, enforcement.get("reason", "Enforcement could not be written."))
-        state["blockers"].append("enforcement file collision")
+        reason = enforcement.get("reason", "Enforcement could not be written.")
+        _stage(state, "implementation", BLOCKED, reason)
+        state["blockers"].append(reason)
         _save(root, state)
         return state
     _stage(state, "implementation", COMPLETE, "The enforcer, configuration, waiver file and test record exist.",

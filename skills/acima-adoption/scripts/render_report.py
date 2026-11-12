@@ -270,6 +270,7 @@ def adoption_workflow(d):
         return ''
     stages=arr(wf.get('stages'))
     rows=[(x.get('label') or x.get('name'),status_label(x.get('status')),x.get('detail'),x.get('nextAction')) for x in stages if isinstance(x,dict)]
+    phase=wf.get('phaseLabel') or wf.get('phase') or 'not recorded'
     nxt=wf.get('next') or {}
     stage_table=table(['Stage','Status','What this proves or blocks','Next action'],rows,'No workflow stages were recorded.',caption='Adoption workflow stages',row_headers=True) if rows else '<p class="empty">No workflow stage evidence was supplied.</p>'
     warning=''
@@ -292,7 +293,7 @@ def adoption_workflow(d):
         changed=table(['Recommendation','Files'],[(x.get('id'),', '.join(arr(x.get('files')))) for x in arr(result.get('changed'))],caption='Remediation changes applied',row_headers=True) if result else ''
         remaining=table(['Recommendation','Status','Reason'],[(x.get('id'),status_label(x.get('status')),x.get('reason')) for x in arr(result.get('failures'))],caption='Remediation items still outstanding',row_headers=True) if result and result.get('failures') else ''
         remediation=f'<div class="reconciliation"><b>Immediate remediation:</b> {e(result_text)} <b>Maturity:</b> {e(status_label((rem.get("maturity") or {}).get("mode") or "not established"))}. <b>Risk:</b> {e(status_label((rem.get("risk") or {}).get("level") or "not established"))}.</div>{changed}{remaining}'
-    return f'<section id="adoption-workflow"><small>ADOPTION WORKFLOW</small><h2>Where the adoption stands</h2><p class="lead">Mode: <b>{e(status_label(wf.get("mode") or "unknown"))}</b>. Current stage: <b>{e(status_label((wf.get("currentStage") or {}).get("label") or "not started"))}</b>.</p>{warning}{guidance_summary}{remediation}{stage_table}<p class="note"><b>Next action:</b> {e(next_text)}</p><p class="note">Configured, generated and verified are separate states. This section does not turn a proposal or a CI file into proof that a remote check ran.</p></section>'
+    return f'<section id="adoption-workflow"><small>ADOPTION WORKFLOW</small><h2>Where the adoption stands</h2><p class="lead">Mode: <b>{e(status_label(wf.get("mode") or "unknown"))}</b>. Current phase: <b>{e(phase)}</b>. Current stage: <b>{e(status_label((wf.get("currentStage") or {}).get("label") or "not started"))}</b>.</p>{warning}{guidance_summary}{remediation}{stage_table}<p class="note"><b>Next action:</b> {e(next_text)}</p><p class="note">Configured, generated and verified are separate states. This section does not turn a proposal or a CI file into proof that a remote check ran.</p></section>'
 
 
 def module_map_overview(d):

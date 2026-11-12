@@ -84,6 +84,26 @@ The catalog also makes **instance lifetime and state ownership** explicit: share
 
 The claim layer computes `FULL CONFORMANCE` or `PARTIAL ASSESSMENT` from the run and the manual evidence, and binds the result to the repository, commit, catalog, configuration and source inventory it measured. Authors do not choose the label, and an older full result is historical evidence, not current conformance.
 
+## The adoption journey
+
+ACIMA uses one journey in guided and automated adoption. These phase names are canonical: the skill,
+the CLI and the HTML report use them unchanged.
+
+| Phase | ACIMA does | You see | You decide | Done when | Next |
+|---|---|---|---|---|---|
+| **Start** | Identifies the repository and asks one plain mode question when none is chosen | Guided or automated adoption | The mode | The repository and mode are known | Assess the repository |
+| **Phase 1 — Assess** | Read-only discovery, the complete 56-requirement review, supported checks | What exists, what was found, what remains unknown | Nothing | Every requirement has an evidence-backed disposition | Explain fit and propose a scope |
+| **Phase 2 — Explain and propose** | Fit, level in practical terms, scoped proposal, six-page report | A recommendation, exact changes, costs, risks, limits | Nothing | Every statement traces to evidence or is marked unknown | Review the report and proposed ownership |
+| **Phase 3 — Review and authorize** | Presents the exact report and records approval provenance | Named paths, stages and boundaries to approve, change or decline | The exact scope | An explicit approval matches the current report and repository | Implement only approved work |
+| **Phase 4 — Implement** | Executes only approved stages and paths | What is changing, where, and what happens next | Any new path, dependency or boundary | Each approved stage passed its checks or is precisely blocked | Verify the result |
+| **Phase 5 — Verify and hand off** | Fresh checks, evidence reconciliation, honest status | What changed, what passed, what remains unproven | Merge, release or publication, separately | The handoff matches actual evidence | Take one evidence-backed next action |
+
+**Guided adoption** pauses at each review point: the module map, the proposal and report, CI, optional
+adoption notifications, optional agent guidance, then each implementation stage. **Automated adoption**
+performs the same assessment and prepares the same package before one consolidated review, then carries
+out only the stages the owner selects. Both modes use identical evidence quality, ownership rules and
+approval authority. Automated preparation never approves an inferred boundary or authorizes an unseen path.
+
 ## Five-minute quickstart
 
 You need Python 3.9+ and, for the language you enforce, that language's toolchain.

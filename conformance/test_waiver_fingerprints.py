@@ -225,7 +225,7 @@ class ProjectFileWaiverTests(unittest.TestCase):
         _, payload = self.run_fixture()
         finding = self.project_finding(payload)
 
-        self.write_waiver(finding, "unit:alpha", "sha256:0000000000000000")
+        self.write_waiver(finding, "unit:alpha", "sha256:" + "0" * 64)
         after, payload = self.run_fixture()
         self.assertIn(finding["path"], {item["path"] for item in payload["findings"]})
         self.assertEqual(after.returncode, 1, payload)

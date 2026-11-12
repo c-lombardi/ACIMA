@@ -416,11 +416,14 @@
     "adoptionWorkflow": {
       "type": "object",
       "description": "Persisted guided or full-automation workflow state and its stage evidence.",
-      "required": ["mode", "stages"],
+      "required": ["mode", "stages", "phase", "phaseLabel", "phaseOrder"],
       "properties": {
         "mode": { "enum": ["guided", "full"] },
         "authorized": { "type": "boolean" },
         "staleWarning": { "type": "string" },
+        "phase": { "type": ["string", "null"] },
+        "phaseLabel": { "type": "string" },
+        "phaseOrder": { "type": "array", "items": { "type": "string" } },
         "stages": {
           "type": "array",
           "items": {

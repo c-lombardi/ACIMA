@@ -6,7 +6,7 @@ compatibility: Python 3.9+ for the preflight script. The target language toolcha
 allowed-tools: Read Grep Glob Bash Edit Write
 metadata:
   standard: "1.9.0-draft.2"
-  skill-version: "1.34.0"
+  skill-version: "1.35.0"
   catalog-sha256: "293fa208a68bd3e0da13f380feaa90288292cf26e2373cae8af0e122230448a0"
 ---
 
@@ -56,17 +56,26 @@ Detect whether this is an ACIMA checkout, an installed skill, or a separate targ
 ## Workflow
 Use the sequence: read-only preflight; complete the 56-requirement evidence-backed qualitative review; run supported deterministic checks where an approved unit map exists; explain fit and value; prepare a scoped proposal; obtain explicit approval; implement only approved changes; verify and hand off. Do not issue an adoption recommendation or decision-ready HTML report until all 56 requirements have valid dispositions. Unresolved dispositions require an insufficient-evidence recommendation. Assessment is never authorization. Load [22-workflow](references/22-workflow.md) when executing or resuming an engagement.
 
-### The five phases
+### Start and the five phases
 
-**Phase 1 — Assessment.** Read-only discovery, the complete 56-requirement review, and deterministic checks only where an approved map exists. A missing map triggers a module-map proposal, not a stop.
+The phase names below are canonical. Use them unchanged in the skill, CLI output, documentation and report.
 
-**Phase 2 — Proposal.** A decision document with exact scope, file impact, tradeoffs, decisions and a single recommendation. Module-map boundaries and recommendations remain open to individual review.
+| Phase | Purpose | ACIMA does | You see | You decide | Done when | Next |
+|---|---|---|---|---|---|---|
+| **Start** | Choose how to work | Identifies the repository and asks for a mode only when none is selected | Guided or automated adoption | The mode | The repository and mode are known | Assess the repository |
+| **Phase 1 — Assess** | Establish what is true today | Read-only discovery, all 56 evidence-backed dispositions and supported checks | Existing architecture, findings, coverage and unknowns | Nothing yet | Every requirement has a valid disposition | Explain fit and propose the smallest useful scope |
+| **Phase 2 — Explain and propose** | Make the decision understandable | Evaluates fit, explains level, value and tradeoffs, prepares the scoped proposal and six-page report | Recommendation, exact changes, costs, risks and limits | Nothing yet | Every statement traces to evidence or is marked unknown | Review the report and proposed ownership |
+| **Phase 3 — Review and authorize** | Preserve the owner's authority | Presents the exact report and records ownership decisions and approval provenance | Named boundaries, paths and stages to approve, change, defer or decline | The exact scope; partial approval is valid | Explicit approval matches the current report and repository | Implement only approved work |
+| **Phase 4 — Implement** | Apply only the authorized changes | Executes approved stages and paths, validating each stage | What is changing, why, where and what comes next | Any new path, dependency or boundary | Each approved stage passes its checks or is precisely blocked | Verify the result |
+| **Phase 5 — Verify and hand off** | Prove what changed and state what remains | Runs fresh checks and reconciles the evidence | What changed, what passed and what remains unproven | Merge, release or publication, separately | The handoff matches actual evidence | One evidence-backed next action |
 
-**Phase 3 — Explicit authorization.** The owner approves named files, level, boundaries and recommendations. Partial approval is supported. Approval covers the listed scope only. Do not create optional artifacts from this approval.
+Every phase states the same six things: **purpose**, what ACIMA does, what the user sees, what the user decides, **done when**, and the single next action.
 
-**Phase 4 — Approved implementation.** Change only the approved paths and scope. A new path, level, dependency or boundary requires a new decision.
+**Start.** When no mode has been selected in this engagement, ask one plain question: "Would you prefer guided adoption, with review checkpoints as we go, or automated adoption, where I prepare the complete proposal first and then carry out the stages you approve?" Preserve an explicit earlier choice and do not ask again.
 
-**Phase 5 — Verification and handoff.** Prove what changed with evidence; report what remains unproven. Merge, publish or release requires separate, explicit approval. Do not create a communication plan by default; optional documents need their own request or approval.
+Phase 1 blocks only what genuinely depends on ownership: a missing map triggers a module-map proposal, not a stop. **Phase 2 — Explain and propose** and **Phase 3 — Review and authorize** never merge: a generated report is a proposal, and reading it is not approval. Approval covers the listed scope only; an approved path, stage or objective never authorizes an unseen path, dependency, CI change, publication or release.
+
+In Phase 5, prove what changed with evidence and report what remains unproven. Merge, publish or release requires separate, explicit approval. Do not create a communication plan by default; optional documents need their own request or approval. Do not create optional artifacts from an approval.
 ## Adoption modes and end-to-end orchestration
 Offer exactly two workflows before adoption work: **guided adoption** and **automated adoption**. Ask the user to choose when no mode has been selected in the current engagement; preserve an explicit prior choice. Guided adoption uses separate checkpoints for the map, the generated HTML proposal, CI, optional adoption notifications, optional agent guidance and implementation stages. Automated adoption completes assessment and prepares the complete adoption package before one consolidated HTML review; the user then selects the stages ACIMA may implement. Automated mode is not blanket permission to modify the target. Both modes require the complete 56-rule qualitative review, evidence-backed module discovery, honest enforcement verification and a fresh handoff. Do not auto-approve inferred or layout-only module ownership. Never proceed from report generation to implementation until the six-page report has been opened and shown to the user, its exact digest is reviewed and the user explicitly approves the scoped paths. Preserve the selected mode and approval provenance in workflow state; resume without bypassing prerequisites. The user controls decisions; ACIMA performs the reasoning and approved work. Load [13-adoption-orchestration](references/13-adoption-orchestration.md) when starting or resuming an engagement. Load [14-ai-agent-guidance](references/14-ai-agent-guidance.md) when preparing repository-level AI instructions.
 ## Discovery

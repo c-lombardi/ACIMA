@@ -663,7 +663,7 @@ func checkContracts(add func(string, string, string, int, string), files map[str
 
 func fingerprint(rule, path, evidence string) string {
 	sum := sha256.Sum256([]byte(rule + "\x00" + path + "\x00" + evidence))
-	return "sha256:" + hex.EncodeToString(sum[:])[:16]
+	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
 func globMatch(pattern, value string) bool {

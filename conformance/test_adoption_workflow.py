@@ -448,7 +448,15 @@ class AdoptionWorkflowTests(unittest.TestCase):
                 [sys.executable, str(ROOT / "tools/acima.py"), "adoption", "status",
                  "--root", str(root), "--format", "json"], capture_output=True, text=True)
             self.assertEqual(status.returncode, 0, status.stderr)
-            self.assertEqual(json.loads(status.stdout)["mode"], "guided")
+            payload = json.loads(status.stdout)
+            self.assertEqual(payload["mode"], "guided")
+            self.assertEqual(payload["phase"], "assess")
+            self.assertEqual(payload["phaseLabel"], "Phase 1 — Assess")
+            human = subprocess.run(
+                [sys.executable, str(ROOT / "tools/acima.py"), "adoption", "status",
+                 "--root", str(root), "--format", "text"], capture_output=True, text=True)
+            self.assertEqual(human.returncode, 0, human.stderr)
+            self.assertIn("phase   Phase 1 — Assess", human.stdout)
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             fixture(root)
@@ -592,6 +600,7 @@ class AdoptionWorkflowTests(unittest.TestCase):
             plan = (target / "plan.html").read_text(encoding="utf-8")
             self.assertIn("ADOPTION WORKFLOW", plan)
             self.assertIn("Guided", plan)
+            self.assertIn("Current phase: <b>Phase 1 — Assess</b>", plan)
             self.assertIn("Review the proposed module map", plan)
             self.assertIn("IMMEDIATE REMEDIATION", plan)
             self.assertIn("No application source was changed", plan)
@@ -798,6 +807,83 @@ class AdoptionWorkflowTests(unittest.TestCase):
             self.assertEqual(state["stages"]["module_map"]["status"], "awaiting_approval")
             self.assertFalse((root / "docs/acima/adoption-proposal.json").exists())
             self.assertFalse((root / "tools/acima_arch.py").exists())
+
+class CanonicalPhaseTests(unittest.TestCase):
+    """The product phase is derived from recorded stage status, never guessed by a caller."""
+
+    def stage(self, name: str, status: str) -> dict:
+        return {"name": name, "label": name, "status": status, "detail": "",
+                "evidence": None, "nextAction": "", "updatedAt": ""}
+
+    def phase(self, **statuses: str) -> str:
+        return workflow._current_phase(
+            {"stages": {name: self.stage(name, status) for name, status in statuses.items()}})
+
+    def test_every_stage_belongs_to_one_canonical_phase(self) -> None:
+        self.assertEqual(list(workflow.PHASE_ORDER), [
+            "start", "assess", "explain_and_propose", "review_and_authorize",
+            "implement", "verify_and_hand_off"])
+        self.assertEqual(set(workflow.STAGE_PHASE), set(workflow.STAGE_ORDER))
+        for phase in workflow.STAGE_PHASE.values():
+            self.assertIn(phase, workflow.PHASE_ORDER)
+        self.assertIn("review_and_authorize", set(workflow.STAGE_PHASE.values()))
+
+    def test_empty_state_is_start(self) -> None:
+        self.assertEqual(workflow._current_phase({"stages": {}}), "start")
+
+    def test_assessment_stage_maps_to_assess(self) -> None:
+        self.assertEqual(self.phase(assessment="in_progress"), "assess")
+
+    def test_awaiting_review_stays_in_assess(self) -> None:
+        self.assertEqual(self.phase(preflight="complete", module_map="awaiting_approval"), "assess")
+
+    def test_html_report_review_maps_to_review_and_authorize(self) -> None:
+        self.assertEqual(self.phase(
+            preflight="complete", discovery="complete", assessment="complete",
+            module_map="complete", adoption_proposal="complete",
+            proposal_report="awaiting_approval"), "review_and_authorize")
+
+    def test_blocked_stage_holds_its_phase(self) -> None:
+        self.assertEqual(self.phase(
+            preflight="complete", discovery="complete", assessment="complete",
+            module_map="complete", adoption_proposal="complete", proposal_report="complete",
+            ci="blocked"), "implement")
+
+    def test_deferred_stage_does_not_advance_the_journey(self) -> None:
+        self.assertEqual(self.phase(
+            preflight="complete", discovery="complete", assessment="complete",
+            module_map="complete", adoption_proposal="deferred"), "explain_and_propose")
+
+    def test_implementation_stage_maps_to_implement(self) -> None:
+        self.assertEqual(self.phase(proposal_report="complete", implementation="in_progress"),
+                         "implement")
+
+    def test_active_later_stage_is_not_pulled_back_by_missing_earlier_records(self) -> None:
+        self.assertEqual(self.phase(implementation="in_progress"), "implement")
+
+    def test_completed_later_stage_with_absent_earlier_records_holds_at_first_missing_phase(self) -> None:
+        self.assertEqual(self.phase(proposal_report="complete"), "assess")
+
+    def test_deferred_optional_stage_does_not_rewind_a_completed_workflow(self) -> None:
+        self.assertEqual(self.phase(
+            preflight="complete", discovery="complete", assessment="complete",
+            module_map="complete", adoption_proposal="complete", proposal_report="complete",
+            implementation="complete", architecture_tests="complete", ci="complete",
+            remediation="complete", verification="complete", agent_guidance="deferred",
+            adoption_notifications="deferred", handoff="complete"), "verify_and_hand_off")
+
+    def test_all_complete_is_verify_and_hand_off(self) -> None:
+        self.assertEqual(self.phase(**{name: "complete" for name in workflow.STAGE_ORDER}),
+                         "verify_and_hand_off")
+
+    def test_summary_exposes_the_canonical_label(self) -> None:
+        summary = workflow._summary({"mode": "guided", "stages": {
+            "preflight": self.stage("preflight", "complete"),
+            "discovery": self.stage("discovery", "awaiting_approval")}})
+        self.assertEqual(summary["phase"], "assess")
+        self.assertEqual(summary["phaseLabel"], "Phase 1 — Assess")
+        self.assertEqual(summary["phaseOrder"], list(workflow.PHASE_ORDER))
+
 
 if __name__ == "__main__":
     unittest.main()

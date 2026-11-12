@@ -37,6 +37,7 @@ _REPOSITORY = next(
 STANDARD_ROOT = _REPOSITORY or (SKILL_DIR / "vendor")
 sys.path.insert(0, str(STANDARD_ROOT / "conformance"))
 from acima_claim import validate_waivers  # noqa: E402 - shared governance validation
+from executables import resolve_executable  # noqa: E402
 from module_map import (  # noqa: E402
     ModuleMapError, classify_path, discover as discover_module_map, proposed_units,
 )
@@ -44,6 +45,9 @@ from module_map import (  # noqa: E402
 PRUNE = {
     ".git", "node_modules", "bin", "obj", "dist", "build", "target", "out",
     ".venv", "venv", "__pycache__", ".next", ".nuxt", "coverage", ".idea", ".vs",
+    # A copied skill carries a generated vendor snapshot. It is not target source, and
+    # counting it as an unowned module would make the skill fail its own G005 check.
+    "vendor",
 }
 SOURCE_EXTENSIONS = {
     ".py", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".cs", ".go", ".java",
@@ -426,6 +430,10 @@ def enforcer_invocation(manifest: dict, language: str, project: Path,
     command = list(enforcer["run"])
     if command and Path(command[0]).stem.lower() in {"python", "python3"}:
         command[0] = sys.executable
+    elif command and command[0].lower() == "dotnet":
+        resolved = resolve_executable("dotnet")
+        if resolved:
+            command[0] = resolved
     command += ["--root", str(project)]
     if config_name:
         # Every reference enforcer resolves --config relative to --root, not to cwd.
@@ -437,8 +445,9 @@ def enforcer_invocation(manifest: dict, language: str, project: Path,
 
 def prepare_dotnet(manifest: dict) -> None:
     project = manifest.get("enforcers", {}).get("dotnet", {}).get("buildProject")
-    if project:
-        run(["dotnet", "build", str(STANDARD_ROOT / project), "-v", "q", "--nologo"],
+    executable = resolve_executable("dotnet")
+    if project and executable:
+        run([executable, "build", str(STANDARD_ROOT / project), "-v", "q", "--nologo"],
             STANDARD_ROOT)
 
 
@@ -543,8 +552,10 @@ def check_environment(report: Report) -> None:
     # This process is already running Python 3.9+, so its own interpreter is the
     # portable Python the enforcers can use even when `python3` is not on PATH
     # (for example behind the Windows App Execution Alias).
-    available = ["python3"] + [name for name in ("node", "go", "dotnet", "java")
-                               if shutil_module.which(name)]
+    available = [f"python ({Path(sys.executable).name})"] + [
+        name for name in ("node", "go", "dotnet", "java")
+        if (resolve_executable(name) if name == "dotnet" else shutil_module.which(name))
+    ]
     report.add("ENV-001", "pass", f"toolchains available: {', '.join(available)}")
 
 

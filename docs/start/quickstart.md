@@ -3,6 +3,23 @@
 This is the shortest path from a clone to seeing ACIMA detect and correct a real
 architectural violation. The Python path needs only Python 3.12.
 
+## What will happen
+
+ACIMA follows five phases. Before Phase 1, **Start** establishes the repository and asks whether you
+prefer guided or automated adoption when no mode is already chosen. You can stop at any phase, and
+nothing is written to your repository until you approve an exact scope.
+
+| Phase | What you get |
+|---|---|
+| **Phase 1 — Assess** | A read-only answer to "is ACIMA a fit here, and what did it find?" |
+| **Phase 2 — Explain and propose** | A recommendation, the exact proposed changes, costs, risks and the six-page report |
+| **Phase 3 — Review and authorize** | You approve, change, defer or decline named paths and stages |
+| **Phase 4 — Implement** | Only the approved work, stage by stage |
+| **Phase 5 — Verify and hand off** | Fresh checks and an honest statement of what is proven and what is not |
+
+The quickstart below exercises phases 1 and 5 on ACIMA's own examples. Nothing here is an adoption
+authorization for another repository.
+
 ## 1. Run the reference application
 
 ```bash

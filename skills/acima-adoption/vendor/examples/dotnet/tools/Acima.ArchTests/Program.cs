@@ -211,7 +211,8 @@ internal sealed class Enforcer
     private static readonly Regex PersistenceNamespace = new(@"\b(?:Microsoft\.EntityFrameworkCore|System\.Data\.SqlClient|Microsoft\.Data\.Sqlite|Npgsql|Dapper)\b", RegexOptions.Compiled);
     private static readonly Regex Untyped = new(@"\bobject\??\s+\w+|\bdynamic\b", RegexOptions.Compiled);
     private static readonly Regex Framework = new(@"\bMicrosoft\.AspNetCore\b|\bMicrosoft\.EntityFrameworkCore\b|\bSystem\.Net\.Http\b|\bMicrosoft\.Extensions\.Configuration\b", RegexOptions.Compiled);
-    private static readonly Regex UsingDirective = new(@"^\s*using\s+(?:static\s+)?([\w\.]+)\s*;", RegexOptions.Multiline | RegexOptions.Compiled);
+    private static readonly Regex UsingDirective = new(@"^\s*(?:global\s+)?using\s+(?:static\s+)?([\w\.]+)\s*;", RegexOptions.Multiline | RegexOptions.Compiled);
+    private static readonly Regex NamespaceDeclaration = new(@"^\s*namespace\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s*(?:;|\{)", RegexOptions.Multiline | RegexOptions.Compiled);
     private static readonly Regex PublicType = new(@"^\s*public\s+(?:sealed\s+|abstract\s+|readonly\s+|partial\s+|static\s+)*(?:class|record|struct|interface|enum)\s+(\w+)", RegexOptions.Multiline | RegexOptions.Compiled);
     private static readonly Regex InternalType = new(@"^\s*internal\s+(?:sealed\s+|abstract\s+|readonly\s+|partial\s+|static\s+)*(?:class|record|struct|interface)\s+(\w+)", RegexOptions.Multiline | RegexOptions.Compiled);
     private static readonly Regex InternalStatic = new(@"^\s*public\s+static\s+(?!readonly\b)[\w<>,\[\]\.\?]+\s+(\w+)\s*(?:=\s*(?!=)|;)", RegexOptions.Multiline | RegexOptions.Compiled);
@@ -227,6 +228,7 @@ internal sealed class Enforcer
     private readonly List<string> _projects = new();
     private readonly List<Edge> _edges = new();
     private readonly Dictionary<string, Unit> _namespaceUnits = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _repositoryNamespaces = new(StringComparer.Ordinal);
     private readonly List<Classified> _classified = new();
     private readonly List<PublicApiSurface> _publicApi = new();
     private string? _packagingError;
@@ -262,6 +264,13 @@ internal sealed class Enforcer
     private void Collect()
     {
         Walk(_root);
+        foreach (var text in _files.Values)
+        {
+            foreach (Match match in NamespaceDeclaration.Matches(text))
+            {
+                _repositoryNamespaces.Add(match.Groups[1].Value);
+            }
+        }
         foreach (var project in _projects)
         {
             var unit = UnitForPath(project, string.Empty);
@@ -736,6 +745,7 @@ internal sealed class Enforcer
 
                 if (ns.StartsWith("Acima.", StringComparison.Ordinal)) continue;
                 if (ns.StartsWith("System", StringComparison.Ordinal)) continue;
+                if (IsRepositoryNamespace(ns)) continue;
 
                 if (from.Role == "contracts")
                 {
@@ -747,6 +757,31 @@ internal sealed class Enforcer
                 }
             }
         }
+    }
+
+    private static string NamespaceOf(string text)
+    {
+        var match = NamespaceDeclaration.Match(text);
+        return match.Success ? match.Groups[1].Value : string.Empty;
+    }
+
+    private bool IsRepositoryNamespace(string ns)
+    {
+        return _repositoryNamespaces.Any(candidate =>
+            ns.Equals(candidate, StringComparison.Ordinal)
+            || ns.StartsWith(candidate + ".", StringComparison.Ordinal)
+            || candidate.StartsWith(ns + ".", StringComparison.Ordinal));
+    }
+
+    private static bool ReferencesInternalType(string text, string declaredNamespace, string name)
+    {
+        if (string.IsNullOrWhiteSpace(declaredNamespace)) return false;
+        var identifier = $@"\b{Regex.Escape(name)}\b";
+        var qualified = $@"\b(?:global::)?{Regex.Escape(declaredNamespace)}\s*\.\s*{Regex.Escape(name)}\b";
+        if (Regex.IsMatch(text, qualified)) return true;
+        if (!Regex.IsMatch(text, identifier)) return false;
+        return UsingDirective.Matches(text).Cast<Match>().Any(match =>
+            string.Equals(match.Groups[1].Value, declaredNamespace, StringComparison.Ordinal));
     }
 
     private Unit? ResolveNamespace(string ns)
@@ -913,16 +948,17 @@ internal sealed class Enforcer
 
     private void CheckVisibility()
     {
-        var internals = new Dictionary<string, (Unit Unit, string Path, int Line)>(StringComparer.Ordinal);
+        var internals = new List<(string Name, string Namespace, Unit Unit, string Path, int Line)>();
         var publics = new Dictionary<string, (Unit Unit, string Path, int Line)>(StringComparer.Ordinal);
 
         foreach (var (path, text) in _files.OrderBy(pair => pair.Key, StringComparer.Ordinal))
         {
             var unit = _fileUnits[path];
             if (unit.Role != "implementation") continue;
+            var declaredNamespace = NamespaceOf(text);
             foreach (Match match in InternalType.Matches(text))
             {
-                internals[match.Groups[1].Value] = (unit, path, LineOf(text, match.Value));
+                internals.Add((match.Groups[1].Value, declaredNamespace, unit, path, LineOf(text, match.Value)));
             }
 
             foreach (Match match in PublicType.Matches(text))
@@ -936,13 +972,14 @@ internal sealed class Enforcer
             var unit = _fileUnits[path];
             if (unit.Role is "host" or "tooling" or "test") continue;
 
-            foreach (var (name, declaration) in internals)
+            foreach (var declaration in internals)
             {
                 if (declaration.Unit.Module == unit.Module) continue;
-                if (!Regex.IsMatch(text, $@"\b{Regex.Escape(name)}\b")) continue;
-                if (!ClassifyAdapter(D009, path, LineOf(text, name), name, unit, declaration.Unit, null))
+                if (!ReferencesInternalType(text, declaration.Namespace, declaration.Name)) continue;
+                if (!ClassifyAdapter(D009, path, LineOf(text, declaration.Name), declaration.Name, unit, declaration.Unit, null))
                 {
-                    Add(D009, $"{unit.Id} references the internal type {name} from module {declaration.Unit.Module}.", path, LineOf(text, name), name);
+                    Add(D009, $"{unit.Id} references the internal type {declaration.Name} from module {declaration.Unit.Module}.",
+                        path, LineOf(text, declaration.Name), declaration.Namespace + "." + declaration.Name);
                 }
             }
         }
@@ -1024,7 +1061,9 @@ internal sealed class Enforcer
         foreach (var (path, text) in _files.OrderBy(pair => pair.Key, StringComparer.Ordinal))
         {
             var unit = _fileUnits[path];
-            if (unit.Role != "implementation" || path.Contains("/infrastructure/", StringComparison.Ordinal)) continue;
+            var isInfrastructurePath = path.Split('/').Any(segment =>
+                string.Equals(segment, "Infrastructure", StringComparison.OrdinalIgnoreCase));
+            if (unit.Role != "implementation" || isInfrastructurePath) continue;
             // L001 is a dependency edge. A using directive is a conservative,
             // identifier-safe approximation; a bare name or string is not an import.
             foreach (Match match in UsingDirective.Matches(text))
@@ -1441,7 +1480,7 @@ internal sealed class Enforcer
     private static string FingerprintFor(string rule, string path, string evidence)
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes($"{rule}\0{path}\0{evidence}"));
-        return "sha256:" + Convert.ToHexString(bytes)[..16].ToLowerInvariant();
+        return "sha256:" + Convert.ToHexString(bytes).ToLowerInvariant();
     }
 
     private static bool GlobMatch(string pattern, string value)

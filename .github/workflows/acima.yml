@@ -47,6 +47,11 @@ jobs:
           dotnet build host/Host/Host.csproj --nologo -v q
           dotnet run --project tools/Acima.ArchTests -- --root . --verify
 
+      - name: Skill self-architecture and bundle
+        run: |
+          python3 conformance/test_skill_architecture.py -v
+          python3 conformance/test_skill_bundle.py -v
+
       - name: Full conformance suite
         run: python3 conformance/run.py --artifacts acima-artifacts
 

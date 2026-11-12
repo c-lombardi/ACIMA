@@ -31,6 +31,9 @@ PRUNE = {
     ".git", "node_modules", "bin", "obj", "dist", "build", "target", "out",
     ".venv", "venv", "__pycache__", ".next", ".nuxt", "coverage", ".idea", ".vs",
     ".acima",
+    # Generated vendor content is not product source. A copied skill carries its
+    # dependency snapshot here; assigning it an application module would be false ownership.
+    "vendor",
 }
 BASES = ("src", "internal", "packages", "app", "apps", "services", "lib", "modules")
 CONTRACT_NAMES = {"contracts", "contract", "api", "ports", "port", "public"}

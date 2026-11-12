@@ -8,16 +8,17 @@ classifies the target; the assessment establishes fit. Neither writes to the tar
 
 | Phase | Purpose | Command | Ends when |
 |---|---|---|---|
-| 1. Assess | preflight, all 56 qualitative dispositions, then read-only fit and deterministic checks where possible | `preflight.py --project <target>`, `validate-review`, then `acima.py assess --root <target> --review <review.json>` | 56/56 valid dispositions, unresolved states explicit, and deterministic limits recorded |
-| 2. Propose | the decision document | fill `../assets/adoption-proposal.md` | a recommendation, exact paths, one question |
-| 3. Authorize | explicit, scope-specific approval | none | an unambiguous yes to that proposal |
-| 4. Implement | only the approved scope | the approved commands | the named files exist and measure |
-| 5. Verify | prove what changed and what did not | the enforcer and `acima.py claim` | artefacts support every claim, limits named |
+| Start | establish the repository and select guided or automated adoption | none | the repository and mode are known |
+| Phase 1 — Assess | preflight, all 56 qualitative dispositions, then read-only fit and deterministic checks where possible | `preflight.py --project <target>`, `validate-review`, then `acima.py assess --root <target> --review <review.json>` | 56/56 valid dispositions, unresolved states explicit, and deterministic limits recorded |
+| Phase 2 — Explain and propose | the decision document | fill `../assets/adoption-proposal.md` | a recommendation, exact paths, one question |
+| Phase 3 — Review and authorize | explicit, scope-specific approval | none | an unambiguous yes to that proposal |
+| Phase 4 — Implement | only the approved scope | the approved commands | the named files exist and measure |
+| Phase 5 — Verify and hand off | prove what changed and what did not | the enforcer and `acima.py claim` | artefacts support every claim, limits named |
 
 Do not run the same expensive analysis twice for two phases: reuse the assessment's run for the
 proposal, and the implementation's run for the handoff. `status` reports which phase is evidenced.
 
-**Phase 1 — Assessment.** Preflight runs first, always: it compares `rules.json` with the pinned SHA-256
+**Phase 1 — Assess.** Preflight runs first, always: it compares `rules.json` with the pinned SHA-256
 and rule ids (`SKL-002`/`SKL-003`), classifies `greenfield`, `brownfield` or `adopting`, and lists
 blockers. Exit `1` blocks adoption and implementation until its causes are resolved, but it does
 not automatically block independent qualitative review. Stop only for skill-integrity, invalid-target,
@@ -75,23 +76,23 @@ unresolved and blocks an adoption recommendation. The overall assessment is comp
 assessment succeeds. Completion is not conformance; gaps remain gaps.
 Attach the validated artefact using `assess --review <review-json>` and report its validator result.
 
-**Phase 2 — Proposal.** Present [the proposal](../assets/adoption-proposal.md) as a decision document:
+**Phase 2 — Explain and propose.** Present [the proposal](../assets/adoption-proposal.md) as a decision document:
 recommendation first, then the compatibility outcome and evidence, requirements already satisfied,
 the smallest useful scope, exact paths with required/conditional/optional status, stricter
 constraints and tradeoffs, and the one approval question. Do not write files "so the user can see
 them".
 
-**Phase 3 — Explicit authorization.** Approval covers the listed scope only — the named paths,
+**Phase 3 — Review and authorize.** Approval covers the listed scope only — the named paths,
 level and changes. Partial approval
 is supported: implement exactly what was approved and name the capability that stays unavailable.
 Wait for an unambiguous yes to that proposal before touching a path. Interest, silence, "looks good"
 about the diagnosis, or a request to see files is not approval.
 Approval to change files never authorizes merge, release, publication or external systems.
 
-**Phase 4 — Approved implementation.** Only approved changes. A new path, level, dependency or enforcement
+**Phase 4 — Implement.** Only approved changes. A new path, level, dependency or enforcement
 mechanism outside the approved list stops work for a new decision.
 
-**Phase 5 — Verification and handoff.** Verify with a run artefact, not intent, and report what is
+**Phase 5 — Verify and hand off.** Verify with a run artefact, not intent, and report what is
 proven separately from what is not.
 
 | Action | Approval |

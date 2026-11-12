@@ -4,18 +4,20 @@ Most adopters already have a running system, years of history, and no appetite f
 rewrite. ACIMA is designed for that starting point: **measure first, gate second, fix one
 boundary at a time**.
 
-The goal of the first phase is not a clean architecture. It is an honest baseline that the
-team can keep discussing.
+**Start** establishes the repository and asks whether the owner prefers guided or automated adoption
+when no mode has already been selected. The goal of the first phase is not a clean architecture. It is
+an honest baseline that the team can keep discussing.
 
 **Assessment is read-only.** Nothing below that creates a file happens until the owner approves a
 proposal naming the paths and scope. “Adopt ACIMA” starts the assessment and proposal; it does not
 pre-approve unseen configuration, baseline, waivers or CI.
 
-The six phases below elaborate the five-phase consent workflow in the
-[adoption skill](../../skills/acima-adoption/SKILL.md): Phase 1 is assessment, Phase 2 is proposal,
-Phase 3 is explicit authorization, Phases 4–6 are the approved implementation, and verification and
-handoff close each one. Only the approved paths are created; plans and communication documents are
-optional.
+The five phases below are the same consent workflow described in the
+[adoption skill](../../skills/acima-adoption/SKILL.md): **Phase 1 — Assess** is read-only,
+**Phase 2 — Explain and propose** makes the decision concrete, **Phase 3 — Review and authorize**
+records the exact scope, **Phase 4 — Implement** changes only approved paths, and
+**Phase 5 — Verify and hand off** proves what changed. Continuous governance begins only after those
+five phases. Only the approved paths are created; plans and communication documents are optional.
 
 Adoption does not replace the architecture the team already chose. Clean Architecture, Hexagonal,
 DDD, a modular monolith and microservices all remain valid shapes, but ACIMA defines its own
@@ -25,7 +27,7 @@ conflict is not a reason to restructure silently. Read
 [Architecture compatibility](../guides/architecture-families.md) before proposing units, and do not
 present ACIMA as a reason to restructure.
 
-## Phase 1 — Discovery
+## Phase 1 — Assess
 
 Run only read-only commands:
 
@@ -43,13 +45,13 @@ If the target has no `acima.config.json`, do not run `analyze` yet. The enforcer
 claim a pass without declared units; it will return a tool failure, not an architecture
 finding.
 
-## Phase 2 — Proposal
+## Phase 2 — Explain and propose
 
 Before creating a unit map, present the proposed modules, exact paths, status of each artifact,
 owners and tradeoffs. The proposal template and approval question are in
 [the adoption skill](../../skills/acima-adoption/assets/adoption-proposal.md).
 
-## Phase 3 — Explicit authorization and approved scope
+## Phase 3 — Review and authorize
 
 Only after approval for these paths, generate a first draft when the target has no config:
 
@@ -76,7 +78,10 @@ Do not invent a delivery estimate. Scope is expressed by evidence: modules touch
 involved, finding counts, schema migrations and the number of consumers of a boundary.
 Time estimates remain an engineering judgement made by the team.
 
-## Phase 4 — Measure after the approved map
+## Phase 4 — Implement
+
+Implementation starts by measuring the state the owner approved. Do not measure or gate against an
+unreviewed map.
 
 With a reviewed config in place, measure the current state and keep the artefact:
 
@@ -113,7 +118,7 @@ the repository still has to review configuration ownership manually.
 | Existing architecture tests | `inspect` plus a source review. |
 | Existing exceptions | The waiver file; `G001`, `G002`. |
 
-## Phase 5 — Incremental enforcement
+### Incremental enforcement
 
 CI and source changes are separate approvals. Start at L1 unless the repository already has a stronger baseline. The order matters:
 
@@ -136,7 +141,16 @@ For the target repository, wire the reference enforcer for its language into the
 CI. Do not use `acima verify` as the target gate: that command verifies this ACIMA
 repository and its examples.
 
-## Phase 6 — Continuous governance
+## Phase 5 — Verify and hand off
+
+Verify the implemented slice with fresh evidence. Run the target's enforcer, retain the findings and
+report artefacts, and reconcile every claim against them. A clean run is not a conformance claim when
+a rule was not evaluated or a finding remains unowned.
+
+Handoff states what changed, what passed and what remains unproven. The owner decides merge, release
+or publication separately; implementation approval is not release approval.
+
+## After adoption: continuous governance
 
 Every pull request should produce:
 

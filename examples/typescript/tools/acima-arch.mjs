@@ -181,7 +181,7 @@ function unitFor(r, source) {
 function findingFingerprint(rule, path, evidence) {
   return 'sha256:' + createHash('sha256')
     .update(`${rule}\0${path}\0${evidence}`)
-    .digest('hex').slice(0, 16);
+    .digest('hex');
 }
 
 function add(rule, message, path, line, evidence = '', classification = '') {

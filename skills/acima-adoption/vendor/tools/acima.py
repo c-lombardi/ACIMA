@@ -86,7 +86,7 @@ def _walk(root: Path):
     """Yield files under root, pruning build output and hidden paths.
 
     Pruning uses the path *relative to root*: a repository that happens to live under a
-    dot-directory (for example `/home/x/.local/src/app`) must not report zero source files.
+    dot-directory (for example `<home>/.local/src/app`) must not report zero source files.
     A top-down walk prunes before descent; ``rglob`` would traverse excluded directories first.
     """
     for current, dirnames, filenames in os.walk(root):
@@ -4569,9 +4569,11 @@ def main() -> int:
         if args.format == "json":
             print(json.dumps(result, indent=2, ensure_ascii=False))
         else:
-            summary = adoption_workflow._summary(result) if "stages" in result else result
+            summary = (adoption_workflow._summary(result)
+                       if isinstance(result.get("stages"), dict) else result)
             print("ACIMA adoption workflow")
             print("  mode    %s" % summary.get("mode", result.get("mode", "unknown")))
+            print("  phase   %s" % summary.get("phaseLabel", "not recorded"))
             for stage in summary.get("stages", []):
                 print("  %-8s %-28s %s" % (stage.get("status"), stage.get("label"),
                                             stage.get("detail")))

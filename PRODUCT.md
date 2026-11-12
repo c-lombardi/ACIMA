@@ -42,6 +42,18 @@ The working surfaces are the `acima` CLI, the adoption skill used by AI agents, 
 - There is no health score, trend dashboard, hosted service, organizational metrics product, or `acima adopt` command.
 - The generated report must not infer a clean result from empty findings or style an incomplete assessment as verified.
 
+## Adoption Journey
+
+Adoption follows one journey in both guided and automated mode. The phase names are canonical across
+the skill, the CLI and the report: **Start**, **Phase 1 — Assess**, **Phase 2 — Explain and propose**,
+**Phase 3 — Review and authorize**, **Phase 4 — Implement**, **Phase 5 — Verify and hand off**.
+
+Each phase states its purpose, what ACIMA does, what the user sees, what the user decides, when it is
+done, and the single next action. Guided adoption pauses at each review point. Automated adoption
+prepares the same complete package before one consolidated review, then executes only the stages the
+owner selects. Both modes keep identical evidence quality and approval authority. Preparation is
+never authorization.
+
 ## Brand Commitments
 
 The product name is ACIMA, short for Autonomous, Contract-Isolated, Immutable Modular Architecture. Its framing is “Architecture that enforces itself.”

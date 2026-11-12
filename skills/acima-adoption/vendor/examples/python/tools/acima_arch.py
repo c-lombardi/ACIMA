@@ -122,7 +122,7 @@ class Finding:
 
 def finding_fingerprint(rule: str, path: str, evidence: str) -> str:
     payload = f"{rule}\0{path}\0{evidence}".encode("utf-8")
-    return "sha256:" + hashlib.sha256(payload).hexdigest()[:16]
+    return "sha256:" + hashlib.sha256(payload).hexdigest()
 
 
 class Enforcer:

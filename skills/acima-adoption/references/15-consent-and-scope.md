@@ -13,17 +13,18 @@ described accurately.
 
 | Phase | Purpose | May write to the target? | Ends with |
 |---|---|---|---|
-| 1. Assessment | understand fit, findings and limits | no | a recommendation and named gaps |
-| 2. Proposal | make the adoption decision reviewable | no | exact paths, statuses, decisions and risks |
-| 3. Explicit authorization | the owner accepts a named scope | no | one direct approval answer |
-| 4. Approved implementation | implement only the approved scope | approved paths only | the approved artifacts and slices |
-| 5. Verification and handoff | prove what exists and state what does not | no new scope | a handoff with capabilities and limits |
+| Start | establish the repository and select guided or automated adoption | no | the repository and mode are known |
+| Phase 1 — Assess | understand fit, findings and limits | no | a recommendation and named gaps |
+| Phase 2 — Explain and propose | make the adoption decision reviewable | no | exact paths, statuses, decisions and risks |
+| Phase 3 — Review and authorize | the owner accepts a named scope | no | one direct approval answer |
+| Phase 4 — Implement | implement only the approved scope | approved paths only | the approved artifacts and slices |
+| Phase 5 — Verify and hand off | prove what exists and state what does not | no new scope | a handoff with capabilities and limits |
 
 Read-only analysis may use operating-system temporary directories outside the target. Delete them
 or leave them outside; never commit them. If an analysis genuinely cannot run without a persistent
 target change, stop and explain the requirement before making the change.
 
-### Phase 1: assessment (default)
+### Phase 1 — Assess
 
 Use `acima.py assess` and `preflight.py` without `--write-*`. Inspect manifests, project references,
 entry points, deployments, tests and documentation. Run only read-only checks. Report:
@@ -37,7 +38,7 @@ entry points, deployments, tests and documentation. Run only read-only checks. R
 
 `NEEDS_UNIT_MAP` means the architecture was not assessed. It is not a clean result.
 
-### Phase 2: proposal
+### Phase 2 — Explain and propose
 
 Present the proposal from `assets/adoption-proposal.md` before creating anything. It must name every
 path, what the file contains, why it exists, its status, the dependencies, the maintenance burden,
@@ -54,7 +55,7 @@ the agent cannot open or show the report, block at this review checkpoint; do no
 approve unseen material. The report must contain the actual assessment, proposed changes, affected
 files, plan, evidence, decisions and limitations.
 
-### Phase 3: explicit authorization
+### Phase 3 — Review and authorize
 
 The approval question is explicit and must follow presentation of the HTML report:
 
@@ -79,7 +80,7 @@ require a second review and explicit approval of exact paths.
 Approval covers only what was shown. Partial approval is supported and is the normal case: implement
 the approved paths and level, then state the capability and the gap of what was not approved.
 
-### Phase 4: approved implementation
+### Phase 4 — Implement
 
 Implement the approved paths and level. Routine choices inside that scope are allowed. Do not create
 optional artifacts that were not in the approved list. Stop and ask before adding a path, changing
@@ -87,7 +88,7 @@ target source or build configuration, adding CI, raising the level, or introduci
 that was not in the proposal. If implementation reveals that the proposal was wrong, say what
 changed, why the approved scope cannot deliver the stated result, and what new approval is needed.
 
-### Phase 5: verification and handoff
+### Phase 5 — Verify and hand off
 
 Verify the generated configuration, run the available enforcement, validate waiver and baseline
 integrity, exercise controlled violations where supported, and inspect CI configuration without

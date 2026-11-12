@@ -25,6 +25,23 @@ errors at this level", never "the architecture is good".
 | `examples/<lang>/tools/...` | the enforcer itself, for one language | no | Step 5 |
 | `conformance/run.py` | all profiles' clean + gallery fixtures | `--artifacts` only | maintain |
 
+## Which phase am I in
+
+The five phase names are canonical. Find the phase, then run its command. The commands below are
+read-only unless the table says otherwise.
+
+| Phase | Question | Command | Writes? |
+|---|---|---|---|
+| **Start** | which repository, and guided or automated? | none | no |
+| **Phase 1 — Assess** | what is here, and does ACIMA fit? | `acima.py inspect`, `acima.py assess`, `preflight.py --project` | no |
+| **Phase 2 — Explain and propose** | what exactly would change, at what cost? | `assets/adoption-proposal.md`, `render_report.py` | report files only, outside the target unless approved |
+| **Phase 3 — Review and authorize** | which named paths and stages are approved? | none: record the approval in the scope record | the scope record, by the owner |
+| **Phase 4 — Implement** | is this change inside the approval? | `preflight.py --write-draft`, `--write-waivers`, the enforcer | yes, approved paths only |
+| **Phase 5 — Verify and hand off** | what is proven now? | the enforcer, `acima.py claim`, `summarize.py` | no |
+
+No command grants write authority by itself. Approval is a separate, explicit decision naming the
+paths and stages.
+
 ## From finding to correction — `fix`
 
 ```bash

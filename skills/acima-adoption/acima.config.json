@@ -1,0 +1,48 @@
+{
+  "standard": "1.0.0",
+  "mode": "base",
+  "language": "python",
+  "level": "L1",
+  "root": ".",
+  "units": [
+    {
+      "id": "skill.preflight",
+      "module": "skill",
+      "role": "tooling",
+      "paths": [
+        "scripts/preflight.py"
+      ]
+    },
+    {
+      "id": "skill.render",
+      "module": "skill",
+      "role": "tooling",
+      "paths": [
+        "scripts/render_report.py"
+      ]
+    },
+    {
+      "id": "skill.summarize",
+      "module": "skill",
+      "role": "tooling",
+      "paths": [
+        "scripts/summarize.py"
+      ]
+    },
+    {
+      "id": "skill.inject",
+      "module": "skill",
+      "role": "tooling",
+      "paths": [
+        "scripts/inject_violation.py"
+      ]
+    }
+  ],
+  "exclude": [
+    "vendor",
+    "assets",
+    "references",
+    "__pycache__",
+    "*.pyc"
+  ]
+}

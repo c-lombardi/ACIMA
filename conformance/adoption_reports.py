@@ -259,6 +259,20 @@ def _benefit_records(assessment_result: dict) -> tuple[list[dict], list[dict]]:
     return benefits, outcomes
 
 
+def _canonical_phase(state: dict) -> dict:
+    """Read the canonical product phase from the workflow module that owns the state.
+
+    The report is a projection: it must not re-derive the phase from stage names here, because
+    that would create a second source of truth for the product journey.
+    """
+    try:
+        module = _load_module(ROOT / "conformance" / "adoption_workflow.py",
+                              "acima_adoption_workflow_phase")
+        return module._summary(state) or {}
+    except (KeyError, TypeError, AttributeError, ImportError, OSError):
+        return {}
+
+
 def build_report_model(root: Path, review_path: Path, module_map: dict,
                        proposal: dict, state: dict) -> dict:
     """Build and independently validate the schema 1.1 report model."""
@@ -593,6 +607,7 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
                 "status": stage.get("status"), "detail": stage.get("detail"),
                 "nextAction": stage.get("nextAction") or "",
             })
+    workflow_phase = _canonical_phase(state)
 
     model = {
         "schemaVersion": "1.1",
@@ -695,6 +710,9 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
         },
         "adoptionWorkflow": {"mode": state.get("mode", "guided"), "authorized": False,
                              "repositoryRevision": revision_record,
+                             "phase": workflow_phase.get("phase"),
+                             "phaseLabel": workflow_phase.get("phaseLabel") or "Not recorded",
+                             "phaseOrder": workflow_phase.get("phaseOrder", []),
                              "stages": workflow_stages, "next": state.get("next", {})},
     }
 

@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib, json, re, subprocess, sys, tempfile, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT/'conformance'))
+import adoption_reports
 SCRIPT=ROOT/'skills/acima-adoption/scripts/render_report.py'
 SCHEMA=ROOT/'skills/acima-adoption/assets/report.schema.json'
 CATALOG=json.loads((ROOT/'tools/acima-spec/rules.json').read_text(encoding='utf-8'))
@@ -64,7 +66,6 @@ def add_complete_review(d, root, unresolved=False):
 
 def model():
     return {"schemaVersion":"1.0","generatedAt":"2026-11-10T13:00:00-05:00","skillVersion":"1.27.0","standardVersion":"1.9.0-draft.1","catalogSha256":"abc123","assessmentStatus":"Assessment incomplete","repository":{"name":"Sample product","path":"C:/work/sample","commit":"abc","mode":"brownfield"},"recommendation":{"status":"RECOMMENDED_WITH_LIMITATIONS","summary":"Start with existing module boundaries; runtime ownership needs more evidence.","reasons":["The code already has distinct domain projects."],"caveats":["CI was not observed."]},"overview":{"plainLanguage":"This assessment found an existing boundary worth protecting.","nextAction":"Review the proposed local architecture check.","nextActionWhy":"It can catch new coupling without requiring a rewrite."},"value":{"benefits":[{"title":"Safer changes","description":"Modules depend on published contracts, not private implementation details.","availability":"Achievable after the gate is adopted."}],"adds":["Enforcement for dependency direction."],"costs":["A small maintenance cost for the check."]},"architecture":{"family":"Modular monolith","currentState":"Several projects already separate business capabilities.","proposedState":"Make the existing module contracts explicit and checkable."},"strengths":["Existing project boundaries."],"findings":[{"title":"A consumer reaches into a private implementation","what":"The Orders project references Catalog internals.","why":"An internal Catalog change can break Orders unexpectedly.","paths":["src/Orders/OrderService.cs"],"recommendation":"Depend on the published Catalog contract.","status":"confirmed"}],"proposedChanges":[{"path":"acima.config.json","action":"create","purpose":"Declare module ownership.","expectedOutcome":"The check knows which code belongs to each module.","approval":"Requires approval","status":"proposed"},{"path":"src/Orders/OrderService.cs","action":"modify","purpose":"Replace private implementation reference.","expectedOutcome":"Orders depends only on Catalog's published contract.","approval":"Not approved","status":"proposed"}],"outcomes":[{"title":"Earlier boundary feedback","description":"A new cross-module implementation dependency is reported before merge.","measure":"A controlled bad import fails the local check.","status":"Proposed"}],"phases":[{"name":"Declare modules","purpose":"Record existing ownership boundaries.","deliverable":"acima.config.json","verification":"Validate map and run check.","approval":"Yes","status":"Proposed"}],"decisions":[{"question":"Who owns Catalog's public contract?","context":"The current ownership is not explicit.","recommendation":"Assign the Catalog team.","impact":"Needed before contract changes."}],"outOfScope":["No database migration."],"limitations":["CI workflow was not inspected."],"coverage":{"requiredRules":56,"reviewedRules":56,"pendingRules":0,"automatedChecksRun":42,"manualReviewsCompleted":14,"skippedOrUnsupported":0},"evidence":[{"label":"Qualitative review","source":"assessment/review.json","whatItSupports":"Requirement dispositions and evidence references.","status":"Complete"}],"approvalStatement":"Only the listed report and implementation scope can be approved; no blanket authorization."}
-
 class HtmlReportTests(unittest.TestCase):
     def test_schema_is_valid_json_and_defines_the_file_impact_contract(self):
         schema=json.loads(SCHEMA.read_text(encoding='utf-8-sig'))
@@ -75,6 +76,49 @@ class HtmlReportTests(unittest.TestCase):
         self.assertIn('preservation',schema['properties'])
         self.assertIn('roadmap',schema['properties'])
         self.assertIn('conformance',schema['properties'])
+        workflow=schema['properties']['adoptionWorkflow']
+        self.assertEqual(workflow['required'],['mode','stages','phase','phaseLabel','phaseOrder'])
+
+    def test_plan_page_states_the_canonical_phase(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); src=root/'model.json'; out=root/'report'
+            data=model()
+            data['adoptionWorkflow']={"mode":"guided","stages":[],"next":{},
+                "phase":"review_and_authorize","phaseLabel":"Phase 3 — Review and authorize",
+                "phaseOrder":["start","assess","explain_and_propose","review_and_authorize","implement","verify_and_hand_off"]}
+            src.write_text(json.dumps(data),encoding='utf-8')
+            result=subprocess.run([sys.executable,str(SCRIPT),'--input',str(src),'--out-dir',str(out)],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+            plan=(out/'plan.html').read_text(encoding='utf-8')
+            self.assertIn('Current phase',plan)
+            self.assertIn('Phase 3 — Review and authorize',plan)
+
+    def test_plan_page_does_not_invent_a_missing_phase(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); src=root/'model.json'; out=root/'report'
+            data=model()
+            data['adoptionWorkflow']={"mode":"guided","stages":[],"next":{}}
+            src.write_text(json.dumps(data),encoding='utf-8')
+            result=subprocess.run([sys.executable,str(SCRIPT),'--input',str(src),'--out-dir',str(out)],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+            plan=(out/'plan.html').read_text(encoding='utf-8')
+            self.assertIn('Current phase',plan)
+            self.assertIn('not recorded',plan)
+            self.assertNotIn('Phase 5 — Verify and hand off',plan)
+
+    def test_report_model_projects_the_engine_phase_without_recalculating_it(self):
+        projected=adoption_reports._canonical_phase({
+            "mode":"guided",
+            "authorized":True,
+            "stages":{"implementation":{"name":"implementation","status":"in_progress"}},
+        })
+        self.assertEqual(projected["phase"],"implement")
+        self.assertEqual(projected["phaseLabel"],"Phase 4 — Implement")
+        self.assertEqual(projected["phaseOrder"],[
+            "start","assess","explain_and_propose","review_and_authorize",
+            "implement","verify_and_hand_off"])
+        self.assertEqual(adoption_reports._canonical_phase({}),{})
+
     def test_generates_six_navigable_pages_and_impact_inventory(self):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td); src=root/'model.json'; out=root/'report'; src.write_text(json.dumps(model()),encoding='utf-8')

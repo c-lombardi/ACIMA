@@ -39,8 +39,8 @@ written against these rules. Editing it converts a governance control into a rub
 
 | ID | Asserts | If it fails |
 |---|---|---|
-| `ENV-001` | reports which toolchains are on `PATH` | informational |
-| `ENV-002` | `python3` is available | install Python 3.9+; the preflight is Python |
+| `ENV-001` | reports the active Python interpreter and which external toolchains resolve from `PATH` or their `*_ROOT` variable | informational |
+| `ENV-002` | the running interpreter is Python 3.9+ | install Python 3.9+; the preflight is Python |
 
 A missing `node`, `go`, `dotnet` or `java` is not a blocker unless the target needs it. The
 preflight reports it so you do not promise a gate you cannot run.

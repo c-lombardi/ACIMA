@@ -45,6 +45,9 @@ _REPOSITORY = next(
     None,
 )
 STANDARD_ROOT = _REPOSITORY or (SKILL_DIR / "vendor")
+sys.path.insert(0, str(STANDARD_ROOT / "conformance"))
+from executables import resolve_executable  # noqa: E402 - shared environment lookup
+
 L001 = "ACIMA-L001"
 D001 = "ACIMA-D001"
 RULES = {L001: "L001", D001: "D001"}
@@ -243,6 +246,10 @@ def enforcer_invocation(manifest: dict, language: str, root: Path):
     # this tool instead of depending on PATH resolution.
     if command and Path(command[0]).stem.lower() in {"python", "python3"}:
         command[0] = sys.executable
+    elif command and command[0].lower() == "dotnet":
+        resolved = resolve_executable("dotnet")
+        if resolved:
+            command[0] = resolved
     command += ["--root", str(root), "--config", "acima.config.json",
                 "--format", "json"]
     cwd = STANDARD_ROOT / enforcer["cwd"] if enforcer.get("cwd") else STANDARD_ROOT
@@ -253,7 +260,10 @@ def prepare(manifest: dict, language: str) -> str:
     enforcer = manifest.get("enforcers", {}).get(language, {})
     if language != "dotnet" or not enforcer.get("buildProject"):
         return ""
-    code, out, err = run(["dotnet", "build", str(STANDARD_ROOT / enforcer["buildProject"]),
+    executable = resolve_executable("dotnet")
+    if executable is None:
+        return "dotnet was not found on PATH or in DOTNET_ROOT"
+    code, out, err = run([executable, "build", str(STANDARD_ROOT / enforcer["buildProject"]),
                           "-v", "q", "--nologo"], STANDARD_ROOT, timeout=300)
     if code != 0:
         return f"enforcer build failed: {(err or out).strip()[:300]}"

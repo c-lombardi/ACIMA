@@ -1,0 +1,48 @@
+flowchart TD
+    A["Open repository"] --> B{"Guided or automated already selected?"}
+    B -- "No" --> C["Ask one plain-language mode question"]
+    B -- "Yes: resuming" --> D["Restore the approved workflow state"]
+    C --> E["Phase 1: Assess"]
+    D --> E
+    E --> F["Read-only discovery and compatibility"]
+    F --> G["Review all 56 requirements with evidence"]
+    G --> H{"Authoritative module map complete?"}
+    H -- Yes --> I["Run supported ownership-dependent checks"]
+    H -- "No or incomplete" --> J["Propose evidence-backed ownership candidates"]
+    J --> K["Continue independent qualitative review"]
+    K --> L["Block only checks that require approved ownership"]
+    I --> M["Complete assessment and explain fit"]
+    L --> M
+    M --> N["Phase 2: Explain and propose"]
+    N --> O["Prepare exact scope, tradeoffs, CI/guidance options and six-page report"]
+    O --> P{"Selected mode"}
+    P -- Guided --> Q["Review map, proposal and decisions at separate checkpoints"]
+    P -- Automated --> R["Review the complete package in one consolidated checkpoint"]
+    Q --> S["Phase 3: Review and authorize"]
+    R --> S
+    S --> T["Open exact report; record digest and reviewer"]
+    T --> U["Approve individual ownership decisions and exact paths/stages"]
+    U --> V{"Explicit scope approval recorded?"}
+    V -- "No / partial / defer / decline" --> W["Record decision; do not write outside approved scope"]
+    V -- Yes --> X["Phase 4: Implement approved stages only"]
+    X --> Y["Validate each stage; stop on scope change"]
+    Y --> Z["Phase 5: Verify and hand off"]
+    Z --> AA["Fresh checks, evidence reconciliation and honest status"]
+    AA --> AB["One next action; separate commit/push/release approval"]
+
+    subgraph ParallelEngineering["Parallel implementation after the product contract is agreed"]
+        WS1["WS-01 Product language and docs"]
+        WS2["WS-02 Skill and prompt architecture"]
+        WS3["WS-03 Workflow, domain data and CLI"]
+        WS4["WS-04 Report model and HTML"]
+        WS5["WS-05 Enforcers, waivers and baselines"]
+        WS6["WS-06 Independent QA"]
+    end
+    WS1 --> INT["WS-07 Integrate by file ownership"]
+    WS2 --> INT
+    WS3 --> INT
+    WS4 --> INT
+    WS5 --> INT
+    WS6 --> INT
+    INT --> TEST["Focused tests, full conformance, bundle and adoption regressions"]
+    TEST --> HANDOFF["Handoff: changes, evidence, limits and next decision"]

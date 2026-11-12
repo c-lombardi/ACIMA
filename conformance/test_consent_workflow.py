@@ -149,10 +149,12 @@ def test_five_phase_consent_and_optional_artifacts() -> None:
     skill = " ".join(SKILL.read_text(encoding="utf-8").split())
     reference = " ".join(CONSENT_REF.read_text(encoding="utf-8").split())
 
-    for phase in ("Phase 1 — Assessment", "Phase 2 — Proposal",
-                  "Phase 3 — Explicit authorization",
-                  "Phase 4 — Approved implementation",
-                  "Phase 5 — Verification and handoff"):
+    # The canonical phase names come from the product contract (WS-00) and are asserted here so the
+    # skill, CLI and report cannot drift apart again.
+    for phase in ("Phase 1 — Assess", "Phase 2 — Explain and propose",
+                  "Phase 3 — Review and authorize",
+                  "Phase 4 — Implement",
+                  "Phase 5 — Verify and hand off"):
         assert phase in skill, phase
     assert "Phase 3 — Approved adoption" not in skill
     assert "Do not create optional artifacts" in skill
@@ -161,8 +163,8 @@ def test_five_phase_consent_and_optional_artifacts() -> None:
     assert "optional" in skill.lower()
 
     assert "The five phases" in reference
-    for phase in ("3. Explicit authorization", "4. Approved implementation",
-                  "5. Verification and handoff"):
+    for phase in ("Phase 3 — Review and authorize", "Phase 4 — Implement",
+                  "Phase 5 — Verify and hand off"):
         assert phase in reference, phase
     assert "optional unless the owner asks" in reference
 

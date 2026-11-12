@@ -30,6 +30,7 @@ SOURCES = [
     "tools/acima.py",
     "tools/qualitative-review.schema.json",
     "conformance/acima_claim.py",
+    "conformance/executables.py",
     "conformance/qualitative_review.py",
     "conformance/module_map.py",
     "conformance/adoption_workflow.py",

@@ -8,28 +8,32 @@
       "bytes": 17880
     },
     "conformance/adoption_reports.py": {
-      "sha256": "9d1522ad4a43ec155c5e40d52d271b4b8e09cd1b98e835f0d24c6c6d821d8a98",
-      "bytes": 40787
+      "sha256": "afc7ff48f6b5f050f6b272cd42fae64733a16010f6533f1946ca41aab74922af",
+      "bytes": 41683
     },
     "conformance/adoption_workflow.py": {
-      "sha256": "d40be5dc6894d68755b23734042964dc4b01cd3bf0d69388874a33b78a584aad",
-      "bytes": 153335
+      "sha256": "5a294e17a52bfd30b00adbca884bfb24b22acc453a7001f5490e9ae19d091bb6",
+      "bytes": 157760
     },
     "conformance/agent_guidance.py": {
       "sha256": "65ea05853f7214219dcdc5b0d69d2519df83f3d2b77df75a3b648cd36e939dc4",
       "bytes": 31612
     },
+    "conformance/executables.py": {
+      "sha256": "78d738cb647594e11fc9cbb68f8c57a7b28488da13f31bf1b40ef19bc3754cd8",
+      "bytes": 968
+    },
     "conformance/module_map.py": {
-      "sha256": "d319282c051a00038c4d0b7eed5d8367847b7df138c16573c37ce232de7c5eae",
-      "bytes": 83336
+      "sha256": "11f5bf1f28be06d329564b6faf7ead5d0cc79e7eb5dbc6ee98d124f7b1b5f0ab",
+      "bytes": 83527
     },
     "conformance/qualitative_review.py": {
       "sha256": "24e52211c9117e7cd9eed1581d5694c5bbca557655ea83954e9483a22d938a6c",
       "bytes": 11940
     },
     "docs/commands.md": {
-      "sha256": "ed28bd43f3f9b4eab3a4600102d8cf4ba80dfbaf428c8393f638cf0d239665a4",
-      "bytes": 20134
+      "sha256": "25bf17a59f3e21f637b7023ad98bb2285faeca94f8ef9d17f523929f032b717b",
+      "bytes": 21331
     },
     "docs/guides/architecture-families.md": {
       "sha256": "085a46846351515784b7c82565df28552b25bb230df774ccce7838d017d777a4",
@@ -152,8 +156,8 @@
       "bytes": 336
     },
     "examples/dotnet/tools/Acima.ArchTests/Program.cs": {
-      "sha256": "d73c59e02c083e2e46d536abf535adf08f1808f345f6c14f0716c26f99d44616",
-      "bytes": 82117
+      "sha256": "2eb3b80bc159cde35f1df83cd3ead29e0244ae3649b9a058e3bba65738e062a9",
+      "bytes": 85947
     },
     "examples/dotnet/violations/expected.json": {
       "sha256": "f0b790e20c1ccb4050be45cb83766cd48703494817eb8d5a8ba8d4667f39c5fb",
@@ -164,24 +168,24 @@
       "bytes": 33
     },
     "examples/go/tools/archtest/main.go": {
-      "sha256": "074e13231637cc876d035102bb6e9afd6b951964b60c0a3cb58ad4345ce6fdcf",
-      "bytes": 31227
+      "sha256": "ca7949a4aa35c091f950937dd80678ab1800736d089c32f619e94813bfb8cf84",
+      "bytes": 31222
     },
     "examples/go/violations/expected.json": {
       "sha256": "b23b480d23c793b6273acb29a49f0060835627c14913884eb8e8decae6c287a2",
       "bytes": 1744
     },
     "examples/python/tools/acima_arch.py": {
-      "sha256": "38d36f72e84aa8c48d557cf06f46b613b774d9046f688e2d473b0ab54354cd75",
-      "bytes": 95356
+      "sha256": "61df1aa37b8c7137f734125aba48ba907754ba817cb7a81fef870fbb517ec4f6",
+      "bytes": 95351
     },
     "examples/python/violations/expected.json": {
       "sha256": "ba5d5d55031476e12d6235a09ebb9e861f0c32f02d71469e7780de8939e7f30b",
       "bytes": 3439
     },
     "examples/typescript/tools/acima-arch.mjs": {
-      "sha256": "334952df7a916d44bc4dc3e28dc7608a4c210f8ec0c2abd2d90037e80d1e5695",
-      "bytes": 81362
+      "sha256": "0819f363fa5bec9709fd758bed67be2f5fc4e7fcb0ec63a612fc146e81ce9df2",
+      "bytes": 81349
     },
     "examples/typescript/violations/expected.json": {
       "sha256": "8b7db497ee2e7a71314c194566382cd8e5eb89fac1fbe8f6dd32490335a7d694",
@@ -192,8 +196,8 @@
       "bytes": 36187
     },
     "tools/acima.py": {
-      "sha256": "fe1222f730a32f9c090b8217e0492dcb10c7a83c515e8d153f7568b7e4f595dc",
-      "bytes": 251206
+      "sha256": "e5b309087f32e3236d630353eb8d40530d9cfad2b8fd6ceca3227ad22f1730a5",
+      "bytes": 251330
     },
     "tools/qualitative-review.schema.json": {
       "sha256": "1a6032a26777d2afe98f5160ac173ac4e9a9379d70fde944a888a1acb9551999",
