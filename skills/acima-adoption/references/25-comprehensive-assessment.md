@@ -178,6 +178,13 @@ a theme must still name its catalog rule and the theme's stated count must equal
 distinct rule ids beneath it. If the numbers do not reconcile, the summary is a reporting defect,
 not a finding.
 
+Rule evidence does not have to be path-derived from an assigned unit. A rule may be evidenced by a
+rule file, workspace configuration, an absence search or an aggregate findings artefact when that is
+where the truth lives; the validator checks the cited path, lines and quote, not unit membership. Do
+not invent a unit or ask the owner to select one merely to make a citation unit-shaped. Record the
+workspace scope and its limitation. Ask the owner only about a genuine ownership ambiguity whose
+answer changes the map, and provide a recommended default.
+
 An assessment may be called **complete** only when all 56 rule entries validate, none is
 `insufficient_evidence`, the ACIMA unit map is declared, and the deterministic assessment finishes
 successfully. This is assessment completeness, not `FULL CONFORMANCE`. A complete assessment may

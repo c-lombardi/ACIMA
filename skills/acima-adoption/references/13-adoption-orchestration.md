@@ -92,6 +92,12 @@ Ask the user to accept, modify, reject or defer individual boundaries and path c
 Do not make inferred ownership authoritative before approval. Revalidate the map after edits.
 Unresolved ownership blocks only work that depends on that ownership; independent review continues.
 
+Do not present a per-rule worksheet or ask the owner to assign every catalog rule to a unit. The
+review validator does not require path-derived rule evidence, and a rule covering the workspace, a
+layer, an absence or an external artefact may legitimately remain repository-scoped. The agent fixes
+mechanical citations itself. Ask only where the answer changes a boundary or ownership decision, and
+give a recommended default with its consequence.
+
 ### G2. Adoption proposal review
 
 After the assessment and map are decision-ready, generate an actionable proposal. Explain what
@@ -104,6 +110,10 @@ files in the target. Let the user accept, modify, defer or decline individual re
 ### G2a. Mandatory HTML proposal presentation and review
 
 After the complete assessment and required module-map review, generate and validate the six-page HTML report: Overview, Proposal, Findings, Files, Plan and Evidence. The report is a mandatory user-facing decision document in both workflows, not an optional export.
+
+Do not block the report on converting cross-cutting rule evidence into unit-scoped evidence. When
+`validate-review` reports `decisionComplete=true` and the map review is decision-ready, proceed;
+disclose genuinely workspace-level evidence as a limitation rather than inventing a unit for it.
 
 Open the report in the user's available browser or viewer. Show a direct link to the index page and each supporting page. Do not merely print a path, say it was generated, or proceed to the next approval question without presenting it. If the environment cannot open or show the report, mark the workflow blocked at this checkpoint and explain the limitation. Do not accept approval of a Markdown summary as a substitute.
 

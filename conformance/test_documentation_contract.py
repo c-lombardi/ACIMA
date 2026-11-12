@@ -242,6 +242,18 @@ class DocumentationContractTests(unittest.TestCase):
         self.assertIn("assets/report-template.css", manifest["assets"])
         self.assertIn("references/90-html-outcome-reports.md", manifest["references"])
 
+    def test_adoption_skill_keeps_cross_cutting_evidence_out_of_owner_decisions(self) -> None:
+        skill = normalized("skills/acima-adoption/SKILL.md")
+        orchestration = normalized("skills/acima-adoption/references/13-adoption-orchestration.md")
+        assessment = normalized("skills/acima-adoption/references/25-comprehensive-assessment.md")
+        workflow = normalized("skills/acima-adoption/references/22-workflow.md")
+        self.assertIn("per-rule owner worksheet", skill)
+        self.assertIn("workspace- or repository-scoped", skill)
+        self.assertIn("does not require path-derived rule evidence", orchestration)
+        self.assertIn("do not present a per-rule worksheet", orchestration)
+        self.assertIn("do not invent a unit", assessment)
+        self.assertIn("fix mechanical citations yourself", workflow)
+
     def test_adoption_skill_requires_honest_compatibility_assessment(self) -> None:
         skill = normalized("skills/acima-adoption/SKILL.md")
         self.assertIn("defines portable architectural requirements", skill)

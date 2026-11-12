@@ -4,6 +4,36 @@ All normative changes to the ACIMA standard. The machine-readable catalog is
 [`tools/acima-spec/rules.json`](tools/acima-spec/rules.json); this file explains *why* it changed and
 what an adopting repository has to do about it.
 
+## Unreleased — keep evidence placement out of owner decisions
+
+**Skill change only.** The catalog, standard version, rule ids, levels, severity and claim semantics
+are unchanged; `acima-adoption` moves from 1.36.1 to 1.36.2. No adopting repository has to change
+configuration, waivers or evidence.
+
+### Why
+
+An execution treated a set of cross-cutting qualitative-review citations as 22 owner decisions before
+the six-page proposal. The validator does not require rule evidence to be path-derived from a unit,
+and rules covering the workspace, a layer, an absence or an external artefact legitimately remain
+repository-scoped. Asking the owner to adjudicate that bookkeeping delays the proposal and obscures
+the few choices that are genuinely architectural.
+
+### What changed
+
+- The module-map checkpoint is explicitly about boundaries and path classifications, not a per-rule
+  unit worksheet.
+- Mechanical citation fixes are the agent's work; workspace-level evidence is recorded at repository
+  scope with its limitation rather than assigned to a synthetic unit.
+- An owner is asked only about a genuine boundary or ownership choice, with a recommended default
+  and consequence.
+- The six-page report is not blocked on path-derived evidence when `validate-review` reports
+  decision-complete coverage and the map review is decision-ready.
+
+### Adopting repositories
+
+No action. Re-run the installed skill's guidance if it previously stopped to ask for per-rule unit
+assignments before the proposal.
+
 ## Unreleased — traceable qualitative gaps
 
 **Skill change only.** The catalog, standard version, rule ids, levels, severity and claim semantics

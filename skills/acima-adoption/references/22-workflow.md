@@ -75,6 +75,10 @@ unresolved and blocks an adoption recommendation. The overall assessment is comp
 56 rules validate with no unresolved dispositions, the ACIMA unit map is declared, and deterministic
 assessment succeeds. Completion is not conformance; gaps remain gaps.
 Attach the validated artefact using `assess --review <review-json>` and report its validator result.
+Do not block the proposal on making every rule's evidence unit-derived. If the validator reports
+decision-complete coverage, keep genuinely workspace-level evidence at repository scope, disclose it
+as a limitation, and proceed; fix mechanical citations yourself rather than asking the owner to choose
+a unit for each rule.
 
 **Phase 2 — Explain and propose.** Present [the proposal](../assets/adoption-proposal.md) as a decision document:
 recommendation first, then the compatibility outcome and evidence, requirements already satisfied,
