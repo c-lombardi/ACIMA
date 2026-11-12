@@ -276,3 +276,13 @@ in a repository-wide config that other packages can dilute.
 `pip show orders.application.contracts` lists no `Requires`. `import-linter` or `tach` can encode the
 layer table as contracts; `mypy --strict` catches the type leaks; `pipdeptree` exposes a vendor
 package that has crept into the domain.
+
+### Named call arguments (D017)
+
+Python call syntax can label every keyword-capable parameter. For locally resolvable module-owned
+functions, methods, and constructors, call with parameter=value for each supplied argument. Do
+not rely on argument order to communicate intent. The reference enforcer resolves same-file
+definitions and uniquely named local methods; built-ins, unresolved external methods, reflection,
+and dynamic call targets remain outside its deterministic subset. A positional-only parameter is
+exempt only because Python syntax does not permit a keyword for it. This rule does not prohibit a
+required nullable parameter.

@@ -29,12 +29,12 @@ ACIMA makes declared architectural boundaries executable:
 
 | Area | Supported | Evidence / limit |
 |---|---|---|
-| Python | 41 automated rules; reference enforcer | Source and AST analysis, not type-checking; the fourteen manual rules remain unevaluated |
-| TypeScript | 41 automated rules; reference enforcer | Source-text analysis, not type-checking; the fourteen manual rules remain unevaluated |
-| Go | 23 of 41 automated rules; reference enforcer | Source and import analysis, not `go/parser`; the five tier rules, two explicit-input rules, two value rules, two composition rules, two functional-capture rules, three lifecycle rules, two naming rules (`N001`–`N002`) and the fourteen manual rules report `executed: false` |
-| C#/.NET | 23 of 41 automated rules; reference enforcer; library profile | Source and MSBuild-evaluated project metadata, not assembly loading; the five tier rules, two explicit-input rules, two value rules, two composition rules, two functional-capture rules, three lifecycle rules, two naming rules (`N001`–`N002`) and the fourteen manual rules report `executed: false` |
+| Python | 42 automated rules; reference enforcer | Source and AST analysis, not type-checking; the fourteen manual rules remain unevaluated |
+| TypeScript | 41 of 42 automated rules; reference enforcer | Source-text analysis, not type-checking; `D017` and the fourteen manual rules remain unevaluated |
+| Go | 23 of 42 automated rules; reference enforcer | Source and import analysis, not `go/parser`; the five tier rules, two explicit-input rules, two value rules, two composition rules, two functional-capture rules, three lifecycle rules, two naming rules (`N001`–`N002`) and the fourteen manual rules report `executed: false` |
+| C#/.NET | 24 of 42 automated rules; reference enforcer; library profile | Source and MSBuild-evaluated project metadata, not assembly loading; the five tier rules, two explicit-input rules, two value rules, two composition rules, two functional-capture rules, three lifecycle rules, two naming rules (`N001`–`N002`) and the fourteen manual rules report `executed: false` |
 | Java | Profile only | No reference enforcer; a selected Java assessment fails closed |
-| Twelve manual-evidence rules | Normative, not executable by the portable enforcers | `C003`, `C007`, `C008`, `L004`, `A002`, `A004`, `A010`–`A013`, `G004`, `N003` are `automation: "manual"` and require repository-scoped evidence for a full claim |
+| Fourteen manual-evidence rules | Normative, not executable by the portable enforcers | `C003`, `C007`, `C008`, `L004`, `A002`, `A004`, `A010`–`A015`, `G004`, `N003` are `automation: "manual"` and require repository-scoped evidence for a full claim |
 | Owned effects and business visibility | P1.7 and P15 are normative; manual evidence required | Ownership, retry/duplicate/consistency/cancellation semantics, truthful outcomes, recovery evidence and boundary visibility have no reliable portable detector |
 | Brownfield adoption | Preflight, draft units, baseline waivers, ratchet guidance | Unit names and owners require human confirmation |
 | AI agent skill | Pinned catalog, preflight, assessment validation, playbooks | No independent adversarial evaluation yet |

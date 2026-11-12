@@ -32,7 +32,7 @@ def _result(directory: Path, run_id: str, *, output: dict | None, started: str,
         "provenance": {
             "skill": {"name": "acima-adoption", "version": "1.18.0", "contentSha256": "a" * 64},
             "standard": {"version": "1.9.0-draft.1"},
-            "catalog": {"version": "1.9.0-draft.1", "sha256": "b" * 64, "rules": 55, "portable": 41},
+            "catalog": {"version": "1.9.0-draft.1", "sha256": "b" * 64, "rules": 56, "portable": 42},
             "instructions": {"id": "read-only-assessment.md", "sha256": "c" * 64},
             "harness": {"version": "test"},
             "approval": None,

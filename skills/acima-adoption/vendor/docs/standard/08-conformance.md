@@ -6,7 +6,7 @@ Conformance is a claim a repository makes about itself, and it is only credible 
 
 | Level | Name | Requires | Typical adoption moment |
 |---|---|---|---|
-| **L1** | Structural | `D001`–`D016`, `L001`–`L007`, `G001`, `G002`, `G005`, `G006` | you have modules and want the graph to stay acyclic |
+| **L1** | Structural | `D001`–`D017`, `L001`–`L007`, `G001`, `G002`, `G005`, `G006` | you have modules and want the graph to stay acyclic |
 | **L2** | Immutable | L1 + `C001`–`C008`, `G003`, `G004` | contracts are consumed by another team |
 | **L3** | Autonomous | L2 + `A001`–`A015` | modules have their own data and effects, and could be extracted |
 
@@ -54,7 +54,9 @@ is reported.
 - [ ] Partial application or method binding of a module-owned dependency occurs at a composition
       boundary, not inside a component (`D016`, warning).
 - [ ] Every required construction and invocation input is supplied explicitly; no dependency arrives
-      through an optional parameter or a default (`D011`, `D012`, warning).
+      through an optional parameter or a default (`D011`, `D012`, error).
+- [ ] Where the language supports named arguments and the receiving signature is known, every
+      function/method argument is labeled with its parameter name (`D017`, warning).
 - [ ] Every integration library is declared in `externals` with one adapter and one port, and only
       that adapter imports it (`L005`, `L006`).
 - [ ] No vendor type appears outside its adapter and no port carries a vendor shape (`L007`, `D010`).
@@ -185,11 +187,10 @@ Uncommitted source or configuration changes cannot be represented by a committed
 reports stay readable and must not be deleted, but only a claim whose provenance matches the current
 checkout may be called current conformance.
 
-The count is derived from `rules.json`; never copy a fixed number. At L2 the catalog requires 37
-rules. The reference portable enforcers execute 32 of those and report `L004`, `C003`, `C007`,
+The count is derived from `rules.json`; never copy a fixed number. At L2 the catalog requires 38
+rules. The reference portable enforcers execute 33 of those and report `L004`, `C003`, `C007`,
 `C008` and `G004` as not executed; without manual evidence for those five, the correct claim is
-`PARTIAL ASSESSMENT`, not `FULL CONFORMANCE`. At L3 the catalog requires 55 rules; 41 execute and
-the fourteen manual rules are `L004`, `C003`, `C007`, `C008`, `A002`, `A004`, `A010`–`A015`, `N003`
+`PARTIAL ASSESSMENT`, not `FULL CONFORMANCE`. At L3 the catalog requires 56 rules; 42 execute in Python, 41 in TypeScript, 24 in .NET and 23 in Go. The fourteen rules requiring human judgement in every profile are `L004`, `C003`, `C007`, `C008`, `A002`, `A004`, `A010`–`A015`, `N003`
 and `G004`. The five
 third-party tier rules, the two explicit-input rules, the two value rules, the two composition
 rules, the two functional-capture rules, the three lifecycle rules and the two naming rules

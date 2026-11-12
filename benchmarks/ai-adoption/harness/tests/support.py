@@ -185,7 +185,7 @@ def execution_stub(*, mode: str = "read-only", duration: float = 1.0) -> dict:
         "provenance": {
             "skill": {"name": "acima-adoption", "version": "1.18.0", "contentSha256": "a" * 64},
             "standard": {"version": "1.9.0-draft.1"},
-            "catalog": {"version": "1.9.0-draft.1", "sha256": "b" * 64, "rules": 55, "portable": 41},
+            "catalog": {"version": "1.9.0-draft.1", "sha256": "b" * 64, "rules": 56, "portable": 42},
             "instructions": {"id": "read-only-assessment.md", "sha256": "c" * 64},
             "harness": {"version": "test"},
             "approval": None,

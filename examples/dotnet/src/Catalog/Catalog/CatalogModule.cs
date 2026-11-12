@@ -16,7 +16,7 @@ internal sealed class ProductStore
 
 internal sealed class CatalogReader(ProductStore store) : ICatalogReader
 {
-    public ProductView? Get(ProductId id) => store.Find(id);
+    public ProductView? Get(ProductId id) => store.Find(id: id);
 
     public IReadOnlyList<ProductView> All() => store.All();
 }
@@ -28,11 +28,11 @@ public sealed class CatalogModule
     private readonly ICatalogReader _reader;
 
     /// <summary>Creates the module with in-memory storage.</summary>
-    public CatalogModule() => _reader = new CatalogReader(_store);
+    public CatalogModule() => _reader = new CatalogReader(store: _store);
 
     /// <summary>The port other modules consume.</summary>
     public ICatalogReader Reader => _reader;
 
     /// <summary>Stores a product. Host-only.</summary>
-    public void Add(ProductView product) => _store.Save(product);
+    public void Add(ProductView product) => _store.Save(product: product);
 }

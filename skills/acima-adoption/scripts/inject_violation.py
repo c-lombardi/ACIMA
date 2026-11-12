@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -36,10 +37,14 @@ import time
 from pathlib import Path
 
 SKILL_DIR = Path(__file__).resolve().parents[1]
-# Same resolution as preflight: the repository when present, the bundled snapshot when copied.
-_REPOSITORY = SKILL_DIR.parents[1]
-STANDARD_ROOT = (_REPOSITORY if (_REPOSITORY / "tools/acima-spec/rules.json").is_file()
-                 else SKILL_DIR / "vendor")
+# Same resolution as preflight: search ancestors rather than assuming a fixed depth. An installed
+# skill can be exposed as a mount root, where a fixed parents[index] does not exist.
+_REPOSITORY = next(
+    (candidate for candidate in (SKILL_DIR, *SKILL_DIR.parents)
+     if (candidate / "tools/acima-spec/rules.json").is_file()),
+    None,
+)
+STANDARD_ROOT = _REPOSITORY or (SKILL_DIR / "vendor")
 L001 = "ACIMA-L001"
 D001 = "ACIMA-D001"
 RULES = {L001: "L001", D001: "D001"}
@@ -411,14 +416,25 @@ def prove_d001(language: str, manifest: dict, reveal: bool, keep: bool) -> dict:
 
 
 SOURCE_EXTENSIONS = {".py", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".cs", ".go", ".java"}
+PRUNE = {".git", "node_modules", "bin", "obj", "dist", "build", "target", "out",
+         "coverage", ".venv", "venv", "__pycache__"}
+
+
+def _walk_files(root: Path):
+    for current, dirnames, filenames in os.walk(root):
+        dirnames[:] = sorted(name for name in dirnames
+                             if name not in PRUNE and not name.startswith("."))
+        for name in sorted(filenames):
+            if name.startswith("."):
+                continue
+            path = Path(current) / name
+            if path.is_file():
+                yield path
 
 
 def _source_count(project: Path) -> int:
-    return sum(1 for path in project.rglob("*")
-               if path.is_file() and path.suffix.lower() in SOURCE_EXTENSIONS
-               and not any(part in {".git", "node_modules", "bin", "obj", "dist", "build",
-                                    "target", "out", "coverage", ".venv", "venv", "__pycache__"}
-                           for part in path.relative_to(project).parts))
+    return sum(1 for path in _walk_files(project)
+               if path.suffix.lower() in SOURCE_EXTENSIONS)
 
 
 def proof_record(project: Path, requested: list[str], proofs: dict) -> dict:

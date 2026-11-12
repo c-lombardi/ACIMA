@@ -232,7 +232,7 @@ def module_map_overview(d):
     review_status=review.get('status') or proposal.get('status') or 'pending'
     if proposal:
         next_text=mm.get('nextDecision') or 'Review the proposed boundaries and recommendations; no ownership is approved by this report.'
-        body=f'<p class="lead">{e(mm.get("summary"))}</p><p class="reconciliation"><b>The proposed map is not authoritative.</b> Review status: <b>{e(status_label(review_status))}</b>. {e(next_text)}</p><p class="note">The 55-requirement qualitative review can continue independently. Deterministic ownership-dependent checks remain blocked until the map is explicitly approved.</p>'
+        body=f'<p class="lead">{e(mm.get("summary"))}</p><p class="reconciliation"><b>The proposed map is not authoritative.</b> Review status: <b>{e(status_label(review_status))}</b>. {e(next_text)}</p><p class="note">The 56-requirement qualitative review can continue independently. Deterministic ownership-dependent checks remain blocked until the map is explicitly approved.</p>'
     else:
         body=f'<p class="lead">{e(mm.get("summary") or authority.get("summary"))}</p><p class="reconciliation"><b>Authoritative map:</b> {e(status_label(status))}. It was evaluated in place rather than replaced by discovery.</p>'
     rules=arr(gate.get('ownershipDependentRules'))

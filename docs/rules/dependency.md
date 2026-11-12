@@ -457,7 +457,7 @@ Go and .NET report the rule `executed: false` in this revision.
 
 ## ACIMA-D011 · Optional construction dependency
 
-**Severity** `warning` → `error` at 2.0.0 · **Level** L1 · **Principle** P4
+**Severity** `error` · **Level** L1 · **Principle** P4
 
 > A module-owned constructor requires every input the component needs. A parameter a caller
 > may omit is a second construction path with hidden behaviour.
@@ -474,7 +474,7 @@ class OrdersModule:
 ### Finding
 
 ```
-ACIMA-D011  warning  orders constructs with the optional input clock; a dependency the component
+ACIMA-D011  error    orders constructs with the optional input clock; a dependency the component
                      needs must be required at construction.
   src/orders/impl/module.py:48
   clock: Callable[[], datetime] | None = None,
@@ -508,7 +508,7 @@ Go and .NET report the rule `executed: false` in this revision.
 
 ## ACIMA-D012 · Optional argument hides an operational decision
 
-**Severity** `warning` → `error` at 2.0.0 · **Level** L1 · **Principle** P4
+**Severity** `error` · **Level** L1 · **Principle** P4
 
 > A module-owned method or function does not use an optional or defaulted parameter to hide a
 > decision its caller should make.
@@ -522,7 +522,7 @@ createOrder(request: CreateOrderRequest, sendNotification = true) {   // ❌ who
 ### Finding
 
 ```
-ACIMA-D012  warning  orders lets a caller omit sendNotification in createOrder(); if that omission
+ACIMA-D012  error    orders lets a caller omit sendNotification in createOrder(); if that omission
                      changes behaviour, require the decision at the call site.
   src/orders/impl/module.ts:41
   createOrder(request: CreateOrderRequest, sendNotification = true) {
@@ -872,7 +872,7 @@ revision.
 
 ## ACIMA-D013 · Implicit component registration
 
-**Severity** `warning` → `error` at 2.0.0 · **Level** L1 · **Principle** P4
+**Severity** `error` · **Level** L1 · **Principle** P4
 
 > Application-owned components MUST be registered and constructed explicitly at the composition
 > boundary. Automatic assembly scanning, convention-based registration and dynamic discovery MUST
@@ -926,7 +926,7 @@ only. A framework scan that the detector cannot see is a manual-review item, not
 
 ## ACIMA-D014 · Property or field injection
 
-**Severity** `warning` → `error` at 2.0.0 · **Level** L1 · **Principle** P4
+**Severity** `error` · **Level** L1 · **Principle** P4
 
 > A module-owned component MUST receive its dependencies through its constructor or composition
 > function, not through property/field injection or post-construction assignment.
@@ -978,7 +978,7 @@ Go and .NET report `executed: false` in this revision, and Java is manual-review
 
 ## ACIMA-D015 · Closed-over module-owned dependency
 
-**Severity** `warning` → `error` at 2.0.0 · **Level** L1 · **Principle** P4
+**Severity** `error` · **Level** L1 · **Principle** P4
 
 > A module-owned component MUST receive a module-owned collaborator through a declared
 > parameter or field. It MUST NOT capture one from a module binding or enclosing local through a
@@ -1026,7 +1026,7 @@ type resolution remain manual review. **Implemented for Python and TypeScript**;
 
 ## ACIMA-D016 · Partial application of a module-owned dependency
 
-**Severity** `warning` → `error` at 2.0.0 · **Level** L1 · **Principle** P4
+**Severity** `error` · **Level** L1 · **Principle** P4
 
 > Partial application or method binding of a module-owned dependency MUST occur at the
 > composition boundary. A component MUST NOT pre-bind a collaborator into a function it returns.

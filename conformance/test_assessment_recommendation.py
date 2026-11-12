@@ -97,7 +97,7 @@ class AssessmentRecommendationTests(unittest.TestCase):
             self.assertEqual(code, 0)
             result = assessment["assessmentResult"]
             self.assertEqual(result["fit"], "INSUFFICIENT_EVIDENCE")
-            self.assertIn("0/55", result["why"])
+            self.assertIn("0/56", result["why"])
             self.assertIn("no meaningful ownership boundaries", result["why"])
             self.assertIn("purpose", result["facts"])
             self.assertIsNone(result["facts"]["purpose"])

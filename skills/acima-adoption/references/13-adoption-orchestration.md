@@ -1,99 +1,272 @@
-# Adoption orchestration
+# Adoption orchestration: guided and automated workflows
 
-## Pre-flight choice
+## Product contract
 
-Ask the user to choose one mode before consequential work:
+ACIMA has exactly two user-facing adoption workflows. They share the same assessment and evidence
+quality; they differ in when the user reviews the work.
 
-- **Guided adoption** — assess, propose, generate every deliverable, then wait for explicit
-  module-map and scope approval before implementation.
-- **Full automation** — explicitly authorized adoption. Apply supported decisions, implement
-  enforcement, integrate a detected CI provider where safe, verify, and write the handoff.
+- **Guided adoption** is collaborative. The user reviews the module map, adoption proposal, CI
+  proposal, and implementation stages at separate checkpoints.
+- **Automated adoption** minimizes interruptions. ACIMA completes assessment and prepares the
+  complete adoption package before one consolidated review. The user selects implementation
+  stages; ACIMA then executes those stages automatically.
 
-A request to “assess”, “adopt”, or “do the whole thing” does not select full automation. The
-choice is recorded in `.acima/adoption-workflow.json`; it persists across stages and is not
-re-asked. Full automation requires the explicit `--authorize-full` flag and a named consent basis.
+Do not describe old CLI labels as the user experience. The legacy CLI mode named full is the
+automated workflow's preparation mode; it must not mean permission to apply every recommendation.
+The conversational agent must explain the selected workflow and current checkpoint.
 
-Full automation still does **not** authorize deployment, release, publishing, commits, pushes,
-secret access, destructive operations, changes outside the selected repository, or overriding an
-owner's architectural decision. Those actions need a separate authorization.
+## First interaction and mode persistence
 
-## Stages and completion
+When no mode has been selected in the current engagement, ask:
 
-| Stage | Deliverable | Completes when |
-|---|---|---|
-| Pre-flight | workflow state with mode and authorization | the mode is explicit and persisted |
-| Discovery | inventory plus module-map proposal or authoritative-map evaluation | evidence is recorded |
-| Module map | approved config or a pending proposal | map review covers production source |
-| Adoption proposal | proposal and scope | every recommendation has an implementation or explicit deferral path |
-| Enforcement | config, enforcer copy, waiver file, test record | artifacts exist and do not overwrite user-owned files silently |
-| Architectural tests | positive and negative evidence | compliant input passes and a controlled violation is rejected |
-| CI | workflow or provider-specific instructions | an existing provider is integrated where safe, or concrete manual steps are recorded |
-| Immediate remediation | none, selected, or all decision and result | a separate final decision is recorded after CI; authorized changes are applied or explicitly deferred |
-| Verification | fresh map assessment and run results | the post-remediation assessment distinguishes implemented and verified |
-| AI agent guidance | root instructions plus architecture, enforcement, judgment and workflow support files | convention discovery, preservation, complete catalog coverage and references validate |
-| Handoff | changes, commands, limits, reassessment triggers | no dangling stage remains |
+> ACIMA can help you adopt its architecture standard in two ways:
+>
+> **Guided adoption:** We review the architecture, recommendations, enforcement, and CI together
+> at meaningful checkpoints. You decide what happens at each stage.
+>
+> **Automated adoption:** I inspect the application, complete the assessment, prepare the
+> architecture map, recommendations, enforcement tooling, agent guidance, and CI proposal, then
+> present everything together. You choose which changes to authorize, and I implement the selected
+> stages.
+>
+> Which workflow would you prefer?
 
-For Python and TypeScript targets, the workflow may copy the reference enforcer into
-`tools/` and run it. For unsupported languages or toolchains, it records the block and gives the
-exact manual command instead of claiming enforcement. A CI file is configuration, not a remote run.
+Do not silently choose based on experience, repository maturity, or existing configuration. If a
+mode was explicitly selected in the current engagement, preserve it. Persist the mode in
+.acima/adoption-workflow.json. A mode choice authorizes analysis and preparation only; it does not
+authorize target implementation, source remediation, CI changes, commits, pushes, releases or
+deployment.
 
-## Resume and stale artifacts
+## Shared foundation: mandatory assessment and discovery
 
-`python3 <skill>/scripts/preflight.py --project <target>` is read-only. Use
-`acima.py adoption start --root <target> --mode guided`, or `--mode full --authorize-full`, to create
-the persisted workflow. `acima.py adoption status` shows the current stage and one next action.
-`acima.py adoption continue` resumes without repeating completed approvals.
+Both workflows must complete the same foundation.
 
-If the repository revision changes materially, the workflow marks its artifacts stale. Reassess
-the affected map, proposal, scope and verification before treating them as current. Approval of a
-module map is not blanket approval to modify application code; full automation or a separate scope
-is required.
+1. Discover the repository, production languages, architecture, existing module declarations,
+   contracts, dependencies, composition, data/configuration ownership, entry points, tests,
+   tooling, generated content and existing architecture enforcement.
+2. Complete one genuine qualitative review record for each of the 56 current catalog requirements.
+   Each record needs a disposition, repository-specific rationale and evidence. The 14
+   judgment-dependent requirements need actual contextual reasoning, not copied descriptions.
+3. Validate the complete review against the pinned catalog, evidence paths, line ranges and exact
+   quotes. insufficient_evidence is explicit coverage but unresolved; it is not conformance.
+4. Generate a proposed module map automatically. Pair contracts and implementation paths when they
+   share one ownership boundary. Classify non-module paths and keep uncertain production paths
+   unresolved. Projects, packages, folders and manifests are signals, not ownership decisions.
+5. Inspect existing architecture rules, tests, analyzers, linters and CI. Explain what should be
+   preserved, reused, extended or deferred.
 
-## Stage outputs
+Before starting either adoption workflow, the agent must create a repository-specific review
+document at docs/acima/qualitative-review.json. Validate it with:
 
-- `.acima/adoption-workflow.json` — mode, stage states, artifacts, decisions, blockers and revision.
-- `.acima/module-map.proposal.json` — non-authoritative map candidates.
-- `.acima/module-map.approval.json` and `acima.config.json` — only after scoped review.
-- `docs/acima/adoption-proposal.md` and `.json` — existing strengths, changes, enforcement,
-  impact, risks and verification criteria.
-- `.acima/adoption-scope.json` — the approved objective dispositions and consent boundary.
-- `docs/acima/enforcement.json`, `.acima/architecture-tests.json` — enforcement and test evidence.
-- `docs/acima/ci-integration.json` — provider discovery, integration status and limits.
-- `docs/acima/verification.json` — fresh assessment, positive run and controlled negative probe.
-- `docs/acima/adoption-handoff.md` — outcome, commands, limitations and reassessment triggers.
-- `AGENTS.md` (or the repository's primary established convention) and
-  `docs/architecture/acima/` — generated AI agent guidance; proposal and validation are recorded in
-  `docs/acima/agent-guidance-proposal.md` and `.acima/agent-guidance.json`.
+    python tools/acima.py validate-review --root . --file docs/acima/qualitative-review.json --format json
 
-AI guidance is generated from the approved map and actual enforcement, not from a speculative
-proposal. Guided mode preserves user-authored instructions and waits for approval if the adoption
-scope did not include `agent-guidance`; full automation applies it within the authorized scope. The
-supporting guidance covers all catalog requirements, including judgment-dependent portions of
-automated rules. See [14-ai-agent-guidance](14-ai-agent-guidance.md).
+The validator must report decisionComplete=true, reviewed=56, required=56 and unresolved=0.
+Structural validation proves coverage and evidence provenance, not the semantic correctness of the
+agent's reasoning; the agent must independently inspect the evidence and author each disposition.
+Start adoption only after validation succeeds:
 
-## Final remediation decision
+    python tools/acima.py adoption start --root . --mode guided --review docs/acima/qualitative-review.json
 
-The remediation question comes **after** the CI decision and is independent of it. Offer:
+For automated adoption, use --mode full --authorize-full with the same --review argument.
+A decision-ready adoption proposal requires all 56 valid dispositions and a complete, reviewed
+ownership map. Discovery and independent qualitative work may continue while a map is unresolved.
+Never claim an assessment complete merely because the catalog expects 56 records.
 
-- **none** — preserve the implementation and keep the recommendation plan, commands and sequence;
-- **selected** — implement only the named recommendations, including clearly disclosed prerequisites;
-- **all** — implement every applicable recommendation with a deterministic, evidence-supported change.
+## Guided adoption sequence
 
-Classify maturity from implementation, tests, ownership units, manifests and history, never age alone.
-If the evidence is ambiguous, ask the owner and require `--maturity-choice`; do not choose a risk
-model silently. The plan records that classification is required and keeps source untouched.
-Greenfield work should explicitly recommend applying all applicable fixes, but still requires the
-user's confirmation. Small or moderate brownfield work needs one affirmative confirmation. A large or
-high-risk brownfield change (broad file scope, contract change, migration or data change) needs two
-distinct affirmations: first the scope and risk acknowledgement, then explicit implementation
-authorization. Declining preserves the completed map, enforcement and CI work.
+### G1. Assessment and module-map review
 
-Before applying a fix, revalidate it against the current application revision. Preserve unrelated
-user changes, do not expand the selected scope, and stop an affected item if it needs an unapproved
-design decision or exposes a material regression. Record completed, failed, blocked, deferred and
-newly discovered items separately. After implementation, run a fresh assessment; a failed or manual
-item stays outstanding and a partial remediation is not complete. A configured CI file remains
-complementary and is not a remote-run claim.
+Complete the shared foundation and present the map in plain language: module responsibilities,
+implementation and contract paths, dependency direction, composition, non-module paths, uncertainty
+and the evidence behind proposed boundaries.
 
-Never describe a generated proposal, configured gate or copied enforcer as a verified adoption.
-Never describe a partial or blocked stage as complete.
+Ask the user to accept, modify, reject or defer individual boundaries and path classifications.
+Do not make inferred ownership authoritative before approval. Revalidate the map after edits.
+Unresolved ownership blocks only work that depends on that ownership; independent review continues.
+
+### G2. Adoption proposal review
+
+After the assessment and map are decision-ready, generate an actionable proposal. Explain what
+ACIMA adds, what already exists, what should be preserved, required and optional changes, exact
+affected files/modules, risks, dependencies, expected value and intentionally excluded work.
+
+Present the proposal before generating or modifying active enforcement, agent instructions or CI
+files in the target. Let the user accept, modify, defer or decline individual recommendations.
+
+### G2a. Mandatory HTML proposal presentation and review
+
+After the complete assessment and required module-map review, generate and validate the six-page HTML report: Overview, Proposal, Findings, Files, Plan and Evidence. The report is a mandatory user-facing decision document in both workflows, not an optional export.
+
+Open the report in the user's available browser or viewer. Show a direct link to the index page and each supporting page. Do not merely print a path, say it was generated, or proceed to the next approval question without presenting it. If the environment cannot open or show the report, mark the workflow blocked at this checkpoint and explain the limitation. Do not accept approval of a Markdown summary as a substitute.
+
+Ask the owner to inspect all six pages. Record the reviewer's identity, report SHA-256 and proposal SHA-256. Approval must match those exact digests and the assessed repository state, including branch and working-tree content. If any of those change, invalidate the review and generate a fresh report. Reviewing the report is acknowledgement of the proposal, not implementation permission. A separate file-scoped implementation approval is still required.
+
+### G3. Enforcement and agent-guidance preparation
+
+Use the accepted map and proposal to select only the necessary architecture tests, analyzers,
+linters, dependency checks, contract checks and manual-evidence procedures. Prefer reuse or extension
+of sound existing tooling over a duplicate gate.
+
+Select the instruction convention from repository evidence: preserve and update a case-insensitive
+AGENTS.md when established; use CLAUDE.md when that is the established primary convention;
+otherwise use the active supported convention. If none exists, default to AGENTS.md. Preserve
+user-authored content outside clearly marked generated sections. Root instructions stay concise and
+link to supporting guidance.
+
+The instructions must accurately state module ownership, explicit and zero-dependency contracts,
+acyclic dependencies, no direct or transitive implementation leakage, dependency direction, data
+and configuration ownership, controlled composition and host authority, explicit inputs, lifecycle,
+state and effect ownership, and manual judgment obligations. Translate internal catalog identifiers
+into human-readable explanations.
+
+Agent-guidance and adoption notifications are separate decisions. Updating AGENTS.md/CLAUDE.md
+changes future AI-agent behavior; user-facing ACIMA adoption notifications change how milestones,
+decisions, blockers and verification are communicated. Do not combine these options or imply that
+approval of one approves the other.
+
+Ask separately whether the owner wants ACIMA adoption notifications included. If yes, inspect the
+existing interaction surfaces and notification mechanisms, then prepare a distinct proposal that
+identifies event triggers, audience, delivery surface, exact paths, user controls, privacy, retries,
+deduplication and tests. Do not assume email, push, webhook, Slack or another external provider. Do
+not modify product code or provider configuration until the user reviews that proposal and approves
+its exact paths. If declined or deferred, record that separately and continue with the approved core
+adoption.
+
+Verification must separate:
+- A known-compliant positive fixture: expected successful exit (normally 0), non-zero source
+  coverage and zero relevant findings.
+- A controlled negative fixture: the intended violation is detected.
+- The actual repository scan: its own exit code, source count and findings, never relabelled as the
+  positive fixture.
+
+A target scan with exit 1 or findings is not a positive pass. Unsupported or unrun checks remain
+explicitly unsupported or unrun.
+
+### G4. CI evaluation and review
+
+Inspect actual providers and workflow files, triggers, build/test stages and architecture checks.
+For existing CI, propose the smallest coherent enhancement. If no provider exists, present reasonable
+supported choices and ask the user which one they prefer. Identify exact workflow paths, commands,
+triggers, prerequisites and expected behavior.
+
+Ask whether to enhance existing CI, create the proposed setup, modify it, defer it or decline it.
+Do not write CI until the user approves that specific change. Local configuration is not evidence of
+a remote CI run.
+
+### G5. Select implementation stages
+
+Present the overall adoption plan and ask whether the user wants changes applied in one complete
+implementation or in multiple logical stages. Keep local enforcement, CI, agent guidance, ACIMA
+adoption notifications and application-source remediation as distinct selectable decisions. For brownfield systems, recommend incremental stages
+when that reduces risk.
+
+Derive stages from real dependencies and risks, not arbitrary file counts. For each stage identify
+purpose, expected result, affected files/modules, prerequisites, risk, tests, whether application
+source changes, and what remains if deferred. The user can approve one, several, all, selected
+recommendations or none. Do not infer consent for unselected work.
+
+### G6. Execute approved stages and hand off
+
+Implement only the approved scope, in dependency order. Validate after each stage, preserve the
+baseline and user changes, refresh affected evidence, and request new approval before materially
+expanding scope. Retain the two-confirmation safeguard for high-risk brownfield work. If the user
+declines implementation, stop without unapproved changes and retain the assessment/proposal.
+
+## Automated adoption sequence
+
+### A1-A4. Assess and prepare the complete package
+
+Complete the same 56-rule assessment, module discovery, enforcement-landscape review and map
+quality validation as guided mode. Then prepare the adoption proposal, appropriate enforcement and
+agent-guidance proposal, CI evaluation/proposal, and dependency-ordered implementation stages.
+
+Do not ask routine questions that repository evidence can resolve. Do not auto-approve module
+ownership from manifest presence, folder structure, confidence labels derived from layout, or
+placeholder responsibilities. Defer unsupported ownership decisions and explain them in the
+consolidated review. If CI provider preference is genuinely necessary, ask that narrow question
+without abandoning independent preparation.
+
+Preparation artifacts must be clearly marked proposed or generated-but-not-applied. Do not make
+consequential target changes while preparing the package. In particular, do not silently apply
+module ownership, enforcement, agent instruction edits, CI changes or source remediation.
+
+### A5. Consolidated review
+
+Generate, open and present the complete six-page HTML report before asking the user to approve scope. Present the complete package in that report and review conversation:
+1. Assessment summary and all 56 human-readable dispositions.
+2. Proposed module map, contract/implementation relationships and unresolved decisions.
+3. Adoption proposal and existing architecture to preserve.
+4. Enforcement design, fixtures and actual validation evidence.
+5. Agent-instruction convention and proposed content, as a separate decision.
+6. CI discovery and proposed integration or setup choices, as a separate decision.
+7. ACIMA adoption-notifications decision and, when requested, a separate notification proposal.
+8. Ordered implementation stages, affected paths, dependencies and risks.
+9. Limitations, deferred work and decisions requiring human judgment.
+
+Clearly distinguish existing/verified, proposed, generated and validated outside the target,
+approved, implemented, verified, deferred and declined. A generated proposal is not an approval.
+
+### A6. Select scope; A7. Execute automatically
+
+Ask the user to approve all stages, select one or more stages/recommendations, request modifications,
+defer work or decline implementation. The first consequential target change must occur only after
+the user approves the actual scope. A request to run automated assessment is not blanket
+implementation consent.
+
+After scope approval, execute selected stages automatically without unnecessary per-file prompts.
+Stop for renewed approval if scope materially expands, an undisclosed risk appears, or a consequential
+architectural decision remains unresolved. Validate each stage and produce a fresh final assessment
+and honest handoff.
+
+## Persisted state, approvals and resumption
+
+Use one authoritative workflow state. At minimum record mode, repository identity and baseline
+revision; assessment and map artifacts; proposal revision; approval provenance; enforcement and
+fixture results; agent-guidance proposal/application/validation; CI discovery/decision/application;
+selected implementation stages; remediation; fresh verification; and handoff.
+
+Stage states must distinguish not_started, in_progress, awaiting_review, approved, declined,
+deferred, blocked, complete and failed. An omitted decision is not acceptance. A deferment is not
+approval. A stale approval cannot authorize a changed proposal. Map approval, HTML-report review,
+CI approval, AI-agent-guidance approval, adoption-notifications approval, remediation approval and
+implementation-scope approval are separate decisions. Record the exact report/proposal digests and
+repository revision, branch and working-tree identity with the approval.
+
+Resume from persisted state without repeating completed work or bypassing a prerequisite. If the
+repository revision changes materially, mark affected evidence and approvals stale and reassess
+before proceeding.
+
+## Target preservation and honest claims
+
+Never overwrite user-authored instructions outside generated markers. Preserve existing architecture
+checks and CI behavior unless the user approves a change. Do not create duplicate infrastructure just
+to satisfy a template. Never create, switch or recover a branch automatically. A branch name or
+recovery selection is not approval to change target files; branch operations themselves require
+explicit approval. Any branch/commit movement invalidates stale evidence and scope approval. Never
+commit, push, release or deploy without separate authorization.
+
+A verification result is verified only when required positive and negative fixture evidence passes
+and is tied to the approved map and correct language-specific enforcer. The real repository scan is
+reported separately. No full-conformance claim follows merely from a generated config, passing
+fixture, CI file or agent guidance.
+
+## Required report and handoff
+
+Produce the progressively disclosed HTML adoption report for both workflows. Include executive
+overview, 56-rule assessment, module-map visualization and ownership, existing architecture to
+preserve, findings, affected files, enforcement, agent guidance, CI, implementation stages and
+decisions, evidence and limitations. Use /impeccable only if available in the ACIMA development
+environment; do not invent its capabilities.
+
+The handoff states what was implemented, what was verified, what was not verified, remaining gaps
+and insufficient evidence, deferred/declined stages, next actions and the actual local commands.
+
+## Canonical user experience
+
+**Guided:** Assess → Review Map → Review Proposal → Review CI → Select Stages → Implement.
+
+**Automated:** Assess → Prepare Everything → Review Complete Proposal → Select Stages → Automatically
+Implement.
+
+Both end with fresh, evidence-backed verification and an honest handoff. The user controls decisions;
+ACIMA performs the reasoning and approved work.

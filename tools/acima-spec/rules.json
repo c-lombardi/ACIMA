@@ -1,7 +1,7 @@
 {
   "$schema": "./rules.schema.json",
   "standard": "ACIMA",
-  "version": "1.9.0-draft.1",
+  "version": "1.9.0-draft.2",
   "findingSchema": {
     "rule": "ACIMA-<CATEGORY><NNN>",
     "severity": "error | warning | info",
@@ -353,7 +353,7 @@
       "level": "L1",
       "title": "Expired waiver",
       "summary": "An expired waiver is a violation until it is renewed or removed.",
-      "fix": "Fix the code, or renew the waiver individually with a fresh reason and expiry \u2014 never in bulk.",
+      "fix": "Fix the code, or renew the waiver individually with a fresh reason and expiry — never in bulk.",
       "automation": "automated"
     },
     {
@@ -443,11 +443,7 @@
     },
     {
       "id": "ACIMA-D011",
-      "severity": "warning",
-      "severityRatchet": {
-        "to": "error",
-        "at": "2.0.0"
-      },
+      "severity": "error",
       "level": "L1",
       "title": "Optional construction dependency",
       "summary": "A module-owned constructor requires every input the component needs; an optional or defaulted parameter is a second construction path with hidden behaviour.",
@@ -456,11 +452,7 @@
     },
     {
       "id": "ACIMA-D012",
-      "severity": "warning",
-      "severityRatchet": {
-        "to": "error",
-        "at": "2.0.0"
-      },
+      "severity": "error",
       "level": "L1",
       "title": "Optional argument hides an operational decision",
       "summary": "A module-owned method or function does not use an optional or defaulted parameter to hide a decision its caller should make.",
@@ -518,6 +510,20 @@
         "to": "error",
         "at": "2.0.0"
       }
+    },
+    {
+      "id": "ACIMA-D017",
+      "severity": "warning",
+      "severityRatchet": {
+        "to": "error",
+        "at": "2.0.0"
+      },
+      "level": "L1",
+      "title": "Unlabeled function or method argument",
+      "summary": "When the language supports named arguments, every statically resolved argument passed to a module-owned function or method uses the receiving parameter's name at the call site.",
+      "fix": "Use the language's native named-argument syntax for each supplied value, such as create_order(request_id=request_id, customer_id=wrong_variable) in Python or CreateOrder(requestId: requestId, customerId: wrongVariable) in C#. Do not invent wrapper objects to simulate named arguments in languages without native syntax.",
+      "automation": "automated",
+      "automationNotes": "Implemented for Python and C# where native named-call syntax exists. Static analysis checks locally declared module-owned callables whose signatures can be resolved. TypeScript/JavaScript and Go have no native named-argument call syntax, so their enforcers report executed:false rather than inventing syntax or requiring wrapper objects. Unresolved external, reflective and dynamic call targets remain outside the deterministic subset."
     },
     {
       "id": "ACIMA-A007",

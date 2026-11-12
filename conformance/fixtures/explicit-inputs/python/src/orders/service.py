@@ -9,3 +9,7 @@ def create_order(repository: object, requested_delivery_date: datetime | None) -
 
 def charge(gateway: object, amount: int) -> object:
     return gateway.charge(amount)
+
+
+def submit_order(repository: object, requested_delivery_date: datetime | None) -> object:
+    return create_order(repository=repository, requested_delivery_date=requested_delivery_date)

@@ -27,11 +27,19 @@ def fixture(root: Path) -> None:
     write(root, "src/billing/service.py", "def charge():\n    return 1\n")
     write(root, "src/orders/pyproject.toml", "[project]\nname = 'orders'\n")
     write(root, "src/billing/pyproject.toml", "[project]\nname = 'billing'\n")
+    from test_adoption_workflow import write_review
+    write_review(root)
 
 
 def run_full(root: Path) -> dict:
-    workflow.start(root, "full", authorize_full=True)
-    return workflow.remediate(root, "none", approved_by="Repository owner")
+    from test_adoption_workflow import full_start
+    full_start(root)
+    state = workflow.remediate(root, "none", approved_by="Repository owner")
+    if state["stages"].get("agent_guidance", {}).get("status") == workflow.AWAITING:
+        # This fixture models the owner's separate review and approval of the exact
+        # generated instruction proposal; the production workflow still waits.
+        state = workflow.guidance(root, approve=True)
+    return state
 
 
 def map_review(root: Path) -> Path:
@@ -60,8 +68,13 @@ def scope_without_guidance(root: Path) -> Path:
             {"id": "baseline-waivers", "disposition": "approved"},
             {"id": "ci-enforcement", "disposition": "deferred"},
             {"id": "developer-handoff", "disposition": "approved"},
+            {"id": "adoption-notifications", "disposition": "deferred"},
         ],
+        "approvedPaths": [],
     }), encoding="utf-8")
+    document = json.loads(path.read_text(encoding="utf-8"))
+    document["approvedPaths"] = workflow._implementation_paths(root, document)
+    path.write_text(json.dumps(document), encoding="utf-8")
     return path
 
 
@@ -192,7 +205,8 @@ class AgentGuidanceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             fixture(root)
-            workflow.start(root, "full", authorize_full=True)
+            from test_adoption_workflow import full_start
+            full_start(root)
             state = workflow._load(root)
             (root / "docs/acima/enforcement.json").unlink()
             guidance.apply(root, state)
@@ -221,13 +235,20 @@ class AgentGuidanceTests(unittest.TestCase):
             root = Path(directory)
             fixture(root)
             workflow.start(root, "guided")
-            workflow.approve(root, map_decisions=map_review(root), scope=scope_without_guidance(root))
+            workflow.approve(root, map_decisions=map_review(root))
+            from test_adoption_workflow import approve_scope
+            state_before = workflow._load(root)
+            report = state_before["artifacts"]["proposalReport"]
+            workflow.approve(
+                root, scope=scope_without_guidance(root),
+                reviewed_report_sha256=report["sha256"],
+                reviewed_by="Repository owner",
+            )
             state = workflow.remediate(root, "none", approved_by="Repository owner")
-            self.assertEqual(state["stages"]["agent_guidance"]["status"], "awaiting_approval")
+            self.assertEqual(state["stages"]["agent_guidance"]["status"], workflow.DEFERRED)
             self.assertFalse((root / "AGENTS.md").exists())
-            state = workflow.guidance(root, approve=True)
-            self.assertEqual(state["stages"]["agent_guidance"]["status"], "complete")
-            self.assertTrue((root / "AGENTS.md").is_file())
+            with self.assertRaisesRegex(workflow.WorkflowError, "was not selected"):
+                workflow.guidance(root, approve=True)
 
     def test_guidance_does_not_modify_application_source(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -4,6 +4,30 @@ All normative changes to the ACIMA standard. The machine-readable catalog is
 [`tools/acima-spec/rules.json`](tools/acima-spec/rules.json); this file explains *why* it changed and
 what an adopting repository has to do about it.
 
+## Unreleased — optional parameters are prohibited inputs
+
+**Catalog change.** `D011` and `D012` are now `error` rules. Their `severityRatchet` entries are
+removed: there is no 2.0.0 migration window, and an optional or defaulted parameter on a
+module-owned constructor, method or function is prohibited. Rule ids, levels, summaries and the
+56-rule catalog are otherwise unchanged.
+
+### Why
+
+ACIMA already said required inputs must be explicit, but a warning allowed a repository to claim
+adoption while retaining the second construction or invocation path the rule exists to prevent. A
+owner decision that the input is required cannot be optional at the gate. The prohibition applies to
+module-owned behavior units; required nullable parameters without defaults, contract members,
+framework entry points, generated code and test/tooling units remain governed by their documented
+scope. A genuine compatibility exception remains a named, scoped, owned and expiring waiver under
+`G001`/`G002`.
+
+### Adopting repositories
+
+Run the Python or TypeScript enforcer and fix every `D011`/`D012` finding: require the parameter and
+move the value to its owner, split the operation, use an explicit options or policy object, or record
+the narrow waiver. Go and .NET still report both rules `executed: false` in this revision, so their
+full claims require manual evidence.
+
 ## Unreleased — human-comprehensible adoption communication
 
 **Skill change only.** The catalog, standard version, rule ids, levels, severity and claim semantics

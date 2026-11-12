@@ -87,13 +87,17 @@ def _walk(root: Path):
 
     Pruning uses the path *relative to root*: a repository that happens to live under a
     dot-directory (for example `/home/x/.local/src/app`) must not report zero source files.
+    A top-down walk prunes before descent; ``rglob`` would traverse excluded directories first.
     """
-    for path in root.rglob("*"):
-        relative = path.relative_to(root)
-        if any(part in PRUNE or part.startswith(".") for part in relative.parts):
-            continue
-        if path.is_file():
-            yield path
+    for current, dirnames, filenames in os.walk(root):
+        dirnames[:] = sorted(name for name in dirnames
+                             if name not in PRUNE and not name.startswith("."))
+        for name in sorted(filenames):
+            if name.startswith("."):
+                continue
+            path = Path(current) / name
+            if path.is_file():
+                yield path
 
 
 class ConfigError(Exception):
@@ -1763,7 +1767,7 @@ def assess_markdown(report: dict) -> str:
     completion = report.get("assessmentCompletion") or {}
     lines += ["", "## Assessment completion", "",
               "- Overall assessment: **%s**" % ("complete" if completion.get("complete") else "incomplete"),
-              "- Qualitative disposition coverage: **%s**" % ("55/55 complete" if completion.get("qualitativeReviewCoverageComplete") else "incomplete"),
+              "- Qualitative disposition coverage: **%s**" % ("56/56 complete" if completion.get("qualitativeReviewCoverageComplete") else "incomplete"),
               "- Qualitative decisions resolved: **%s**" % ("yes" if completion.get("qualitativeReviewDecisionComplete") else "no"),
               "- Deterministic assessment: **%s**" % ("complete" if completion.get("deterministicAssessmentComplete") else "incomplete"),
               "- Declared unit map: **%s**" % ("present" if completion.get("unitMapComplete") else "missing"),
@@ -4485,17 +4489,27 @@ def main() -> int:
     adoption.add_argument("action", choices=("start", "status", "approve", "apply", "continue", "remediate", "guidance"))
     adoption.add_argument("--root", default=".")
     adoption.add_argument("--mode", choices=("guided", "full"), default=None,
-                          help="required for start: guided or explicit full automation")
+                          help="required for start: guided or automated preparation (full)")
     adoption.add_argument("--authorize-full", action="store_true", dest="authorize_full",
-                          help="required before full automation can start")
+                          help="required to select automated mode; implementation still needs scope approval")
     adoption.add_argument("--reviewer", default=None)
+    adoption.add_argument("--review", default=None,
+                          help="validated 56-rule qualitative review JSON required before adoption")
     adoption.add_argument("--map-decisions", default=None)
     adoption.add_argument("--scope", default=None)
+    adoption.add_argument("--reviewed-report-sha256", default=None,
+                          help="exact digest of the HTML proposal the owner reviewed")
+    adoption.add_argument("--reviewed-by", default=None,
+                          help="named owner who inspected the HTML proposal")
     adoption.add_argument("--choice", choices=("none", "selected", "all"), default=None)
     adoption.add_argument("--maturity-choice", choices=("greenfield", "brownfield"), default=None)
     adoption.add_argument("--approve", action="store_true")
     adoption.add_argument("--selected", action="append", default=[])
-    adoption.add_argument("--approved-by", default="Repository owner")
+    adoption.add_argument("--approved-by", default=None)
+    adoption.add_argument("--approved-plan-sha256", default=None,
+                          help="exact digest of the remediation plan reviewed by the owner")
+    adoption.add_argument("--approved-path", action="append", default=[],
+                          help="exact repository-relative source file approved for modification; repeat as needed")
     adoption.add_argument("--confirm", action="store_true")
     adoption.add_argument("--confirm-scope", action="store_true", dest="confirm_scope")
     adoption.add_argument("--confirm-implementation", action="store_true",
@@ -4513,12 +4527,13 @@ def main() -> int:
         try:
             if args.action == "start":
                 if not args.mode:
-                    print("acima: adoption start requires --mode guided or --mode full",
+                    print("acima: adoption start requires --mode guided or --mode full (automated)",
                           file=sys.stderr)
                     return 2
-                result = adoption_workflow.start(root, args.mode,
-                                                 authorize_full=args.authorize_full,
-                                                 reviewer=args.reviewer)
+                result = adoption_workflow.start(
+                    root, args.mode, authorize_full=args.authorize_full,
+                    reviewer=args.reviewer,
+                    review_path=Path(args.review) if args.review else None)
             elif args.action == "status":
                 result = adoption_workflow.status(root)
             elif args.action == "approve":
@@ -4526,7 +4541,9 @@ def main() -> int:
                     root,
                     map_decisions=Path(args.map_decisions) if args.map_decisions else None,
                     scope=Path(args.scope) if args.scope else None,
-                    reviewer=args.reviewer)
+                    reviewer=args.reviewer,
+                    reviewed_report_sha256=args.reviewed_report_sha256,
+                    reviewed_by=args.reviewed_by)
             elif args.action == "apply":
                 result = adoption_workflow._apply(root, adoption_workflow._load(root))
             elif args.action == "guidance":
@@ -4540,7 +4557,9 @@ def main() -> int:
                     root, args.choice, selected=args.selected, approved_by=args.approved_by,
                     confirm=args.confirm, confirm_scope=args.confirm_scope,
                     confirm_implementation=args.confirm_implementation,
-                    maturity_choice=args.maturity_choice)
+                    maturity_choice=args.maturity_choice,
+                    approved_plan_sha256=args.approved_plan_sha256,
+                    approved_paths=args.approved_path)
             else:
                 result = adoption_workflow.continue_workflow(root)
         except (adoption_workflow.WorkflowError, adoption_workflow.ModuleMapError,
@@ -4559,8 +4578,14 @@ def main() -> int:
             nxt = summary.get("next") or result.get("next") or {}
             if nxt.get("action"):
                 print("  next    %s" % nxt["action"])
-        return 0 if not (result.get("blockers") or
-                         (result.get("next") or {}).get("action", "").startswith("Resolve")) else 1
+        stages = result.get("stages") or []
+        stage_values = stages.values() if isinstance(stages, dict) else stages
+        hard_failure = any(
+            isinstance(stage, dict) and stage.get("status") in {"blocked", "failed"}
+            for stage in stage_values
+        )
+        # An awaiting user checkpoint is a valid workflow state, not a CLI error.
+        return 1 if hard_failure else 0
 
     if args.command == "inspect":
         payload = inspect_project(Path(args.root), args.config)

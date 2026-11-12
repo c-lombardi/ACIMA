@@ -76,9 +76,9 @@ var catalog = map[string][2]string{
 	"ACIMA-D010": {"error", "L1"},
 	"ACIMA-L005": {"warning", "L1"}, "ACIMA-L006": {"error", "L1"}, "ACIMA-L007": {"warning", "L1"},
 	"ACIMA-G006": {"warning", "L1"},
-	"ACIMA-D011": {"warning", "L1"}, "ACIMA-D012": {"warning", "L1"},
+	"ACIMA-D011": {"error", "L1"}, "ACIMA-D012": {"error", "L1"},
 	"ACIMA-D013": {"warning", "L1"}, "ACIMA-D014": {"warning", "L1"},
-	"ACIMA-D015": {"warning", "L1"}, "ACIMA-D016": {"warning", "L1"},
+	"ACIMA-D015": {"warning", "L1"}, "ACIMA-D016": {"warning", "L1"}, "ACIMA-D017": {"warning", "L1"},
 	"ACIMA-A007": {"warning", "L3"}, "ACIMA-A008": {"warning", "L3"}, "ACIMA-A009": {"warning", "L3"},
 	"ACIMA-A010": {"error", "L3"}, "ACIMA-A011": {"error", "L3"},
 	"ACIMA-A012": {"error", "L3"}, "ACIMA-A013": {"warning", "L3"},
@@ -87,6 +87,7 @@ var catalog = map[string][2]string{
 }
 
 var notExecuted = map[string]string{
+    "ACIMA-D017": "Go has no native named-argument call syntax; wrapper objects are not required as a substitute.",
 	"ACIMA-C003": "behaviour versus validation is a semantic judgement",
 	"ACIMA-C007": "constructor completeness needs symbol and API analysis",
 	"ACIMA-L004": "service-locator APIs are framework-specific",

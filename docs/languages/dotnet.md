@@ -271,3 +271,12 @@ Gate `Orders.Domain` at 100% line and branch coverage in CI. Test names state th
 domain types, and `PrivateAssets="all"` stops an implementation's dependencies leaking transitively
 (D008). `dotnet list package --include-transitive` is the evidence for ST-5. `InternalsVisibleTo`
 from a contracts project is a review blocker.
+
+### Named call arguments (D017)
+
+C# supports named arguments. Supply every argument to a locally resolvable module-owned method or
+constructor as parameter: value, including the first argument. This keeps the receiver visible in
+raw diffs and makes same-typed swapped values easier to spot. The reference enforcer parses C#
+syntax and checks locally declared method/constructor signatures; unresolved external and dynamic
+call targets remain outside the deterministic subset. This is independent of nullable reference
+types and does not prohibit required nullable parameters.

@@ -8,7 +8,7 @@ classifies the target; the assessment establishes fit. Neither writes to the tar
 
 | Phase | Purpose | Command | Ends when |
 |---|---|---|---|
-| 1. Assess | preflight, all 55 qualitative dispositions, then read-only fit and deterministic checks where possible | `preflight.py --project <target>`, `validate-review`, then `acima.py assess --root <target> --review <review.json>` | 55/55 valid dispositions, unresolved states explicit, and deterministic limits recorded |
+| 1. Assess | preflight, all 56 qualitative dispositions, then read-only fit and deterministic checks where possible | `preflight.py --project <target>`, `validate-review`, then `acima.py assess --root <target> --review <review.json>` | 56/56 valid dispositions, unresolved states explicit, and deterministic limits recorded |
 | 2. Propose | the decision document | fill `../assets/adoption-proposal.md` | a recommendation, exact paths, one question |
 | 3. Authorize | explicit, scope-specific approval | none | an unambiguous yes to that proposal |
 | 4. Implement | only the approved scope | the approved commands | the named files exist and measure |
@@ -22,14 +22,14 @@ and rule ids (`SKL-002`/`SKL-003`), classifies `greenfield`, `brownfield` or `ad
 blockers. Exit `1` blocks adoption and implementation until its causes are resolved, but it does
 not automatically block independent qualitative review. Stop only for skill-integrity, invalid-target,
 ambiguous-classification or unsupported-mode blockers. If the only blockers are missing candidate
-units, uncovered source files or unavailable deterministic tooling, continue the complete 55-rule
+units, uncovered source files or unavailable deterministic tooling, continue the complete 56-rule
 read-only qualitative review and keep affected deterministic claims blocked. Then assess six dimensions
 independently: technical
 compatibility, architectural substance, existing enforcement, incremental value, adoption cost and
 practical applicability. Choose one outcome: `RECOMMENDED`, `RECOMMENDED_WITH_LIMITATIONS`,
 `NOT_RECOMMENDED`, `INSUFFICIENT_EVIDENCE` or `NOT_SUPPORTED`. A clean report is not a
 recommendation: a utility with no meaningful boundaries, or a system whose existing checks already
-cover the guarantee, is a `NOT_RECOMMENDED` only after the 55-rule review establishes that ACIMA adds no meaningful value.
+cover the guarantee, is a `NOT_RECOMMENDED` only after the 56-rule review establishes that ACIMA adds no meaningful value.
 Until then, the outcome is `INSUFFICIENT_EVIDENCE`, even when preliminary discovery suggests a
 small utility or existing enforcement. Explain the target software, discovered boundaries, existing
 enforcement, what ACIMA requires and does not require, cost, confidence and
@@ -53,11 +53,11 @@ independent reviews and name the outstanding decisions.
 A comprehensive assessment is mandatory before any adoption recommendation or decision-ready
 report. A user may request a narrower read-only review, but label it as limited scope and do not
 present it as an adoption assessment or recommendation. Read
-[25-comprehensive-assessment](25-comprehensive-assessment.md). For adoption, assess all 55 current
+[25-comprehensive-assessment](25-comprehensive-assessment.md). For adoption, assess all 56 current
 catalog requirements across L1, L2 and L3, independently of the level recommended for adoption.
 Keep the selected adoption/conformance level separate from the comprehensive architectural review.
 The CLI's `comprehensiveRuleReview` is a checklist, not evidence that those rules were reviewed.
-Do not issue a recommendation before the 55-rule review has passed `validate-review`. A missing
+Do not issue a recommendation before the 56-rule review has passed `validate-review`. A missing
 module map or preflight candidate-unit failure blocks only dependent deterministic checks and owner
 decisions, not the independent qualitative review. Inspect the repository and record evidence/status
 for each requirement. A deterministic check that
@@ -71,7 +71,7 @@ exact quote from those lines. Missing, duplicate, unknown, stale-catalog, fabric
 invalid-path, out-of-range evidence, duplicate rationale or copy-pasted evidence prevents coverage
 completion. `insufficient_evidence` is a valid explicit disposition for coverage, but remains
 unresolved and blocks an adoption recommendation. The overall assessment is complete only when all
-55 rules validate with no unresolved dispositions, the ACIMA unit map is declared, and deterministic
+56 rules validate with no unresolved dispositions, the ACIMA unit map is declared, and deterministic
 assessment succeeds. Completion is not conformance; gaps remain gaps.
 Attach the validated artefact using `assess --review <review-json>` and report its validator result.
 
@@ -107,14 +107,14 @@ Full boundary and artifact matrix: [15-consent-and-scope](15-consent-and-scope.m
 
 ## Guided and full automation
 
-Before Phase 3, explicitly ask for **guided adoption** or **full automation**. Guided keeps the
-five approval gates and waits for a scoped map/scope decision. Full automation uses the persisted
-`.acima/adoption-workflow.json` authorization to implement the generated enforcement, run positive
-and controlled-negative checks, integrate an existing CI provider and verify the result. It still
-cannot deploy, release, commit, push, modify another repository or expose secrets. Unsupported or
-ambiguous ownership pauses only that decision; completed independent work and artifacts remain.
-Every stage must produce its artifact and next action, and a changed repository revision makes the
-relevant artifacts stale. See [13-adoption-orchestration](13-adoption-orchestration.md).
+The two authoritative user workflows are **guided adoption** and **automated adoption**.
+Guided mode has distinct map, proposal, CI and implementation-stage review checkpoints. Automated
+mode completes the shared assessment and prepares the adoption package before a consolidated review;
+the user then selects one or more implementation stages. Mode selection authorizes analysis and
+preparation, not unreviewed consequential changes. Do not auto-approve inferred module ownership.
+Preserve approvals and stage status in the persisted workflow state. See
+[13-adoption-orchestration](13-adoption-orchestration.md) for the exact sequence, consent rules,
+preparation artifacts, resumption and handoff.
 
 ## Load only the detail needed for this phase
 

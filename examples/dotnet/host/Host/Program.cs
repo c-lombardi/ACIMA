@@ -11,28 +11,28 @@ internal static class Program
     private static void Main()
     {
         var catalog = new CatalogModule();
-        var payments = new PaymentsModule(1000m);
-        var orders = new OrdersModule(catalog.Reader, payments.Port);
+        var payments = new PaymentsModule(declineAbove: 1000m);
+        var orders = new OrdersModule(catalog: catalog.Reader, payments: payments.Port);
 
-        catalog.Add(new CatalogContracts.ProductView(
-            new CatalogContracts.ProductId("p-1"),
-            "Espresso beans",
-            CatalogContracts.Money.Of(12.50m, CatalogContracts.Currency.Eur)));
-        catalog.Add(new CatalogContracts.ProductView(
-            new CatalogContracts.ProductId("p-2"),
-            "Filter papers",
-            CatalogContracts.Money.Of(3.20m, CatalogContracts.Currency.Eur)));
+        catalog.Add(product: new CatalogContracts.ProductView(
+            Id: new CatalogContracts.ProductId(Value: "p-1"),
+            Name: "Espresso beans",
+            Price: CatalogContracts.Money.Of(amount: 12.50m, currency: CatalogContracts.Currency.Eur)));
+        catalog.Add(product: new CatalogContracts.ProductView(
+            Id: new CatalogContracts.ProductId(Value: "p-2"),
+            Name: "Filter papers",
+            Price: CatalogContracts.Money.Of(amount: 3.20m, currency: CatalogContracts.Currency.Eur)));
 
-        var result = orders.Place(new OrdersContracts.PlaceOrder("c-1", new[]
+        var result = orders.Place(command: new OrdersContracts.PlaceOrder(CustomerId: "c-1", Lines: new[]
         {
             new OrdersContracts.OrderLine(
-                new OrdersContracts.ProductId("p-1"),
-                OrdersContracts.Money.Of(12.50m, OrdersContracts.Currency.Eur),
-                2),
+                ProductId: new OrdersContracts.ProductId(Value: "p-1"),
+                UnitPrice: OrdersContracts.Money.Of(amount: 12.50m, currency: OrdersContracts.Currency.Eur),
+                Quantity: 2),
             new OrdersContracts.OrderLine(
-                new OrdersContracts.ProductId("p-2"),
-                OrdersContracts.Money.Of(3.20m, OrdersContracts.Currency.Eur),
-                1),
+                ProductId: new OrdersContracts.ProductId(Value: "p-2"),
+                UnitPrice: OrdersContracts.Money.Of(amount: 3.20m, currency: OrdersContracts.Currency.Eur),
+                Quantity: 1),
         }));
 
         if (result.Rejected is not null)

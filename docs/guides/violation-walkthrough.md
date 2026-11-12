@@ -17,12 +17,13 @@ cd examples/go         && go run ./tools/archtest --root . --config acima.galler
 cd examples/dotnet     && dotnet run --project tools/Acima.ArchTests -- --root . --config acima.gallery.config.json
 ```
 
-Not every language fires every rule. Python and TypeScript cover all 41 automated rules; Go and .NET
-cover 23 of them, because the five tier rules (`L005`–`L007`, `D010`, `G006`), the two
+Not every language fires every rule. Python executes 42 automated rules and TypeScript 41; Go
+executes 23 and .NET 24. The five tier rules (`L005`–`L007`, `D010`, `G006`), the two
 explicit-input rules (`D011`, `D012`), the two value rules (`A005`, `A006`), the two composition
 rules (`D013`, `D014`), the two functional-capture rules (`D015`, `D016`), the three lifecycle rules
-(`A007`–`A009`) and the two naming rules (`N001`–`N002`) report `executed: false` there in this
-revision. The fourteen manual rules, including `N003`, report `executed: false` in every language. Each profile documents
+(`A007`–`A009`) and the two naming rules (`N001`–`N002`) report `executed: false` in Go and .NET.
+TypeScript and Go also report `D017` as not executed because they have no native named-call syntax.
+The fourteen manual rules, including `N003`, report `executed: false` in every language. Each profile documents
 the other constructs it cannot see; the gaps are listed in [the language profiles](../languages/index.md).
 
 ---
@@ -367,7 +368,7 @@ and will be imported by the first person who finds it convenient.
 
 ## Rules without fixtures
 
-Twelve rules are in the catalog but not in the portable enforcer, because detecting them needs
+Fourteen rules are in the catalog but not in the portable enforcer, because detecting them needs
 information the source text does not carry:
 
 | Rule | Why it has no fixture |

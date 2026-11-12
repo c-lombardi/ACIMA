@@ -4,6 +4,9 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Acima.ArchTests;
 
@@ -115,6 +118,7 @@ internal sealed class Enforcer
     private const string D014 = "ACIMA-D014";
     private const string D015 = "ACIMA-D015";
     private const string D016 = "ACIMA-D016";
+    private const string D017 = "ACIMA-D017";
     private const string A007 = "ACIMA-A007";
     private const string A008 = "ACIMA-A008";
     private const string A009 = "ACIMA-A009";
@@ -147,9 +151,9 @@ internal sealed class Enforcer
         [D010] = ("error", "L1"),
         [L005] = ("warning", "L1"), [L006] = ("error", "L1"), [L007] = ("warning", "L1"),
         [G006] = ("warning", "L1"),
-        [D011] = ("warning", "L1"), [D012] = ("warning", "L1"),
+        [D011] = ("error", "L1"), [D012] = ("error", "L1"),
         [D013] = ("warning", "L1"), [D014] = ("warning", "L1"),
-        [D015] = ("warning", "L1"), [D016] = ("warning", "L1"),
+        [D015] = ("warning", "L1"), [D016] = ("warning", "L1"), [D017] = ("warning", "L1"),
         [A007] = ("warning", "L3"), [A008] = ("warning", "L3"), [A009] = ("warning", "L3"),
         [A010] = ("error", "L3"), [A011] = ("error", "L3"),
         [A012] = ("error", "L3"), [A013] = ("warning", "L3"),
@@ -250,6 +254,7 @@ internal sealed class Enforcer
         CheckLayering();
         CheckSql();
         CheckStatics();
+        CheckNamedArguments();
         ApplyWaivers();
         return Dedupe();
     }
@@ -1052,6 +1057,267 @@ internal sealed class Enforcer
         }
     }
 
+    private static string CallName(ExpressionSyntax expression) => expression switch
+    {
+        IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
+        GenericNameSyntax generic => generic.Identifier.ValueText,
+        MemberAccessExpressionSyntax member => CallName(member.Name),
+        MemberBindingExpressionSyntax binding => CallName(binding.Name),
+        _ => string.Empty,
+    };
+
+    private static string TypeLeaf(TypeSyntax? type)
+    {
+        if (type is null) return string.Empty;
+        return type switch
+        {
+            IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
+            GenericNameSyntax generic => generic.Identifier.ValueText,
+            QualifiedNameSyntax qualified => TypeLeaf(qualified.Right),
+            AliasQualifiedNameSyntax alias => TypeLeaf(alias.Name),
+            NullableTypeSyntax nullable => TypeLeaf(nullable.ElementType),
+            ArrayTypeSyntax array => TypeLeaf(array.ElementType),
+            _ => type.DescendantTokens().LastOrDefault(token => token.IsKind(SyntaxKind.IdentifierToken)).ValueText ?? string.Empty,
+        };
+    }
+
+    private static bool IsModuleOwnedRole(string role) =>
+        role is "implementation" or "host" or "adapter" or "port";
+
+    private void CheckNamedArguments()
+    {
+        // C# supports native labels: parameterName: value. Roslyn parses declarations and
+        // calls without executing the product or depending on a project build graph.
+        var methods = new Dictionary<string, List<(string Owner, string[] Names, bool HasParams)>>(StringComparer.Ordinal);
+        var constructors = new Dictionary<string, List<(string[] Names, bool HasParams)>>(StringComparer.Ordinal);
+        var declaredTypes = new HashSet<string>(StringComparer.Ordinal);
+        var trees = new Dictionary<string, SyntaxNode>(StringComparer.Ordinal);
+
+        void AddMethod(string name, string owner, ParameterListSyntax parameters)
+        {
+            var declared = parameters.Parameters;
+            var extension = declared.Count > 0 && declared[0].Modifiers.Any(token => token.IsKind(SyntaxKind.ThisKeyword));
+            var names = declared.Skip(extension ? 1 : 0).Select(parameter => parameter.Identifier.ValueText).ToArray();
+            var hasParams = declared.Any(parameter => parameter.Modifiers.Any(token => token.IsKind(SyntaxKind.ParamsKeyword)));
+            if (!methods.TryGetValue(name, out var entries))
+                methods[name] = entries = new List<(string Owner, string[] Names, bool HasParams)>();
+            if (!entries.Any(entry => entry.Owner == owner && entry.Names.SequenceEqual(names)))
+                entries.Add((owner, names, hasParams));
+        }
+
+        foreach (var (path, source) in _files.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        {
+            var unit = _fileUnits[path];
+            if (unit.Role is not ("contracts" or "implementation" or "host" or "adapter" or "port")) continue;
+            var tree = CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(LanguageVersion.Latest));
+            var syntax = tree.GetRoot();
+            if (IsModuleOwnedRole(unit.Role)) trees[path] = syntax;
+            foreach (var declaration in syntax.DescendantNodes().OfType<TypeDeclarationSyntax>())
+                declaredTypes.Add(declaration.Identifier.ValueText);
+            foreach (var method in syntax.DescendantNodes().OfType<MethodDeclarationSyntax>())
+                AddMethod(method.Identifier.ValueText, method.Ancestors().OfType<TypeDeclarationSyntax>().FirstOrDefault()?.Identifier.ValueText ?? path, method.ParameterList);
+            foreach (var local in syntax.DescendantNodes().OfType<LocalFunctionStatementSyntax>())
+                AddMethod(local.Identifier.ValueText, path + "::local", local.ParameterList);
+            foreach (var constructor in syntax.DescendantNodes().OfType<ConstructorDeclarationSyntax>())
+            {
+                if (constructor.Parent is not TypeDeclarationSyntax owner) continue;
+                var parameters = constructor.ParameterList.Parameters;
+                var names = parameters.Select(parameter => parameter.Identifier.ValueText).ToArray();
+                var hasParams = parameters.Any(parameter => parameter.Modifiers.Any(token => token.IsKind(SyntaxKind.ParamsKeyword)));
+                if (!constructors.TryGetValue(owner.Identifier.ValueText, out var entries))
+                    constructors[owner.Identifier.ValueText] = entries = new List<(string[] Names, bool HasParams)>();
+                if (!entries.Any(entry => entry.Names.SequenceEqual(names))) entries.Add((names, hasParams));
+            }
+            foreach (var declaration in syntax.DescendantNodes().OfType<ClassDeclarationSyntax>())
+            {
+                if (declaration.ParameterList is null) continue;
+                AddPrimaryConstructor(declaration.Identifier.ValueText, declaration.ParameterList);
+            }
+            foreach (var declaration in syntax.DescendantNodes().OfType<RecordDeclarationSyntax>())
+            {
+                if (declaration.ParameterList is null) continue;
+                AddPrimaryConstructor(declaration.Identifier.ValueText, declaration.ParameterList);
+            }
+
+            void AddPrimaryConstructor(string owner, ParameterListSyntax parameterList)
+            {
+                var names = parameterList.Parameters.Select(parameter => parameter.Identifier.ValueText).ToArray();
+                var hasParams = parameterList.Parameters.Any(parameter =>
+                    parameter.Modifiers.Any(token => token.IsKind(SyntaxKind.ParamsKeyword)));
+                if (!constructors.TryGetValue(owner, out var entries))
+                    constructors[owner] = entries = new List<(string[] Names, bool HasParams)>();
+                if (!entries.Any(entry => entry.Names.SequenceEqual(names))) entries.Add((names, hasParams));
+            }
+        }
+
+        foreach (var (path, syntax) in trees)
+        {
+            var unit = _fileUnits[path];
+            var sourceLines = _files[path].Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+            foreach (var invocation in syntax.DescendantNodes().OfType<InvocationExpressionSyntax>())
+            {
+                var name = CallName(invocation.Expression);
+                if (string.IsNullOrEmpty(name) || !methods.TryGetValue(name, out var candidates)) continue;
+                var currentType = invocation.Ancestors().OfType<TypeDeclarationSyntax>().FirstOrDefault();
+                var receiverType = invocation.Expression switch
+                {
+                    IdentifierNameSyntax => currentType?.Identifier.ValueText,
+                    MemberAccessExpressionSyntax member => ResolveReceiverType(member.Expression, invocation, currentType, declaredTypes),
+                    _ => null,
+                };
+                if (string.IsNullOrEmpty(receiverType)) continue;
+                var matching = candidates.Where(candidate => candidate.Owner == receiverType).ToList();
+                if (matching.Count == 0) continue;
+                var unlabeled = new List<string>();
+                var firstLine = 0;
+                foreach (var argument in invocation.ArgumentList.Arguments)
+                {
+                    if (argument.NameColon is not null) continue;
+                    var index = invocation.ArgumentList.Arguments.IndexOf(argument);
+                    var viable = matching.Where(candidate =>
+                        index < candidate.Names.Length || candidate.HasParams && candidate.Names.Length > 0).ToList();
+                    if (viable.Count == 0) continue;
+                    // Expanded params values have no independent destination name. Require the
+                    // caller to construct an array and pass that array under the params label.
+                    if (viable.All(candidate => candidate.HasParams && index >= candidate.Names.Length - 1))
+                    {
+                        var paramsLabels = viable.Where(candidate => candidate.Names.Length > 0)
+                            .Select(candidate => candidate.Names[^1]).Distinct(StringComparer.Ordinal).ToList();
+                        var paramsName = paramsLabels.Count == 1 ? paramsLabels[0] : "the declared params parameter";
+                        var expanded = invocation.ArgumentList.Arguments.Skip(index)
+                            .Select(item => item.Expression.ToString()).ToList();
+                        unlabeled.Add(paramsName + ": new[] { " + string.Join(", ", expanded) + " }");
+                        break;
+                    }
+                    var labels = viable.Where(candidate => index < candidate.Names.Length)
+                        .Select(candidate => candidate.Names[index]).Distinct(StringComparer.Ordinal).ToList();
+                    var hint = labels.Count == 1 ? labels[0] : "the declared parameter";
+                    unlabeled.Add(hint + ": " + argument.Expression);
+                    if (firstLine == 0)
+                        firstLine = argument.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+                }
+                if (unlabeled.Count > 0)
+                {
+                    var line = firstLine > 0 ? firstLine :
+                        invocation.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+                    var evidence = line > 0 && line <= sourceLines.Length ? sourceLines[line - 1].Trim() : invocation.ToString();
+                    Add(D017, $"{unit.Id} calls {name}() with unlabeled arguments; label every value: " +
+                        string.Join(", ", unlabeled) + ".",
+                        path, line, evidence);
+                }
+            }
+
+            foreach (var creation in syntax.DescendantNodes().OfType<ObjectCreationExpressionSyntax>())
+                CheckCreation(path, unit, sourceLines, constructors, TypeLeaf(creation.Type), creation.ArgumentList?.Arguments);
+            foreach (var creation in syntax.DescendantNodes().OfType<ImplicitObjectCreationExpressionSyntax>())
+                CheckCreation(path, unit, sourceLines, constructors, string.Empty, creation.ArgumentList.Arguments);
+        }
+    }
+
+    private static ParameterListSyntax? ParameterListOf(SyntaxNode node) => node switch
+    {
+        MethodDeclarationSyntax method => method.ParameterList,
+        ConstructorDeclarationSyntax constructor => constructor.ParameterList,
+        LocalFunctionStatementSyntax local => local.ParameterList,
+        OperatorDeclarationSyntax op => op.ParameterList,
+        ConversionOperatorDeclarationSyntax conversion => conversion.ParameterList,
+        _ => null,
+    };
+
+    private static string? ResolveReceiverType(ExpressionSyntax receiver,
+        InvocationExpressionSyntax invocation, TypeDeclarationSyntax? currentType,
+        HashSet<string> declaredTypes)
+    {
+        if (receiver is MemberAccessExpressionSyntax staticType)
+        {
+            var typeName = CallName(staticType);
+            if (declaredTypes.Contains(typeName)) return typeName;
+            return null;
+        }
+        if (receiver is not IdentifierNameSyntax identifier) return null;
+        var name = identifier.Identifier.ValueText;
+        if (currentType is null) return null;
+
+        foreach (var field in currentType.Members.OfType<FieldDeclarationSyntax>())
+        {
+            var match = field.Declaration.Variables.FirstOrDefault(variable => variable.Identifier.ValueText == name);
+            if (match is not null) return TypeLeaf(field.Declaration.Type);
+        }
+        foreach (var property in currentType.Members.OfType<PropertyDeclarationSyntax>())
+        {
+            if (property.Identifier.ValueText == name) return TypeLeaf(property.Type);
+        }
+        if (currentType is ClassDeclarationSyntax classDeclaration && classDeclaration.ParameterList is not null)
+        {
+            var parameter = classDeclaration.ParameterList.Parameters.FirstOrDefault(item => item.Identifier.ValueText == name);
+            if (parameter is not null) return TypeLeaf(parameter.Type);
+        }
+        if (currentType is RecordDeclarationSyntax recordDeclaration && recordDeclaration.ParameterList is not null)
+        {
+            var parameter = recordDeclaration.ParameterList.Parameters.FirstOrDefault(item => item.Identifier.ValueText == name);
+            if (parameter is not null) return TypeLeaf(parameter.Type);
+        }
+
+        var scope = invocation.Ancestors().FirstOrDefault(node =>
+            node is MethodDeclarationSyntax or ConstructorDeclarationSyntax or LocalFunctionStatementSyntax);
+        if (scope is null) return null;
+        var parameterList = ParameterListOf(scope);
+        var scopedParameter = parameterList?.Parameters.FirstOrDefault(item => item.Identifier.ValueText == name);
+        if (scopedParameter is not null) return TypeLeaf(scopedParameter.Type);
+
+        var local = scope.DescendantNodes().OfType<VariableDeclaratorSyntax>()
+            .Where(item => item.Identifier.ValueText == name && item.SpanStart < invocation.SpanStart)
+            .OrderByDescending(item => item.SpanStart).FirstOrDefault();
+        if (local?.Parent is VariableDeclarationSyntax declaration)
+        {
+            if (!declaration.Type.IsVar) return TypeLeaf(declaration.Type);
+            return local.Initializer?.Value switch
+            {
+                ObjectCreationExpressionSyntax creation => TypeLeaf(creation.Type),
+                _ => null,
+            };
+        }
+        return null;
+    }
+    private void CheckCreation(string path, Unit unit, string[] sourceLines,
+        Dictionary<string, List<(string[] Names, bool HasParams)>> constructors, string typeName,
+        SeparatedSyntaxList<ArgumentSyntax>? arguments)
+    {
+        if (string.IsNullOrEmpty(typeName) || arguments is null || !constructors.TryGetValue(typeName, out var signatures)) return;
+        var unlabeled = new List<string>();
+        var firstLine = 0;
+        for (var index = 0; index < arguments.Value.Count; index++)
+        {
+            var argument = arguments.Value[index];
+            if (argument.NameColon is not null) continue;
+            var viable = signatures.Where(signature => index < signature.Names.Length ||
+                signature.HasParams && signature.Names.Length > 0).ToList();
+            if (viable.Count == 0) continue;
+            if (viable.All(signature => signature.HasParams && index >= signature.Names.Length - 1))
+            {
+                var paramsLabels = viable.Where(signature => signature.Names.Length > 0)
+                    .Select(signature => signature.Names[^1]).Distinct(StringComparer.Ordinal).ToList();
+                var paramsName = paramsLabels.Count == 1 ? paramsLabels[0] : "the declared params parameter";
+                var expanded = arguments.Value.Skip(index).Select(item => item.Expression.ToString()).ToList();
+                unlabeled.Add(paramsName + ": new[] { " + string.Join(", ", expanded) + " }");
+                break;
+            }
+            var labels = viable.Where(signature => index < signature.Names.Length)
+                .Select(signature => signature.Names[index]).Distinct(StringComparer.Ordinal).ToList();
+            var hint = labels.Count == 1 ? labels[0] : "the declared parameter";
+            unlabeled.Add(hint + ": " + argument.Expression);
+            if (firstLine == 0)
+                firstLine = argument.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+        }
+        if (unlabeled.Count > 0)
+        {
+            var line = firstLine > 0 ? firstLine : arguments.Value[0].GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+            var evidence = line > 0 && line <= sourceLines.Length ? sourceLines[line - 1].Trim() : string.Join(", ", unlabeled);
+            Add(D017, $"{unit.Id} constructs {typeName} with unlabeled arguments; label every value: " +
+                string.Join(", ", unlabeled) + ".",
+                path, line, evidence);
+        }
+    }
     private void CheckStatics()
     {
         var declarations = new Dictionary<string, (Unit Unit, string Path, int Line)>(StringComparer.Ordinal);

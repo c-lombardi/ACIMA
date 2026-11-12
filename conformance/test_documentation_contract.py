@@ -62,14 +62,14 @@ class DocumentationContractTests(unittest.TestCase):
     def test_l2_counts_in_the_template_match_the_catalog(self) -> None:
         catalog = json.loads(read("tools/acima-spec/rules.json"))["rules"]
         l2 = [rule for rule in catalog if rule["level"] in ("L1", "L2")]
-        self.assertEqual(len(l2), 37)
+        self.assertEqual(len(l2), 38)
         not_executed = set(json.loads(read("conformance/coverage.json"))
                            ["profiles"]["python"]["notExecuted"])
         executed = [rule for rule in l2 if rule["id"] not in not_executed]
-        self.assertEqual(len(executed), 32)
+        self.assertEqual(len(executed), 33)
         conformance = read("docs/standard/08-conformance.md")
-        self.assertIn("At L2 the catalog requires 37", conformance)
-        self.assertIn("execute 32 of those", conformance)
+        self.assertIn("At L2 the catalog requires 38", conformance)
+        self.assertIn("execute 33 of those", conformance)
 
     def test_waiver_semantics_require_a_fingerprint(self) -> None:
         governance = read("docs/standard/07-executable-governance.md")
@@ -86,7 +86,7 @@ class DocumentationContractTests(unittest.TestCase):
                                   "ACIMA-C003", "ACIMA-C007", "ACIMA-C008", "ACIMA-G004",
                                   "ACIMA-L004", "ACIMA-N003"})
         self.assertEqual(sum(1 for rule in catalog["rules"]
-                             if rule.get("automation") == "automated"), 41)
+                             if rule.get("automation") == "automated"), 42)
         self.assertEqual(catalog["claimModel"]["manualEvidencePath"],
                          ".acima/manual-evidence.json")
         for rule in catalog["rules"]:

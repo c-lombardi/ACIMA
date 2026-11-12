@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ACIMA reference enforcer for Python.
 
-Implements the 41 automated rules and reports the 14 manual review requirements against the units declared in acima.config.json.
+Implements the 42 automated rules and reports the 14 manual review requirements against the units declared in acima.config.json.
 Reads source with `ast`; never imports the product code.
 
     python3 tools/acima_arch.py --root . --config acima.config.json --format json
@@ -26,9 +26,9 @@ CATALOG: dict[str, tuple[str, str]] = {
     "ACIMA-D004": ("error", "L1"), "ACIMA-D005": ("error", "L1"), "ACIMA-D006": ("error", "L1"),
     "ACIMA-D007": ("error", "L1"), "ACIMA-D008": ("error", "L1"), "ACIMA-D009": ("error", "L1"),
     "ACIMA-D010": ("error", "L1"),
-    "ACIMA-D011": ("warning", "L1"), "ACIMA-D012": ("warning", "L1"),
+    "ACIMA-D011": ("error", "L1"), "ACIMA-D012": ("error", "L1"),
     "ACIMA-D013": ("warning", "L1"), "ACIMA-D014": ("warning", "L1"),
-    "ACIMA-D015": ("warning", "L1"), "ACIMA-D016": ("warning", "L1"),
+    "ACIMA-D015": ("warning", "L1"), "ACIMA-D016": ("warning", "L1"), "ACIMA-D017": ("warning", "L1"),
     "ACIMA-L001": ("error", "L1"), "ACIMA-L002": ("error", "L1"), "ACIMA-L003": ("error", "L1"),
     "ACIMA-L004": ("warning", "L1"), "ACIMA-L005": ("warning", "L1"), "ACIMA-L006": ("error", "L1"),
     "ACIMA-L007": ("warning", "L1"),
@@ -932,6 +932,171 @@ class Enforcer:
                                  "that omission changes behaviour, require the decision at the "
                                  "call site.", rel, arg.lineno, evidence)
 
+    @staticmethod
+    def _named_callable_parameters(node: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[list[str], int]:
+        """Return keyword-capable positional parameters and the positional-only count."""
+        positional_only = [item.arg for item in node.args.posonlyargs]
+        positional = [item.arg for item in node.args.args]
+        all_positional = positional_only + positional
+        if node.name in {"__init__", "__new__"} and all_positional:
+            all_positional = all_positional[1:]
+            positional_only = positional_only[1:] if positional_only else []
+        elif all_positional and all_positional[0] in {"self", "cls"}:
+            all_positional = all_positional[1:]
+            positional_only = positional_only[1:] if positional_only else []
+        return all_positional, len(positional_only)
+
+    def check_named_call_arguments(self) -> None:
+        """D017: label calls only when the receiving signature can be resolved statically.
+
+        Resolve same-file functions, classes, typed receivers, constructor-created fields,
+        and module-level constructed instances. Never infer a destination from a method name
+        alone: unresolved external and dynamic receivers remain outside the automated subset.
+        """
+        for rel in sorted(self.files):
+            unit = self.units_of[rel]
+            if unit.role not in self.EXPLICIT_ROLES:
+                continue
+            tree = self.files[rel]
+            parents = {child: parent for parent in ast.walk(tree)
+                       for child in ast.iter_child_nodes(parent)}
+            module_functions: dict[str, tuple[list[str], int] | None] = {}
+            class_methods: dict[str, dict[str, tuple[list[str], int] | None]] = {}
+            class_constructors: dict[str, tuple[list[str], int] | None] = {}
+            class_fields: dict[str, dict[str, str]] = {}
+            module_instances: dict[str, str] = {}
+
+            def remember(target: dict, name: str, signature: tuple[list[str], int]) -> None:
+                if name in target and target[name] != signature:
+                    target[name] = None
+                else:
+                    target[name] = signature
+
+            def annotation_type(node: ast.expr | None) -> str | None:
+                if isinstance(node, ast.Name):
+                    return node.id
+                if isinstance(node, ast.Subscript):
+                    return annotation_type(node.value)
+                if isinstance(node, ast.Attribute):
+                    return node.attr
+                return None
+
+            for definition in (item for item in ast.walk(tree)
+                               if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))):
+                signature = self._named_callable_parameters(definition)
+                parent = parents.get(definition)
+                if isinstance(parent, ast.ClassDef):
+                    remember(class_methods.setdefault(parent.name, {}), definition.name, signature)
+                    if definition.name == "__init__":
+                        class_constructors[parent.name] = signature
+                        fields = class_fields.setdefault(parent.name, {})
+                        for statement in ast.walk(definition):
+                            if isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Attribute):
+                                if isinstance(statement.target.value, ast.Name) and statement.target.value.id == "self":
+                                    inferred = annotation_type(statement.annotation)
+                                    if inferred:
+                                        fields[statement.target.attr] = inferred
+                            elif isinstance(statement, ast.Assign) and isinstance(statement.value, ast.Call):
+                                if isinstance(statement.value.func, ast.Name):
+                                    for target in statement.targets:
+                                        if (isinstance(target, ast.Attribute)
+                                                and isinstance(target.value, ast.Name)
+                                                and target.value.id == "self"):
+                                            fields[target.attr] = statement.value.func.id
+                else:
+                    remember(module_functions, definition.name, signature)
+
+            for statement in tree.body:
+                if isinstance(statement, ast.Assign) and isinstance(statement.value, ast.Call):
+                    if isinstance(statement.value.func, ast.Name):
+                        for target in statement.targets:
+                            if isinstance(target, ast.Name):
+                                module_instances[target.id] = statement.value.func.id
+                elif isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name):
+                    inferred = annotation_type(statement.annotation)
+                    if inferred:
+                        module_instances[statement.target.id] = inferred
+
+            lines = (self.root / rel).read_text(encoding="utf-8", errors="replace").splitlines()
+
+            def containing_function(node: ast.AST):
+                parent = parents.get(node)
+                while parent is not None:
+                    if isinstance(parent, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        return parent
+                    parent = parents.get(parent)
+                return None
+
+            def receiver_type(receiver: ast.expr, call: ast.Call) -> str | None:
+                if isinstance(receiver, ast.Name):
+                    if receiver.id in module_instances:
+                        return module_instances[receiver.id]
+                    scope = containing_function(call)
+                    if scope:
+                        arguments = [*scope.args.posonlyargs, *scope.args.args, *scope.args.kwonlyargs]
+                        for argument in arguments:
+                            if argument.arg == receiver.id:
+                                return annotation_type(argument.annotation)
+                        for item in ast.walk(scope):
+                            if isinstance(item, ast.AnnAssign) and isinstance(item.target, ast.Name):
+                                if item.target.id == receiver.id:
+                                    return annotation_type(item.annotation)
+                            if isinstance(item, ast.Assign) and isinstance(item.value, ast.Call):
+                                if isinstance(item.value.func, ast.Name) and any(
+                                    isinstance(target, ast.Name) and target.id == receiver.id
+                                    for target in item.targets
+                                ):
+                                    return item.value.func.id
+                    return None
+                if isinstance(receiver, ast.Attribute) and isinstance(receiver.value, ast.Name):
+                    if receiver.value.id in {"self", "cls"}:
+                        parent = parents.get(call)
+                        while parent is not None and not isinstance(parent, ast.ClassDef):
+                            parent = parents.get(parent)
+                        if isinstance(parent, ast.ClassDef):
+                            return class_fields.get(parent.name, {}).get(receiver.attr)
+                return None
+
+            for call in (item for item in ast.walk(tree) if isinstance(item, ast.Call)):
+                expression = call.func
+                if isinstance(expression, ast.Name):
+                    leaf = expression.id
+                    signature = module_functions.get(leaf)
+                    if signature is None:
+                        signature = class_constructors.get(leaf)
+                elif isinstance(expression, ast.Attribute):
+                    leaf = expression.attr
+                    receiver = expression.value
+                    if isinstance(receiver, ast.Name) and receiver.id in {"self", "cls"}:
+                        parent = parents.get(call)
+                        while parent is not None and not isinstance(parent, ast.ClassDef):
+                            parent = parents.get(parent)
+                        signature = class_methods.get(parent.name, {}).get(leaf) if isinstance(parent, ast.ClassDef) else None
+                    else:
+                        type_name = receiver_type(receiver, call)
+                        signature = class_methods.get(type_name, {}).get(leaf) if type_name else None
+                else:
+                    continue
+                if not signature:
+                    continue
+                parameters, positional_only_count = signature
+                unlabeled = []
+                for index, argument in enumerate(call.args):
+                    if index < positional_only_count:
+                        continue
+                    if index >= len(parameters):
+                        break
+                    unlabeled.append(f"{parameters[index]}={ast.unparse(argument)}")
+                if unlabeled:
+                    line = getattr(call, "lineno", 1)
+                    evidence = lines[line - 1].strip() if 0 < line <= len(lines) else ast.unparse(call)
+                    self.add(
+                        "ACIMA-D017",
+                        f"{unit.id} calls {leaf}() with unlabeled arguments; label every value: "
+                        + ", ".join(unlabeled) + ".",
+                        rel, line, evidence,
+                    )
+
     # -- composition and injection -----------------------------------------
     COMPOSITION_ROLES = ("implementation", "host", "adapter")
     DYNAMIC_DISCOVERY = frozenset({
@@ -1583,6 +1748,7 @@ class Enforcer:
         self.check_sql()
         self.check_statics()
         self.check_explicit_inputs()
+        self.check_named_call_arguments()
         self.check_composition()
         self.check_functional_capture()
         self.check_partial_application()

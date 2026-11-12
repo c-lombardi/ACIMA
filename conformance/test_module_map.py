@@ -360,5 +360,20 @@ class ModuleMapTests(unittest.TestCase):
             self.assertIn("Assessment", index)
 
 
+    def test_automated_review_never_approves_manifest_or_layout_only_candidates(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            clean_repo(root)
+            write(root, "src/orders/pyproject.toml", "[project]\\nname = 'orders'\\n")
+            write(root, "src/billing/pyproject.toml", "[project]\\nname = 'billing'\\n")
+            proposal = module_map.discover(root)
+            review = module_map.automatic_review(proposal, "Automated preparation")
+            self.assertTrue(review["moduleDecisions"])
+            self.assertTrue(all(item["decision"] == "defer" for item in review["moduleDecisions"]))
+            allowed, reason = module_map.mode_can_auto_accept(proposal)
+            self.assertFalse(allowed)
+            self.assertIn("inferred or layout-only ownership", reason)
+
+
 if __name__ == "__main__":
     unittest.main()

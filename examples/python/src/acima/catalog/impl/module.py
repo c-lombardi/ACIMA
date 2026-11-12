@@ -26,7 +26,7 @@ class CatalogModule:
 
     def __init__(self, store: ProductStore) -> None:
         self._store = store
-        self._reader = _CatalogReader(self._store)
+        self._reader = _CatalogReader(store=self._store)
 
     def reader(self) -> _CatalogReader:
         return self._reader

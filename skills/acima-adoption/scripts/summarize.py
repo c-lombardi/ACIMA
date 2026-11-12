@@ -94,11 +94,10 @@ def load_json(path: Path, what: str) -> dict:
 
 def resolve_catalog(explicit: str | None) -> Path:
     here = Path(__file__).resolve()
-    repository = here.parents[3] if len(here.parents) > 3 else here.parent
-    vendor = here.parents[1] / "vendor"
+    skill = here.parents[1] if len(here.parents) > 1 else here.parent
     candidates = [Path(explicit)] if explicit else []
-    candidates += [repository / "tools/acima-spec/rules.json",
-                   vendor / "tools/acima-spec/rules.json"]
+    candidates += [parent / "tools/acima-spec/rules.json" for parent in here.parents]
+    candidates.append(skill / "vendor/tools/acima-spec/rules.json")
     for candidate in candidates:
         if candidate.is_file():
             return candidate

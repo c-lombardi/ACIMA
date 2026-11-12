@@ -25,14 +25,14 @@
     },
     "qualitativeReview": {
       "type": "object",
-      "description": "The original 55-rule evidence-backed qualitative review. The renderer revalidates its evidence against repository.path and the pinned catalog.",
+      "description": "The original 56-rule evidence-backed qualitative review. The renderer revalidates its evidence against repository.path and the pinned catalog.",
       "required": ["schemaVersion", "reviewer", "reviewedOn", "catalogSha256", "rules"],
       "properties": {
         "schemaVersion": { "const": "1.0" },
         "reviewer": { "type": "string", "minLength": 1 },
         "reviewedOn": { "type": "string", "format": "date" },
         "catalogSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-        "rules": { "type": "array", "minItems": 55, "maxItems": 55 }
+        "rules": { "type": "array", "minItems": 56, "maxItems": 56 }
       }
     },
     "assessmentStatus": { "type": "string" },
@@ -326,8 +326,8 @@
     "preservation": { "type": "array", "items": { "type": ["string", "object"] } },
     "conformance": {
       "type": "array",
-      "minItems": 55,
-      "maxItems": 55,
+      "minItems": 56,
+      "maxItems": 56,
       "items": {
         "type": "object",
         "required": ["rule", "requirement", "meaning", "disposition", "rationale", "evidenceRefs"],

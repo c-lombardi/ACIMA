@@ -21,9 +21,9 @@ const CATALOG = {
   'ACIMA-L001': ['error', 'L1'], 'ACIMA-L002': ['error', 'L1'], 'ACIMA-L003': ['error', 'L1'],
   'ACIMA-L004': ['warning', 'L1'],
   'ACIMA-D010': ['error', 'L1'],
-  'ACIMA-D011': ['warning', 'L1'], 'ACIMA-D012': ['warning', 'L1'],
+  'ACIMA-D011': ['error', 'L1'], 'ACIMA-D012': ['error', 'L1'],
   'ACIMA-D013': ['warning', 'L1'], 'ACIMA-D014': ['warning', 'L1'],
-  'ACIMA-D015': ['warning', 'L1'], 'ACIMA-D016': ['warning', 'L1'],
+  'ACIMA-D015': ['warning', 'L1'], 'ACIMA-D016': ['warning', 'L1'], 'ACIMA-D017': ['warning', 'L1'],
   'ACIMA-A007': ['warning', 'L3'], 'ACIMA-A008': ['warning', 'L3'], 'ACIMA-A009': ['warning', 'L3'],
   'ACIMA-A010': ['error', 'L3'], 'ACIMA-A011': ['error', 'L3'],
   'ACIMA-A012': ['error', 'L3'], 'ACIMA-A013': ['warning', 'L3'],
@@ -41,6 +41,7 @@ const CATALOG = {
   'ACIMA-G005': ['error', 'L1'], 'ACIMA-G006': ['warning', 'L1'],
 };
 const NOT_EXECUTED = {
+  'ACIMA-D017': 'TypeScript/JavaScript has no native named-argument call syntax; wrapper objects are not required as a substitute.',
   'ACIMA-C003': 'behaviour versus validation is a semantic judgement',
   'ACIMA-C007': 'constructor completeness needs symbol and API analysis',
   'ACIMA-L004': 'service-locator APIs are framework-specific',

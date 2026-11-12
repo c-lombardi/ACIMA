@@ -47,15 +47,34 @@ Classify each artifact honestly: required, conditional or optional. An adoption 
 plan, a status dashboard and a summary are optional unless the owner asks for them or coordination
 genuinely requires them. Do not mark an artifact required because a template exists for it.
 
+For both guided and automated adoption, render and validate the six-page HTML proposal from the
+current review, map and proposal. Open it in the user's available browser/viewer and present direct
+links to the index and all six sections. A local path in a status message is not presentation. If
+the agent cannot open or show the report, block at this review checkpoint; do not ask the user to
+approve unseen material. The report must contain the actual assessment, proposed changes, affected
+files, plan, evidence, decisions and limitations.
+
 ### Phase 3: explicit authorization
 
-The approval question is explicit:
+The approval question is explicit and must follow presentation of the HTML report:
 
-> Would you like me to proceed with this adoption plan and create the listed files and changes?
+> Have you reviewed the six-page HTML proposal? Which exact objectives and listed paths do you
+> authorize ACIMA to implement?
+
+Record the named reviewer, exact report SHA-256, proposal SHA-256, repository revision, branch and
+working-tree identity with the decision. The approval must match the report and proposal currently
+being presented. If the report, proposal, branch, commit or working-tree content changes, invalidate
+the approval and generate a fresh report. Reviewing, opening or acknowledging the report is not
+implementation consent.
 
 Do not substitute “Should I proceed with ACIMA?” or “Want me to set it up?”. A general expression
 of interest, continued conversation, silence, or approval of the assessment is not consent. Wait for
-the answer before the first write.
+the answer before the first implementation write.
+
+Ask separately whether the owner wants ACIMA's user-facing adoption notifications proposed. This
+is distinct from application-domain notifications, CI integration, source remediation and repository
+AI-agent instructions. A yes requests a separate design proposal; actual code and external channels
+require a second review and explicit approval of exact paths.
 
 Approval covers only what was shown. Partial approval is supported and is the normal case: implement
 the approved paths and level, then state the capability and the gap of what was not approved.
@@ -97,8 +116,10 @@ the owner answers the approval question, and it is read-only to `status`:
 }
 ```
 
-The canonical objectives are `assessment`, `local-enforcement`, `baseline-waivers`,
-`ci-enforcement`, `full-conformance`, `developer-handoff` and `communication-governance`.
+The canonical objectives include `assessment`, `local-enforcement`, `baseline-waivers`,
+`ci-enforcement`, `agent-guidance`, `source-remediation`, `full-conformance`, `developer-handoff`
+and `communication-governance`. ACIMA adoption notifications are a separate, optional
+proposal decision; they are not implicitly included in agent guidance or CI approval.
 `required` and `approved` are completion obligations; `declined`, `deferred`, `optional` and
 `not-applicable` never block. Do not use `NOT_APPLICABLE` for a declined objective: a declined
 choice, a deferred choice, an optional document and a genuinely irrelevant objective are four
@@ -274,19 +295,29 @@ to commitments do.
 
 ## Automation modes
 
-Guided adoption and full automation use the same assessment and artifacts. Guided stops at the
-module-map review and at the adoption-scope approval. Full automation is an explicit pre-flight
-authorization to apply well-supported map decisions, generate enforcement, integrate a detected CI
-provider and verify the result without repeated routine approvals. It is scoped to the selected
+Guided adoption and automated adoption use the same assessment and artifacts. Guided mode has
+separate review checkpoints for the module map, the presented HTML proposal, CI, optional adoption
+notifications, optional agent guidance and implementation stages. Automated mode prepares the
+complete package and presents one consolidated HTML review, then executes only the stages and paths
+the owner explicitly approves. Selecting either mode authorizes analysis and preparation only; it
+does not authorize enforcement, source, build, CI, notification or instruction changes. Automated
+means automatic execution after approval, not approval without review. It is scoped to the selected
 repository and is not permission to deploy, release, commit, push, expose secrets, destroy data,
 modify another repository or override an owner's architectural decision. Ambiguous ownership pauses
-only that decision; completed work remains. The selected mode lives in
-`.acima/adoption-workflow.json` and approval of a map alone does not authorize application changes.
+only that decision; completed analysis remains. The selected mode lives in
+`.acima/adoption-workflow.json`. A map approval, HTML-report review or CI choice alone does not
+authorize application changes.
 
-Immediate remediation is a separate final decision after CI, not part of initial adoption consent or
-full automation. The user chooses none, selected, or all applicable recommendations. A large or
-high-risk brownfield scope requires two distinct affirmative confirmations; small/moderate brownfield
-and greenfield work require one. Declining remediation preserves the map, enforcement and CI outcome.
+Immediate remediation is a separate final decision after CI, not part of initial adoption consent
+or automated-mode selection. The user chooses none, selected, or all applicable recommendations.
+Source changes require the reviewed remediation-plan digest, named approver and exact source paths.
+A large or high-risk brownfield scope requires two distinct affirmative confirmations;
+small/moderate brownfield and greenfield work require one. Declining remediation preserves the map,
+enforcement and CI outcome.
+
+A Git branch operation is never implementation consent. Do not create, switch or recover a branch
+automatically. A branch selection does not approve target files. If the branch, commit or working
+tree changes after report generation, invalidate the report review and obtain fresh approval.
 
 ## Stop conditions
 

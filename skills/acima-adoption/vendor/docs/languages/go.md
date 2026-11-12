@@ -253,3 +253,9 @@ boundary. Test names state the rule (`TestPlaceOrder_RejectsMoreThanAvailableSto
 `go list -deps ./services/orders/application/contracts` must show only stdlib. `go list -deps` also
 proves the domain imports no vendor package. `go vet` and `staticcheck` catch type leaks; the
 `internal/` rule enforces the service boundary at compile time.
+
+### Named call arguments (D017)
+
+Go has no native named-argument call syntax. The reference enforcer reports D017 as executed:false;
+it does not invent wrapper objects or label-like conventions. A typed request struct remains
+appropriate when it is the actual operation contract, not merely a substitute for call-site labels.

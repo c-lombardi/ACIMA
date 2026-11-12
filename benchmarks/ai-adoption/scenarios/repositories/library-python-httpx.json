@@ -112,7 +112,7 @@
     "No violation-level ground truth is recorded for this scenario, so finding precision and recall are reported unavailable rather than estimated.",
     "The unit-map a correct assessment proposes is not unique; several defensible maps exist.",
     "httpx does not run the ACIMA enforcer on itself, so no independent finding set exists to compare against.",
-    "Java and .NET are irrelevant here; Python coverage includes 41 automated rules and 14 manual-evidence rules."
+    "Java and .NET are irrelevant here; Python coverage includes 42 automated rules and 14 manual-evidence rules."
   ],
   "groundTruth": {
     "establishedBy": "harness author",

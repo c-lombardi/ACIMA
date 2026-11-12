@@ -133,7 +133,7 @@ class ValueOwnershipTests(unittest.TestCase):
         self.assertEqual(rule["automation"], "automated")
         self.assertIn("immutable", rule["title"].lower() + rule["summary"].lower())
         self.assertIn("semantic", rule["summary"].lower())
-        self.assertEqual(len(catalog["rules"]), 55)
+        self.assertEqual(len(catalog["rules"]), 56)
 
         chapter = (ROOT / "docs/standard/14-values-and-configuration.md").read_text(
             encoding="utf-8").lower()

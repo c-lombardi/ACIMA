@@ -63,14 +63,14 @@ def add_complete_review(d, root, unresolved=False):
     return d
 
 def model():
-    return {"schemaVersion":"1.0","generatedAt":"2026-11-10T13:00:00-05:00","skillVersion":"1.27.0","standardVersion":"1.9.0-draft.1","catalogSha256":"abc123","assessmentStatus":"Assessment incomplete","repository":{"name":"Sample product","path":"C:/work/sample","commit":"abc","mode":"brownfield"},"recommendation":{"status":"RECOMMENDED_WITH_LIMITATIONS","summary":"Start with existing module boundaries; runtime ownership needs more evidence.","reasons":["The code already has distinct domain projects."],"caveats":["CI was not observed."]},"overview":{"plainLanguage":"This assessment found an existing boundary worth protecting.","nextAction":"Review the proposed local architecture check.","nextActionWhy":"It can catch new coupling without requiring a rewrite."},"value":{"benefits":[{"title":"Safer changes","description":"Modules depend on published contracts, not private implementation details.","availability":"Achievable after the gate is adopted."}],"adds":["Enforcement for dependency direction."],"costs":["A small maintenance cost for the check."]},"architecture":{"family":"Modular monolith","currentState":"Several projects already separate business capabilities.","proposedState":"Make the existing module contracts explicit and checkable."},"strengths":["Existing project boundaries."],"findings":[{"title":"A consumer reaches into a private implementation","what":"The Orders project references Catalog internals.","why":"An internal Catalog change can break Orders unexpectedly.","paths":["src/Orders/OrderService.cs"],"recommendation":"Depend on the published Catalog contract.","status":"confirmed"}],"proposedChanges":[{"path":"acima.config.json","action":"create","purpose":"Declare module ownership.","expectedOutcome":"The check knows which code belongs to each module.","approval":"Requires approval","status":"proposed"},{"path":"src/Orders/OrderService.cs","action":"modify","purpose":"Replace private implementation reference.","expectedOutcome":"Orders depends only on Catalog's published contract.","approval":"Not approved","status":"proposed"}],"outcomes":[{"title":"Earlier boundary feedback","description":"A new cross-module implementation dependency is reported before merge.","measure":"A controlled bad import fails the local check.","status":"Proposed"}],"phases":[{"name":"Declare modules","purpose":"Record existing ownership boundaries.","deliverable":"acima.config.json","verification":"Validate map and run check.","approval":"Yes","status":"Proposed"}],"decisions":[{"question":"Who owns Catalog's public contract?","context":"The current ownership is not explicit.","recommendation":"Assign the Catalog team.","impact":"Needed before contract changes."}],"outOfScope":["No database migration."],"limitations":["CI workflow was not inspected."],"coverage":{"requiredRules":55,"reviewedRules":55,"pendingRules":0,"automatedChecksRun":41,"manualReviewsCompleted":14,"skippedOrUnsupported":0},"evidence":[{"label":"Qualitative review","source":"assessment/review.json","whatItSupports":"Requirement dispositions and evidence references.","status":"Complete"}],"approvalStatement":"Only the listed report and implementation scope can be approved; no blanket authorization."}
+    return {"schemaVersion":"1.0","generatedAt":"2026-11-10T13:00:00-05:00","skillVersion":"1.27.0","standardVersion":"1.9.0-draft.1","catalogSha256":"abc123","assessmentStatus":"Assessment incomplete","repository":{"name":"Sample product","path":"C:/work/sample","commit":"abc","mode":"brownfield"},"recommendation":{"status":"RECOMMENDED_WITH_LIMITATIONS","summary":"Start with existing module boundaries; runtime ownership needs more evidence.","reasons":["The code already has distinct domain projects."],"caveats":["CI was not observed."]},"overview":{"plainLanguage":"This assessment found an existing boundary worth protecting.","nextAction":"Review the proposed local architecture check.","nextActionWhy":"It can catch new coupling without requiring a rewrite."},"value":{"benefits":[{"title":"Safer changes","description":"Modules depend on published contracts, not private implementation details.","availability":"Achievable after the gate is adopted."}],"adds":["Enforcement for dependency direction."],"costs":["A small maintenance cost for the check."]},"architecture":{"family":"Modular monolith","currentState":"Several projects already separate business capabilities.","proposedState":"Make the existing module contracts explicit and checkable."},"strengths":["Existing project boundaries."],"findings":[{"title":"A consumer reaches into a private implementation","what":"The Orders project references Catalog internals.","why":"An internal Catalog change can break Orders unexpectedly.","paths":["src/Orders/OrderService.cs"],"recommendation":"Depend on the published Catalog contract.","status":"confirmed"}],"proposedChanges":[{"path":"acima.config.json","action":"create","purpose":"Declare module ownership.","expectedOutcome":"The check knows which code belongs to each module.","approval":"Requires approval","status":"proposed"},{"path":"src/Orders/OrderService.cs","action":"modify","purpose":"Replace private implementation reference.","expectedOutcome":"Orders depends only on Catalog's published contract.","approval":"Not approved","status":"proposed"}],"outcomes":[{"title":"Earlier boundary feedback","description":"A new cross-module implementation dependency is reported before merge.","measure":"A controlled bad import fails the local check.","status":"Proposed"}],"phases":[{"name":"Declare modules","purpose":"Record existing ownership boundaries.","deliverable":"acima.config.json","verification":"Validate map and run check.","approval":"Yes","status":"Proposed"}],"decisions":[{"question":"Who owns Catalog's public contract?","context":"The current ownership is not explicit.","recommendation":"Assign the Catalog team.","impact":"Needed before contract changes."}],"outOfScope":["No database migration."],"limitations":["CI workflow was not inspected."],"coverage":{"requiredRules":56,"reviewedRules":56,"pendingRules":0,"automatedChecksRun":42,"manualReviewsCompleted":14,"skippedOrUnsupported":0},"evidence":[{"label":"Qualitative review","source":"assessment/review.json","whatItSupports":"Requirement dispositions and evidence references.","status":"Complete"}],"approvalStatement":"Only the listed report and implementation scope can be approved; no blanket authorization."}
 
 class HtmlReportTests(unittest.TestCase):
     def test_schema_is_valid_json_and_defines_the_file_impact_contract(self):
         schema=json.loads(SCHEMA.read_text(encoding='utf-8-sig'))
         self.assertEqual(schema['properties']['schemaVersion']['enum'],['1.0','1.1'])
         self.assertIn('qualitativeReview',schema['properties'])
-        self.assertEqual(schema['properties']['conformance']['minItems'],55)
+        self.assertEqual(schema['properties']['conformance']['minItems'],56)
         self.assertEqual(schema['$defs']['fileChange']['required'],['path','action','purpose','expectedOutcome'])
         self.assertIn('preservation',schema['properties'])
         self.assertIn('roadmap',schema['properties'])
@@ -167,7 +167,7 @@ class HtmlReportTests(unittest.TestCase):
             page=(out/'index.html').read_text(encoding='utf-8')
             self.assertIn('pill review',page)
             self.assertNotIn('pill good">Assessment incomplete',page)
-            self.assertIn('31 of 55',page)
+            self.assertIn('31 of 56',page)
 
     def test_reader_facing_status_and_dates_are_plain_language(self):
         with tempfile.TemporaryDirectory() as td:
@@ -178,7 +178,7 @@ class HtmlReportTests(unittest.TestCase):
             self.assertIn('Recommended, with limitations',index)
             self.assertIn('Assessment incomplete',index)
             self.assertIn('10 November 2026 at 1:00 pm (UTC-05:00)',index)
-            self.assertIn('55 of 55',index)
+            self.assertIn('56 of 56',index)
             self.assertIn('coverage, not a score',index)
             self.assertLess(index.find('What this means for your product'),index.find('class="metrics compact"'))
             self.assertEqual(index.count('class="metric"'),2)
@@ -206,7 +206,7 @@ class HtmlReportTests(unittest.TestCase):
             self.assertIn('Does not meet requirement',page)
             self.assertIn('Detailed evidence',page)
             self.assertEqual(page.count('<details>'),4)
-            self.assertIn('Review coverage: 55 of 55',page)
+            self.assertIn('Review coverage: 56 of 56',page)
             self.assertIn('All requirement results',page)
             self.assertIn('src/Orders/OrderService.cs:12-14',page)
 
@@ -331,7 +331,7 @@ class HtmlReportTests(unittest.TestCase):
             d.update({"schemaVersion":"1.1","assessmentStatus":"complete","outcomes":[],"outcomesStatus":"Not required.","decisions":[],"decisionsStatus":"No owner decisions required.","proposedChanges":[],"fileImpactStatus":"No changes proposed after complete assessment.","phases":[],"roadmapStatus":"No implementation required.","preservation":[],"preservationStatus":"No changes are proposed.","fileImpact":{"inspect":[],"create":[],"modify":[],"preserve":[]},"roadmap":{"status":"No implementation required.","phases":[]}})
             d["findings"][0].update({"classification":"required","disposition":"unverified","confidence":"low","requirementMeaning":"Module boundaries must be protected.","expectedOutcome":"Boundary check passes.","verification":"Run checks."})
             add_complete_review(d,root)
-            d["coverage"].update({"reviewedRules":31,"pendingRules":24})
+            d["coverage"].update({"reviewedRules":31,"pendingRules":25})
             src=root/"model.json"; out=root/"report"; src.write_text(json.dumps(d),encoding="utf-8")
             result=subprocess.run([sys.executable,str(SCRIPT),"--input",str(src),"--out-dir",str(out)],capture_output=True,text=True)
             self.assertEqual(result.returncode,2)

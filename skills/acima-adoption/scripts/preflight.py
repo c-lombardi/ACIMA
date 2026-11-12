@@ -28,9 +28,13 @@ from pathlib import Path
 SKILL_DIR = Path(__file__).resolve().parents[1]
 # Inside the standard repository the authority is the tree itself. Copied into ~/.agents or similar
 # there is no repository root, so the skill falls back to the snapshot tools/bundle_skill.py writes.
-_REPOSITORY = SKILL_DIR.parents[1]
-STANDARD_ROOT = (_REPOSITORY if (_REPOSITORY / "tools/acima-spec/rules.json").is_file()
-                 else SKILL_DIR / "vendor")
+# Search ancestors instead of indexing a fixed parent: an installed skill may be a mount root.
+_REPOSITORY = next(
+    (candidate for candidate in (SKILL_DIR, *SKILL_DIR.parents)
+     if (candidate / "tools/acima-spec/rules.json").is_file()),
+    None,
+)
+STANDARD_ROOT = _REPOSITORY or (SKILL_DIR / "vendor")
 sys.path.insert(0, str(STANDARD_ROOT / "conformance"))
 from acima_claim import validate_waivers  # noqa: E402 - shared governance validation
 from module_map import (  # noqa: E402
@@ -202,8 +206,11 @@ def propose_units(project: Path, language: str) -> list[dict]:
 def propose_dotnet_units(project: Path) -> list[dict]:
     units: list[dict] = []
     seen: set[str] = set()
-    for project_file in sorted(project.rglob("*.csproj")):
-        if any(part in PRUNE or part.startswith(".") for part in project_file.parts):
+    for project_file in sorted(walk_files(project)):
+        if project_file.suffix.lower() != ".csproj":
+            continue
+        relative_file = project_file.relative_to(project)
+        if any(part in PRUNE or part.startswith(".") for part in relative_file.parts):
             continue
         directory = project_file.parent
         relative = directory.relative_to(project).as_posix()
@@ -747,7 +754,7 @@ def check_target(project: Path, report: Report, manifest: dict) -> tuple[list[di
         elif report.mode == "brownfield":
             report.add("TGT-004", "fail",
                        "no candidate units found for a source-bearing repository",
-                       "complete the 55-requirement evidence-backed qualitative review before making an adoption recommendation. "
+                       "complete the 56-requirement evidence-backed qualitative review before making an adoption recommendation. "
                        "Do not infer that ACIMA adds no value from the absence of candidate units. "
                        "If the review confirms no meaningful ownership boundaries or applicable benefit, "
                        "recommend against adoption; otherwise record owner-approved units separately.")

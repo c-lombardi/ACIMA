@@ -127,9 +127,10 @@ it links to. For an assessment, deliver it in the response or outside the target
 
 - The reference enforcers read source and project files; they do not prove runtime
   autonomy or deployment independence.
-- Twelve rules require native analyzers or human judgement; the CLI report lists them as **not
-  evaluated**. `C008` and `A010`–`A013` cover business-behaviour visibility, effect ownership,
-  duplicate/retry/consistency semantics, truthful outcomes and recovery evidence.
+- Fourteen rules require native analyzers or human judgement; the CLI report lists them as **not
+  evaluated**. `C008` and `A010`–`A015` cover business-behaviour visibility, effect ownership,
+  duplicate/retry/consistency semantics, truthful outcomes, recovery evidence, telemetry and
+  consistency ownership.
 - The Java profile has no reference enforcer in this revision.
 - The agent skill is only as current as its pinned catalog hash. If preflight fails, stop;
   do not work around the pin.

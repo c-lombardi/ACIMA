@@ -108,14 +108,18 @@ def discover(root: Path) -> dict:
     root = root.resolve()
     root_files = _root_instruction_files(root)
     nested = []
-    for path in root.rglob("*"):
-        if not path.is_file() or path.name not in ("AGENTS.md", "CLAUDE.md", "GEMINI.md"):
-            continue
-        if any(part in {".git", "node_modules", "dist", "build", "target", ".venv"} for part in path.parts):
-            continue
-        relative = _relative(root, path)
-        if relative not in root_files:
-            nested.append(relative)
+    for current, dirnames, filenames in os.walk(root):
+        dirnames[:] = sorted(name for name in dirnames
+                             if name not in {".git", "node_modules", "dist", "build", "target",
+                                             ".venv", "venv", "__pycache__"}
+                             and not name.startswith("."))
+        for name in filenames:
+            if name not in ("AGENTS.md", "CLAUDE.md", "GEMINI.md"):
+                continue
+            path = Path(current) / name
+            relative = _relative(root, path)
+            if relative not in root_files:
+                nested.append(relative)
     preference = ["AGENTS.md", "CLAUDE.md", "GEMINI.md", "COPILOT_INSTRUCTIONS.md",
                   ".github/copilot-instructions.md"]
     primary = next((name for name in preference if name in root_files), None)
@@ -295,11 +299,35 @@ def _unresolved(root: Path, state: dict) -> list[str]:
     values = []
     proposal = _read_json(root / "docs/acima/adoption-proposal.json") \
         if (root / "docs/acima/adoption-proposal.json").is_file() else {}
+    approval_path = root / ".acima/module-map.approval.json"
+    approval = _read_json(approval_path) if approval_path.is_file() else {}
+    resolved_ids = {
+        item.get("id") for item in approval.get("modules", [])
+        if isinstance(item, dict) and item.get("reviewDecision") in {"accept", "modify"}
+    }
+    resolved_ids.update(
+        item.get("id") for item in approval.get("pathDispositions", [])
+        if isinstance(item, dict) and item.get("reviewDecision") in {"accept", "modify", "reject"}
+    )
+    resolved_ids.update(
+        item.get("id") for item in approval.get("recommendations", [])
+        if isinstance(item, dict) and item.get("decision") in {"accept", "reject", "defer"}
+    )
     for decision in proposal.get("decisions") or []:
-        if isinstance(decision, dict) and decision.get("status") in (None, "pending", "open", "deferred"):
-            values.append(str(decision.get("question") or decision.get("id")))
+        if not isinstance(decision, dict):
+            continue
+        decision_id = decision.get("id")
+        if decision_id in resolved_ids:
+            continue
+        if decision.get("status") in (None, "pending", "open", "deferred"):
+            values.append(str(decision.get("question") or decision_id))
     for blocker in state.get("blockers") or []:
-        values.append(str(blocker))
+        text = str(blocker)
+        if approval.get("status") == "approved" and (
+                "inferred or layout-only ownership" in text
+                or "module map could not be approved automatically" in text):
+            continue
+        values.append(text)
     return sorted(set(values))
 
 
@@ -633,10 +661,10 @@ def stale(root: Path, result: dict | None = None) -> tuple[bool, list[str]]:
 
 
 def authorize(root: Path, state: dict) -> bool:
+    # Both workflows require an explicit, persisted objective decision. Selecting
+    # automated mode authorizes preparation, not every optional artifact or target write.
     scope = _read_scope(root)
-    if state.get("mode") == "full":
-        return True
     for item in scope.get("objectives") or []:
         if isinstance(item, dict) and item.get("id") == "agent-guidance":
-            return item.get("disposition") == "approved"
+            return item.get("disposition") in {"approved", "required"}
     return False

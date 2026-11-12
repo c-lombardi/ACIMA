@@ -240,13 +240,13 @@ def scenario_b(root: Path) -> str:
     checks = {check["id"]: check for check in report["checks"]}
     assert code == 1 and "TGT-004" in report["blockers"], report["blockers"]
     remedy = checks["TGT-004"]["remedy"].lower()
-    assert "55-requirement" in remedy and "before making an adoption recommendation" in remedy, remedy
-    assert any("55-requirement" in item.lower() for item in report["next"]), report["next"]
+    assert "56-requirement" in remedy and "before making an adoption recommendation" in remedy, remedy
+    assert any("56-requirement" in item.lower() for item in report["next"]), report["next"]
 
     assessment = assess_tool(root)
     result = assessment["assessmentResult"]
     assert result["fit"] == "INSUFFICIENT_EVIDENCE", result["fit"]
-    assert "0/55" in result["why"], result["why"]
+    assert "0/56" in result["why"], result["why"]
     assert "no meaningful ownership boundaries" in result["why"], result["why"]
     assert result["dimensions"]["architecturalSubstance"]["status"] == "none"
     assert any("all catalog requirements" in item.lower() for item in result["unresolvedQuestions"])
@@ -272,7 +272,7 @@ def scenario_c(root: Path) -> str:
     result = payload["assessmentResult"]
     assert payload["verdict"] == "ASSESSED", payload["verdict"]
     assert result["fit"] == "INSUFFICIENT_EVIDENCE", result["fit"]
-    assert "0/55" in result["why"], result["why"]
+    assert "0/56" in result["why"], result["why"]
     assert result["existingEnforcement"]["status"] == "strong", result["existingEnforcement"]
     mechanisms = result["existingEnforcement"]["mechanisms"]
     assert any(item["kind"] == "acima-gate" for item in mechanisms), mechanisms
@@ -282,7 +282,7 @@ def scenario_c(root: Path) -> str:
     assert "configured" in result["explanation"]["existingEnforcement"].lower()
     assert snapshot(root) == before
     return ("existing configured ACIMA gate detected as strong; recommendation held at INSUFFICIENT_EVIDENCE "
-            "until 55-rule review; no duplicate gate proposed")
+            "until 56-rule review; no duplicate gate proposed")
 
 
 def scenario_d(root: Path) -> str:
@@ -295,7 +295,7 @@ def scenario_d(root: Path) -> str:
     result = payload["assessmentResult"]
     assert payload["verdict"] == "ASSESSED", payload["verdict"]
     assert result["fit"] == "INSUFFICIENT_EVIDENCE", result["fit"]
-    assert "0/55" in result["why"], result["why"]
+    assert "0/56" in result["why"], result["why"]
     findings = payload["findings"]
     assert findings["byRule"].get("ACIMA-D001", 0) >= 2, findings
     assert "existing findings" in result["why"], result["why"]
@@ -306,7 +306,7 @@ def scenario_d(root: Path) -> str:
     assert any(item["classification"] == "requires-additional-work"
                for item in result["benefitDetails"]), result["benefitDetails"]
     assert snapshot(root) == before
-    return (f"preliminary fit held at INSUFFICIENT_EVIDENCE pending 55-rule review; "
+    return (f"preliminary fit held at INSUFFICIENT_EVIDENCE pending 56-rule review; "
             f"{findings['byRule'].get('ACIMA-D001', 0)} D001 of {findings['total']} finding(s) found; "
             "incremental, no rewrite, first step identified")
 
@@ -640,7 +640,7 @@ SCENARIO_SPECS: dict[str, dict] = {
         "fixture": "single app.py utility with no module directories",
         "phase": "1. Assess",
         "discovery": ["one source area", "no meaningful module ownership"],
-        "status": "INSUFFICIENT_EVIDENCE until all 55 requirements are reviewed",
+        "status": "INSUFFICIENT_EVIDENCE until all 56 requirements are reviewed",
         "response": ["complete the qualitative review", "retain the preliminary no-boundaries observation",
                      "do not recommend adoption until the review is complete"],
         "allowed": ["read-only inspection"],
@@ -652,7 +652,7 @@ SCENARIO_SPECS: dict[str, dict] = {
         "fixture": "clean two-unit Python app with a pull-request ACIMA workflow",
         "phase": "1. Assess",
         "discovery": ["existing boundaries", "existing gate", "whether its execution is observed"],
-        "status": "INSUFFICIENT_EVIDENCE until all 55 requirements are reviewed; then avoid duplicate enforcement if already covered",
+        "status": "INSUFFICIENT_EVIDENCE until all 56 requirements are reviewed; then avoid duplicate enforcement if already covered",
         "response": ["name existing strengths", "separate configured from observed",
                      "avoid selling good practice back as work"],
         "allowed": ["read-only inspection"],
@@ -664,7 +664,7 @@ SCENARIO_SPECS: dict[str, dict] = {
         "fixture": "modular monolith with cross-module implementation imports",
         "phase": "1. Assess / 2. Propose",
         "discovery": ["modular layout", "pre-existing findings", "no observed enforcement"],
-        "status": "INSUFFICIENT_EVIDENCE until all 55 requirements are reviewed; preliminary findings retained",
+        "status": "INSUFFICIENT_EVIDENCE until all 56 requirements are reviewed; preliminary findings retained",
         "response": ["no rewrite", "incremental first boundary", "pre-existing vs new findings",
                      "owner decisions named"],
         "allowed": ["read-only analysis", "proposal in conversation"],

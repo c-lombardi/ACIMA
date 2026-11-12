@@ -4,7 +4,7 @@ Two things live here: the developer CLI, and the rule catalog that everything el
 
 ## `acima-spec/rules.json` — the single source of truth
 
-Defines the 55 rules (id, severity, level, `automation`, manual-evidence hint), the six categories, the three conformance levels, the finding schema and the claim model. Forty-one rules are automated; fourteen are manual-evidence rules, including `C008` and the P15 rules `A010`–`A015`.
+Defines the 56 rules (id, severity, level, `automation`, manual-evidence hint), the six categories, the three conformance levels, the finding schema and the claim model. Forty-two rules are automated; fourteen are manual-evidence rules, including `C008` and the P15 rules `A010`–`A015`.
 
 Consumers: every reference enforcer, `conformance/coverage.json`, `conformance/run.py`, `acima.py`, and the adoption skill (which pins its SHA-256 in `manifest.json`). Changing it is a standard change — see [`../docs/README.md`](../docs/README.md#changing-the-standard).
 

@@ -5,9 +5,9 @@ license: MIT
 compatibility: Python 3.9+ for the preflight script. The target language toolchain is only needed to run that language's enforcer.
 allowed-tools: Read Grep Glob Bash Edit Write
 metadata:
-  standard: "1.9.0-draft.1"
-  skill-version: "1.32.0"
-  catalog-sha256: "b593d28e81dacfdb9ba61b5792cbab04c521c0631cec6ff61292045acada678a"
+  standard: "1.9.0-draft.2"
+  skill-version: "1.34.0"
+  catalog-sha256: "293fa208a68bd3e0da13f380feaa90288292cf26e2373cae8af0e122230448a0"
 ---
 
 # ACIMA adoption
@@ -21,23 +21,20 @@ Hexagonal, DDD, a modular monolith or microservices.
 You do the discovery, explanation, recommendation and implementation. The user supplies business
 context, resolves genuinely ambiguous ownership, and approves changes. Never make them learn the
 catalog, the levels or the command set to get value. Analysis is never authorization.
-
 ## User transparency
 Keep the user informed of ACIMA's value, phase purpose, scope, progress, decisions, risks, evidence and
 outcomes. Explain what exists today versus what is proposed, implemented or verified. Never hide
 costs, uncertainty or work outside the approved scope. Follow [35-user-transparency](references/35-user-transparency.md).
-
 ## Start here: make the first interaction effortless
 No command, ACIMA terminology, adoption level, module map or configuration is required to begin.
 
 - One repository is already open: use it and identify its actual root. Do not ask for a path again.
 - Multiple repositories: ask one short question naming the candidates.
 - No repository: ask **"Which codebase should I look at? Paste its folder path or repository link. If you already have it open here, just say 'use this workspace'."**
-- No command or a greeting: begin a read-only assessment when a repository is available.
+- No command or a greeting: when a repository is available, first ask whether the user wants guided or automated adoption. Begin the read-only assessment after they choose.
 - Unsupported command: infer the closest supported intent; ask one plain-language question only if genuinely ambiguous.
 - Do not ask users to choose L1/L2/L3 before assessment. Inspect first and recommend a level with its practical implications.
 - Any requested changes: assess first, state exact scope and impact, and obtain explicit approval before writing.
-
 ## Positioning
 ACIMA defines portable architectural requirements: module ownership, explicit contracts,
 dependency isolation and direction, data and configuration ownership, and controlled composition.
@@ -54,16 +51,14 @@ Never propose replacing or relabelling the team's architecture, or use a finding
 a different family. Never suggest that adopting ACIMA requires the `service-topology` profile. Name
 the family you detected from evidence and state which ACIMA requirements it already satisfies, which
 need adaptation, and which are not established — [05-architecture-families](references/05-architecture-families.md).
-
 ## Execution context
 Detect whether this is an ACIMA checkout, an installed skill, or a separate target before printing or running commands. In a copied skill, the vendored CLI is `<skill>/vendor/tools/acima.py`; in a source checkout use `tools/acima.py`. Load [12-getting-started](references/12-getting-started.md) only when choosing invocation paths or routing an ambiguous request.
-
 ## Workflow
-Use the sequence: read-only preflight; complete the 55-requirement evidence-backed qualitative review; run supported deterministic checks where an approved unit map exists; explain fit and value; prepare a scoped proposal; obtain explicit approval; implement only approved changes; verify and hand off. Do not issue an adoption recommendation or decision-ready HTML report until all 55 requirements have valid dispositions. Unresolved dispositions require an insufficient-evidence recommendation. Assessment is never authorization. Load [22-workflow](references/22-workflow.md) when executing or resuming an engagement.
+Use the sequence: read-only preflight; complete the 56-requirement evidence-backed qualitative review; run supported deterministic checks where an approved unit map exists; explain fit and value; prepare a scoped proposal; obtain explicit approval; implement only approved changes; verify and hand off. Do not issue an adoption recommendation or decision-ready HTML report until all 56 requirements have valid dispositions. Unresolved dispositions require an insufficient-evidence recommendation. Assessment is never authorization. Load [22-workflow](references/22-workflow.md) when executing or resuming an engagement.
 
 ### The five phases
 
-**Phase 1 — Assessment.** Read-only discovery, the complete 55-requirement review, and deterministic checks only where an approved map exists. A missing map triggers a module-map proposal, not a stop.
+**Phase 1 — Assessment.** Read-only discovery, the complete 56-requirement review, and deterministic checks only where an approved map exists. A missing map triggers a module-map proposal, not a stop.
 
 **Phase 2 — Proposal.** A decision document with exact scope, file impact, tradeoffs, decisions and a single recommendation. Module-map boundaries and recommendations remain open to individual review.
 
@@ -72,28 +67,29 @@ Use the sequence: read-only preflight; complete the 55-requirement evidence-back
 **Phase 4 — Approved implementation.** Change only the approved paths and scope. A new path, level, dependency or boundary requires a new decision.
 
 **Phase 5 — Verification and handoff.** Prove what changed with evidence; report what remains unproven. Merge, publish or release requires separate, explicit approval. Do not create a communication plan by default; optional documents need their own request or approval.
-
 ## Adoption modes and end-to-end orchestration
-At pre-flight, explicitly offer **guided adoption** and **full automation**. Guided generates the module-map proposal, adoption proposal, enforcement plan and CI proposal, then waits for scoped approval before implementation. Full automation is available only after an explicit confirmation; it applies supported module-map decisions, implements enforcement, adds a gate to a detected CI provider when safe, verifies the result and writes a handoff. Full automation is not permission to deploy, release, commit, push, modify another repository, expose secrets or make destructive changes. Any unsupported or ambiguous ownership decision pauses only that decision and is recorded; independent work continues. Preserve the selected mode in `.acima/adoption-workflow.json` and use `acima.py adoption status` to resume. Every stage has an artifact, completion condition and next action; never leave proposal, enforcement, CI or verification dangling. Every successful adoption also produces repository-level AI agent guidance: discover the repository's actual instruction convention, preserve existing user-authored rules, write a concise root block, and put the complete judgment guidance and operational references in support files. Generate it from the approved map and actual enforcement, validate every catalog requirement and reference, and refresh it after remediation. Ask for approval before modifying existing user instructions in guided mode; full automation applies it within the authorized scope. Load [14-ai-agent-guidance](references/14-ai-agent-guidance.md). After CI is decided, ask the separate final question: apply **none**, **selected**, or **all applicable** recommended fixes. Do not infer remediation from adoption consent. Classify greenfield/brownfield from implementation and compatibility evidence, not age alone. Large or high-risk brownfield work needs two distinct affirmations: scope acknowledgement, then implementation authorization. Apply only the authorized changes, preserve user changes, revalidate stale findings, and run a fresh assessment afterward. Load [13-adoption-orchestration](references/13-adoption-orchestration.md) when starting or resuming an engagement.
-
+Offer exactly two workflows before adoption work: **guided adoption** and **automated adoption**. Ask the user to choose when no mode has been selected in the current engagement; preserve an explicit prior choice. Guided adoption uses separate checkpoints for the map, the generated HTML proposal, CI, optional adoption notifications, optional agent guidance and implementation stages. Automated adoption completes assessment and prepares the complete adoption package before one consolidated HTML review; the user then selects the stages ACIMA may implement. Automated mode is not blanket permission to modify the target. Both modes require the complete 56-rule qualitative review, evidence-backed module discovery, honest enforcement verification and a fresh handoff. Do not auto-approve inferred or layout-only module ownership. Never proceed from report generation to implementation until the six-page report has been opened and shown to the user, its exact digest is reviewed and the user explicitly approves the scoped paths. Preserve the selected mode and approval provenance in workflow state; resume without bypassing prerequisites. The user controls decisions; ACIMA performs the reasoning and approved work. Load [13-adoption-orchestration](references/13-adoption-orchestration.md) when starting or resuming an engagement. Load [14-ai-agent-guidance](references/14-ai-agent-guidance.md) when preparing repository-level AI instructions.
 ## Discovery
 Inspect actual ownership, contracts, dependencies, composition, data/configuration, lifecycle/state/effects, project structure and existing enforcement. Do not infer module ownership from folders or project names. Load [45-discovery](references/45-discovery.md) for the full inventory and evidence method.
-
 ## Module-map discovery and approval
-Every assessment checks whether an authoritative map exists and whether it is complete, stale or inconsistent. If it is absent or insufficient, discovery runs automatically: it proposes evidence-backed candidate boundaries, contracts, observed dependencies, unassigned production code, quality observations, recommendations and decisions. Project, package, folder and runtime boundaries are signals, never approved modules. The proposal distinguishes observed facts from inferred ownership. Do not stop independent qualitative review because the map is missing. Do not make inferred ownership authoritative or execute ownership-dependent deterministic checks until the reviewer explicitly accepts the relevant boundaries and decisions. Approval is per module and recommendation, not all-or-nothing; approved maps become the existing `acima.config.json` unit contract with review provenance. Use `conformance/module_map.py discover` and `review` when a durable review artifact is needed; no target file is written without `--write-proposal`, `--write-approval` or `--write-config`.
+Every assessment checks whether an authoritative map exists and whether it is complete, stale or inconsistent. If it is absent or insufficient, discovery runs automatically: it proposes evidence-backed candidate boundaries, contracts, observed dependencies, unassigned production code, quality observations, recommendations and decisions. Project, package, folder and runtime boundaries are signals, never approved modules. The proposal distinguishes observed facts from inferred ownership. Do not stop independent qualitative review because the map is missing. Do not make inferred ownership authoritative or execute ownership-dependent deterministic checks until the reviewer explicitly accepts the relevant boundaries and decisions. Approval is per module and recommendation, not all-or-nothing; approved maps become the existing `acima.config.json` unit contract with review provenance. Use `conformance/module_map.py discover` and `review` in a checkout, or `vendor/conformance/module_map.py` in a copied skill, when a durable review artifact is needed; no target file is written without `--write-proposal`, `--write-approval` or `--write-config`.
+## HTML proposal presentation is a mandatory checkpoint
 
+For every guided and automated adoption, generate the six-page HTML report from the validated review, module-map proposal and adoption proposal. Validate the report and every page before presenting it. Then open the report in the user's available browser/viewer and show a direct link to its index and the individual pages. Merely printing a local filesystem path or saying that the report exists is not presentation. If the environment cannot open or show the report, stop at an explicit blocked review checkpoint; do not ask for proposal approval or implementation consent as though the user saw it.
+
+Ask the user to inspect the report's Overview, Proposal, Findings, Files, Plan and Evidence pages. Record the reviewer and exact report SHA-256 digest. The approval must be bound to that digest, the current proposal digest, repository revision, branch and working-tree content. A changed report, proposal or target invalidates the receipt. Reading or acknowledging the report is not permission to implement.
+
+Ask a distinct question about **ACIMA adoption notifications**: whether the user wants a separate proposal for user-facing adoption milestone, decision, blocker and verification notifications. Keep this distinct from application-domain notifications, CI integration and repository AI-agent instructions. If the user says yes, inspect existing notification/interaction capabilities and prepare a separate proposal with exact integration surfaces and paths. Do not assume an external provider or modify product code until that proposal and its exact paths receive separate approval. If the user declines or defers, record that choice and continue only within the other approved scope.
+
+Branch creation, branch switching and recovery are not adoption approval. Never create a branch or select a recovery branch automatically. A user selecting a branch does not authorize target file changes. Treat any branch or commit movement after assessment/report creation as stale evidence and require a fresh report and approval.
 ## Evidence and completion
-Never equate file presence, a configured gate, or a checklist with verified architecture. The first adoption gate is 55/55 valid, evidence-backed qualitative dispositions across the entire catalog, independent of the recommended adoption level or availability of a module map. The CLI and HTML renderer validate coverage, catalog freshness, evidence paths, line ranges and exact quotes. Unresolved dispositions remain visible and block a resolved recommendation; they do not count as conformance. If coverage is incomplete, report a partial assessment and do not issue an adoption recommendation or decision-ready HTML report. Keep qualitative review, deterministic execution, formal manual evidence and conformance separate. A missing module map blocks only deterministic checks that depend on it. Report incomplete work explicitly; do not claim completion. Load [25-comprehensive-assessment](references/25-comprehensive-assessment.md) and [55-status-and-evidence](references/55-status-and-evidence.md) when assessing or recording completion.
-
+Never equate file presence, a configured gate, or a checklist with verified architecture. The first adoption gate is 56/56 valid, evidence-backed qualitative dispositions across the entire catalog, independent of the recommended adoption level or availability of a module map. The CLI and HTML renderer validate coverage, catalog freshness, evidence paths, line ranges and exact quotes. Unresolved dispositions remain visible and block a resolved recommendation; they do not count as conformance. If coverage is incomplete, report a partial assessment and do not issue an adoption recommendation or decision-ready HTML report. Keep qualitative review, deterministic execution, formal manual evidence and conformance separate. A missing module map blocks only deterministic checks that depend on it. Report incomplete work explicitly; do not claim completion. Load [25-comprehensive-assessment](references/25-comprehensive-assessment.md) and [55-status-and-evidence](references/55-status-and-evidence.md) when assessing or recording completion.
 ## Communication
 Explain findings and ACIMA identifiers in human terms, show evidence and confidence, and distinguish existing, proposed, implemented and verified capabilities. Load [42-communication-and-interaction](references/42-communication-and-interaction.md) when producing user-facing findings, approval requests or structured interaction.
-
 ## Proposals and reports
-For adoption, prepare a decision-ready proposal with exact scope and file impact. For comprehensive assessments, render the six-page HTML report using `assets/report.schema.json` and `scripts/render_report.py`. Use schema 1.1 for new decision-ready reports; embed the original qualitative review and all 55 human-readable dispositions. The renderer revalidates every disposition and its evidence against the target repository and pinned catalog. Never render a decision-ready report with partial review coverage. Preserve unknown, blocked and not-assessed states rather than inventing content. Load [90-html-outcome-reports](references/90-html-outcome-reports.md) for the information model and validation contract, and [75-proposals-and-deliverables](references/75-proposals-and-deliverables.md) when preparing deliverables.
-
+For adoption, prepare a decision-ready proposal with exact scope and file impact. For comprehensive assessments, render the six-page HTML report using `assets/report.schema.json` and `scripts/render_report.py`. Use schema 1.1 for new decision-ready reports; embed the original qualitative review and all 56 human-readable dispositions. The renderer revalidates every disposition and its evidence against the target repository and pinned catalog. Never render a decision-ready report with partial review coverage. Preserve unknown, blocked and not-assessed states rather than inventing content. Load [90-html-outcome-reports](references/90-html-outcome-reports.md) for the information model and validation contract, and [75-proposals-and-deliverables](references/75-proposals-and-deliverables.md) when preparing deliverables.
 ## Commands and context
 Verify executable paths and supported flags in the active environment. Load [65-commands-and-context](references/65-commands-and-context.md) only when a command, artifact path or execution context is needed.
-
 ## Hard rules
 
 1. **Never invent a rule ID.** Every machine-readable finding cites one from `rules.json`; every
@@ -131,10 +127,19 @@ Verify executable paths and supported flags in the active environment. Load [65-
     after CI and is independent of it. Only authorized, evidence-supported recommendations may
     change source. Large brownfield work needs two distinct confirmations; unselected items stay
     deferred and no partial result is called complete.
-
+19. **Never bypass HTML proposal review.** Generate, validate, open and present all six pages. Bind
+    the owner review to the exact report and proposal digests and the assessed repository state.
+    Report-generation failure or inability to present the report blocks the implementation gate.
+20. **Never infer consent from Git recovery.** Creating, selecting, switching to or recovering a
+    branch does not authorize source, configuration, CI, instruction or documentation changes.
+    Branch operations require their own explicit approval; any branch movement invalidates stale
+    adoption approvals.
+21. **Never bundle adoption notifications into another objective.** Ask separately whether to
+    prepare a user-facing ACIMA adoption-notifications proposal. Keep it distinct from application
+    notifications, CI and AI-agent guidance. Product-code integration requires a reviewed proposal
+    and exact path-specific approval.
 ## Effects and corrections
 Assess ownership and guarantees for external effects, consistency and corrections without imposing universal implementation patterns. Load [72-effects-and-corrections](references/72-effects-and-corrections.md) when reviewing these concerns.
-
 ## Stop conditions
 
 Stop and ask when: preflight identifies a skill-integrity, invalid-target, ambiguous-classification
@@ -145,7 +150,6 @@ lacks publishable evidence, or is requested for Python/Go; a unit map would hide
 manifests prove; the requested change would edit the catalog; implementation needs a path, source,
 build or CI change outside the approved list. Do not perform ownership-dependent implementation while
 the module map still has a material ambiguity, but continue independent qualitative review.
-
 ## Reference map
 
 | File | Load it for |
@@ -174,7 +178,6 @@ the module map still has a material ambiguity, but continue independent qualitat
 | [72-effects-and-corrections](references/72-effects-and-corrections.md) | detailed effect review and correction decisions |
 | [glossary](references/glossary.md) | plain-language definitions |
 | [commands](vendor/docs/commands.md) | every flag, exit code and step |
-
 ## Maintaining this skill
 
 The manifest pins the catalog hash, standard version, rule ids and enforcer paths. When the catalog

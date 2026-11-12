@@ -33,8 +33,8 @@ The working surfaces are the `acima` CLI, the adoption skill used by AI agents, 
 ## Capabilities and Constraints
 
 - The standard is a technical preview, currently `1.9.0-draft.1`; the adoption skill is versioned separately and pins the catalog hash.
-- The catalog contains 55 rules: 41 automated and 14 that require repository-scoped human evidence. A clean automated run is not full conformance.
-- Python and TypeScript reference enforcers cover all 41 automated rules. Go and .NET cover 23. Java is documented but has no enforcer and fails closed.
+- The catalog contains 56 rules: 42 automated and 14 that require repository-scoped human evidence. A clean automated run is not full conformance.
+- Python covers all 42 automated rules, TypeScript 41, Go 23 and .NET 24. Java is documented but has no enforcer and fails closed.
 - Enforcers analyse source and project metadata, not runtime behaviour. They do not prove isolation, type correctness, framework behaviour, tenant isolation, or ownership.
 - Findings carry a rule, severity, message, path, line, evidence, and fingerprint. Rule and requirement identifiers are internal navigation and traceability keys, not the explanation.
 - Assessment is read-only. Adoption writes require explicit approval of named paths, scope, and level; partial approval is supported.
@@ -52,7 +52,7 @@ The technical-preview limits are binding commitments, phrased constructively: AC
 
 ## Evidence on Hand
 
-The repository contains the normative standard, the 55-rule catalog, four reference implementations and their violation galleries, the conformance suite, adoption-skill assets, and versioned benchmark evidence. These are the substantive proof available today.
+The repository contains the normative standard, the 56-rule catalog, four reference implementations and their violation galleries, the conformance suite, adoption-skill assets, and versioned benchmark evidence. These are the substantive proof available today.
 
 There are no customer testimonials, case studies, press mentions, customer logos, pricing claims, or independent evaluator results in the repository. The published benchmark predates some current fixes and must not be presented as current portfolio-level validation. Hosted CI has not been observed, and independent validation is explicitly incomplete. Future work must not fabricate any of this evidence.
 

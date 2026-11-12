@@ -30,16 +30,19 @@ def paths_by_rule(report: dict) -> dict[str, set[str]]:
 
 
 class ExplicitInputTests(unittest.TestCase):
-    def test_catalog_declares_both_rules_with_the_ratchet(self) -> None:
+    def test_catalog_prohibits_optional_parameters_on_module_owned_inputs(self) -> None:
         catalog = json.loads((ROOT / "tools/acima-spec/rules.json").read_text(encoding="utf-8"))
         rules = {rule["id"]: rule for rule in catalog["rules"]}
         for rule_id in ("ACIMA-D011", "ACIMA-D012"):
             rule = rules[rule_id]
             self.assertEqual(rule["level"], "L1")
-            self.assertEqual(rule["severity"], "warning")
-            self.assertEqual(rule["severityRatchet"], {"to": "error", "at": "2.0.0"})
+            self.assertEqual(rule["severity"], "error")
+            self.assertNotIn("severityRatchet", rule)
             self.assertEqual(rule["automation"], "automated")
-        self.assertEqual(len(catalog["rules"]), 55)
+        named_call = rules["ACIMA-D017"]
+        self.assertEqual(named_call["severity"], "warning")
+        self.assertEqual(named_call["severityRatchet"], {"to": "error", "at": "2.0.0"})
+        self.assertEqual(len(catalog["rules"]), 56)
 
     def test_python_gallery_fires_both_rules_on_the_optional_fixtures(self) -> None:
         result, report = run(PYTHON, ROOT / "examples/python", "acima.gallery.config.json")
@@ -51,6 +54,11 @@ class ExplicitInputTests(unittest.TestCase):
                                                     "violations/l001_identifier_only.py"})
         self.assertTrue(report["execution"]["ACIMA-D011"]["executed"])
         self.assertTrue(report["execution"]["ACIMA-D012"]["executed"])
+        self.assertTrue(report["execution"]["ACIMA-D017"]["executed"])
+        self.assertEqual(
+            fired["ACIMA-D017"],
+            {"violations/d015_closure_capture.py", "violations/d017_unlabeled_arguments.py"},
+        )
 
     def test_typescript_gallery_fires_both_rules_on_the_optional_fixtures(self) -> None:
         result, report = run(TYPESCRIPT, ROOT / "examples/typescript", "acima.gallery.config.json")
@@ -60,6 +68,8 @@ class ExplicitInputTests(unittest.TestCase):
         self.assertEqual(fired["ACIMA-D012"], {"violations/d012_hidden_default.ts"})
         self.assertTrue(report["execution"]["ACIMA-D011"]["executed"])
         self.assertTrue(report["execution"]["ACIMA-D012"]["executed"])
+        self.assertFalse(report["execution"]["ACIMA-D017"]["executed"])
+        self.assertIn("native named-argument", report["execution"]["ACIMA-D017"]["reason"])
 
     def test_positive_fixtures_are_clean_and_required_nullable_is_not_a_finding(self) -> None:
         for language, command in (("python", PYTHON), ("typescript", TYPESCRIPT)):
@@ -69,6 +79,9 @@ class ExplicitInputTests(unittest.TestCase):
             self.assertEqual(report["findings"], [])
             self.assertTrue(report["execution"]["ACIMA-D011"]["executed"])
             self.assertTrue(report["execution"]["ACIMA-D012"]["executed"])
+            self.assertTrue(report["execution"]["ACIMA-D017"]["executed"] if language == "python" else
+                            not report["execution"]["ACIMA-D017"]["executed"])
+            self.assertFalse(any(item["rule"] == "ACIMA-D017" for item in report["findings"]))
 
     def test_contracts_are_out_of_scope_and_say_so(self) -> None:
         catalog = json.loads((ROOT / "tools/acima-spec/rules.json").read_text(encoding="utf-8"))

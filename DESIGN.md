@@ -235,7 +235,7 @@ The evidence page is the audit trail and the limits page:
 3. **Limits / “What could not be established.”** A visible bullet list. If empty, the fallback asks
    the reader to confirm that coverage and tooling limits were explicitly considered.
 4. **Detailed evidence.** Four native disclosures: review coverage, all requirement results,
-   supporting evidence, and report provenance. The full coverage table and 55-result table remain
+   supporting evidence, and report provenance. The full coverage table and 56-result table remain
    available here, but are closed by default.
 
 The page is complete but progressive: summary and exceptions first, full audit trail on demand. It
@@ -422,7 +422,7 @@ These rules are part of the design, not editorial polish:
 - **No sensitive material.** Credentials, tokens, private keys, secrets, personal data, and
   unnecessary source excerpts do not belong in the report model or generated pages.
 
-Schema 1.1 enforces the decision-ready contract: 55 requirement dispositions, exact catalog
+Schema 1.1 enforces the decision-ready contract: 56 requirement dispositions, exact catalog
 fingerprint, evidence references, matching coverage counts, and a validated qualitative review. A
 review with unresolved requirements can render only with an `INSUFFICIENT_EVIDENCE` recommendation
 and an incomplete assessment status. Rendering the report is report-generation completion; it does

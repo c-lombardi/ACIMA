@@ -40,7 +40,7 @@ class NamingTests(unittest.TestCase):
             self.assertNotIn("severityRatchet", rules[rule_id])
         self.assertEqual(rules["ACIMA-N003"]["automation"], "manual")
         self.assertTrue(rules["ACIMA-N003"]["manualEvidence"])
-        self.assertEqual(len(catalog["rules"]), 55)
+        self.assertEqual(len(catalog["rules"]), 56)
 
     def test_python_gallery_fires_naming_rules(self) -> None:
         result, report = run(PYTHON, ROOT / "examples/python", "acima.gallery.config.json")

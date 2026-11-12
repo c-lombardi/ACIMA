@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import sys
 from datetime import date, datetime, timezone
@@ -77,14 +78,23 @@ class ModuleMapError(ValueError):
 
 
 def _walk(root: Path):
-    for path in root.rglob("*"):
-        if not path.is_file():
-            continue
-        relative = path.relative_to(root)
-        if any(part in PRUNE or (part.startswith(".") and part != ".acima")
-               for part in relative.parts):
-            continue
-        yield path
+    """Yield files under root without descending into pruned directories.
+
+    ``Path.rglob`` cannot prune: it descends into ``.git``, ``node_modules`` and build output
+    before the caller can reject the result. A top-down walk lets us remove those directories
+    from ``dirnames`` before descent, which keeps discovery bounded on real repositories.
+    """
+    for current, dirnames, filenames in os.walk(root):
+        dirnames[:] = sorted(
+            name for name in dirnames
+            if name not in PRUNE and (not name.startswith(".") or name == ".acima")
+        )
+        for name in sorted(filenames):
+            if name.startswith("."):
+                continue
+            path = Path(current) / name
+            if path.is_file():
+                yield path
 
 
 def _relative(path: Path, root: Path) -> str:
@@ -262,8 +272,8 @@ def _line_evidence(root: Path, relative: str, line: int, observation: str,
 
 def _first_source_evidence(root: Path, directory: Path,
                            observation: str) -> dict | None:
-    for path in sorted(directory.rglob("*")):
-        if path.is_file() and path.suffix.lower() in SOURCE_EXTENSIONS:
+    for path in sorted(_walk(directory)):
+        if path.suffix.lower() in SOURCE_EXTENSIONS:
             relative = _relative(path, root)
             try:
                 lines = path.read_text(encoding="utf-8").splitlines()
@@ -339,27 +349,26 @@ def _candidate_paths(root: Path) -> dict[str, dict]:
         # their own manifests and must be discovered independently.
         if manifest is None and any(
                 candidate.parent != directory
-                for pattern in ("*.csproj", "package.json", "pyproject.toml", "go.mod")
-                for candidate in directory.rglob(pattern)):
+                for candidate in _walk(directory)
+                if any(candidate.match(pattern) for pattern in
+                       ("*.csproj", "package.json", "pyproject.toml", "go.mod"))):
             return
-        if not any(path.suffix.lower() in SOURCE_EXTENSIONS for path in directory.rglob("*")
-                   if path.is_file()):
+        if not any(path.suffix.lower() in SOURCE_EXTENSIONS for path in _walk(directory)):
             return
         item = candidates.setdefault(relative, {"paths": [relative], "manifests": []})
         if manifest and manifest not in item["manifests"]:
             item["manifests"].append(manifest)
 
     # Project/package manifests are strong layout signals, but still not ownership proof.
-    for pattern in ("*.csproj", "package.json", "pyproject.toml", "setup.py",
-                    "setup.cfg", "go.mod"):
-        for manifest in sorted(root.rglob(pattern)):
-            if any(part in PRUNE or part.startswith(".") for part in
-                   manifest.relative_to(root).parts):
-                continue
-            directory = manifest.parent
-            if _is_test(directory.relative_to(root)):
-                continue
-            add(directory, manifest=_relative(manifest, root))
+    manifest_patterns = ("*.csproj", "package.json", "pyproject.toml", "setup.py",
+                         "setup.cfg", "go.mod")
+    for manifest in sorted(_walk(root)):
+        if not any(manifest.match(pattern) for pattern in manifest_patterns):
+            continue
+        directory = manifest.parent
+        if _is_test(directory.relative_to(root)):
+            continue
+        add(directory, manifest=_relative(manifest, root))
 
     for base_name in BASES:
         base = root / base_name
@@ -404,8 +413,7 @@ def _contract_paths(root: Path, directory: Path) -> list[str]:
     found = []
     for child in sorted(directory.iterdir()):
         if child.is_dir() and child.name.lower() in CONTRACT_NAMES:
-            if any(item.is_file() and item.suffix.lower() in SOURCE_EXTENSIONS
-                   for item in child.rglob("*")):
+            if any(item.suffix.lower() in SOURCE_EXTENSIONS for item in _walk(child)):
                 found.append(_relative(child, root))
     return sorted(set(found))
 
@@ -424,7 +432,7 @@ def _import_evidence(root: Path, module: dict, modules: list[dict]) -> list[dict
     dependencies: dict[str, dict] = {}
     for prefix in module["implementation"]["paths"] + module["contracts"]["paths"]:
         directory = root / prefix
-        files = [directory] if directory.is_file() else sorted(directory.rglob("*"))
+        files = [directory] if directory.is_file() else sorted(_walk(directory))
         for path in files:
             if not path.is_file() or path.suffix.lower() not in SOURCE_EXTENSIONS:
                 continue
@@ -833,10 +841,10 @@ def _existing_architecture(root: Path) -> dict:
         "tools/acima_arch.py", "tools/acima-arch.mjs", "tools/Acima.ArchTests/Program.cs",
     ]
     paths = [path for path in candidates if (root / path).exists()]
-    solutions = sorted(_relative(path, root) for path in root.rglob("*.sln")
-                       if not any(part in PRUNE for part in path.relative_to(root).parts))
-    project_manifests = sorted(_relative(path, root) for path in root.rglob("*.csproj")
-                               if not any(part in PRUNE for part in path.relative_to(root).parts))
+    solutions = sorted(_relative(path, root) for path in _walk(root)
+                       if path.suffix.lower() == ".sln")
+    project_manifests = sorted(_relative(path, root) for path in _walk(root)
+                               if path.suffix.lower() == ".csproj")
     return {
         "paths": paths,
         "solutions": solutions[:20],
@@ -1451,7 +1459,22 @@ def automatic_review(proposal: dict, reviewer: str) -> dict:
     inner = proposal.get("proposal") or {}
     modules = []
     for module in inner.get("modules", []):
-        supported = module.get("confidence") in {"medium", "high"} and bool(module.get("responsibility"))
+        # Confidence labels derived from manifests or directory structure are discovery
+        # signals, not evidence of architectural ownership. Candidate modules whose
+        # responsibility explicitly remains inferred must never become authoritative
+        # merely because a build unit was detected.
+        responsibility = str(module.get("responsibility") or "").lower()
+        implementation = module.get("implementation") or {}
+        ownership = module.get("ownership")
+        supported = (
+            ownership == "declared"
+            and module.get("confidence") == "high"
+            and bool(module.get("responsibility"))
+        )
+        if implementation.get("classification") == "observed-layout":
+            supported = False
+        if "inferred only from repository structure" in responsibility or "requires owner confirmation" in responsibility:
+            supported = False
         modules.append({"id": module["id"], "decision": "accept" if supported else "defer"})
     paths = []
     for item in inner.get("pathDispositions", []):
@@ -1482,9 +1505,19 @@ def mode_can_auto_accept(proposal: dict) -> tuple[bool, str]:
     if unresolved:
         return False, ("%s production path(s) remain unresolved; the owner must classify them"
                        % len(unresolved))
-    if any(module.get("confidence") not in {"medium", "high"} for module in inner.get("modules", [])):
-        return False, "at least one module has low-confidence ownership evidence"
-    return True, "all modules have supported evidence and no unresolved production path remains"
+    unsupported = [
+        module for module in inner.get("modules", [])
+        if module.get("ownership") != "declared"
+        or module.get("implementation", {}).get("classification") == "observed-layout"
+        or "inferred only from repository structure" in str(module.get("responsibility") or "").lower()
+        or "requires owner confirmation" in str(module.get("responsibility") or "").lower()
+    ]
+    if unsupported:
+        return False, (
+            "%s candidate module boundary/boundaries rely on inferred or layout-only ownership; "
+            "automated mode must defer them for owner review" % len(unsupported)
+        )
+    return True, "all modules have previously declared, high-confidence ownership and no unresolved production path remains"
 
 
 def load_proposal(path: Path) -> dict:

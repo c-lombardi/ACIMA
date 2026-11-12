@@ -14,10 +14,10 @@ internal sealed class Order(OrdersContracts.OrderId id, string customerId, Order
     public void Add(OrdersContracts.OrderLine line)
     {
         _lines.Add(line);
-        _total = _total.Plus(line.UnitPrice.Times(line.Quantity));
+        _total = _total.Plus(other: line.UnitPrice.Times(quantity: line.Quantity));
     }
 
-    public OrdersContracts.OrderSummary Summary() => new(id, customerId, _lines.ToArray(), _total);
+    public OrdersContracts.OrderSummary Summary() => new(Id: id, CustomerId: customerId, Lines: _lines.ToArray(), Total: _total);
 }
 
 /// <summary>Orders' composition surface.</summary>
@@ -38,20 +38,20 @@ public sealed class OrdersModule
     /// <summary>Runs the place-order workflow.</summary>
     public OrdersContracts.PlaceOrderResult Place(OrdersContracts.PlaceOrder command)
     {
-        var id = new OrdersContracts.OrderId(Guid.NewGuid().ToString("n"));
+        var id = new OrdersContracts.OrderId(Value: Guid.NewGuid().ToString("n"));
         var lines = new List<OrdersContracts.OrderLine>();
         foreach (var line in command.Lines)
         {
-            var product = _catalog.Get(new CatalogContracts.ProductId(line.ProductId.Value));
+            var product = _catalog.Get(id: new CatalogContracts.ProductId(Value: line.ProductId.Value));
             if (product is null)
             {
-                return Reject(id, OrdersContracts.RejectionReason.OutOfStock);
+                return Reject(id: id, reason: OrdersContracts.RejectionReason.OutOfStock);
             }
 
             var price = OrdersContracts.Money.Of(
-                product.Price.Amount,
-                (OrdersContracts.Currency)product.Price.Currency);
-            lines.Add(new OrdersContracts.OrderLine(line.ProductId, price, line.Quantity));
+                amount: product.Price.Amount,
+                currency: (OrdersContracts.Currency)product.Price.Currency);
+            lines.Add(new OrdersContracts.OrderLine(ProductId: line.ProductId, UnitPrice: price, Quantity: line.Quantity));
         }
 
         if (lines.Count == 0)
@@ -59,28 +59,28 @@ public sealed class OrdersModule
             throw new ArgumentException("an order needs at least one line", nameof(command));
         }
 
-        var order = new Order(id, command.CustomerId, OrdersContracts.Money.Zero(lines[0].UnitPrice.Currency));
+        var order = new Order(id: id, customerId: command.CustomerId, zero: OrdersContracts.Money.Zero(currency: lines[0].UnitPrice.Currency));
         foreach (var line in lines)
         {
-            order.Add(line);
+            order.Add(line: line);
         }
 
         var summary = order.Summary();
         var amount = PaymentsContracts.Money.Of(
-            summary.Total.Amount,
-            (PaymentsContracts.Currency)summary.Total.Currency);
-        var authorization = _payments.Authorize(new PaymentsContracts.PaymentRequest(
-            new PaymentsContracts.OrderId(id.Value),
-            amount,
-            command.CustomerId));
+            amount: summary.Total.Amount,
+            currency: (PaymentsContracts.Currency)summary.Total.Currency);
+        var authorization = _payments.Authorize(request: new PaymentsContracts.PaymentRequest(
+            OrderId: new PaymentsContracts.OrderId(Value: id.Value),
+            Amount: amount,
+            CustomerId: command.CustomerId));
         if (!authorization.Approved)
         {
-            return Reject(id, OrdersContracts.RejectionReason.PaymentDeclined);
+            return Reject(id: id, reason: OrdersContracts.RejectionReason.PaymentDeclined);
         }
 
         _orders[id.Value] = order;
-        _published.Add(new OrdersContracts.OrderPlaced(id, summary.CustomerId, summary.Total));
-        return new OrdersContracts.PlaceOrderResult(summary, null);
+        _published.Add(new OrdersContracts.OrderPlaced(OrderId: id, CustomerId: summary.CustomerId, Total: summary.Total));
+        return new OrdersContracts.PlaceOrderResult(Accepted: summary, Rejected: null);
     }
 
     /// <summary>Returns an accepted order.</summary>
@@ -93,8 +93,8 @@ public sealed class OrdersModule
     private OrdersContracts.PlaceOrderResult Reject(OrdersContracts.OrderId id,
         OrdersContracts.RejectionReason reason)
     {
-        var rejected = new OrdersContracts.OrderRejected(id, reason);
+        var rejected = new OrdersContracts.OrderRejected(OrderId: id, Reason: reason);
         _published.Add(rejected);
-        return new OrdersContracts.PlaceOrderResult(null, rejected);
+        return new OrdersContracts.PlaceOrderResult(Accepted: null, Rejected: rejected);
     }
 }

@@ -32,8 +32,8 @@ class ProvenanceTests(unittest.TestCase):
         self.assertEqual(skill["version"], manifest["skillVersion"])
         self.assertEqual(skill["standard"], manifest["standard"])
         self.assertEqual(catalog["sha256"], manifest["catalog"]["sha256"])
-        self.assertEqual(catalog["rules"], 55)
-        self.assertEqual(catalog["portable"], 41)
+        self.assertEqual(catalog["rules"], 56)
+        self.assertEqual(catalog["portable"], 42)
         self.assertEqual(len(skill["contentSha256"]), 64)
 
     def test_tree_hash_is_stable_and_content_sensitive(self) -> None:

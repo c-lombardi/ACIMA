@@ -39,7 +39,7 @@ class FunctionalCaptureTests(unittest.TestCase):
             self.assertEqual(rule["severity"], "warning")
             self.assertEqual(rule["severityRatchet"], {"to": "error", "at": "2.0.0"})
             self.assertEqual(rule["automation"], "automated")
-        self.assertEqual(len(catalog["rules"]), 55)
+        self.assertEqual(len(catalog["rules"]), 56)
 
     def test_python_gallery_fires_both_rules(self) -> None:
         result, report = run(PYTHON, ROOT / "examples/python", "acima.gallery.config.json")

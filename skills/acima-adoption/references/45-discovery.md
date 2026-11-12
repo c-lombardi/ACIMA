@@ -50,7 +50,7 @@ Then explain ACIMA against the target system: for each meaningful difference, th
 ACIMA expectation, why it matters, whether it is a confirmed problem, a suspected one, an acceptable
 design or insufficient evidence, what would change, and whether judgement is required. Recognise what
 already satisfies a requirement — do not sell existing good practice back as work. Complete all
-55 evidence-backed requirement dispositions before making an adoption recommendation. If the full
+56 evidence-backed requirement dispositions before making an adoption recommendation. If the full
 review establishes that ACIMA would add little, say that plainly and recommend against adoption.
 
 Ground benefits in observed characteristics: preventing a change in one implementation from breaking

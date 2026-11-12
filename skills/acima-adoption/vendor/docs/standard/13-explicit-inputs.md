@@ -139,12 +139,13 @@ Two rules carry the requirement:
 
 | Rule | Detects | Severity |
 |---|---|---|
-| `D011` | an optional or defaulted parameter on a module-owned constructor | `warning`, `error` at 2.0.0 |
-| `D012` | an optional or defaulted parameter on a module-owned method or function | `warning`, `error` at 2.0.0 |
+| `D011` | an optional or defaulted parameter on a module-owned constructor | `error` |
+| `D012` | an optional or defaulted parameter on a module-owned method or function | `error` |
 
-Both are `automation: "automated"` and ship as warnings for one minor release, for the same reason as
-the third-party tier rules: a repository with a working build should get the finding and a migration
-window before the gate blocks it.
+Both are `automation: "automated"` L1 errors. There is no migration ratchet: an optional or
+defaulted parameter on a module-owned constructor, method or function is prohibited. A repository
+that cannot remove the parameter must record a named, scoped, owned and expiring waiver under
+`G001`/`G002`; ordinary adoption does not lower the rule.
 
 **Scope.** The rules apply to the declared behaviour units: `implementation`, `host`, `adapter` and
 `port`. Contract types are data with compatibility semantics — an optional member there is the
@@ -153,8 +154,7 @@ tooling and end-to-end units are excluded because a fixture's convenience is not
 behaviour. The exclusions are deliberate and documented; they are not a silent skip.
 
 **What the portable rules do not decide.** Static analysis can see that a parameter may be omitted;
-it cannot see whether the omitted behaviour matters. A finding therefore means *review this
-omission*, and the two outcomes are:
+it cannot see whether the omitted behaviour matters. A finding is a defect. The two compliant outcomes are:
 
 - the input is required → make it required (`D011`/`D012` fixed);
 - the omission is genuinely optional → model it explicitly, or record the exception.
@@ -197,3 +197,40 @@ Where rules overlap, they are not duplicated: `D011`/`D012` judge the *shape of 
 - [ ] Do the tests construct the same graph production does?
 
 If a reviewer cannot answer "who decided this value?" from the diff, the input is not explicit yet.
+
+## 13.10 Named arguments at the call site
+
+In languages that support named arguments, every argument supplied to a statically resolved
+module-owned function or method MUST use the receiving parameter's name at the call site. The
+reader should not have to navigate to the declaration to determine which value is being supplied.
+
+Python:
+    create_order(request_id=request_id, customer_id=wrong_variable, name=user_name)
+
+C#:
+    CreateOrder(requestId: requestId, customerId: wrongVariable, name: userName);
+
+The label exposes the assignment; it does not prove that the value itself is semantically correct.
+A matching label can still carry the wrong variable. This rule makes that mismatch directly
+visible in the raw diff without requiring a lookup of the declaration.
+
+This rule does not require artificial options objects, wrapper types, or one-property objects to
+simulate labels in languages without native named-argument call syntax. TypeScript/JavaScript and
+Go do not have native named arguments and report this rule as not executed. Use explicit request
+or contract types when that shape is independently justified, not solely to imitate labels.
+
+Scope: Python and C# reference enforcers report unlabeled arguments when they can resolve a call
+to a locally declared module-owned function, method, or constructor. Built-ins, unresolved
+third-party calls, reflection, dynamic dispatch, and argument expansion that cannot be statically
+resolved remain outside the deterministic subset and require review. This is not a claim that
+every call in a repository has been semantically resolved.
+
+This requirement is separate from D011 and D012. It does not prohibit nullable values or nullable
+parameters. A required nullable parameter remains valid and must still be supplied; an
+optional/defaulted parameter remains governed by D011/D012.
+
+## 13.11 Enforcement and the review boundary
+
+D017 is an automated L1 warning. Python and .NET enforce it using their native named-argument
+syntax. TypeScript/JavaScript and Go record executed:false because their call syntax does not
+support parameter labels. A finding identifies the call site and the parameter label to use.

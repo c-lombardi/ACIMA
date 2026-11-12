@@ -36,4 +36,4 @@ class CustomersModule:
         return self._reader
 
     def add(self, customer: CustomerView) -> None:
-        self._reader.save(customer)
+        self._reader.save(customer=customer)

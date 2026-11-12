@@ -31,9 +31,9 @@ def execution_map(level: str) -> dict:
 class AssessmentCoverageTests(unittest.TestCase):
     def test_coverage_denominator_and_manual_partition_follow_selected_level(self) -> None:
         expected = {
-            "L1": (27, 26, 1),
-            "L2": (37, 32, 5),
-            "L3": (55, 41, 14),
+            "L1": (28, 27, 1),
+            "L2": (38, 33, 5),
+            "L3": (56, 42, 14),
         }
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -58,7 +58,7 @@ class AssessmentCoverageTests(unittest.TestCase):
                                if rule["automation"] == "manual")
             execution[manual_rule] = {"executed": True}
             coverage = acima._assessment_rule_coverage(root, CATALOG, "L1", execution)
-            self.assertEqual(coverage["automated"]["checked"], 26)
+            self.assertEqual(coverage["automated"]["checked"], 27)
             self.assertEqual(coverage["manual"]["acceptedEvidence"], 0)
             self.assertEqual(coverage["notAssessed"], 1)
             item = next(item for item in coverage["rules"] if item["rule"] == manual_rule)
@@ -87,7 +87,7 @@ class AssessmentCoverageTests(unittest.TestCase):
             coverage = acima._assessment_rule_coverage(
                 root, CATALOG, "L1", execution_map("L1"))
             self.assertEqual(coverage["manual"]["acceptedEvidence"], 1)
-            self.assertEqual(coverage["accountedFor"], 27)
+            self.assertEqual(coverage["accountedFor"], 28)
             self.assertEqual(coverage["notAssessed"], 0)
             self.assertTrue(coverage["complete"])
 
@@ -120,7 +120,7 @@ class AssessmentCoverageTests(unittest.TestCase):
                            if rule["automation"] == "automated")
             del execution[missing]
             coverage = acima._assessment_rule_coverage(Path(directory), CATALOG, "L1", execution)
-            self.assertEqual(coverage["automated"]["checked"], 25)
+            self.assertEqual(coverage["automated"]["checked"], 26)
             self.assertEqual(coverage["notAssessed"], 2)
             self.assertEqual(coverage["automated"]["notExecuted"][0]["rule"], missing)
             self.assertIn("omitted", coverage["automated"]["notExecuted"][0]["reason"])
@@ -134,14 +134,14 @@ class AssessmentCoverageTests(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertEqual(report["verdict"], "NEEDS_UNIT_MAP")
             coverage = report["coverage"]
-            self.assertEqual(coverage["required"], 27)
+            self.assertEqual(coverage["required"], 28)
             self.assertEqual(coverage["accountedFor"], 0)
-            self.assertEqual(coverage["notAssessed"], 27)
+            self.assertEqual(coverage["notAssessed"], 28)
             self.assertEqual(coverage["automated"]["notExecuted"][0]["reason"],
                              report["verdictMeaning"])
             self.assertFalse(coverage["executionAvailable"])
             self.assertEqual(report["assessmentResult"]["fit"], acima.OUTCOME_INSUFFICIENT)
-            self.assertIn("0/55", report["assessmentResult"]["recommendation"])
+            self.assertIn("0/56", report["assessmentResult"]["recommendation"])
 
     def test_enforcer_level_mismatch_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -173,13 +173,13 @@ class AssessmentCoverageTests(unittest.TestCase):
         self.assertEqual(report["requestedLevel"], "L3")
         coverage = report["coverage"]
         self.assertEqual(coverage["level"], "L3")
-        self.assertEqual(coverage["required"], 55)
-        self.assertEqual(coverage["automated"]["checked"], 41)
+        self.assertEqual(coverage["required"], 56)
+        self.assertEqual(coverage["automated"]["checked"], 42)
         self.assertEqual(coverage["manual"]["required"], 14)
         self.assertEqual(coverage["notAssessed"], 14)
         self.assertFalse(coverage["complete"])
         markdown = acima.assess_markdown(report)
-        self.assertIn("Required at `L3`: **55**", markdown)
+        self.assertIn("Required at `L3`: **56**", markdown)
         self.assertIn("Manual evidence: **0/14 accepted**", markdown)
         self.assertIn("Manual evidence still required: **14**", markdown)
         self.assertIn("Coverage complete: **no**", markdown)
@@ -189,19 +189,19 @@ class AssessmentCoverageTests(unittest.TestCase):
         code, report = acima.assess_project(ROOT / "examples/python", level="L1")
         self.assertEqual(code, 0, report.get("error"))
         self.assertEqual(report["requestedLevel"], "L1")
-        self.assertEqual(report["coverage"]["required"], 27)
-        self.assertEqual(report["coverage"]["automated"]["required"], 26)
+        self.assertEqual(report["coverage"]["required"], 28)
+        self.assertEqual(report["coverage"]["automated"]["required"], 27)
         self.assertEqual(report["coverage"]["manual"]["required"], 1)
 
 
     def test_comprehensive_review_exposes_all_catalog_rules_without_marking_them_reviewed(self) -> None:
         review = acima._comprehensive_rule_review(CATALOG)
-        self.assertEqual(review["required"], 55)
-        self.assertEqual(review["levels"], {"L1": 27, "L2": 10, "L3": 18})
+        self.assertEqual(review["required"], 56)
+        self.assertEqual(review["levels"], {"L1": 28, "L2": 10, "L3": 18})
         self.assertEqual(review["reviewed"], 0)
-        self.assertEqual(review["pending"], 55)
+        self.assertEqual(review["pending"], 56)
         self.assertFalse(review["complete"])
-        self.assertEqual(len(review["rules"]), 55)
+        self.assertEqual(len(review["rules"]), 56)
         self.assertTrue(all(item["qualitativeStatus"] == "not_reviewed"
                             for item in review["rules"]))
 
@@ -221,8 +221,8 @@ class AssessmentCoverageTests(unittest.TestCase):
             code, report = acima.assess_project(root)
             self.assertEqual(code, 0)
             self.assertEqual(report["verdict"], "NEEDS_UNIT_MAP")
-            self.assertEqual(report["comprehensiveRuleReview"]["required"], 55)
-            self.assertEqual(report["comprehensiveRuleReview"]["pending"], 55)
+            self.assertEqual(report["comprehensiveRuleReview"]["required"], 56)
+            self.assertEqual(report["comprehensiveRuleReview"]["pending"], 56)
             inventory = report["repositoryInventory"]
             self.assertGreaterEqual(inventory["projectCount"], 2)
             self.assertEqual({item["language"] for item in inventory["projects"]},
@@ -232,10 +232,10 @@ class AssessmentCoverageTests(unittest.TestCase):
             self.assertIn("solution.sln", inventory["workspaces"])
             self.assertEqual(inventory["sourceClassification"]["production"], 2)
             self.assertEqual(inventory["sourceClassification"]["tests"], 0)
-            self.assertEqual(report["coverage"]["required"], 27)
+            self.assertEqual(report["coverage"]["required"], 28)
             markdown = acima.assess_markdown(report)
             self.assertIn("Comprehensive ACIMA requirement review", markdown)
-            self.assertIn("Pending qualitative review: **55**", markdown)
+            self.assertIn("Pending qualitative review: **56**", markdown)
             self.assertIn("Project manifests", markdown)
 
     def test_project_assessment_discovers_parent_repository_architecture_context(self) -> None:

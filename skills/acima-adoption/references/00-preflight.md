@@ -25,7 +25,7 @@ skill can be trusted months later.
 |---|---|---|
 | `SKL-001` | the manifest is readable JSON | restore `manifest.json`; do not hand-edit around it |
 | `SKL-002` | `tools/acima-spec/rules.json` matches the pinned SHA-256 | the catalog changed. Read the diff, update the skill deliberately, then update the pin |
-| `SKL-003` | 55 rules, all 41 automated ids and all 14 manual ids still exist | a rule was renamed or removed; update references that cite it |
+| `SKL-003` | 56 rules, all 42 automated ids and all 14 manual ids still exist | a rule was renamed or removed; update references that cite it |
 | `SKL-004` | the catalog version equals `manifest.standard` | version-specific guidance is stale |
 | `SKL-005` | every reference and asset listed in the manifest exists | restore the file or remove it from the map |
 | `SKL-006` | every documented enforcer path exists | the layout moved; fix the commands in `SKILL.md` and the manifest together |
@@ -52,7 +52,7 @@ preflight reports it so you do not promise a gate you cannot run.
 | `TGT-001` | the target exists and is a directory | pass the right `--project` |
 | `TGT-002` | a language is recognisable from manifests or sources | confirm the path, or scaffold first |
 | `TGT-003` | classification: `greenfield`, `brownfield`, `adopting` | if ambiguous, ask the owner |
-| `TGT-004` | candidate units can be proposed | complete the 55-requirement qualitative review before making an adoption recommendation; do not infer no value from missing candidate units. Unit ownership still requires owner approval |
+| `TGT-004` | candidate units can be proposed | complete the 56-requirement qualitative review before making an adoption recommendation; do not infer no value from missing candidate units. Unit ownership still requires owner approval |
 | `TGT-005` | every source file falls inside a proposed unit | uncovered files become `G005` findings |
 | `TGT-006` | the architecture mode is valid and matches the tree: `base` (or absent) with no manifest, or `service-topology` with `acima.topology.json` | repair `mode` and the manifest; service mode is `NOT SUPPORTED` by this skill and must not be assessed as base |
 

@@ -20,7 +20,7 @@ Exit codes: `0` every selected profile conformed, `1` drift or a missing toolcha
 |---|---|
 | clean tree | does the reference implementation produce zero findings? |
 | gallery | does every required rule fire, at the expected path? |
-| `coverage.json` | does each profile partition all 55 rules into executed / not-executed, with a reason? |
+| `coverage.json` | does each profile partition all 56 rules into executed / not-executed, with a reason? |
 | source count | did the enforcer actually see files? Zero files is a failure, not a pass |
 | execution map | does the run name every catalog rule, with `executed: false` where applicable? |
 | `tools` | do the CLI, claim model, waiver, exclusion, profile, topology and documentation contracts still hold? |
@@ -50,7 +50,7 @@ Positive fixtures (the clean reference implementations) and negative fixtures (t
 
 ## What a pass proves, and what it does not
 
-Passing means: for the four implemented languages, the reference enforcers detect the portable rules on checked-in fixtures (41 in Python and TypeScript, 23 in Go and .NET, where the five tier rules, two explicit-input rules, two value rules, two composition rules, two functional-capture rules, three lifecycle rules and two naming rules (`N001`–`N002`) report `executed: false`), agree on finding shape, and do not fire on a clean tree, and the claim model refuses to overstate. The fourteen manual rules are reported `executed: false` in every profile: `C003`, `C007`, `C008`, `L004`, `A002`, `A004`, `A010`–`A015`, `G004` and `N003`.
+Passing means: for the four implemented languages, the reference enforcers detect the portable rules on checked-in fixtures (42 in Python, 41 in TypeScript, 24 in .NET and 23 in Go; the remaining automated rules and all fourteen manual rules report `executed: false`), agree on finding shape, and do not fire on a clean tree, and the claim model refuses to overstate. The fourteen manual rules are reported `executed: false` in every profile: `C003`, `C007`, `C008`, `L004`, `A002`, `A004`, `A010`–`A015`, `G004` and `N003`.
 
 Passing does **not** mean:
 

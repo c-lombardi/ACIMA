@@ -289,3 +289,10 @@ lower them. Test names state the rule. The domain package's `dependencies` stay 
 `tsc --build` refuses an undeclared project reference. `dependency-cruiser` or
 `eslint-plugin-boundaries` can encode the layer table; `@microsoft/api-extractor` records the
 published surface for G004.
+
+### Named call arguments (D017)
+
+TypeScript/JavaScript has no native named-argument call syntax. The reference enforcer reports
+D017 as executed:false rather than requiring artificial object wrappers or claiming ordinary
+object properties are equivalent to native call-site labels. Use a request object when it is
+already the natural contract for the operation, not solely to imitate named arguments.

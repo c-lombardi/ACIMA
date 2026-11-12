@@ -58,7 +58,7 @@ Explain what is actually enforced, where, and whether it has been observed runni
 
 ## 3. Review every catalog requirement
 
-Read `tools/acima-spec/rules.json` and the normative chapter(s) for every requirement. The current catalog has 55 requirements: 27 L1, 10 additional L2 and 18 additional L3 (37 cumulative at L2 and 55 cumulative at L3). If the catalog changes, derive the counts from the catalog rather than hardcoding these values.
+Read `tools/acima-spec/rules.json` and the normative chapter(s) for every requirement. The current catalog has 56 requirements: 28 L1, 10 additional L2 and 18 additional L3 (38 cumulative at L2 and 56 cumulative at L3). If the catalog changes, derive the counts from the catalog rather than hardcoding these values.
 
 The review must trace each requirement through actual source, project metadata, contracts, tests, configuration, call chains and deployment evidence as applicable. Use the rule's summary as its normative meaning and its fix as guidance, not as proof of a violation.
 
@@ -109,14 +109,14 @@ Do not claim conformance because all requirements were discussed or reviewed. Do
 
 ## 6. Required report
 
-Report repository scope and exclusions; project/language/deployment inventory; provisional ownership map; existing architecture and enforcement comparison; findings grouped by L1/L2/L3; a complete 55-rule status matrix; cross-project integration contract findings; deterministic coverage by language; formal manual-evidence status; critical gaps; adoption sequence; confidence and limitations.
+Report repository scope and exclusions; project/language/deployment inventory; provisional ownership map; existing architecture and enforcement comparison; findings grouped by L1/L2/L3; a complete 56-rule status matrix; cross-project integration contract findings; deterministic coverage by language; formal manual-evidence status; critical gaps; adoption sequence; confidence and limitations.
 
 Prioritize material architectural risks and inconsistencies. Preserve existing good architecture. Distinguish genuine ACIMA conflicts from different but acceptable design choices. Assessment is read-only; implementation requires separate, explicit, scope-specific approval.
 
 
 ## Evidence-backed qualitative review: mandatory completion gate
 
-The 55-rule inventory is not proof that the rules were reviewed. For every comprehensive assessment,
+The 56-rule inventory is not proof that the rules were reviewed. For every comprehensive assessment,
 produce a structured JSON review with exactly one entry for every current catalog rule, including rules
 outside the recommended adoption level. Use `tools/qualitative-review.schema.json` as the schema and
 pin `catalogSha256` to the SHA-256 of `tools/acima-spec/rules.json` from the skill's bundled catalog.
@@ -157,24 +157,24 @@ Then attach the same validated review to the comprehensive assessment:
 py -3 "<skill-root>\vendor\tools\acima.py" assess --root "<assessed-repository>" --level L3 --review "<review-json>" --format json
 ```
 
-The first adoption gate is **complete qualitative coverage**: all 55 current catalog requirements must
+The first adoption gate is **complete qualitative coverage**: all 56 current catalog requirements must
 have exactly one valid, evidence-backed disposition. The validator's `coverageComplete` result means
 every requirement was explicitly reviewed and accounted for; it does not mean every requirement is
 resolved or conformant. An `insufficient_evidence` disposition is valid coverage, but remains an
 unresolved decision and must be shown as such. Missing module ownership blocks only checks that
 depend on an approved unit map. It never excuses skipping independent qualitative reviews.
 
-Run the validator and require exit code zero for full catalog coverage. Exit code zero means all 55
+Run the validator and require exit code zero for full catalog coverage. Exit code zero means all 56
 dispositions and their evidence passed structural/provenance validation. It does not certify semantic
 correctness. If the validator returns nonzero, do not produce a decision-ready adoption recommendation
 or HTML outcome report. Continue the review or report only a clearly labelled preliminary discovery
 result with no adoption recommendation.
 
-An assessment may be called **complete** only when all 55 rule entries validate, none is
+An assessment may be called **complete** only when all 56 rule entries validate, none is
 `insufficient_evidence`, the ACIMA unit map is declared, and the deterministic assessment finishes
 successfully. This is assessment completeness, not `FULL CONFORMANCE`. A complete assessment may
 contain gaps. Never manufacture an ACIMA unit map or a rule disposition to obtain a complete result.
-If the project is not yet mapped, the 55-rule qualitative review may still be coverage-complete; report
+If the project is not yet mapped, the 56-rule qualitative review may still be coverage-complete; report
 that separately and keep deterministic and overall assessment completion false.
 
 The HTML renderer independently revalidates the embedded original qualitative review against the

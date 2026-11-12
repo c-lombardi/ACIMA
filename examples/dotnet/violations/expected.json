@@ -58,6 +58,9 @@
     "violations/a003_use.cs",
     "violations/d001_d009_impl.cs"
   ],
+  "ACIMA-D017": [
+    "violations/d017_unlabeled_arguments.cs"
+  ],
   "ACIMA-G001": [
     "violations/waivers.json"
   ],

@@ -43,13 +43,13 @@ def valid_document(root: Path) -> dict:
 
 
 class QualitativeReviewTests(unittest.TestCase):
-    def test_all_55_catalog_rules_with_grounded_evidence_complete_review(self) -> None:
+    def test_all_56_catalog_rules_with_grounded_evidence_complete_review(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             result = validate_review(valid_document(root), root, CATALOG, CATALOG_SHA256)
             self.assertTrue(result["complete"])
-            self.assertEqual(result["required"], 55)
-            self.assertEqual(result["reviewed"], 55)
+            self.assertEqual(result["required"], 56)
+            self.assertEqual(result["reviewed"], 56)
             self.assertEqual(result["pending"], 0)
 
     def test_boilerplate_rationale_and_reused_evidence_are_rejected(self) -> None:
@@ -113,7 +113,7 @@ class QualitativeReviewTests(unittest.TestCase):
             document["rules"][2]["evidence"][0]["startLine"] = 99
             result = validate_review(document, root, CATALOG, CATALOG_SHA256)
             self.assertFalse(result["complete"])
-            self.assertEqual(result["reviewed"], 52)
+            self.assertEqual(result["reviewed"], 53)
 
     def test_fabricated_quote_does_not_validate_as_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -154,8 +154,8 @@ class QualitativeReviewTests(unittest.TestCase):
             self.assertFalse(result["complete"])
             self.assertTrue(result["coverageComplete"])
             self.assertFalse(result["decisionComplete"])
-            self.assertEqual(result["reviewed"], 55)
-            self.assertEqual(result["evidenceBackedDispositions"], 55)
+            self.assertEqual(result["reviewed"], 56)
+            self.assertEqual(result["evidenceBackedDispositions"], 56)
             self.assertEqual(result["unresolved"], 1)
 
     def test_assessment_completes_only_with_all_rules_unit_map_and_successful_run(self) -> None:
@@ -217,7 +217,7 @@ class QualitativeReviewTests(unittest.TestCase):
             self.assertFalse(report["assessmentCompletion"]["qualitativeReviewCoverageComplete"])
             self.assertFalse(report["comprehensiveRuleReview"]["complete"])
             self.assertEqual(report["assessmentResult"]["fit"], acima.OUTCOME_INSUFFICIENT)
-            self.assertIn("55", report["assessmentResult"]["recommendation"])
+            self.assertIn("56", report["assessmentResult"]["recommendation"])
 
     def test_full_qualitative_coverage_is_retained_when_module_map_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -235,8 +235,8 @@ class QualitativeReviewTests(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertEqual(report["verdict"], "NEEDS_UNIT_MAP")
             review = report["comprehensiveRuleReview"]
-            self.assertEqual(review["required"], 55)
-            self.assertEqual(review["reviewed"], 55)
+            self.assertEqual(review["required"], 56)
+            self.assertEqual(review["reviewed"], 56)
             self.assertEqual(review["pending"], 0)
             self.assertTrue(review["coverageComplete"])
             self.assertFalse(review["decisionComplete"])

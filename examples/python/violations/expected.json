@@ -5,6 +5,21 @@
   "ACIMA-A003": [
     "violations/a003_static_catalog.py"
   ],
+  "ACIMA-A005": [
+    "violations/a005_ambient_config.py"
+  ],
+  "ACIMA-A006": [
+    "violations/a006_inline_operational.py"
+  ],
+  "ACIMA-A007": [
+    "violations/lifecycle_registration.py"
+  ],
+  "ACIMA-A008": [
+    "violations/lifecycle_registration.py"
+  ],
+  "ACIMA-A009": [
+    "violations/lifecycle_registration.py"
+  ],
   "ACIMA-C001": [
     "violations/c001_mutable_contract.py"
   ],
@@ -53,6 +68,32 @@
   "ACIMA-D009": [
     "violations/d009_private_import.py"
   ],
+  "ACIMA-D010": [
+    "violations/d010_port_vendor.py"
+  ],
+  "ACIMA-D011": [
+    "violations/d011_optional_constructor_dependency.py"
+  ],
+  "ACIMA-D012": [
+    "violations/d012_hidden_default.py",
+    "violations/l001_identifier_only.py"
+  ],
+  "ACIMA-D013": [
+    "violations/d013_dynamic_registration.py"
+  ],
+  "ACIMA-D014": [
+    "violations/d014_property_injection.py"
+  ],
+  "ACIMA-D015": [
+    "violations/d015_closure_capture.py"
+  ],
+  "ACIMA-D016": [
+    "violations/d016_partial_dependency.py"
+  ],
+  "ACIMA-D017": [
+    "violations/d015_closure_capture.py",
+    "violations/d017_unlabeled_arguments.py"
+  ],
   "ACIMA-G001": [
     "violations/waivers.json"
   ],
@@ -64,6 +105,10 @@
   ],
   "ACIMA-G005": [
     "violations/g005_unclassified.py"
+  ],
+  "ACIMA-G006": [
+    "acima.gallery.config.json",
+    "violations/requirements.gallery.txt"
   ],
   "ACIMA-L001": [
     "violations/l001_domain_imports_db.py"
@@ -78,13 +123,6 @@
     "src/acima/payments/impl/gateway.py",
     "violations/l003_catalog_public.py"
   ],
-  "ACIMA-D010": [
-    "violations/d010_port_vendor.py"
-  ],
-  "ACIMA-G006": [
-    "acima.gallery.config.json",
-    "violations/requirements.gallery.txt"
-  ],
   "ACIMA-L005": [
     "violations/l005_application_imports_vendor.py"
   ],
@@ -93,40 +131,6 @@
   ],
   "ACIMA-L007": [
     "violations/l007_vendor_type_outside.py"
-  ],
-  "ACIMA-D011": [
-    "violations/d011_optional_constructor_dependency.py"
-  ],
-  "ACIMA-D012": [
-    "violations/d012_hidden_default.py",
-    "violations/l001_identifier_only.py"
-  ],
-  "ACIMA-A005": [
-    "violations/a005_ambient_config.py"
-  ],
-  "ACIMA-A006": [
-    "violations/a006_inline_operational.py"
-  ],
-  "ACIMA-D013": [
-    "violations/d013_dynamic_registration.py"
-  ],
-  "ACIMA-D014": [
-    "violations/d014_property_injection.py"
-  ],
-  "ACIMA-D015": [
-    "violations/d015_closure_capture.py"
-  ],
-  "ACIMA-D016": [
-    "violations/d016_partial_dependency.py"
-  ],
-  "ACIMA-A007": [
-    "violations/lifecycle_registration.py"
-  ],
-  "ACIMA-A008": [
-    "violations/lifecycle_registration.py"
-  ],
-  "ACIMA-A009": [
-    "violations/lifecycle_registration.py"
   ],
   "ACIMA-N001": [
     "violations/naming_conventions.py"
