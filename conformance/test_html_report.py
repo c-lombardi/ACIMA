@@ -66,6 +66,58 @@ def add_complete_review(d, root, unresolved=False):
 
 def model():
     return {"schemaVersion":"1.0","generatedAt":"2026-11-10T13:00:00-05:00","skillVersion":"1.27.0","standardVersion":"1.9.0-draft.1","catalogSha256":"abc123","assessmentStatus":"Assessment incomplete","repository":{"name":"Sample product","path":"C:/work/sample","commit":"abc","mode":"brownfield"},"recommendation":{"status":"RECOMMENDED_WITH_LIMITATIONS","summary":"Start with existing module boundaries; runtime ownership needs more evidence.","reasons":["The code already has distinct domain projects."],"caveats":["CI was not observed."]},"overview":{"plainLanguage":"This assessment found an existing boundary worth protecting.","nextAction":"Review the proposed local architecture check.","nextActionWhy":"It can catch new coupling without requiring a rewrite."},"value":{"benefits":[{"title":"Safer changes","description":"Modules depend on published contracts, not private implementation details.","availability":"Achievable after the gate is adopted."}],"adds":["Enforcement for dependency direction."],"costs":["A small maintenance cost for the check."]},"architecture":{"family":"Modular monolith","currentState":"Several projects already separate business capabilities.","proposedState":"Make the existing module contracts explicit and checkable."},"strengths":["Existing project boundaries."],"findings":[{"title":"A consumer reaches into a private implementation","rule":"ACIMA-D001","what":"The Orders project references Catalog internals.","why":"An internal Catalog change can break Orders unexpectedly.","paths":["src/Orders/OrderService.cs"],"recommendation":"Depend on the published Catalog contract.","status":"confirmed"}],"proposedChanges":[{"path":"acima.config.json","action":"create","purpose":"Declare module ownership.","expectedOutcome":"The check knows which code belongs to each module.","approval":"Requires approval","status":"proposed"},{"path":"src/Orders/OrderService.cs","action":"modify","purpose":"Replace private implementation reference.","expectedOutcome":"Orders depends only on Catalog's published contract.","approval":"Not approved","status":"proposed"}],"outcomes":[{"title":"Earlier boundary feedback","description":"A new cross-module implementation dependency is reported before merge.","measure":"A controlled bad import fails the local check.","status":"Proposed"}],"phases":[{"name":"Declare modules","purpose":"Record existing ownership boundaries.","deliverable":"acima.config.json","verification":"Validate map and run check.","approval":"Yes","status":"Proposed"}],"decisions":[{"question":"Who owns Catalog's public contract?","context":"The current ownership is not explicit.","recommendation":"Assign the Catalog team.","impact":"Needed before contract changes.","effort":"About 30 minutes with the Catalog team.","consequence":"Contract changes stay blocked until an owner is named.","evidenceGap":"The repository does not name a current owner.","blockedWork":"Contract changes and ownership-dependent checks.","whyOwner":"Only the repository owner can assign responsibility.","alternatives":[{"title":"Local check only","description":"Does not block merges."}],"requiredBeforeImplementation":True}],"outOfScope":["No database migration."],"limitations":["CI workflow was not inspected."],"coverage":{"requiredRules":56,"reviewedRules":56,"pendingRules":0,"automatedChecksRun":42,"manualReviewsCompleted":14,"skippedOrUnsupported":0},"evidence":[{"label":"Qualitative review","source":"assessment/review.json","whatItSupports":"Requirement dispositions and evidence references.","status":"Complete"}],"approvalStatement":"Only the listed report and implementation scope can be approved; no blanket authorization."}
+def large_module_map_model(count=1000):
+    data=model()
+    modules=[]
+    for index in range(1,count+1):
+        area=index%12
+        path=f"src/area-{area}/module-{index:04d}/service.py"
+        review='accept' if index<=200 else 'modify' if index<=250 else 'defer' if index<=300 else 'reject' if index<=305 else 'pending'
+        contracts={'paths':[f"src/area-{area}/module-{index:04d}/contract.py"]} if index%5==0 else {'paths':[]}
+        dependencies=[]
+        if index%7==0:
+            next_index=index%count+1
+            dependencies=[{'module':f"Module {next_index:04d}",'moduleId':f"module-{next_index:04d}",'leaksImplementation':index%11==0}]
+        modules.append({
+            'id':f"module-{index:04d}",'name':f"Module {index:04d}",
+            'responsibility':f"Owns the behavior and data for module {index:04d}.",
+            'ownership':'inferred','status':'proposed','reviewDecision':review,
+            'implementation':{'paths':[path]},'contracts':contracts,
+            'dependencies':dependencies,
+            'evidence':[{'path':path,'observation':'Observed source path in layout discovery.'}],
+        })
+    data['moduleMap']={
+        'authoritativeMap':{'status':'absent'},
+        'proposal':{'status':'proposed','basis':'Layout and import discovery only.','modules':modules,
+                    'recommendations':[],'decisions':[],'unassigned':[],'quality':{}},
+    }
+    data['ownershipGate']={'status':'blocked','deterministicChecksBlocked':True,
+                           'ownershipDependentRules':['ACIMA-D001'],'independentReviewContinues':True}
+    data['plainLanguageGaps']=[
+        {'title':'A change in one area can break another',
+         'risk':'high',
+         'whatItCosts':'A routine change in the catalog area can break checkout without the catalog team seeing it first.',
+         'fixInvolves':'Make checkout use the catalog area’s published interface instead of reaching into its internal code.',
+         'paths':['src/area-1/module-0001/service.py'],
+         'confidence':'confirmed'},
+        {'title':'No one has confirmed the proposed parts',
+         'risk':'high',
+         'whatItCosts':'Work could be assigned to the wrong team, and checks could enforce a boundary the product does not actually have.',
+         'fixInvolves':'Walk through each proposed part with its owner and accept, change or reject it before relying on the map.',
+         'confidence':'not recorded'},
+        {'title':'Two areas may be doing the same job',
+         'risk':'medium',
+         'whatItCosts':'The same rules can drift apart in two places, so a fix in one area may not reach the other.',
+         'fixInvolves':'Compare the two areas and keep one owner for the shared rule, or make the split explicit.',
+         'confidence':'needs review'},
+        {'title':'The reporting area has no clear owner',
+         'risk':'low',
+         'whatItCosts':'Small reporting changes can wait for ad hoc help and lose context between changes.',
+         'fixInvolves':'Name one owner for reporting, even if that person is not full time on it.',
+         'confidence':'probable'},
+    ]
+    return data
+
 class HtmlReportTests(unittest.TestCase):
     def test_schema_is_valid_json_and_defines_the_file_impact_contract(self):
         schema=json.loads(SCHEMA.read_text(encoding='utf-8-sig'))
@@ -120,6 +172,56 @@ class HtmlReportTests(unittest.TestCase):
             "implement","verify_and_hand_off"])
         self.assertEqual(adoption_reports._canonical_phase({}),{})
 
+    def test_large_module_map_renders_an_atlas_and_searchable_directory(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); src=root/'model.json'; out=root/'report'
+            src.write_text(json.dumps(large_module_map_model()),encoding='utf-8')
+            result=subprocess.run([sys.executable,str(SCRIPT),'--input',str(src),'--out-dir',str(out)],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+            page=(out/'proposal.html').read_text(encoding='utf-8')
+            self.assertEqual(page.count('<tr id="module-'),1000)
+            self.assertIn('class="module-atlas"',page)
+            self.assertIn('The map at a glance',page)
+            self.assertIn('data-module-search',page)
+            self.assertIn('data-status-filter="needs_owner"',page)
+            self.assertIn('href="#module-module-0001"',page)
+            self.assertIn('id="module-module-0001"',page)
+            self.assertIn('src/area-1/module-0001/service.py',page)
+            self.assertIn('<noscript>',page)
+            self.assertIn('1000 parts',page)
+            self.assertIn('PARTS OF THE PRODUCT',page)
+            gap_section=page.split('id="plain-language-gaps"',1)[1].split('id="module-map"',1)[0]
+            self.assertEqual(gap_section.count('class="gap-card'),4)
+            self.assertIn('What it could cost this product:',gap_section)
+            self.assertIn('What fixing it involves:',gap_section)
+            self.assertNotIn('ACIMA-',gap_section)
+            self.assertLess(page.index('A change in one area can break another'),page.index('Two areas may be doing the same job'))
+            self.assertLess(page.index('Two areas may be doing the same job'),page.index('The reporting area has no clear owner'))
+            self.assertIn('role="region" aria-labelledby="module-table-caption" tabindex="0"',page)
+            self.assertIn('<caption id="module-table-caption"',page)
+            self.assertIn('<th scope="col">Part</th>',page)
+            self.assertIn('<th scope="row">',page)
+            self.assertIn('<script>\n(() => {',page)
+            self.assertNotIn('\\n  const root',page)
+            self.assertIn('data-module-count aria-live="polite"',page)
+            self.assertIn('data-module-empty hidden',page)
+            self.assertIn("addEventListener('hashchange', revealTarget)",page)
+
+    def test_plain_language_gap_brief_falls_back_to_recorded_findings(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); src=root/'model.json'; out=root/'report'
+            data=large_module_map_model(3); data.pop('plainLanguageGaps')
+            src.write_text(json.dumps(data),encoding='utf-8')
+            result=subprocess.run([sys.executable,str(SCRIPT),'--input',str(src),'--out-dir',str(out)],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+            page=(out/'proposal.html').read_text(encoding='utf-8')
+            gap_section=page.split('id="plain-language-gaps"',1)[1].split('id="module-map"',1)[0]
+            self.assertIn('A consumer reaches into a private implementation',gap_section)
+            self.assertIn('No one has confirmed the proposed map',gap_section)
+            self.assertIn('What it could cost this product:',gap_section)
+            self.assertIn('What fixing it involves:',gap_section)
+            self.assertNotIn('ACIMA-',gap_section)
+
     def test_generates_six_navigable_pages_and_impact_inventory(self):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td); src=root/'model.json'; out=root/'report'; src.write_text(json.dumps(model()),encoding='utf-8')
@@ -144,7 +246,7 @@ class HtmlReportTests(unittest.TestCase):
             page=(out/'proposal.html').read_text(encoding='utf-8')
             self.assertIn('id="adoption-path"',page)
             self.assertIn('Where this repository sits on the adoption path',page)
-            self.assertLess(page.find('id="adoption-path"'),page.find('CURRENT STATE'))
+            self.assertLess(page.find('id="adoption-path"'),page.find('TODAY'))
             for title in ('No ACIMA','Foundation','Implemented','Continuous'):
                 self.assertIn(title,page)
             self.assertIn('aria-current="step"',page)
@@ -190,14 +292,16 @@ class HtmlReportTests(unittest.TestCase):
     def test_stylesheet_enforces_contrast_focus_and_user_preferences(self):
         css=CSS.read_text(encoding='utf-8-sig')
         colors=dict(re.findall(r'--([\w-]+):\s*(#[0-9a-fA-F]{3,6})',css))
+        for name,value in (('accent','#3B82F6'),('sky','#60A5FA'),('ink','#1F2937'),('paper','#F0F9FF')):
+            self.assertEqual(colors[name].lower(),value.lower(),name)
         for foreground,background,minimum in (
             ('ink','paper',4.5),('mid','lit',4.5),('muted','lit',4.5),('muted','shade',4.5),
             ('blue','paper',4.5),('blue','lit',4.5),('paper','board',4.5),
-            ('focus-inner','board',3.0),('focus-outer','paper',3.0),('focus-inner','red',3.0),
+            ('focus-inner','board',3.0),('focus-outer','paper',3.0),('focus-inner','accent',3.0),
         ):
             self.assertGreaterEqual(_contrast(colors[foreground],colors[background]),minimum,
                                     f'{foreground} on {background}')
-        for foreground,background in (('#155438','#e1eee7'),('#8d2517','#f6e5e1'),('#6b450a','#f3ead9')):
+        for foreground,background in (('#14532D','#DCFCE7'),('#7F1D1D','#FEE2E2'),('#78350F','#FEF3C7')):
             self.assertGreaterEqual(_contrast(foreground,background),4.5,f'{foreground} on {background}')
         for required in (
             '.visually-hidden', ':focus-visible', 'outline:3px solid var(--focus-inner)',
@@ -259,15 +363,15 @@ class HtmlReportTests(unittest.TestCase):
             self.assertLess(index.find('What this means for your product'),index.find('class="metrics compact"'))
             self.assertEqual(index.count('class="metric"'),2)
             self.assertIn('Repository:',index)
-            self.assertIn('Architecture:',index)
+            self.assertIn('Structure:',index)
             self.assertIn('aria-label="ACIMA Architecture Outcome Report"',index)
             self.assertNotIn('REPOSITORY TYPE',index)
             self.assertNotIn('RECOMMENDED_WITH_LIMITATIONS',index)
             self.assertNotIn('>2026-11-10T13:00:00-05:00<',index)
             evidence=(out/'evidence.html').read_text(encoding='utf-8')
-            self.assertIn('Requirements in the catalog',evidence)
+            self.assertIn('Checks in the catalog',evidence)
             self.assertIn('Reviewed with evidence',evidence)
-            self.assertIn('Requirement results',evidence)
+            self.assertIn('Check results',evidence)
 
     def test_evidence_page_summarizes_exceptions_and_discloses_full_record(self):
         with tempfile.TemporaryDirectory() as td:
@@ -279,11 +383,11 @@ class HtmlReportTests(unittest.TestCase):
             page=(out/'evidence.html').read_text(encoding='utf-8')
             self.assertIn('What the evidence shows',page)
             self.assertIn('What needs attention',page)
-            self.assertIn('Does not meet requirement',page)
-            self.assertIn('Detailed evidence',page)
+            self.assertIn('Does not meet the check',page)
+            self.assertIn('Evidence details',page)
             self.assertEqual(page.count('<details>'),4)
             self.assertIn('Review coverage: 56 of 56',page)
-            self.assertIn('All requirement results',page)
+            self.assertIn('All check results',page)
             self.assertIn('src/Orders/OrderService.cs:12-14',page)
 
     def test_pages_reconcile_findings_and_cross_link(self):
@@ -298,8 +402,8 @@ class HtmlReportTests(unittest.TestCase):
             self.assertIn('href="files.html#file-changes"',findings)
             self.assertIn('href="plan.html#adoption-plan"',findings)
             self.assertIn('href="evidence.html#exceptions"',findings)
-            self.assertIn('1 finding names a matching requirement result.',findings)
-            self.assertIn('Requirement reference:',findings)
+            self.assertIn('1 problem names a matching check result.',findings)
+            self.assertIn('Internal reference:',findings)
             self.assertIn('id="exceptions"',(out/'evidence.html').read_text(encoding='utf-8'))
             self.assertIn('id="file-changes"',(out/'files.html').read_text(encoding='utf-8'))
             self.assertIn('id="adoption-plan"',(out/'plan.html').read_text(encoding='utf-8'))
@@ -356,7 +460,7 @@ class HtmlReportTests(unittest.TestCase):
             result=subprocess.run([sys.executable,str(SCRIPT),'--input',str(src),'--out-dir',str(out)],capture_output=True,text=True)
             self.assertEqual(result.returncode,0,result.stderr)
             page=(out/'findings.html').read_text(encoding='utf-8')
-            self.assertIn('Check the Evidence page to confirm that review coverage is complete',page)
+            self.assertIn('Check the evidence page to confirm that the review was complete',page)
 
     def test_schema_11_requires_explicit_unknown_states_and_never_infers_completion(self):
         with tempfile.TemporaryDirectory() as td:
@@ -484,12 +588,14 @@ class HtmlReportTests(unittest.TestCase):
             result=subprocess.run([sys.executable,str(SCRIPT),"--input",str(src),"--out-dir",str(out)],capture_output=True,text=True)
             self.assertEqual(result.returncode,0,result.stderr)
             page=(out/"proposal.html").read_text(encoding="utf-8")
-            self.assertIn("Existing authoritative ownership units",page)
-            self.assertIn("AUTHORITATIVE UNITS",page)
+            self.assertIn("How the product is divided today",page)
+            self.assertIn("PARTS OF THE PRODUCT",page)
+            self.assertIn("The map at a glance",page)
             for value in ("orders-impl","orders-contracts","application","host","shared-kernel","arch/architecture-rules.json"):
                 self.assertIn(value,page)
             self.assertNotIn("CANDIDATE MODULES",page)
-            self.assertIn("reviewer Repository owner",page)
+            self.assertIn("Who checked it:",page)
+            self.assertIn("Repository owner",page)
 
     def test_schema_11_rejects_missing_findings_for_requirement_gaps_and_missing_outcomes(self):
         with tempfile.TemporaryDirectory() as td:

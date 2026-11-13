@@ -4,6 +4,100 @@ All normative changes to the ACIMA standard. The machine-readable catalog is
 [`tools/acima-spec/rules.json`](tools/acima-spec/rules.json); this file explains *why* it changed and
 what an adopting repository has to do about it.
 
+## Unreleased — plain-language gap briefing
+
+**Skill and report change only.** The catalog, standard version, rule ids, levels, severity and claim
+semantics are unchanged; `acima-adoption` moves from 1.37.1 to 1.38.0. No adopting repository has to
+change configuration, waivers or evidence.
+
+### Why
+
+A reader who asked for the gaps behind a module map got a useful result: plain language, ranked by
+real risk, with a cost and a fix for each item. The generated report instead led with the map's own
+vocabulary. That made the proposal harder to act on for the product owner it is written for.
+
+### What changed
+
+- The proposal page now opens with **What matters before the map**: at most six gaps, ordered high,
+  medium, then low risk. Each says what it could cost this product and what fixing it would involve.
+  Internal rule and requirement ids are omitted; the Findings page keeps the evidence.
+- The report model accepts optional `plainLanguageGaps` items so the assessment agent can write the
+  real consequence and remedy. When absent, the renderer ranks recorded findings and unresolved map
+  risks instead of inventing content.
+- Reader-facing labels now use **parts of the product**, **files**, **promises**, **connections** and
+  **the map at a glance** instead of module, atlas and ownership-record language. Status labels are
+  accepted, needs changes, needs an owner, set aside, already documented and rejected.
+- Finding cards say **What it could cost**, **What fixing it involves**, **Required or optional**, and
+  **Where this came from**. The Evidence page uses the same plain vocabulary.
+- The schema, report contract, design record and skill guidance document the new briefing and labels.
+
+### Adopting repositories
+
+Regenerate the HTML report from the updated skill. No repository configuration, evidence or assessment
+changes are required.
+
+## Unreleased — ice-blue report palette
+
+**Skill and report change only.** The catalog, standard version, rule ids, levels, severity and claim
+semantics are unchanged; `acima-adoption` moves from 1.37.0 to 1.37.1. No adopting repository has to
+change configuration, waivers or evidence.
+
+### Why
+
+The report's paper-and-red dossier palette no longer reflected the product's blue/slate identity.
+The replacement needed to stay readable in long evidence tables and make module states legible at
+atlas scale without turning the report into a dashboard.
+
+### What changed
+
+- The token palette is now anchored on `#3B82F6` primary blue, `#60A5FA` sky, `#1F2937` slate ink and
+  `#F0F9FF` ice paper. The remaining values are derived slate, ice and semantic tints.
+- The brand block, active navigation, decision edge, current path marker and focus system now use the
+  blue family. The primary action uses the deeper blue so white text still clears 4.5:1.
+- Links use `#1D4ED8`, not the lighter brand blue, to keep body-text contrast above 4.5:1.
+- Status pills use tinted semantic surfaces with dark text; the module atlas uses blue for accepted,
+  sky for modified, pale ice-blue for needs-owner, slate for deferred and declared, and red only for
+  rejected.
+- The contrast suite now locks the four base colours and checks the new text, focus, and pill pairs.
+
+### Adopting repositories
+
+Regenerate the HTML report from the updated skill. No repository configuration, evidence or assessment
+changes are required.
+
+## Unreleased — visualize large module maps
+
+**Skill and report change only.** The catalog, standard version, rule ids, levels, severity and claim
+semantics are unchanged; `acima-adoption` moves from 1.36.5 to 1.37.0. No adopting repository has to
+change configuration, waivers or evidence.
+
+### Why
+
+A large repository can produce hundreds or thousands of proposed modules. A raw module table or JSON
+dump is unreadable at that size: readers cannot see the overall review state, find a named module,
+or reach one module's paths and evidence without scanning everything.
+
+### What changed
+
+- The proposal page now renders an ownership atlas with one tile per module, grouped by review state
+  and linked to the module's directory row. A legend and metrics state the distribution in text.
+- The module directory exposes name, status, responsibility, path and contract counts, dependency
+  count, and a native disclosure with full paths, dependencies and evidence.
+- Search covers module names, ids, paths, responsibilities and dependencies. Status buttons filter by
+  review state, the result count is announced, and a no-match state is explicit.
+- Search and filtering are progressive enhancement: the inline script is emitted only with a module
+  map, and without JavaScript every module remains in document order for browser Find.
+- The directory has a bounded scroll area with a sticky header on desktop and mobile, so a thousand
+  rows do not make the page enormous. The atlas wraps to the available width and is suppressed in
+  print.
+- Atlas links use stable `#module-<id>` anchors; following one reveals the row and opens its record.
+- The atlas is an index, not a health score or ranking. Tile order and position carry no quality claim.
+
+### Adopting repositories
+
+Regenerate the HTML report from the updated skill. No repository configuration, evidence or assessment
+changes are required.
+
 ## Unreleased — plain-language report decisions
 
 **Skill and report change only.** The catalog, standard version, rule ids, levels, severity and claim

@@ -28,7 +28,7 @@ The honest completeness model is part of the position: every rule the run did no
 
 ACIMA is used in brownfield repositories, during agent-assisted development, and in CI. The normal sequence is read-only assessment, a proposal, explicit authorization of a named scope, approved implementation, then verification and handoff. Assessment must be safe on a repository the user does not own and must change nothing.
 
-The working surfaces are the `acima` CLI, the adoption skill used by AI agents, the normative documentation and rule catalog, and a generated six-page offline HTML outcome report (`index`, `proposal`, `findings`, `files`, `plan`, `evidence`). The HTML report is the primary designed surface; CLI and agent output remain supporting surfaces.
+The working surfaces are the `acima` CLI, the adoption skill used by AI agents, the normative documentation and rule catalog, and a generated six-page offline HTML outcome report (`index`, `proposal`, `findings`, `files`, `plan`, `evidence`). The HTML report is the primary designed surface; its proposal page opens with a plain-language, risk-ranked gap briefing, then turns a large map into a scannable overview and a searchable, bounded directory of the product's parts. CLI and agent output remain supporting surfaces.
 
 ## Capabilities and Constraints
 
@@ -58,7 +58,7 @@ never authorization.
 
 The product name is ACIMA, short for Autonomous, Contract-Isolated, Immutable Modular Architecture. Its framing is “Architecture that enforces itself.”
 
-The voice is precise, candid, and consequence-first. It explains what was observed, why it matters, what action is recommended, and how confident the assessment is before citing internal identifiers. It does not use certainty it cannot support, and it does not hide unevaluated work behind a passing result.
+The voice is precise, candid, and consequence-first. It explains what was observed, what it could cost, what fixing it would involve, and how confident the assessment is before citing internal identifiers. It does not use certainty it cannot support, and it does not hide unevaluated work behind a passing result.
 
 The technical-preview limits are binding commitments, phrased constructively: ACIMA makes meaningful enforcement available today while stating exactly which rules and languages remain outside automated proof. Draft status, coverage gaps, manual-evidence requirements, and the absence of a score or hosted service must remain visible rather than being smoothed into marketing language.
 
@@ -84,5 +84,5 @@ passing static test proves every assistive-technology combination works.
 1. **Make the boundary executable.** A rule that cannot fail a build is only advice; prefer enforceable obligations with deterministic evidence.
 2. **Report evidence, not a score.** Never compress skipped or unresolved rules into a number that implies more confidence than the run supports.
 3. **Preserve human authority.** Assessment may be automatic; adoption, ownership, exceptions, and merges remain explicit human decisions.
-4. **Explain before you identify.** Lead with architectural meaning, observed behaviour, consequence, and remedy; keep rule IDs for traceability.
+4. **Explain before you identify.** Lead with plain-language meaning, observed behaviour, what it could cost, and what fixing it involves; keep rule IDs for traceability.
 5. **Fail honestly.** An unsupported language, incomplete review, expired evidence, or unreadable run must fail closed and say why.

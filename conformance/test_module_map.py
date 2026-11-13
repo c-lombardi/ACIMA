@@ -372,14 +372,14 @@ class ModuleMapTests(unittest.TestCase):
             index = (out / "index.html").read_text(encoding="utf-8")
             proposal = (out / "proposal.html").read_text(encoding="utf-8")
             evidence = (out / "evidence.html").read_text(encoding="utf-8")
-            for text in ("Proposed module map", "not authoritative", "OWNERSHIP GATE",
-                         "Module-map proposal", "Checks that depend on module ownership"):
+            for text in ("A proposed map of the product", "Can checks run?",
+                         "This map is a proposal", "What needs your decision",
+                         "Which checks need an agreed map"):
                 self.assertTrue(text in proposal or text in index or text in evidence, text)
-            self.assertIn("Decisions requiring user input", proposal)
+            self.assertIn("The proposed map is not agreed yet", index)
             self.assertIn("ACIMA-D001", evidence)
-            self.assertIn("not authoritative", index)
-            self.assertIn("No review or approval is recorded", proposal)
-            self.assertIn("Conformance verification", index)
+            self.assertIn("No one has reviewed or approved this map yet", proposal)
+            self.assertIn("Final verification", index)
             self.assertIn("Assessment", index)
 
 

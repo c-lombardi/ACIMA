@@ -271,9 +271,10 @@ class AdoptionWorkflowTests(unittest.TestCase):
             self.assertEqual(report_data["moduleMap"]["authoritativeMap"]["unitCount"],
                              len(report_data["moduleMap"]["authoritativeUnits"]))
             proposal_page = (Path(report["directory"]) / "proposal.html").read_text(encoding="utf-8")
-            self.assertIn("Proposed module boundaries", proposal_page)
-            self.assertIn("CANDIDATE MODULES", proposal_page)
-            self.assertNotIn("Existing authoritative ownership units", proposal_page)
+            self.assertIn("A proposed map of the product", proposal_page)
+            self.assertIn("The map at a glance", proposal_page)
+            self.assertIn("PARTS OF THE PRODUCT", proposal_page)
+            self.assertNotIn("How the product is divided today", proposal_page)
             self.assertEqual(state["next"]["approvalRequired"], True)
             self.assertTrue(all(item.get("decision") != "accept" for item in
                                     state["artifacts"].get("moduleMap", {}).get("modules", []))
@@ -351,8 +352,8 @@ class AdoptionWorkflowTests(unittest.TestCase):
             self.assertEqual(report_data["moduleMap"]["authoritativeMap"]["unitCount"],
                              len(report_data["moduleMap"]["authoritativeUnits"]))
             proposal_page = (Path(report["directory"]) / "proposal.html").read_text(encoding="utf-8")
-            self.assertIn("Existing authoritative ownership units", proposal_page)
-            self.assertIn("Existing authoritative map", proposal_page)
+            self.assertIn("How the product is divided today", proposal_page)
+            self.assertIn("The product already has a written map.", proposal_page)
             self.assertEqual(ci["provider"], None)
             self.assertEqual(ci["status"], "no_provider")
             self.assertTrue(ci["instructions"])

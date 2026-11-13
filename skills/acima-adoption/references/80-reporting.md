@@ -43,16 +43,28 @@ Use this shape in proportion to the finding's importance:
 
 | Part | What it answers |
 |---|---|
-| **What was found** | the actual implementation behaviour, in plain language |
-| **Why it matters** | the architectural consequence, risk or maintenance cost |
-| **Recommended improvement** | the intended software change, including its ownership |
-| **Evidence** | the file, symbol or location and the observation that supports it |
-| **Confidence** | confirmed, probable, uncertain, or requiring human review |
+| **What we found** | the actual implementation behaviour, in plain language |
+| **What it could cost** | the practical consequence, risk or maintenance cost |
+| **What fixing it involves** | the intended software change, including its ownership |
+| **Where this came from** | the file, symbol or location and the observation that supports it |
+| **How sure we are** | confirmed, probable, uncertain, or requiring human review, and what is still unknown |
 
 Do not repeat a shared architectural explanation for every occurrence. Group findings that share a
 cause and state the count and affected modules once. Match the depth to the reader: a precise module
 and interface explanation for an engineer; the same consequence and decision in domain terms for a
 manager. Precision is not jargon, and accessibility is not vagueness.
+
+### Brief the gaps before the map
+
+When presenting a module map, lead with a short plain-language briefing of the gaps it exposes. Rank
+by real risk to this product, not by rule order or identifier. For each item, say what it could cost
+the product and what fixing it would involve. Use at most six items in the spoken or top-of-report
+briefing and point to the full findings for evidence.
+
+Do not use ACIMA terminology, rule ids, requirement ids, or internal defect language in this
+briefing. "A consumer reaches into another part's private code" is useful; "ACIMA-D001 is
+nonconforming" is not. If the map is accepted and no gaps remain, say so rather than padding the
+briefing with generic risks.
 
 ### Preserve traceability without exposing it
 

@@ -6,7 +6,7 @@ compatibility: Python 3.9+ for the preflight script. The target language toolcha
 allowed-tools: Read Grep Glob Bash Edit Write
 metadata:
   standard: "1.9.0-draft.2"
-  skill-version: "1.36.5"
+  skill-version: "1.38.0"
   catalog-sha256: "e3b0926d571d24673b0f4e821ede042a208f3a5e961e5502ffc15cde024ee11c"
 ---
 
@@ -96,7 +96,7 @@ Never equate file presence, a configured gate, or a checklist with verified arch
 ## Communication
 Explain findings and ACIMA identifiers in human terms, show evidence and confidence, and distinguish existing, proposed, implemented and verified capabilities. Load [42-communication-and-interaction](references/42-communication-and-interaction.md) when producing user-facing findings, approval requests or structured interaction.
 ## Proposals and reports
-For adoption, prepare a decision-ready proposal with exact scope and file impact. For comprehensive assessments, render the six-page HTML report using `assets/report.schema.json` and `scripts/render_report.py`. Use schema 1.1 for new decision-ready reports; embed the original qualitative review and all 56 human-readable dispositions. The renderer revalidates every disposition and its evidence against the target repository and pinned catalog. Never render a decision-ready report with partial review coverage. Preserve unknown, blocked and not-assessed states rather than inventing content. Load [90-html-outcome-reports](references/90-html-outcome-reports.md) for the information model and validation contract, and [75-proposals-and-deliverables](references/75-proposals-and-deliverables.md) when preparing deliverables.
+For adoption, prepare a decision-ready proposal with exact scope and file impact. For comprehensive assessments, render the six-page HTML report using `assets/report.schema.json` and `scripts/render_report.py`. Before the map, include a plain-language gap briefing of at most six items, ranked by real risk, each saying what it could cost this product and what fixing it would involve. Supply `plainLanguageGaps` from the recorded findings when the evidence supports it; otherwise let the renderer fall back to findings and unresolved map risks. Omit rule ids, requirement ids and ACIMA terminology from that briefing, and link to the Findings page for evidence. User-facing map copy calls them parts of the product, files, promises and connections, not modules, atlas records or ownership units. Use schema 1.1 for new decision-ready reports; embed the original qualitative review and all 56 human-readable dispositions. The renderer revalidates every disposition and its evidence against the target repository and pinned catalog. Never render a decision-ready report with partial review coverage. Preserve unknown, blocked and not-assessed states rather than inventing content. Load [90-html-outcome-reports](references/90-html-outcome-reports.md) for the information model and validation contract, and [75-proposals-and-deliverables](references/75-proposals-and-deliverables.md) when preparing deliverables.
 ## Commands and context
 Verify executable paths and supported flags in the active environment. Load [65-commands-and-context](references/65-commands-and-context.md) only when a command, artifact path or execution context is needed.
 ## Hard rules

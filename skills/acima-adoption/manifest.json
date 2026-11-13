@@ -1,8 +1,8 @@
 {
   "skill": "acima-adoption",
-  "skillVersion": "1.36.5",
+  "skillVersion": "1.38.0",
   "standard": "1.9.0-draft.2",
-  "verifiedAt": "2026-11-12",
+  "verifiedAt": "2026-11-13",
   "catalog": {
     "path": "tools/acima-spec/rules.json",
     "sha256": "e3b0926d571d24673b0f4e821ede042a208f3a5e961e5502ffc15cde024ee11c",

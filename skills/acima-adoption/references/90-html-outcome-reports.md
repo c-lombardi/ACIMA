@@ -74,18 +74,57 @@ source-code excerpts in the report model or generated pages. Cite paths, symbols
 short sanitized observations instead. Preserve machine-readable evidence separately; HTML is a
 navigable view, not a replacement for it.
 
+## Plain-language gap briefing
+
+Before the map, the proposal page answers the reader's practical question: what could go wrong, what
+would each problem cost this product, and what would fixing it involve? This is a briefing, not a
+second findings ledger and not a conformance result.
+
+The model may include `plainLanguageGaps`, an array of objects with `title`, `risk`, `whatItCosts`
+and `fixInvolves`; `paths`, `confidence`, and `basis` are optional. The assessment agent should write
+these from the recorded findings and map state rather than template them. Order is high, medium, then
+low risk, preserving source order within a level. Show at most six. Do not put ACIMA rule ids,
+requirement ids, principle numbers, or internal defect language in the briefing; link to the
+Findings page for that traceability. A path may be shown in the item's disclosure, but the title and
+the cost/fix sentences must stand without it.
+
+If `plainLanguageGaps` is absent, the renderer derives a smaller briefing from recorded findings and
+unresolved map risks. An accepted map with no findings yields no gap section. Never invent a risk,
+cost, fix, confidence, or path to fill the section.
+
 ## Module-map proposal
 
 The report model may include `moduleMap` and `ownershipGate`. The proposal is first-class content,
 not a sidebar or a substitute report: the overview names whether an authoritative map exists,
 whether a proposal was generated, whether it was reviewed or approved, what decision comes next,
-which qualitative reviews can continue, and which deterministic checks are blocked. The proposal
-page distinguishes proposed modules, responsibilities, contracts, observed dependencies, unassigned
+which qualitative reviews can continue, and which deterministic checks are blocked. The proposal page distinguishes proposed modules, responsibilities, contracts, observed dependencies, unassigned
 or ambiguous code, quality observations, recommendations and owner decisions. Every proposed module
 has evidence; inference and recommendation are labelled separately from observed facts. Unassigned
 production code is shown explicitly rather than silently assigned. The evidence page names the
 ownership-dependent checks that remain blocked. Never render an inferred map as approved, and do not
 show generic placeholders when the actual state can be explained.
+
+For maps with hundreds of modules, the proposal page must stay navigable rather than dumping a raw
+JSON tree. Render two coordinated views:
+
+- a **map at a glance** with one square per part, ordered by review state and linked to the matching
+  directory row. The map is a macro index, not a score or a ranking; its legend and counts carry the
+  same information in text.
+- a **parts directory** with one row per part: name and id, review status, what it does, file and
+  promise counts, connection count, and a native disclosure containing full paths, connections and
+  evidence. The directory is a bounded, keyboard-scrollable region with a sticky header.
+
+User-facing copy calls these **parts of the product**, **files**, **promises**, and **connections**.
+An "ownership atlas" or "module record" may remain the internal model term, but it is not the label
+the reader sees. State labels are plain: accepted, needs changes, needs an owner, set aside, already
+documented, rejected.
+
+Search and status filters are progressive enhancement. The controls are hidden until the inline
+script runs; without JavaScript, every module row remains in the document and browser Find works.
+The result count is announced, no-match has an explicit empty state, and a `#module-&lt;id&gt;` anchor
+reveals the row and opens its record. Search covers name, id, file, what the part does and connection
+text. The directory does not sort, save views, or infer health. State labels come only from recorded
+review decisions or an authoritative declaration; a `pending` module is not presented as accepted.
 
 ## Adoption workflow status
 
@@ -112,9 +151,10 @@ redundant entry, are recorded as not applicable rather than treated as passes.
 - **Document structure.** Every page declares `lang="en"`, has one descriptive `h1` and one `main`
   landmark, and uses a document title that names the page and repository. Navigation is labelled and
   identifies the current page with `aria-current="page"`.
-- **Keyboard access.** A skip link moves focus into the report. Links, disclosure controls and
-  horizontally scrollable table regions are keyboard-operable in a logical order, with no keyboard
-  trap. The report does not require pointer, drag, hover or timed interaction.
+- **Keyboard access.** A skip link moves focus into the report. Links, disclosure controls, the
+  module search and filters, and horizontally scrollable table regions are keyboard-operable in a
+  logical order, with no keyboard trap. The report does not require pointer, drag, hover or timed
+  interaction. The atlas is decorative and its links are duplicated by the directory and legend.
 - **Visible focus.** Every focusable element has a two-tone focus indicator that remains visible on
   light, dark and accent surfaces. Focus is never removed without an equally visible replacement.
 - **Semantics and status.** Tables have a programmatically associated caption, column headers with

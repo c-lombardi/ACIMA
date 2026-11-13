@@ -2,6 +2,7 @@
 """Render a six-page, plain-language ACIMA report from the skill's normalized JSON model."""
 from __future__ import annotations
 import argparse, hashlib, html, json, re, sys
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 HERE=Path(__file__).resolve().parent
@@ -59,6 +60,63 @@ STATUS_LABELS={
     'discovery_failed':'Discovery did not complete','blocked_ownership':'Blocked until ownership is approved',
 }
 MODE_LABELS={'greenfield':'New codebase','brownfield':'Existing codebase','mixed':'Mixed codebase','unknown':'Not established'}
+MODULE_STATE_ORDER=('accepted','modified','needs_owner','deferred','declared','rejected')
+MODULE_STATE_LABELS={'accepted':'Accepted','modified':'Needs changes','needs_owner':'Needs an owner','deferred':'Set aside','declared':'Already documented','rejected':'Rejected'}
+MODULE_STATE_CLASSES={'accepted':'good','modified':'good','needs_owner':'review','deferred':'neutral','declared':'neutral','rejected':'risk'}
+PLAIN_GAP_RISK_ORDER={'high':0,'medium':1,'low':2,'review':3}
+PLAIN_GAP_RISK_LABELS={'high':'High impact','medium':'Medium impact','low':'Lower impact','review':'Needs a closer look'}
+PLAIN_GAP_RISK_PILLS={'high':'risk','medium':'review','low':'neutral','review':'review'}
+MODULE_MAP_SCRIPT='''<script>
+(() => {
+  const root = document.querySelector('[data-module-directory]');
+  if (!root) return;
+  const tools = root.querySelector('[data-module-tools]');
+  const input = root.querySelector('[data-module-search]');
+  if (!tools || !input) return;
+  tools.hidden = false;
+  const buttons = Array.from(root.querySelectorAll('[data-status-filter]'));
+  const rows = Array.from(root.querySelectorAll('[data-module-row]'));
+  const count = root.querySelector('[data-module-count]');
+  const empty = root.querySelector('[data-module-empty]');
+  const total = rows.length;
+  let status = 'all';
+  const apply = () => {
+    const query = input.value.trim().toLowerCase();
+    let shown = 0;
+    rows.forEach(row => {
+      const text = row.textContent.toLowerCase();
+      const matches = (!query || text.includes(query)) && (status === 'all' || row.dataset.status === status);
+      row.hidden = !matches;
+      if (matches) shown += 1;
+    });
+    count.textContent = shown === total ? total + ' parts' : shown + ' of ' + total + ' parts';
+    empty.hidden = shown !== 0;
+    buttons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.statusFilter === status)));
+  };
+  input.addEventListener('input', apply);
+  buttons.forEach(button => button.addEventListener('click', () => {
+    status = button.dataset.statusFilter;
+    apply();
+  }));
+  const revealTarget = () => {
+    if (!location.hash) return;
+    try {
+      const target = document.querySelector(location.hash);
+      if (!target || !target.matches('[data-module-row]')) return;
+      input.value = '';
+      status = 'all';
+      apply();
+      rows.forEach(row => row.classList.remove('is-target'));
+      target.classList.add('is-target');
+    } catch (error) {
+      // Ignore malformed fragment identifiers; the directory remains usable.
+    }
+  };
+  window.addEventListener('hashchange', revealTarget);
+  revealTarget();
+  apply();
+})();
+</script>'''
 ACTION_LABELS={'inspect':'Inspect only','create':'Create','modify':'Modify','delete':'Remove','preserve':'Keep unchanged','no-change':'No change'}
 MONTHS=('January','February','March','April','May','June','July','August','September','October','November','December')
 def status_label(v, default='Not recorded'):
@@ -196,6 +254,307 @@ def adoption_path(d):
         summary='Adoption path: current position not recorded; destination Continuous.'
     return f'''<section id="adoption-path" class="adoption-path" aria-labelledby="adoption-path-title"><div class="path-head"><div><h2 id="adoption-path-title">Where this repository sits on the adoption path</h2><p class="lead">Four states, from no ACIMA work to an operating loop. The marker reflects recorded milestones; later states are proposals, not claims.</p></div><p class="path-now"><span>Current position</span><strong>{e(now)}</strong></p></div><ol class="path-track" style="--path-progress:{progress:.0f}%" aria-label="{e(summary)}">{''.join(steps)}</ol><p class="note">The last state is a destination, not a certification: a proposal cannot prove that checks, exception reviews and map updates continue over time. Current position is based on the report's recorded milestones.</p></section>'''
 
+def module_state(item, *, declared=False):
+    if declared:
+        return 'declared'
+    raw=key(item.get('reviewDecision') or item.get('status') or 'pending')
+    if raw in ('accept','accepted','approved','complete','completed'):
+        return 'accepted'
+    if raw in ('modify','modified'):
+        return 'modified'
+    if raw in ('reject','rejected'):
+        return 'rejected'
+    if raw in ('defer','deferred'):
+        return 'deferred'
+    if raw in ('existing','declared'):
+        return 'declared'
+    return 'needs_owner'
+
+def module_anchor(identifier, used=None):
+    base=re.sub(r'[^a-z0-9]+','-',str(identifier or 'module').lower()).strip('-') or 'module'
+    candidate='module-'+base
+    if used is None:
+        return candidate
+    number=2
+    while candidate in used:
+        candidate=f'module-{base}-{number}'
+        number+=1
+    used.add(candidate)
+    return candidate
+
+def module_path_count(record):
+    return len(record.get('paths') or [])+len(record.get('contracts') or [])
+
+def module_records(d):
+    mm=d.get('moduleMap') or {}
+    proposal=mm.get('proposal')
+    records=[]
+    used=set()
+    if isinstance(proposal,dict):
+        for index,item in enumerate(arr(proposal.get('modules'))):
+            if not isinstance(item,dict):
+                continue
+            identifier=str(item.get('id') or item.get('name') or f'module-{index+1}')
+            name=str(item.get('name') or identifier)
+            records.append({
+                'id':identifier,
+                'name':name,
+                'anchor':module_anchor(identifier,used),
+                'responsibility':str(item.get('responsibility') or ''),
+                'ownership':str(item.get('ownership') or ''),
+                'paths':arr((item.get('implementation') or {}).get('paths')),
+                'contracts':arr((item.get('contracts') or {}).get('paths')),
+                'dependencies':arr(item.get('dependencies')),
+                'evidence':arr(item.get('evidence')),
+                'state':module_state(item),
+                'source':'proposal',
+            })
+    else:
+        authority=mm.get('authoritativeMap') or {}
+        units=arr(mm.get('authoritativeUnits') or authority.get('units'))
+        for index,item in enumerate(units):
+            if not isinstance(item,dict):
+                continue
+            identifier=str(item.get('id') or item.get('module') or f'unit-{index+1}')
+            role=str(item.get('role') or 'declared')
+            unit_paths=arr(item.get('paths'))
+            contracts=unit_paths if key(role)=='contracts' else []
+            paths=[] if key(role)=='contracts' else unit_paths
+            records.append({
+                'id':identifier,
+                'name':str(item.get('module') or identifier),
+                'anchor':module_anchor(identifier,used),
+                'responsibility':f'{status_label(role)} unit',
+                'ownership':str(item.get('source') or 'declared'),
+                'paths':paths,
+                'contracts':contracts,
+                'dependencies':arr(item.get('dependencies')),
+                'evidence':arr(item.get('evidence')),
+                'state':'declared',
+                'source':'declared',
+            })
+    return records
+
+def module_pill(state):
+    return f'<span class="pill {MODULE_STATE_CLASSES.get(state,"neutral")}">{e(MODULE_STATE_LABELS.get(state,status_label(state)))}</span>'
+
+def module_path_list(paths, empty):
+    values=[str(path) for path in arr(paths) if path]
+    if not values:
+        return f'<p class="empty">{e(empty)}</p>'
+    return '<ul class="path-list">'+''.join(f'<li><code>{e(path)}</code></li>' for path in values)+'</ul>'
+
+def module_dependency_list(dependencies):
+    if not dependencies:
+        return '<p class="empty">No connection to another part was recorded.</p>'
+    items=[]
+    for dependency in dependencies:
+        if isinstance(dependency,dict):
+            name=dependency.get('module') or dependency.get('moduleId') or 'Unnamed module'
+            note='Private implementation suspected' if dependency.get('leaksImplementation') else 'Observed import'
+            items.append(f'<li><b>{e(name)}</b> <span class="dep-note">{e(note)}</span></li>')
+        elif dependency:
+            items.append(f'<li>{e(dependency)}</li>')
+    return '<ul class="path-list">'+''.join(items)+'</ul>' if items else '<p class="empty">No connection to another part was recorded.</p>'
+
+def module_atlas_html(records):
+    if not records:
+        return '<p class="empty">No module records were supplied. This is not evidence that the repository has no architecture.</p>'
+    ordered=sorted(records,key=lambda item:(MODULE_STATE_ORDER.index(item['state']),item['name'].lower(),item['id']))
+    cells=[]
+    for record in ordered:
+        label=f'{record["name"]} — {module_path_count(record)} file or promise records — {MODULE_STATE_LABELS[record["state"]]}'
+        cells.append(f'<a class="atlas-cell {record["state"]}" href="#{record["anchor"]}" title="{e(label)}" aria-hidden="true" tabindex="-1"></a>')
+    return f'<div class="module-atlas" aria-hidden="true">{"".join(cells)}</div>'
+
+def module_legend_html(records):
+    counts=Counter(record['state'] for record in records)
+    items=[]
+    for state in MODULE_STATE_ORDER:
+        if counts[state]:
+            items.append(f'<li><span class="atlas-swatch {state}" aria-hidden="true"></span><span>{e(MODULE_STATE_LABELS[state])}</span><b>{counts[state]}</b></li>')
+    return f'<ul class="module-legend" aria-label="Part status legend">{"".join(items)}</ul>'
+
+def module_metrics_html(records, unassigned_count):
+    total_paths=sum(module_path_count(record) for record in records)
+    needs_owner=sum(record['state']=='needs_owner' for record in records)
+    dependencies=sum(len(record['dependencies']) for record in records)
+    private=sum(sum(1 for dependency in record['dependencies'] if isinstance(dependency,dict) and dependency.get('leaksImplementation')) for record in records)
+    return (f'<div class="metrics">{metric("PARTS OF THE PRODUCT",len(records),"Proposed parts" if records and records[0]["source"]=="proposal" else "Parts already written down")}'
+            f'{metric("FILES COVERED",total_paths,"Code files and promises")}'
+            f'{metric("NEEDS AN OWNER",needs_owner,f"{unassigned_count} files outside any part" if unassigned_count else "No files outside the map")}'
+            f'{metric("CONNECTIONS",dependencies,f"{private} private-code links")}</div>')
+
+def module_directory_html(records):
+    if not records:
+        return '<p class="empty">No module directory can be shown because no module records were supplied.</p>'
+    counts=Counter(record['state'] for record in records)
+    filter_buttons=[f'<button type="button" class="filter-chip" data-status-filter="all" aria-pressed="true">All <span>{len(records)}</span></button>']
+    for state in MODULE_STATE_ORDER:
+        if counts[state]:
+            filter_buttons.append(f'<button type="button" class="filter-chip" data-status-filter="{state}" aria-pressed="false">{e(MODULE_STATE_LABELS[state])} <span>{counts[state]}</span></button>')
+    row_html=[]
+    ordered=sorted(records,key=lambda item:(MODULE_STATE_ORDER.index(item['state']),item['name'].lower(),item['id']))
+    for record in ordered:
+        dependencies=record['dependencies']
+        private=sum(1 for dependency in dependencies if isinstance(dependency,dict) and dependency.get('leaksImplementation'))
+        details=(f'<details><summary>Open details</summary>'
+                 f'<p><b>What it does:</b> {e(record["responsibility"])}</p>'
+                 f'<p><b>How we identified it:</b> {e(record["ownership"])}</p>'
+                 f'<p><b>Files</b></p>{module_path_list(record["paths"],"No file was recorded for this part.")}'
+                 f'<p><b>Promises to other parts</b></p>{module_path_list(record["contracts"],"No promise to another part was recorded.")}'
+                 f'<p><b>Connections to other parts</b></p>{module_dependency_list(dependencies)}'
+                 f'<p><b>Where this came from</b></p><p>{e(map_evidence(record["evidence"]))}</p></details>')
+        row_html.append(f'<tr id="{record["anchor"]}" data-module-row data-status="{record["state"]}">'
+                        f'<th scope="row"><span class="module-name">{e(record["name"])}</span><small class="module-id">{e(record["id"])}</small></th>'
+                        f'<td>{module_pill(record["state"])}</td>'
+                        f'<td>{e(record["responsibility"])}</td>'
+                        f'<td class="num">{module_path_count(record)}</td>'
+                        f'<td class="num">{len(record["contracts"])}</td>'
+                        f'<td class="num">{len(dependencies)}{"<small>"+str(private)+" private</small>" if private else ""}</td>'
+                        f'<td>{details}</td></tr>')
+    return (f'<div class="module-directory" data-module-directory>'
+            f'<div class="map-tools" data-module-tools hidden>'
+            f'<div class="map-search" role="search"><label for="module-search">Find a part</label>'
+            f'<input id="module-search" type="search" data-module-search autocomplete="off" placeholder="Name, file, responsibility or connection"></div>'
+            f'<div class="map-filters" role="group" aria-label="Filter parts by status">{"".join(filter_buttons)}</div>'
+            f'<p class="map-result" data-module-count aria-live="polite">{len(records)} parts</p>'
+            f'<p class="empty map-empty" data-module-empty hidden>No part matches this search.</p></div>'
+            f'<noscript><p class="note">All parts are listed below. Use your browser\'s Find command to search; the filter buttons require JavaScript.</p></noscript>'
+            f'<div class="table-wrap module-table-wrap" role="region" aria-labelledby="module-table-caption" tabindex="0">'
+            f'<table class="module-table" id="module-table"><caption id="module-table-caption" class="visually-hidden">Parts of the product: name, status, what it does, files, promises, connections and details</caption>'
+            f'<thead><tr><th scope="col">Part</th><th scope="col">Status</th><th scope="col">What it does</th><th scope="col">Files</th><th scope="col">Promises</th><th scope="col">Links</th><th scope="col">More</th></tr></thead>'
+            f'<tbody>{"".join(row_html)}</tbody></table></div>{MODULE_MAP_SCRIPT}</div>')
+
+def plain_gap_risk(*values):
+    for value in values:
+        if isinstance(value,(dict,list)):
+            continue
+        token=key(value)
+        if not token:
+            continue
+        if any(word in token for word in ('critical','high','severe','blocker','urgent','essential')):
+            return 'high'
+        if any(word in token for word in ('medium','moderate','important')):
+            return 'medium'
+        if any(word in token for word in ('low','minor','cleanup')):
+            return 'low'
+        if any(word in token for word in ('review','unknown','uncertain','unverified','needs_more','pending')):
+            return 'review'
+    return ''
+
+def finding_gap_risk(item):
+    explicit=plain_gap_risk(item.get('risk'),item.get('realRisk'),item.get('severity'))
+    if explicit:
+        return explicit
+    classification=key(item.get('classification'))
+    disposition=key(item.get('disposition') or item.get('status'))
+    if classification in ('required','essential') or disposition in ('does_not_conform','blocked'):
+        return 'high'
+    if classification=='recommended' or disposition in ('partially_conforms','unverified','not_assessed'):
+        return 'medium'
+    if classification in ('optional','no_change'):
+        return 'low'
+    return 'review'
+
+def plain_gap_record(item,basis=''):
+    raw_paths=item.get('paths') or []
+    if isinstance(raw_paths,str):
+        raw_paths=[raw_paths]
+    paths=[str(path) for path in raw_paths if path]
+    if not paths and item.get('path'):
+        paths=[str(item.get('path'))]
+    return {
+        'title':str(item.get('title') or item.get('what') or item.get('summary') or 'Unrecorded gap'),
+        'risk':plain_gap_risk(item.get('risk')) or finding_gap_risk(item),
+        'whatItCosts':str(item.get('whatItCosts') or item.get('cost') or item.get('why') or 'The report does not record what this could cost.'),
+        'fixInvolves':str(item.get('fixInvolves') or item.get('fix') or item.get('recommendation') or 'The report does not record what fixing it would involve.'),
+        'paths':paths,
+        'confidence':str(item.get('confidence') or ''),
+        'basis':str(item.get('basis') or basis),
+    }
+
+def plain_gap_records(d):
+    explicit=arr(d.get('plainLanguageGaps'))
+    records=[]
+    if explicit:
+        for index,item in enumerate(explicit):
+            if isinstance(item,dict):
+                record=plain_gap_record(item)
+                record['_order']=index
+                records.append(record)
+        if any(record['risk'] for record in records):
+            records.sort(key=lambda item:(PLAIN_GAP_RISK_ORDER.get(item['risk'],4),item['_order']))
+        for record in records:
+            record.pop('_order',None)
+        return records
+    for item in arr(d.get('findings')):
+        if isinstance(item,dict):
+            records.append(plain_gap_record(item,'From a problem recorded on the Findings page.'))
+    proposal=(d.get('moduleMap') or {}).get('proposal')
+    if isinstance(proposal,dict):
+        if not (d.get('moduleMap') or {}).get('review'):
+            records.append({
+                'title':'No one has confirmed the proposed map',
+                'risk':'high',
+                'whatItCosts':'The team could assign work or add checks against a boundary that does not match how the product is really owned.',
+                'fixInvolves':'Walk through each proposed part with the person who owns that area. Accept it, change it or reject it before relying on the map.',
+                'paths':[],'confidence':'','basis':'From the unreviewed map proposal.',
+            })
+        unassigned=arr(proposal.get('unassigned'))
+        if unassigned:
+            records.append({
+                'title':'Some code is not claimed by any part',
+                'risk':'high',
+                'whatItCosts':f'{len(unassigned)} production path{"s" if len(unassigned)!=1 else ""} can drift, duplicate work or change without a clear owner noticing.',
+                'fixInvolves':'Assign each path to a part or mark it as shared, tooling or not product code. Record the decision where the map is kept.',
+                'paths':[str(item.get('path')) for item in unassigned if isinstance(item,dict) and item.get('path')],
+                'confidence':'','basis':'From unassigned paths in the map proposal.',
+            })
+    seen=set(); unique=[]
+    for record in records:
+        marker=record['title'].strip().casefold()
+        if marker and marker not in seen:
+            seen.add(marker); unique.append(record)
+    unique.sort(key=lambda item:PLAIN_GAP_RISK_ORDER.get(item.get('risk'),4))
+    return unique
+
+def plain_language_gaps_section(d):
+    if not d.get('moduleMap') and not arr(d.get('plainLanguageGaps')):
+        return ''
+    records=plain_gap_records(d)
+    if not records:
+        return ('<section id="plain-language-gaps" class="plain-gaps"><small>WHAT COULD GO WRONG</small>'
+                '<h2>What to know before the map</h2>'
+                '<p class="empty">No gap was recorded in the material available to this report. That does not prove there is none; check the <a href="evidence.html#evidence-summary">evidence page</a> for what was not reviewed.</p></section>')
+    shown=records[:6]
+    cards=[]
+    for index,record in enumerate(shown,1):
+        risk=record.get('risk') or 'review'
+        label=PLAIN_GAP_RISK_LABELS.get(risk,'Worth knowing')
+        paths=record.get('paths') or []
+        paths_html=''
+        if paths:
+            paths_html=(f'<details class="gap-paths"><summary>Where this shows up</summary>'
+                        f'<ul class="path-list">{"".join(f"<li><code>{e(path)}</code></li>" for path in paths)}</ul></details>')
+        confidence=(f'<p class="gap-meta"><b>How sure we are:</b> {e(status_label(record["confidence"]))}</p>'
+                    if record.get('confidence') else '')
+        basis=(f'<p class="gap-meta">{e(record["basis"])}</p>' if record.get('basis') else '')
+        cards.append(f'<li class="gap-card risk-{risk}"><span class="gap-rank" aria-hidden="true">{index}</span>'
+                     f'<div class="gap-body"><div class="row"><h3>{e(record["title"])}</h3>'
+                     f'<span class="pill {PLAIN_GAP_RISK_PILLS.get(risk,"neutral")}">{e(label)}</span></div>'
+                     f'<p><b>What it could cost this product:</b> {e(record["whatItCosts"])}</p>'
+                     f'<p><b>What fixing it involves:</b> {e(record["fixInvolves"])}</p>'
+                     f'{paths_html}{confidence}{basis}</div></li>')
+    more=(f'<p class="note">Showing the {len(shown)} highest-impact gaps. '
+          f'<a href="findings.html#findings">See all findings and evidence</a>.</p>' if len(records)>len(shown) else '')
+    return (f'<section id="plain-language-gaps" class="plain-gaps"><small>WHAT COULD GO WRONG</small>'
+            f'<h2>What matters before the map</h2><p class="lead">These are the practical gaps behind the map, '
+            f'ordered by what could affect the product soonest. Each one says what it could cost you and what fixing it would involve.</p>'
+            f'<p class="note">This page stays in product language. '
+            f'The <a href="findings.html#findings">Findings page</a> keeps the detailed evidence.</p>'
+            f'<ol class="gap-list">{"".join(cards)}</ol>{more}</section>')
+
 def module_map_sections(d):
     mm=d.get('moduleMap') or {}
     authority=mm.get('authoritativeMap') or {}
@@ -212,87 +571,84 @@ def module_map_sections(d):
     gate_status=gate.get('status') or ('ready' if authority_status=='complete' else 'blocked')
     has_proposal=isinstance(proposal,dict)
     if has_proposal:
-        map_intro=(f'<p class="reconciliation"><b>Module-map proposal:</b> This map is proposed, not authoritative. {e(proposal.get("basis") or mm.get("summary"))} The review status is <b>{e(status_label(review_status))}</b>. Inferred boundaries remain candidates until accepted individually.</p>'
-                   '<p class="note">Evidence below distinguishes observed repository facts from inferred boundaries. A folder, project or package is a discovery signal, not proof of ownership.</p>')
+        map_intro=(f'<p class="reconciliation"><b>This map is a proposal, not a decision.</b> {e(proposal.get("basis") or mm.get("summary"))} Current status: <b>{e(status_label(review_status))}</b>. Each part stays a question until its owner accepts, changes or rejects it.</p>'
+                   '<p class="note">The map was built from folders, projects and imports. Those are clues about where work lives, not proof that an area is a real product boundary.</p>')
     else:
-        map_intro=f'<p class="reconciliation"><b>Existing authoritative map:</b> {e(status_label(authority_status))}. {e(authority.get("summary") or "The declared ownership map was evaluated in place; discovery did not replace it.")}</p>'
+        map_intro=f'<p class="reconciliation"><b>The product already has a written map.</b> {e(status_label(authority_status))}. {e(authority.get("summary") or "The report checked the existing map rather than replacing it with a new proposal.")}</p>'
         if authority.get('present') and not review:
-            map_intro+='<p class="note">The map is declared in repository configuration, but no separate approval receipt was available to this report. Structural completeness is not proof of current owner intent.</p>'
+            map_intro+='<p class="note">The map is written down in repository settings, but no separate review receipt was supplied. A complete file is not proof that the current owners still agree with it.</p>'
     issues=arr(authority.get('issues'))
-    issue_html=table(['Map issue','Detail'],[(x.get('code') if isinstance(x,dict) else 'Issue',x.get('detail') if isinstance(x,dict) else x) for x in issues],caption='Authoritative map issues',row_headers=True) if issues else '<p class="empty">No structural map issue was recorded.</p>'
+    issue_html=table(['Problem','What it means'],[(x.get('code') if isinstance(x,dict) else 'Problem',x.get('detail') if isinstance(x,dict) else x) for x in issues],caption='Problems with the map',row_headers=True) if issues else '<p class="empty">No problem with the map was recorded.</p>'
 
+    records=module_records(d)
     if has_proposal:
-        module_rows=[(x.get('name') or x.get('id'),x.get('responsibility'),status_label(x.get('ownership') or x.get('status')),', '.join(arr((x.get('contracts') or {}).get('paths')) or ['None identified']),', '.join(arr((x.get('implementation') or {}).get('paths'))),map_evidence(x.get('evidence')),status_label(x.get('reviewDecision') or 'pending')) for x in modules]
-        module_table=table(['Proposed module','Responsibility','Ownership basis','Candidate contracts','Implementation paths','Evidence','Review'],module_rows,'No candidate ownership boundary was identified. The repository may be a single ownership area or may need owner-led discovery.',caption='Proposed module boundaries',row_headers=True) if modules else '<p class="empty">No candidate ownership boundary was identified. This is not a claim that the repository has no architecture; it means layout and source evidence did not support a safe proposal.</p>'
         unassigned=arr(proposal.get('unassigned'))
         quality=proposal.get('quality') or {}
     else:
-        unit_rows=[]
-        for unit in units:
-            if not isinstance(unit,dict):
-                continue
-            unit_rows.append((
-                unit.get('id'), unit.get('module'), status_label(unit.get('role') or 'unclassified'),
-                ', '.join(arr(unit.get('paths'))), status_label(unit.get('source') or 'declared'),
-            ))
-        module_table=table(
-            ['Declared unit','Module','Ownership role','Owned paths','Declaration source'],
-            unit_rows,
-            'The authoritative map contains no declared unit records. Do not infer that the repository has zero modules from this absence.',
-            caption='Existing authoritative ownership units',row_headers=True
-        ) if unit_rows else '<p class="empty">The authoritative map has no unit records to display. The map status and coverage below remain the source of truth.</p>'
         unassigned=[{'path':path,'reason':'This production path is not covered by an authoritative module or explicit non-module disposition.'} for path in arr(authority.get('unownedPaths'))]
         quality=mm.get('quality') or {}
 
     dep_rows=[]
     if has_proposal:
+        dependency_totals=[]
         for module in modules:
-            for dep in arr(module.get('dependencies')):
-                dep_rows.append((module.get('name'),dep.get('module'), 'Private implementation suspected' if dep.get('leaksImplementation') else 'Observed import', map_evidence(dep.get('evidence'))))
+            dependencies=arr(module.get('dependencies'))
+            if dependencies:
+                private=sum(1 for dep in dependencies if isinstance(dep,dict) and dep.get('leaksImplementation'))
+                dependency_totals.append((module.get('name') or module.get('id'),len(dependencies),private))
+        dependency_totals.sort(key=lambda item:(-item[1],str(item[0]).lower()))
+        dep_rows=dependency_totals[:12]
+        dep_table=table(['Part','Connections to other parts','Private-code links'],dep_rows,
+                        'No connection was seen in the imports inspected.',
+                        caption='Parts with the most connections',row_headers=True)
+        dep_note='Only the twelve most connected parts are shown here; each part record below lists its own connections.'
     else:
         for unit in units:
             if isinstance(unit,dict) and unit.get('role')=='contracts':
                 dep_rows.append((unit.get('module'),unit.get('id'),'Declared contracts unit',', '.join(arr(unit.get('paths')))))
-    dep_empty=('No cross-candidate dependency was observed in the inspected import lines.' if has_proposal else
-               'The authoritative ownership map does not itself prove dependency isolation. See the requirement results and deterministic enforcement evidence.')
-    dep_table=table(['Module or unit','Observed dependency or role','Nature','Evidence'],dep_rows,dep_empty,caption='Observed candidate dependencies' if has_proposal else 'Declared contracts units',row_headers=True)
+        dep_table=table(['Part or area','Connection or role','What it is','Where'],dep_rows,
+                        'The written map does not prove that parts are actually kept apart. See the checks and evidence for that.',
+                        caption='Promises written down in the map',row_headers=True)
+        dep_note='A written promise does not prove that the code keeps it.'
 
     unassigned_table=table(
-        ['Unassigned production path','Why it is unresolved'],
+        ['File or folder','Why no one has claimed it'],
         [(x.get('path'),x.get('reason')) for x in unassigned],
-        ('Every discovered production source path falls under a candidate boundary. Ownership itself still requires review.' if has_proposal else
-         'No unowned production paths were recorded in the authoritative map.'),
-        caption='Unassigned or ambiguous production code',row_headers=True
+        ('Every production file the scan found sits under a proposed part. Someone still has to confirm that assignment.' if has_proposal else
+         'No unclaimed production files were recorded in the written map.'),
+        caption='Code no one has claimed',row_headers=True
     )
     observations=arr(quality.get('observations'))
-    quality_table=table(['Observation','What was observed','Basis','Confidence'],[(x.get('topic'),x.get('observation'),status_label(x.get('basis')),status_label(x.get('confidence'))) for x in observations],'No architectural-quality observation was recorded for this map.',caption='Module-map quality observations',row_headers=True)
-    rec_cards=''.join(f'<article class="decision-row"><div class="row"><h3>{e(x.get("title"))}</h3>{pill(x.get("classification"),status_label(x.get("classification")))}</div><p><b>Observed:</b> {e(x.get("observed"))}</p><p><b>Why it matters:</b> {e(x.get("whyItMatters"))}</p><p><b>Recommendation:</b> {e(x.get("recommendation"))}</p><p><b>Benefit:</b> {e(x.get("benefit"))}</p><p><b>Risk and uncertainty:</b> {e(x.get("risk"))} {e(x.get("uncertainty"))}</p><p><b>Your decision:</b> {"Needed" if x.get("requiresUserInput") else "Not needed for this finding"} &middot; <b>Priority:</b> {"Essential" if x.get("essential") else "Optional refinement"}</p><details><summary>Evidence behind this recommendation</summary><p>{e(map_evidence(x.get("evidence")))}</p><p><b>Decision:</b> {e(status_label(x.get("decision") or "pending")) if x.get("requiresUserInput") else "No owner decision; this is a recommended fix."}</p></details></article>' for x in recs) or (
-        '<p class="empty">No new module-map recommendation was generated. The existing map was evaluated in place; this does not imply that other ACIMA adoption work is unnecessary.</p>'
+    quality_table=table(['What we looked at','What we saw','How we know','How sure'],[(x.get('topic'),x.get('observation'),status_label(x.get('basis')),status_label(x.get('confidence'))) for x in observations],'No observation about the map was recorded.',caption='What the map shows',row_headers=True)
+    rec_cards=''.join(f'<article class="decision-row"><div class="row"><h3>{e(x.get("title"))}</h3>{pill(x.get("classification"),status_label(x.get("classification")))}</div><p><b>What we saw:</b> {e(x.get("observed"))}</p><p><b>What it could cost:</b> {e(x.get("whyItMatters"))}</p><p><b>What to do:</b> {e(x.get("recommendation"))}</p><p><b>What gets better:</b> {e(x.get("benefit"))}</p><p><b>What could go wrong:</b> {e(x.get("risk"))} {e(x.get("uncertainty"))}</p><p><b>Do you need to decide?</b> {"Yes" if x.get("requiresUserInput") else "No decision needed for this item"} &middot; <b>Priority:</b> {"Essential" if x.get("essential") else "Optional refinement"}</p><details><summary>Where this came from</summary><p>{e(map_evidence(x.get("evidence")))}</p><p><b>Your decision:</b> {e(status_label(x.get("decision") or "pending")) if x.get("requiresUserInput") else "No decision needed; this is a recommended fix."}</p></details></article>' for x in recs) or (
+        '<p class="empty">No new recommendation about the map was generated. The existing map was checked in place; this does not mean other adoption work is unnecessary.</p>'
         if not has_proposal else
         '<p class="empty">No change is recommended from the available discovery evidence. That is a proposal judgement, not proof that the current boundaries are ideal.</p>'
     )
     if decisions:
-        decision_table=(f'<p class="reconciliation"><b>{len(decisions)} ownership decision{"s" if len(decisions)!=1 else ""} need you.</b> Each is written as a plain-language choice on the <a href="plan.html#decisions">Plan page</a>, with a recommendation, effort and what stays blocked. This page keeps the evidence behind the map.</p>')
+        decision_table=(f'<p class="reconciliation"><b>{len(decisions)} map decision{"s" if len(decisions)!=1 else ""} need you.</b> Each is written as a plain-language choice on the <a href="plan.html#decisions">Plan page</a>, with a recommendation, effort and what stays blocked. This page keeps the evidence behind the map.</p>')
     else:
-        decision_table='<p class="empty">No new ownership decision is pending because the report is using the existing authoritative map. Existing ownership is shown above; this does not approve unrelated adoption changes.</p>'
+        decision_table='<p class="empty">No new map decision is pending because the report is using the existing written map. What is written above does not approve unrelated changes.</p>'
 
     if review:
         reviewer=review_meta.get('reviewer') or review.get('reviewer') or 'not recorded'
         reviewed_on=review_meta.get('reviewedOn') or review.get('reviewedOn') or 'not recorded'
         approval_status=review.get('status') or review_meta.get('status') or 'recorded'
-        review_html=f'<p class="note"><b>Review provenance:</b> status {e(status_label(approval_status))} &middot; reviewer {e(reviewer)} &middot; reviewed {e(reviewed_on)} &middot; proposal {e(mm.get("proposalId") or "not recorded")}.</p>'
+        review_html=f'<p class="note"><b>Who checked it:</b> {e(status_label(approval_status))} &middot; {e(reviewer)} &middot; {e(reviewed_on)} &middot; proposal {e(mm.get("proposalId") or "not recorded")}.</p>'
     else:
         review_html=(
-            '<p class="note">No review or approval is recorded. Generated boundaries are not authoritative and must not enable ownership-dependent checks.</p>'
+            '<p class="note">No one has reviewed or approved this map yet. These are proposed parts, not agreed boundaries, so do not rely on them for checks that need a clear owner.</p>'
             if has_proposal else
-            '<p class="note">No separate review receipt was supplied. A structurally complete configuration is shown as declared, not as proof that a current owner reviewed its contents.</p>'
+            '<p class="note">No separate review receipt was supplied. A complete file is shown as written down, not as proof that the current owners still agree with it.</p>'
         )
-    unit_count=authority.get('unitCount') if authority.get('unitCount') is not None else len(units)
-    metric_title='CANDIDATE MODULES' if has_proposal else 'AUTHORITATIVE UNITS'
-    metric_value=len(modules) if has_proposal else unit_count
     unassigned_count=len(unassigned)
-    heading="Proposed module map" if has_proposal else "Existing module map"
-    return f'''<section id="module-map"><small>MODULE OWNERSHIP</small><h2>{e(heading)}</h2>{map_intro}<div class="metrics compact">{metric(metric_title,metric_value)}{metric('UNASSIGNED PATHS',unassigned_count)}{metric('OWNERSHIP GATE',status_label(gate_status),'Independent review continues' if gate.get('independentReviewContinues') else 'Review gate not recorded')}</div>{module_table}{review_html}{issue_html}</section><section id="contracts-and-dependencies"><h2>Contracts and dependencies</h2><p class="lead">A declared contracts role is an ownership fact, not proof that the contract is zero-dependency or semantically appropriate.</p>{dep_table}</section><section id="unassigned-code"><h2>Unassigned or ambiguous code</h2>{unassigned_table}</section><section id="map-quality"><h2>Architectural quality observations</h2>{quality_table}</section><section id="map-recommendations"><h2>Recommendations and rationale</h2><div class="stack">{rec_cards}</div></section><section id="map-decisions"><h2>Decisions requiring user input</h2>{decision_table}<p class="note">Reading this report does not approve the map or authorize implementation. {e(mm.get("nextDecision") or "No approval is implied.")}</p></section>'''
+    heading="A proposed map of the product" if has_proposal else "How the product is divided today"
+    atlas=module_atlas_html(records)
+    legend=module_legend_html(records)
+    directory=module_directory_html(records)
+    module_metrics=module_metrics_html(records,unassigned_count)
+    ownership_note=(f'<p class="context-line"><b>Can checks run?</b> {e(status_label(gate_status))} <span aria-hidden="true">&middot;</span> <b>Map status:</b> {e(status_label(review_status))} <span aria-hidden="true">&middot;</span> <b>How to read this:</b> each square is one part; the list below is the detail.</p>')
+    return f'''<section id="module-map" class="module-map"><small>HOW THE PRODUCT IS DIVIDED</small><h2>{e(heading)}</h2>{map_intro}{module_metrics}{ownership_note}<div class="module-atlas-head"><h3>The map at a glance</h3><p>Each square is one part. Colour shows whether it has been accepted, needs changes, or still needs an owner. The list below has the same information in words.</p></div>{atlas}{legend}{review_html}{issue_html}{directory}</section><section id="contracts-and-dependencies"><h2>How parts depend on each other</h2><p class="lead">A promise from one part to another is a fact about ownership, not proof that the promise is clean or safe to depend on.</p>{dep_table}<p class="note">{e(dep_note)}</p></section><section id="unassigned-code"><h2>Code no one has claimed</h2>{unassigned_table}</section><section id="map-quality"><h2>What the map shows</h2>{quality_table}</section><section id="map-recommendations"><h2>What we recommend</h2><div class="stack">{rec_cards}</div></section><section id="map-decisions"><h2>What needs your decision</h2>{decision_table}<p class="note">Reading this report does not approve the map or authorize changes. {e(mm.get("nextDecision") or "No approval is implied.")}</p></section>'''
 
 def agent_guidance_section(d):
     guidance=d.get('agentGuidance') or {}
@@ -346,7 +702,7 @@ def adoption_workflow(d):
 def module_map_overview(d):
     mm=d.get('moduleMap') or {}
     if not mm:
-        return '<section id="module-ownership"><small>MODULE OWNERSHIP</small><h2>Module-map discovery was not embedded in this report</h2><p>This report does not contain a module-map proposal or an assessment of an authoritative map. Do not infer ownership from the absence of this section.</p></section>'
+        return '<section id="module-ownership"><small>HOW THE PRODUCT IS DIVIDED</small><h2>This report does not include a map of the product</h2><p>No proposed map or written map was included. Do not assume the product has no clear boundaries just because this section is missing.</p></section>'
     authority=mm.get('authoritativeMap') or {}
     proposal=mm.get('proposal')
     gate=d.get('ownershipGate') or {}
@@ -357,8 +713,8 @@ def module_map_overview(d):
     rules=arr(gate.get('ownershipDependentRules'))
     if proposal:
         next_text=mm.get('nextDecision') or 'Review the proposed boundaries and recommendations; no ownership is approved by this report.'
-        body=f'<p class="lead">{e(mm.get("summary"))}</p><p class="reconciliation"><b>The proposed map is not authoritative.</b> Review status: <b>{e(status_label(review_status))}</b>. {e(next_text)}</p><p class="note">The qualitative review can continue independently. Deterministic ownership-dependent checks remain blocked until the map is explicitly approved.</p>'
-        count_label='Candidate modules'
+        body=f'<p class="lead">{e(mm.get("summary"))}</p><p class="reconciliation"><b>The proposed map is not agreed yet.</b> Current status: <b>{e(status_label(review_status))}</b>. {e(next_text)}</p><p class="note">The rest of the review can continue. Checks that need an agreed map stay blocked until someone confirms the parts.</p>'
+        count_label='PARTS PROPOSED'
         count_value=len(arr(proposal.get('modules')))
     else:
         units=arr(mm.get('authoritativeUnits') or authority.get('units'))
@@ -366,17 +722,17 @@ def module_map_overview(d):
         coverage=f'{authority.get("coveredProduction",0)} of {authority.get("productionFiles",0)} production files covered'
         unowned=len(arr(authority.get('unownedPaths')))
         body=(f'<p class="lead">{e(mm.get("summary") or authority.get("summary"))}</p>'
-              f'<p class="reconciliation"><b>Existing authoritative map:</b> {e(status_label(status))}. '
-              f'It declares {e(count_value)} units; {e(coverage)}; {unowned} unowned paths. '
-              f'The map was evaluated in place rather than replaced by discovery.</p>')
+              f'<p class="reconciliation"><b>The product already has a written map.</b> {e(status_label(status))}. '
+              f'It lists {e(count_value)} parts; {e(coverage)}; {unowned} files are not claimed. '
+              f'The report checked that map rather than replacing it.</p>')
         if review:
             reviewer=review_meta.get('reviewer') or review.get('reviewer') or 'not recorded'
             reviewed_on=review_meta.get('reviewedOn') or review.get('reviewedOn') or 'not recorded'
-            body+=f'<p class="note">Map review provenance: {e(status_label(review_status))}; reviewer {e(reviewer)}; reviewed {e(reviewed_on)}.</p>'
+            body+=f'<p class="note">Who checked it: {e(status_label(review_status))}; {e(reviewer)}; {e(reviewed_on)}.</p>'
         else:
-            body+='<p class="note">The configuration is declared, but no separate approval receipt is recorded. Structural completeness is not proof of current owner intent.</p>'
-        count_label='Authoritative units'
-    return f'<section id="module-ownership"><small>MODULE OWNERSHIP</small><h2>Can the boundary checks run?</h2>{body}<div class="metrics compact">{metric("AUTHORITATIVE MAP",status_label(status))}{metric(count_label,count_value)}{metric("OWNERSHIP GATE",status_label(gate.get("status") or "blocked"),f"{len(rules)} graph-dependent rule(s)" if rules else "No graph-dependent rules listed")}</div><p class="cross-links"><span>Related:</span> <a href="proposal.html#module-map">Module map</a> <a href="proposal.html#map-decisions">Decisions</a> <a href="evidence.html#ownership-blocked">Ownership-dependent checks</a></p></section>'
+            body+='<p class="note">The map is written down, but no separate review receipt is recorded. A complete file is not proof that the current owners still agree with it.</p>'
+        count_label='PARTS WRITTEN DOWN'
+    return f'<section id="module-ownership"><small>HOW THE PRODUCT IS DIVIDED</small><h2>Can the checks run?</h2>{body}<div class="metrics compact">{metric("WRITTEN-DOWN MAP",status_label(status))}{metric(count_label,count_value)}{metric("CAN CHECKS RUN?",status_label(gate.get("status") or "blocked"),f"{len(rules)} checks need an agreed map" if rules else "No checks need an agreed map")}</div><p class="cross-links"><span>Related:</span> <a href="proposal.html#module-map">Map of the product</a> <a href="proposal.html#map-decisions">Decisions</a> <a href="evidence.html#ownership-blocked">Checks needing an agreed map</a></p></section>'
 
 def shell(data,file,title,subtitle,body):
     repo=e((data.get('repository') or {}).get('name') or 'Repository assessment'); active=''.join(f'<a href="{href}" class="{"active" if href==file else ""}"'+(' aria-current="page"' if href==file else '')+f'>{label}</a>' for href,label in NAV)
@@ -388,25 +744,25 @@ def render(d):
     exceptions=[x for x in conformance if isinstance(x,dict) and key(x.get('disposition')) not in ('conforms','not_applicable')]
     conformance_by_rule={x.get('rule'):x for x in conformance if isinstance(x,dict) and x.get('rule')}
     benefits=''.join(f'<article><small>{i+1:02}</small><h3>{e(x.get("title") or "Outcome")}</h3><p>{e(x.get("description") or x.get("benefit"))}</p><em>{e(x.get("availability") or "Proposed benefit; not yet verified")}</em></article>' for i,x in enumerate(arr(val.get('benefits')))) or '<p class="empty">No repository-specific benefits are recorded.</p>'
-    finding_cards=''.join(f'<article class="finding"><div class="row"><h3>{e(x.get("title") or "Finding")}</h3>{pill(x.get("disposition") or x.get("status") or x.get("confidence"))}</div><p>{e(x.get("what") or x.get("summary"))}</p><p><b>Why it matters:</b> {e(x.get("why"))}</p><p><b>Recommended response:</b> {e(x.get("recommendation") or x.get("fix"))}</p><p><b>Action type:</b> {e(status_label(x.get("classification")))}</p><details><summary>Evidence and technical details</summary><p><b>Requirement reference:</b> {e(", ".join(finding_rules(x)) or "Not recorded")}</p><p><b>What the requirement means:</b> {e(x.get("requirementMeaning"))}</p><p><b>Sources:</b> {e(x.get("paths") or x.get("path"))} &middot; {e(x.get("evidenceRefs"))}</p><p><b>What this should achieve:</b> {e(x.get("expectedOutcome"))}</p><p><b>How to verify:</b> {e(x.get("verification"))}</p><p><b>Confidence and limits:</b> {e(status_label(x.get("confidence")))} &middot; {e(x.get("limitations"))}</p></details></article>' for x in findings) or '<p class="empty">No findings were recorded. Check the Evidence page to confirm that review coverage is complete before interpreting this as a clean result.</p>'
+    finding_cards=''.join(f'<article class="finding"><div class="row"><h3>{e(x.get("title") or "Finding")}</h3>{pill(x.get("disposition") or x.get("status") or x.get("confidence"))}</div><p>{e(x.get("what") or x.get("summary"))}</p><p><b>What it could cost:</b> {e(x.get("why"))}</p><p><b>What fixing it involves:</b> {e(x.get("recommendation") or x.get("fix"))}</p><p><b>Required or optional:</b> {e(status_label(x.get("classification")))}</p><details><summary>Where this came from</summary><p><b>Internal reference:</b> {e(", ".join(finding_rules(x)) or "Not recorded")}</p><p><b>What this check means:</b> {e(x.get("requirementMeaning"))}</p><p><b>Files and evidence:</b> {e(x.get("paths") or x.get("path"))} &middot; {e(x.get("evidenceRefs"))}</p><p><b>What good looks like:</b> {e(x.get("expectedOutcome"))}</p><p><b>How to know it worked:</b> {e(x.get("verification"))}</p><p><b>How sure we are and what is still unknown:</b> {e(status_label(x.get("confidence")))} &middot; {e(x.get("limitations"))}</p></details></article>' for x in findings) or '<p class="empty">No problems were recorded. Check the evidence page to confirm that the review was complete before treating this as a clean result.</p>'
     outcome_cards=''.join(f'<article class="row"><div><h3>{e(x.get("title") or "Outcome")}</h3><p>{e(x.get("description"))}</p><p><b>Why it matters:</b> {e(x.get("whyItMatters"))}</p><p><b>Practical change:</b> {e(x.get("practicalChange"))}</p><p><b>Type:</b> {e(status_label(x.get("classification")))} &middot; <b>Basis:</b> {e(status_label(x.get("realization")))}</p><p><b>Verification:</b> {e(x.get("verification"))}</p><em>{e(x.get("limitations"))}</em></div>{pill(x.get("status") or x.get("availability"))}</article>' for x in outcomes) or f'<p class="empty">{e(d.get("outcomesStatus") or "Outcomes have not yet been established. No benefits are inferred.")}</p>'
     phase_cards=''.join(f'<article class="phase"><div class="row"><h3>{e(x.get("name") or "Phase")}</h3>{pill(x.get("status"))}</div><p>{e(x.get("purpose"))}</p><p><b>Before this phase:</b> {e(x.get("prerequisites") or x.get("dependsOn"))}</p><p><b>What it produces:</b> {e(x.get("deliverable"))}</p><p><b>How to verify:</b> {e(x.get("verification"))}</p><p><b>Done when:</b> {e(x.get("completionCriteria"))}</p><p><b>Who approves:</b> {e(x.get("approval"))}</p><details><summary>Work and affected areas</summary>{bullets(x.get("activities",[]),"No activities recorded.")}{bullets(x.get("affectedFiles",[]),"Affected files not recorded.")}</details></article>' for x in phases) or f'<p class="empty">{e(d.get("roadmapStatus") or "An adoption plan has not been established yet.")}</p>'
     linked_findings=sum(1 for x in findings if any(r in conformance_by_rule for r in finding_rules(x)))
     unlinked_findings=len(findings)-linked_findings
     if conformance:
-        finding_word='finding' if len(findings)==1 else 'findings'
-        exception_word='exception' if len(exceptions)==1 else 'exceptions'
-        reconciliation_sentence=f'{len(findings)} human-readable {finding_word} and {len(exceptions)} requirement {exception_word} are recorded.'
+        problem_word='problem' if len(findings)==1 else 'problems'
+        check_word='check' if len(exceptions)==1 else 'checks'
+        reconciliation_sentence=f'{len(findings)} {problem_word} and {len(exceptions)} {check_word} needing attention are recorded.'
         if linked_findings:
             verb='names' if linked_findings==1 else 'name'
-            reconciliation_sentence += f' {linked_findings} {finding_word} {verb} a matching requirement result.'
+            reconciliation_sentence += f' {linked_findings} {problem_word} {verb} a matching check result.'
         if unlinked_findings:
             verb='does' if unlinked_findings==1 else 'do'
-            reconciliation_sentence += f' {unlinked_findings} {finding_word} {verb} not name a matching result; they remain grouped problems.'
+            reconciliation_sentence += f' {unlinked_findings} {problem_word} {verb} not name a matching result; they remain grouped problems.'
     else:
-        reconciliation_sentence='Requirement results were not supplied, so findings cannot be reconciled to them.'
+        reconciliation_sentence='Check results were not supplied, so problems cannot be compared with them.'
     pages={}
-    pages['index.html']=f'''<section class="decision"><div><small>RECOMMENDATION</small><h2>{e(recommendation(rec.get('status')))}</h2><p>{e(rec.get('summary') or ov.get('summary'))}</p></div>{pill(d.get('assessmentStatus'), assessment(d.get('assessmentStatus')))}</section><section><small>THE SHORT VERSION</small><h2>What this means for your product</h2><p class="lead">{e(ov.get('plainLanguage'))}</p></section><div class="metrics compact">{metric('FINDINGS RECORDED',len(findings) or 'None recorded')}{metric('REQUIREMENTS REVIEWED',coverage_ratio(cov),unresolved_note(cov))}</div><p class="context-line"><b>Repository:</b> {e(repo_mode(repo.get('mode')))} <span aria-hidden="true">&middot;</span> <b>Adoption workflow:</b> {e(status_label((d.get('adoptionWorkflow') or {}).get('mode') or 'not recorded'))} <span aria-hidden="true">&middot;</span> <b>Architecture:</b> {e(arch.get('family') or 'Not established')}</p>{module_map_overview(d)}<p class="cross-links"><span>Related:</span> <a href="findings.html#findings">Findings</a> <a href="plan.html#adoption-plan">Adoption plan</a> <a href="evidence.html#evidence-summary">Evidence summary</a></p><section id="completion"><h2>What has been completed?</h2>{table(['Milestone','Status'],[('Assessment', milestone((d.get('milestones') or {}).get('assessmentComplete'))),('Report generation', 'Completed when this report was written'),('Adoption proposal',milestone((d.get('milestones') or {}).get('adoptionProposalComplete'))),('Implementation',milestone((d.get('milestones') or {}).get('implementationComplete'))),('Conformance verification',milestone((d.get('milestones') or {}).get('conformanceVerified')))],caption='Completion status by milestone',row_headers=True)}<p class="note">Writing this report does not complete the assessment, approve the proposal, implement changes or verify conformance.</p></section><section><small>WHAT YOU GET</small><h2>What adoption would make possible</h2><div class="benefits">{benefits}</div></section><section><small>THE DECISION</small><h2>Why this recommendation?</h2><div class="cols"><div><h3>Why it fits this repository</h3>{bullets(arr(rec.get('reasons')))}</div><div><h3>Tradeoffs and caveats</h3>{bullets(arr(rec.get('caveats')))}</div></div></section><section class="next"><div><small>NEXT STEP</small><h2>{e(ov.get('nextAction') or 'Review the proposal')}</h2><p>{e(ov.get('nextActionWhy'))}</p></div><a href="proposal.html">See what would change <span aria-hidden="true">&rarr;</span></a></section>'''
+    pages['index.html']=f'''<section class="decision"><div><small>RECOMMENDATION</small><h2>{e(recommendation(rec.get('status')))}</h2><p>{e(rec.get('summary') or ov.get('summary'))}</p></div>{pill(d.get('assessmentStatus'), assessment(d.get('assessmentStatus')))}</section><section><small>THE SHORT VERSION</small><h2>What this means for your product</h2><p class="lead">{e(ov.get('plainLanguage'))}</p></section><div class="metrics compact">{metric('PROBLEMS FOUND',len(findings) or 'None recorded')}{metric('CHECKS REVIEWED',coverage_ratio(cov),unresolved_note(cov))}</div><p class="context-line"><b>Repository:</b> {e(repo_mode(repo.get('mode')))} <span aria-hidden="true">&middot;</span> <b>Workflow:</b> {e(status_label((d.get('adoptionWorkflow') or {}).get('mode') or 'not recorded'))} <span aria-hidden="true">&middot;</span> <b>Structure:</b> {e(arch.get('family') or 'Not established')}</p>{module_map_overview(d)}<p class="cross-links"><span>Related:</span> <a href="findings.html#findings">Findings</a> <a href="plan.html#adoption-plan">Plan</a> <a href="evidence.html#evidence-summary">Evidence summary</a></p><section id="completion"><h2>What has been completed?</h2>{table(['Milestone','Status'],[('Assessment', milestone((d.get('milestones') or {}).get('assessmentComplete'))),('Report generation', 'Completed when this report was written'),('Change proposal',milestone((d.get('milestones') or {}).get('adoptionProposalComplete'))),('Implementation',milestone((d.get('milestones') or {}).get('implementationComplete'))),('Final verification',milestone((d.get('milestones') or {}).get('conformanceVerified')))],caption='Completion status by milestone',row_headers=True)}<p class="note">Writing this report does not complete the assessment, approve the proposal, implement changes or verify conformance.</p></section><section><small>WHAT GETS BETTER</small><h2>What this work would make possible</h2><div class="benefits">{benefits}</div></section><section><small>THE DECISION</small><h2>Why this recommendation?</h2><div class="cols"><div><h3>Why it fits this repository</h3>{bullets(arr(rec.get('reasons')))}</div><div><h3>Tradeoffs and caveats</h3>{bullets(arr(rec.get('caveats')))}</div></div></section><section class="next"><div><small>NEXT STEP</small><h2>{e(ov.get('nextAction') or 'Review the proposal')}</h2><p>{e(ov.get('nextActionWhy'))}</p></div><a href="proposal.html">See what would change <span aria-hidden="true">&rarr;</span></a></section>'''
     existing_arch=arch.get('existingArchitecture') or (d.get('moduleMap') or {}).get('existingArchitecture') or {}
     existing_enforcement=arch.get('existingEnforcement') or {}
     existing_asset_rows=[(path,'Existing repository architecture evidence; inspect and preserve unless a specific approved change is justified.') for path in arr(existing_arch.get('paths'))]
@@ -417,43 +773,43 @@ def render(d):
             mechanism_rows.append((item.get('name') or item.get('kind') or item.get('path'),item.get('path'),item.get('status') or item.get('purpose')))
         else:
             mechanism_rows.append((str(item),'','Identified by read-only repository assessment.'))
-    existing_section=f'<section id="existing-architecture"><small>EXISTING ARCHITECTURE</small><h2>What ACIMA found and should preserve</h2><p class="lead">{e(existing_enforcement.get("summary") or existing_arch.get("note") or "The assessment did not establish existing architecture assets beyond the evidence listed below.")}</p>{table(["Existing asset","Assessment"],existing_asset_rows,"No existing architecture file paths were identified.",caption="Existing architecture and enforcement assets")}{table(["Existing enforcement","Path","Observed purpose or status"],mechanism_rows,"No existing executable enforcement mechanism was established by the assessment.",caption="Existing enforcement mechanisms")}</section>'
-    pages['proposal.html']=f'''{adoption_path(d)}<section><small>CURRENT STATE</small><h2>How the repository works today</h2><p class="lead">{e(arch.get('currentState'))}</p><p class="cross-links"><span>Related:</span> <a href="findings.html#findings">Findings</a> <a href="files.html#file-changes">Proposed file changes</a> <a href="plan.html#adoption-plan">Adoption plan</a></p><div class="cols"><div><h3>Already working</h3>{bullets(strengths)}</div><div><h3>What would be added</h3>{bullets(arr(val.get('adds')))}</div></div></section>{existing_section}<section><small>PROPOSED STATE</small><h2>What would change</h2><p>{e(arch.get('proposedState'))}</p>{table(['Capability','What changes','What it makes possible'],[(x.get('capability'),x.get('change'),x.get('outcome')) for x in arr(arch.get('targetCapabilities'))],caption='Proposed capabilities',row_headers=True)}</section>{module_map_sections(d)}<section><small>EXPECTED OUTCOMES</small><h2>What should become easier or safer</h2><div class="stack">{outcome_cards}</div></section><section><small>TRADEOFFS</small><h2>Costs, risks, and limits</h2><div class="cols"><div><h3>Cost and effort</h3>{bullets(arr(val.get('costs')))}</div><div><h3>Risks and mitigations</h3>{bullets(arr(val.get('risks')))}</div></div><h3>What ACIMA will not do</h3>{bullets(limits)}</section>'''
-    pages['findings.html']=f'''<section id="strengths"><small>EXISTING STRENGTHS</small><h2>What is already in good shape</h2>{bullets(strengths,'No strengths were recorded. This does not mean none exist.')}</section><section id="findings"><small>ASSESSMENT FINDINGS</small><h2>What needs attention</h2><p class="lead">Findings are organized around the nonconforming requirements identified during review. Each explains what was observed, why it matters, and the recommended response.</p><p class="reconciliation"><b>Findings and requirement results are separate ledgers.</b> {e(reconciliation_sentence)} <a href="evidence.html#exceptions">Review requirement exceptions</a>.</p><p class="note">Each finding links back to reviewed requirement results. The current report does not claim that separate requirements have been semantically clustered.</p><p class="cross-links"><span>Related:</span> <a href="files.html#file-changes">Proposed file changes</a> <a href="plan.html#adoption-plan">Adoption plan</a> <a href="evidence.html#exceptions">Requirement exceptions</a></p>{finding_cards}</section>'''
+    existing_section=f'<section id="existing-architecture"><small>WHAT TO KEEP</small><h2>What already works and should stay</h2><p class="lead">{e(existing_enforcement.get("summary") or existing_arch.get("note") or "The assessment did not establish existing architecture assets beyond the evidence listed below.")}</p>{table(["Existing asset","Assessment"],existing_asset_rows,"No existing architecture file paths were identified.",caption="Existing architecture and enforcement assets")}{table(["Existing enforcement","Path","Observed purpose or status"],mechanism_rows,"No existing executable enforcement mechanism was established by the assessment.",caption="Existing enforcement mechanisms")}</section>'
+    pages['proposal.html']=f'''{adoption_path(d)}<section><small>TODAY</small><h2>How the repository works today</h2><p class="lead">{e(arch.get('currentState'))}</p><p class="cross-links"><span>Related:</span> <a href="findings.html#findings">Findings</a> <a href="files.html#file-changes">Proposed file changes</a> <a href="plan.html#adoption-plan">Plan</a></p><div class="cols"><div><h3>Already working</h3>{bullets(strengths)}</div><div><h3>What would be added</h3>{bullets(arr(val.get('adds')))}</div></div></section>{existing_section}<section><small>WHAT WOULD CHANGE</small><h2>What would change</h2><p>{e(arch.get('proposedState'))}</p>{table(['Capability','What changes','What it makes possible'],[(x.get('capability'),x.get('change'),x.get('outcome')) for x in arr(arch.get('targetCapabilities'))],caption='Proposed capabilities',row_headers=True)}</section>{plain_language_gaps_section(d)}{module_map_sections(d)}<section><small>WHAT GETS BETTER</small><h2>What should become easier or safer</h2><div class="stack">{outcome_cards}</div></section><section><small>TRADEOFFS</small><h2>Costs, risks, and limits</h2><div class="cols"><div><h3>Cost and effort</h3>{bullets(arr(val.get('costs')))}</div><div><h3>Risks and mitigations</h3>{bullets(arr(val.get('risks')))}</div></div><h3>What this work will not do</h3>{bullets(limits)}</section>'''
+    pages['findings.html']=f'''<section id="strengths"><small>WHAT IS ALREADY WORKING</small><h2>What is already in good shape</h2>{bullets(strengths,'No strengths were recorded. This does not mean none exist.')}</section><section id="findings"><small>PROBLEMS FOUND</small><h2>What needs attention</h2><p class="lead">These are the problems found, what each one could cost you, and what fixing it would involve. Technical references stay in the details at the bottom of each card.</p><p class="reconciliation"><b>Problems and checks are counted separately.</b> {e(reconciliation_sentence)} <a href="evidence.html#exceptions">See which checks need attention</a>.</p><p class="note">Each problem shows the check behind it. The report does not claim that checks with similar wording describe the same underlying issue.</p><p class="cross-links"><span>Related:</span> <a href="files.html#file-changes">Proposed file changes</a> <a href="plan.html#adoption-plan">Plan</a> <a href="evidence.html#exceptions">Checks that need attention</a></p>{finding_cards}</section>'''
     inventory=d.get('fileImpact') or {}
     categorized=[]
     for action in ('inspect','create','modify','preserve'):
         source=arr(inventory.get(action)) or [x for x in changes if x.get('action')==action]
         categorized.extend((x.get('path'),action,x.get('purpose'),x.get('expectedOutcome'),status_label(x.get('classification')),x.get('confidence')) for x in source)
     file_rows=[(path,action_label(act),purpose,outcome,commitment,status_label(confidence)) for path,act,purpose,outcome,commitment,confidence in categorized]
-    pages['files.html']=f'''<section id="file-changes"><h2>Proposed file changes</h2><p class="lead">Some files are listed only so they can be inspected; that is not a proposed edit. Creating or changing a file remains a proposal until someone approves it.</p><p class="cross-links"><span>Related:</span> <a href="findings.html#findings">Findings</a> <a href="plan.html#adoption-plan">Adoption plan</a> <a href="evidence.html#exceptions">Requirement exceptions</a></p>{table(['File or area','Action','Why it is involved','What it should achieve','Required or optional','Confidence'],file_rows,d.get('fileImpactStatus') or 'No proposed file changes were supplied.',caption='Proposed file changes',row_headers=True)}</section><section><h2>What should stay the same</h2>{bullets(arr(d.get('preservation')),d.get('preservationStatus') or 'What should stay the same has not yet been established.')}</section><div class="metrics">{metric('FILES TO CREATE',sum(x[1]=='create' for x in categorized))}{metric('FILES TO MODIFY',sum(x[1]=='modify' for x in categorized))}{metric('FILES TO INSPECT',sum(x[1]=='inspect' for x in categorized))}{metric('FILES TO PRESERVE',sum(x[1]=='preserve' for x in categorized))}</div>'''
+    pages['files.html']=f'''<section id="file-changes"><h2>Proposed file changes</h2><p class="lead">Some files are listed only so they can be inspected; that is not a proposed edit. Creating or changing a file remains a proposal until someone approves it.</p><p class="cross-links"><span>Related:</span> <a href="findings.html#findings">Findings</a> <a href="plan.html#adoption-plan">Plan</a> <a href="evidence.html#exceptions">Checks needing attention</a></p>{table(['File or area','Action','Why it is involved','What it should achieve','Must do or optional','How sure'],file_rows,d.get('fileImpactStatus') or 'No proposed file changes were supplied.',caption='Proposed file changes',row_headers=True)}</section><section><h2>What should stay the same</h2>{bullets(arr(d.get('preservation')),d.get('preservationStatus') or 'What should stay the same has not yet been established.')}</section><div class="metrics">{metric('FILES TO CREATE',sum(x[1]=='create' for x in categorized))}{metric('FILES TO MODIFY',sum(x[1]=='modify' for x in categorized))}{metric('FILES TO INSPECT',sum(x[1]=='inspect' for x in categorized))}{metric('FILES TO PRESERVE',sum(x[1]=='preserve' for x in categorized))}</div>'''
     decision_html=''.join(f'<article class="decision-row"><h3>{e(x.get("question"))}</h3><p>{e(x.get("context"))}</p><p><b>Recommendation:</b> {e(x.get("recommendation"))}</p><p><b>Effort:</b> {e(x.get("effort"))}</p><p><b>If left open:</b> {e(x.get("consequence"))}</p><p><b>What this blocks:</b> {e(x.get("blockedWork"))}</p><p><b>Needed before implementation:</b> {"Yes" if x.get("requiredBeforeImplementation") else "No"}</p><details><summary>Evidence gap and other options</summary><p><b>Evidence gap:</b> {e(x.get("evidenceGap"))}</p>{bullets(x.get("alternatives",[]),"Alternatives are not established.")}<p><b>Impact:</b> {e(x.get("impact"))}</p><p><b>Why an owner is needed:</b> {e(x.get("whyOwner"))}</p></details></article>' for x in decisions) or f'<p class="empty">{e(d.get("decisionsStatus") or "No owner decisions are recorded. The assessment has not established whether no decision is needed or discovery is incomplete.")}</p>'
-    pages['plan.html']=f'''{adoption_workflow(d)}{agent_guidance_section(d)}{remediation_outcome(d)}<section id="adoption-plan"><h2>Adoption plan</h2><p class="cross-links"><span>Related:</span> <a href="findings.html#findings">Findings</a> <a href="files.html#file-changes">Proposed file changes</a> <a href="evidence.html#exceptions">Requirement exceptions</a></p><div class="stack">{phase_cards or e(d.get("roadmapStatus") or "An adoption plan has not been established yet.")}</div></section><section id="decisions"><h2>Decisions that need an owner</h2>{decision_html}</section><section><h2>What approval would mean</h2><p>{e(d.get('approvalStatement') or 'Reading this report does not authorize implementation. Approval must identify the specific proposed scope.')}</p></section>'''
+    pages['plan.html']=f'''{adoption_workflow(d)}{agent_guidance_section(d)}{remediation_outcome(d)}<section id="adoption-plan"><h2>Plan</h2><p class="cross-links"><span>Related:</span> <a href="findings.html#findings">Findings</a> <a href="files.html#file-changes">Proposed file changes</a> <a href="evidence.html#exceptions">Checks needing attention</a></p><div class="stack">{phase_cards or e(d.get("roadmapStatus") or "An adoption plan has not been established yet.")}</div></section><section id="decisions"><h2>Decisions only you can make</h2>{decision_html}</section><section><h2>What approval would mean</h2><p>{e(d.get('approvalStatement') or 'Reading this report does not authorize implementation. Approval must identify the specific proposed scope.')}</p></section>'''
     evrows=[(x.get('label') or x.get('kind'),x.get('source'),x.get('whatItSupports'),status_label(x.get('status'))) for x in evidence]
     reviewed=coverage_ratio(cov)
     unresolved='Not recorded' if cov.get('unresolvedRules') in (None,'') else str(cov.get('unresolvedRules'))
     exception_count=len(exceptions) if conformance else 'Not recorded'
     if conformance:
         if exceptions:
-            noun='result' if len(exceptions)==1 else 'results'
+            noun='check' if len(exceptions)==1 else 'checks'
             verb='needs' if len(exceptions)==1 else 'need'
-            exception_sentence=f'{len(exceptions)} requirement {noun} {verb} attention.'
+            exception_sentence=f'{len(exceptions)} {noun} {verb} attention.'
         else:
-            exception_sentence='No requirement exceptions are recorded.'
+            exception_sentence='No check needs attention in the results supplied.'
     else:
-        exception_sentence='Requirement-level results were not supplied, so this page does not claim conformance.'
-    summary_sentence=f'The review covered {reviewed} requirements. {exception_sentence}'
-    coverage_table=table(['What was checked','Result'],[('Requirements in the catalog',cov.get('requiredRules')),('Reviewed with evidence',cov.get('reviewedRules')),('Not yet reviewed',cov.get('pendingRules')),('Still unresolved',cov.get('unresolvedRules')),('Automated checks run',cov.get('automatedChecksRun')),('Manual reviews completed',cov.get('manualReviewsCompleted')),('Skipped because unsupported',cov.get('skippedOrUnsupported')),('Meets the requirement',(cov.get('dispositionCounts') or {}).get('conforms')),('Does not meet the requirement',(cov.get('dispositionCounts') or {}).get('doesNotConform')),('Partly meets the requirement',(cov.get('dispositionCounts') or {}).get('partiallyConforms')),('Not applicable',(cov.get('dispositionCounts') or {}).get('notApplicable')),('Not enough evidence',(cov.get('dispositionCounts') or {}).get('unverified')),('Not yet assessed',(cov.get('dispositionCounts') or {}).get('notAssessed')),('Not supported by current tools',(cov.get('dispositionCounts') or {}).get('unsupported')),('Blocked by another issue',(cov.get('dispositionCounts') or {}).get('blocked'))],caption='Requirement review coverage',row_headers=True)
-    conformance_table=table(['Requirement','Result','Explanation','Evidence'],[(x.get('requirement') or x.get('title'),status_label(x.get('disposition')),x.get('meaning') or x.get('rationale'),refs(x.get('evidenceRefs'))) if isinstance(x,dict) else (x,'Not established','No explanation supplied.','No evidence supplied.') for x in conformance],'No requirement results were supplied.',caption='Full requirement results',row_headers=True)
-    exception_table=table(['Requirement','Result','Explanation','Evidence'],[(x.get('requirement') or x.get('title'),status_label(x.get('disposition')),x.get('meaning') or x.get('rationale'),refs(x.get('evidenceRefs'))) for x in exceptions],'No requirement exceptions are recorded.',caption='Requirement exceptions',row_headers=True)
+        exception_sentence='Check results were not supplied, so this page does not claim a pass.'
+    summary_sentence=f'The review covered {reviewed} checks. {exception_sentence}'
+    coverage_table=table(['What was checked','Result'],[('Checks in the catalog',cov.get('requiredRules')),('Reviewed with evidence',cov.get('reviewedRules')),('Not yet reviewed',cov.get('pendingRules')),('Still unresolved',cov.get('unresolvedRules')),('Automated checks run',cov.get('automatedChecksRun')),('Manual reviews completed',cov.get('manualReviewsCompleted')),('Skipped because unsupported',cov.get('skippedOrUnsupported')),('Meets the check',(cov.get('dispositionCounts') or {}).get('conforms')),('Does not meet the check',(cov.get('dispositionCounts') or {}).get('doesNotConform')),('Partly meets the check',(cov.get('dispositionCounts') or {}).get('partiallyConforms')),('Not applicable',(cov.get('dispositionCounts') or {}).get('notApplicable')),('Not enough evidence',(cov.get('dispositionCounts') or {}).get('unverified')),('Not yet assessed',(cov.get('dispositionCounts') or {}).get('notAssessed')),('Not supported by current tools',(cov.get('dispositionCounts') or {}).get('unsupported')),('Blocked by another issue',(cov.get('dispositionCounts') or {}).get('blocked'))],caption='Check review coverage',row_headers=True)
+    conformance_table=table(['Check','Result','Explanation','Evidence'],[(x.get('requirement') or x.get('title'),status_label(x.get('disposition')),x.get('meaning') or x.get('rationale'),refs(x.get('evidenceRefs'))) if isinstance(x,dict) else (x,'Not established','No explanation supplied.','No evidence supplied.') for x in conformance],'No check results were supplied.',caption='All check results',row_headers=True)
+    exception_table=table(['Check','Result','Explanation','Evidence'],[(x.get('requirement') or x.get('title'),status_label(x.get('disposition')),x.get('meaning') or x.get('rationale'),refs(x.get('evidenceRefs'))) for x in exceptions],'No check needs attention in the results supplied.',caption='Checks needing attention',row_headers=True)
     evidence_table=table(['Evidence','Source','What it supports','Status'],evrows,caption='Evidence sources',row_headers=True)
     provenance_table=table(['Field','Value'],[('Repository',repo.get('path')),('Commit',repo.get('commit') or 'Not available'),('Branch',repo.get('branch') or 'Not available'),('Working-tree digest',repo.get('workingTreeDigest') or 'Not available'),('Adoption workflow',((d.get('adoptionWorkflow') or {}).get('mode') or 'Not recorded')),('Report generated',human_date(d.get('generatedAt'))),('ACIMA standard version',d.get('standardVersion')),('Adoption skill version',d.get('skillVersion')),('Rule catalog fingerprint',d.get('catalogSha256')),('Assessment status',assessment(d.get('assessmentStatus')))],caption='Report provenance',row_headers=True)
-    result_label=f'All requirement results ({len(conformance)})' if conformance else 'Requirement results'
+    result_label=f'All check results ({len(conformance)})' if conformance else 'Check results'
     exception_panel=exception_table if exceptions else f'<p class="empty">{e(exception_sentence)}</p>'
     ownership_rules=arr(gate.get('ownershipDependentRules'))
-    ownership_sentence=(gate.get('reason') or ('Ownership-dependent checks can run against the authoritative map.' if gate.get('status')=='ready' else 'Ownership-dependent checks are blocked until an authoritative module map is approved.'))
-    blocked_table=table(['Requirement','Status','Why it depends on ownership'],[(rule,'Blocked' if gate.get('status')!='ready' else 'Ready',ownership_sentence) for rule in ownership_rules],'No ownership-dependent rules were listed in this report. Do not treat that as proof that no check depends on ownership.',caption='Ownership-dependent checks',row_headers=True) if ownership_rules else '<p class="empty">No ownership-dependent rule list was supplied. Confirm the assessment did not silently omit graph-dependent checks.</p>'
-    pages['evidence.html']=f'''<section id="evidence-summary"><small>EVIDENCE SUMMARY</small><h2>What the evidence shows</h2><p class="lead">{e(summary_sentence)}</p><ul class="summary-facts"><li><b>{e(reviewed)}</b><span>requirements reviewed</span></li><li><b>{e(unresolved)}</b><span>still unresolved</span></li><li><b>{e(exception_count)}</b><span>requirement exceptions</span></li></ul><p class="note">Review coverage is not a conformance score. Automated checks, the evidence-backed review and the final requirement results stay separate.</p><p class="cross-links"><span>Related:</span> <a href="findings.html#findings">Findings</a> <a href="files.html#file-changes">Proposed file changes</a> <a href="plan.html#adoption-plan">Adoption plan</a></p></section><section id="exceptions"><small>EXCEPTIONS</small><h2>What needs attention</h2>{exception_panel}</section><section id="limits"><small>LIMITS</small><h2>What could not be established</h2>{bullets(limits,'No limitations supplied. Confirm the assessment explicitly considered coverage and tooling limits.')}</section><section id="ownership-blocked"><small>OWNERSHIP GATE</small><h2>Checks that depend on module ownership</h2><p class="lead">{e(ownership_sentence)}</p>{blocked_table}<p class="note">Independent qualitative review continues for every catalog requirement. A missing or unapproved map does not make the whole architecture unassessed.</p></section><section id="detailed-evidence"><small>FULL RECORD</small><h2>Detailed evidence</h2><p class="lead">Open a section to inspect the complete coverage, every requirement result, the supporting sources and the report provenance.</p><details><summary>Review coverage: {e(reviewed)}</summary>{coverage_table}</details><details><summary>{e(result_label)}</summary>{conformance_table}</details><details><summary>Supporting evidence ({len(evidence)})</summary>{evidence_table}</details><details><summary>Report provenance</summary>{provenance_table}</details></section>'''
+    ownership_sentence=(gate.get('reason') or ('Checks that need a clear owner can run against the written map.' if gate.get('status')=='ready' else 'Checks that need a clear owner are blocked until the map is agreed.'))
+    blocked_table=table(['Check','Status','Why it needs an agreed map'],[(rule,'Blocked' if gate.get('status')!='ready' else 'Ready',ownership_sentence) for rule in ownership_rules],'No check that needs an agreed map was listed in this report. Do not treat that as proof that no check depends on the map.',caption='Checks that need an agreed map',row_headers=True) if ownership_rules else '<p class="empty">No list of checks needing an agreed map was supplied. Confirm the assessment did not silently omit them.</p>'
+    pages['evidence.html']=f'''<section id="evidence-summary"><small>EVIDENCE SUMMARY</small><h2>What the evidence shows</h2><p class="lead">{e(summary_sentence)}</p><ul class="summary-facts"><li><b>{e(reviewed)}</b><span>checks reviewed</span></li><li><b>{e(unresolved)}</b><span>still unresolved</span></li><li><b>{e(exception_count)}</b><span>checks needing attention</span></li></ul><p class="note">Coverage is not a passing score. Automated checks, the evidence-backed review and the final results are counted separately.</p><p class="cross-links"><span>Related:</span> <a href="findings.html#findings">Findings</a> <a href="files.html#file-changes">Proposed file changes</a> <a href="plan.html#adoption-plan">Plan</a></p></section><section id="exceptions"><small>CHECKS NEEDING ATTENTION</small><h2>What needs attention</h2>{exception_panel}</section><section id="limits"><small>WHAT WE COULDN'T ESTABLISH</small><h2>What could not be established</h2>{bullets(limits,'No limitations supplied. Confirm the assessment explicitly considered coverage and tooling limits.')}</section><section id="ownership-blocked"><small>CHECKS THAT NEED AN AGREED MAP</small><h2>Which checks need an agreed map</h2><p class="lead">{e(ownership_sentence)}</p>{blocked_table}<p class="note">The rest of the review can continue. A missing or unapproved map does not make the whole architecture unassessed.</p></section><section id="detailed-evidence"><small>DETAILS</small><h2>Evidence details</h2><p class="lead">Open a section to see what was checked, every result, the sources behind it and how this report was made.</p><details><summary>Review coverage: {e(reviewed)}</summary>{coverage_table}</details><details><summary>{e(result_label)}</summary>{conformance_table}</details><details><summary>Supporting evidence ({len(evidence)})</summary>{evidence_table}</details><details><summary>How this report was made</summary>{provenance_table}</details></section>'''
     titles={'index.html':('Overview','The decision at a glance'), 'proposal.html':('What would change','The proposed architecture and what it would deliver'),'findings.html':('What we found','What is working and what needs attention'),'files.html':('Files and impact','Exactly what is proposed to change'),'plan.html':('Plan and decisions','What happens, in what order, and who decides'),'evidence.html':('Evidence and limits','What was checked and what the results prove')}
     return {f:shell(d,f,*titles[f],body) for f,body in pages.items()}
 def validate(d):

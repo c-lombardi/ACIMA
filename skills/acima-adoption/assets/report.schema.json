@@ -306,6 +306,24 @@
         "additionalProperties": true
       }
     },
+    "plainLanguageGaps": {
+      "type": "array",
+      "description": "Risk-ranked, reader-facing gap briefing rendered before the module map. Use ordinary product language; keep rule ids and internal taxonomy in the evidence sections.",
+      "items": {
+        "type": "object",
+        "required": ["title", "whatItCosts", "fixInvolves"],
+        "properties": {
+          "title": { "type": "string", "minLength": 3 },
+          "risk": { "enum": ["high", "medium", "low", "review"] },
+          "whatItCosts": { "type": "string", "minLength": 10 },
+          "fixInvolves": { "type": "string", "minLength": 10 },
+          "paths": { "type": "array", "items": { "type": "string" } },
+          "confidence": { "type": "string" },
+          "basis": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
     "proposedChanges": {
       "type": "array",
       "items": {
