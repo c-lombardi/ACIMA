@@ -20,6 +20,25 @@ follows an external design skill unless that skill's source is present in the AC
 actually been consulted. The report is self-contained and has no runtime dependency on an external
 service. `report-data.json` preserves the structured input used to generate the pages.
 
+## Adoption path
+
+The proposal page opens with a four-stage path: **No ACIMA**, **Foundation**, **Implemented**, and
+**Continuous**. It is a position statement, not a score. The current marker is derived only from the
+report's recorded milestones; earlier stages are context, later stages are proposals, and Continuous
+is a destination, not a certification. Each stage has a text label so the path does not rely on
+colour. When milestones are absent, the page says the position is not recorded instead of inferring
+one. Rendering the path never marks assessment, approval, implementation, or continuous operation
+complete.
+
+## Owner decision briefs
+
+The Plan page renders each owner decision as a brief, not a rule-id questionnaire: the plain-language
+question, context, recommendation, effort, consequence of leaving it open, evidence gap, other
+options and what stays blocked. Module ownership, path ownership and scope approval all use the same
+shape. Findings remain findings; the renderer labels required fixes as “no owner decision” rather than
+asking the owner to accept a classification. The proposal page links to the Plan page instead of
+duplicating the decision table.
+
 ## Input contract
 
 Use `assets/report.schema.json` as the versioned input contract. The adoption agent prepares the model

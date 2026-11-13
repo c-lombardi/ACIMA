@@ -208,6 +208,14 @@ class ModuleMapTests(unittest.TestCase):
             self.assertEqual(dispositions["tests"]["paths"], ["tests"])
             self.assertEqual(dispositions["build-tooling"]["paths"], ["tools"])
             self.assertIn("legacy.py", dispositions["unresolved-production"]["paths"])
+            questions = [item["question"] for item in inner["decisions"]]
+            self.assertTrue(any("Which part of the product should own" in question
+                                for question in questions), questions)
+            self.assertFalse(any("disposition" in question.lower() for question in questions), questions)
+            self.assertFalse(any(item.get("kind") == "path" and item["affectedPaths"] == ["tests"]
+                                 for item in inner["decisions"]), inner["decisions"])
+            self.assertTrue(all("separate part of the product" not in question or
+                                question.startswith("Is ") for question in questions), questions)
 
             review = decision_doc(data)
             for item in inner["pathDispositions"]:
@@ -228,6 +236,21 @@ class ModuleMapTests(unittest.TestCase):
             again = module_map.discover(root)
             self.assertEqual(again["status"], "authoritative")
             self.assertEqual(again["authoritativeMap"]["status"], "complete")
+
+    def test_routine_non_module_paths_are_accepted_without_owner_questions(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            clean_repo(root)
+            write(root, "tests/test_orders.py", "def test_place(): pass\n")
+            write(root, "tools/build.py", "VALUE = 1\n")
+            data = proposal_for(root)
+            result = module_map.apply_review(data, decision_doc(data), root=root)
+            self.assertEqual(result["status"], "approved", result["approval"])
+            dispositions = {item["classification"]: item for item in result["pathDispositions"]}
+            self.assertEqual(dispositions["tests"]["decisionSource"], "repository-classification")
+            self.assertEqual(dispositions["build-tooling"]["decisionSource"], "repository-classification")
+            questions = [item["question"] for item in data["proposal"]["decisions"]]
+            self.assertFalse(any("tests" in question.lower() or "build.py" in question for question in questions))
 
     def test_missing_module_decision_is_not_auto_accepted(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

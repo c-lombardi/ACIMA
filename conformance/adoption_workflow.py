@@ -830,9 +830,14 @@ def _proposal_markdown(document: dict, root: Path) -> str:
     decisions = document.get("decisions") or []
     if decisions:
         for item in decisions:
-            lines.append("- **%s** — %s (essential: %s; status: %s)" %
-                         (item.get("question"), item.get("recommendation"),
-                          "yes" if item.get("essential") else "no", item.get("status")))
+            lines.append("- **%s**" % item.get("question"))
+            lines.append("  - Recommendation: %s" % item.get("recommendation"))
+            if item.get("effort"):
+                lines.append("  - Effort: %s" % item.get("effort"))
+            if item.get("consequence"):
+                lines.append("  - If left open: %s" % item.get("consequence"))
+            if item.get("blockedWork"):
+                lines.append("  - Blocks: %s" % item.get("blockedWork"))
     else:
         lines.append("- No module-level decision was generated; this is not proof that ownership is settled.")
     lines += ["", "## 10. Approval", "",

@@ -43,8 +43,10 @@ build, packaging and CI. A repository may be several kinds at once — say so, a
 directory name as an ownership decision.
 
 For each material inference give what was found, the evidence, confidence, and what remains
-uncertain. Ask only what the repository cannot settle: shared-kernel status, composition-boundary
-ownership, duplicate names, and who owns exceptions.
+uncertain. Ask only for business facts the repository cannot settle: who owns an ambiguous area or
+exception, whether a shared area is intentionally shared, and whether a duplicate name refers to
+the same responsibility. Determine ACIMA roles from evidence and recommend them; never ask the
+owner to choose a catalog role.
 
 Then explain ACIMA against the target system: for each meaningful difference, the existing design, the
 ACIMA expectation, why it matters, whether it is a confirmed problem, a suspected one, an acceptable

@@ -4,6 +4,93 @@ All normative changes to the ACIMA standard. The machine-readable catalog is
 [`tools/acima-spec/rules.json`](tools/acima-spec/rules.json); this file explains *why* it changed and
 what an adopting repository has to do about it.
 
+## Unreleased — plain-language report decisions
+
+**Skill and report change only.** The catalog, standard version, rule ids, levels, severity and claim
+semantics are unchanged; `acima-adoption` moves from 1.36.4 to 1.36.5. No adopting repository has to
+change configuration, waivers or evidence.
+
+### Why
+
+Owners were asked to adjudicate ACIMA role names, path classifications and internal rule titles. A
+non-expert cannot answer those questions, and presenting them as decisions made the report feel like
+a terminology quiz. Findings were also mixed in with genuine owner choices.
+
+### What changed
+
+- Module decisions now ask whether an area is a separate part of the product with its own rules and
+  data, not whether it is an “ACIMA module.”
+- Path decisions are limited to unresolved production code and composition/startup areas. Routine
+  test, tooling, documentation, generated and already-mapped paths are classified as agent work and
+  do not become owner questions.
+- Findings stay findings. Required fixes are labelled “no owner decision” and remain recommended
+  work; only business ownership, exceptions, merge blocking and spending effort become questions.
+- Every owner decision now shows the practical meaning, evidence gap, recommended option, effort,
+  consequence of leaving it open, and what it blocks.
+- The scope decision recommends a first bundle and explains the cost of CI blocking, local-only
+  enforcement and proposal-only options.
+- The proposal page links to the Plan page for decision briefs instead of duplicating a raw
+  accept/modify/reject table.
+- The unrelated notification-feature question is no longer part of the report's decision list.
+
+### Adopting repositories
+
+Regenerate the HTML report and proposal from the updated skill. No repository configuration or
+evidence changes are required.
+
+## Unreleased — show the adoption path in the proposal
+
+**Skill and report change only.** The catalog, standard version, rule ids, levels, severity and claim
+semantics are unchanged; `acima-adoption` moves from 1.36.3 to 1.36.4. No adopting repository has to
+change configuration, waivers or evidence.
+
+### Why
+
+The proposal page led with the module map and long technical sections. A reader who did not already
+know ACIMA had to assemble the current state, the proposed change and the eventual operating model
+from prose. That raised cognitive load before the decision.
+
+### What changed
+
+- The proposal page opens with a four-stage adoption path: No ACIMA, Foundation, Implemented and
+  Continuous.
+- The current marker is derived only from recorded milestones; Continuous is a destination, not a
+  certification.
+- The module map and ownership details now follow the plain-language current and proposed state.
+- The path is labelled in text, works without colour, and is the report's single diagrammatic
+  exception to the no-charts rule.
+
+### Adopting repositories
+
+No action. Re-render the proposal to show the path; a report rendered before this change does not
+require a new assessment.
+
+## Unreleased — turn unresolved dispositions into decision briefs
+
+**Skill change only.** The catalog, standard version, rule ids, levels, severity and claim semantics
+are unchanged; `acima-adoption` moves from 1.36.2 to 1.36.3. No adopting repository has to change
+configuration, waivers or evidence.
+
+### Why
+
+An execution asked the repository owner whether 11 unresolved rule ids were “acceptable.” The owner
+had not been taught the catalog and could not make that classification. The agent had also not
+translated the unknowns into effort, risk or lost claims, so the question was unanswerable in practice.
+
+### What changed
+
+- Unresolved dispositions must be presented as decision briefs: practical meaning, evidence gap,
+  recommended option, effort and consequence.
+- Agents must resolve code-traceable unknowns themselves and group only genuine owner decisions.
+- The owner decides whether to spend effort or accept a limited claim; an accepted limitation remains
+  `insufficient_evidence` and never becomes conformance.
+- The owner is never asked whether a catalog rule id is “acceptable.”
+
+### Adopting repositories
+
+No action. Re-run the installed skill's guidance if it previously presented unresolved rule ids as a
+questionnaire.
+
 ## Unreleased — keep evidence placement out of owner decisions
 
 **Skill change only.** The catalog, standard version, rule ids, levels, severity and claim semantics

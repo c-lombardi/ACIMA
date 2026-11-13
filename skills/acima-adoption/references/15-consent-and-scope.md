@@ -59,9 +59,10 @@ files, plan, evidence, decisions and limitations.
 
 The approval question is explicit and must follow presentation of the HTML report:
 
-> Have you reviewed the six-page HTML proposal? Which exact objectives and listed paths do you
-> authorize ACIMA to implement?
+> Have you reviewed the six-page HTML proposal? Do you approve the recommended scope shown there,
+> or a different set of listed paths?
 
+“Recommended scope” means only the exact paths listed in that report, not a general permission.
 Record the named reviewer, exact report SHA-256, proposal SHA-256, repository revision, branch and
 working-tree identity with the decision. The approval must match the report and proposal currently
 being presented. If the report, proposal, branch, commit or working-tree content changes, invalidate

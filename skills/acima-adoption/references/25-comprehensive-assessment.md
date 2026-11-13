@@ -136,7 +136,10 @@ Each entry must contain:
 `not_applicable` requires an explicit scope rationale and evidence supporting why the requirement
 is outside the assessed system. `insufficient_evidence` is an honest disposition, not a pass; it keeps
 the decision unresolved even though coverage is complete. A `gap` is a completed review finding,
-not a successful conformance result. Each requirement needs its own rationale and relevant evidence;
+not a successful conformance result. An unresolved disposition is not an owner quiz: resolve every
+code-traceable unknown yourself; when owner intent is genuinely required, present the decision brief
+in [35-user-transparency](35-user-transparency.md) — plain meaning, evidence gap, recommended
+option, effort and consequence. Never ask the owner whether a rule id is “acceptable.” Each requirement needs its own rationale and relevant evidence;
 copy-pasted rationales and exact duplicate evidence records across requirements are rejected. Shared
 source files may support multiple requirements only when the specific location, observation and
 reasoning are independently relevant to each one. The validator checks evidence paths, line ranges,

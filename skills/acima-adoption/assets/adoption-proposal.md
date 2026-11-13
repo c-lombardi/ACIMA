@@ -148,8 +148,11 @@ The implementation sequence, and what the user should expect at each stage:
 2. `<measurement>` — the artefact produced and what it proves.
 3. `<gate or slice>` — how it is observed and who owns the merge.
 
-End with the decisions only the owner can make: shared-kernel status, composition-boundary ownership, exception
-owner, and whether integration blocking is approved. Recommend an answer for each with its evidence.
+End with the decisions only the owner can make: who owns an ambiguous area or exception, whether a
+shared area is intentionally shared, and whether merge blocking is approved. Explain each in
+business terms with a recommended answer, the effort and what is lost if it stays open. Determine
+ACIMA roles such as “shared kernel” or “composition boundary” from evidence and recommend them;
+never ask the owner to choose a catalog role.
 
 ## 9. Approval
 

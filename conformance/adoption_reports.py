@@ -439,13 +439,16 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
         if not isinstance(item, dict):
             continue
         decisions.append({
-            "question": item.get("question") or "Confirm module ownership",
+            "question": item.get("question") or "What should we do about this ownership question?",
             "context": item.get("context") or "Repository evidence does not establish this ownership decision.",
             "recommendation": item.get("recommendation") or "Review the observed evidence and choose an owner-approved boundary.",
             "impact": item.get("impact") or item.get("blockedWork") or "Implementation depending on this decision remains blocked.",
-            "whyOwner": "Only the repository owner can confirm intended responsibility and compatibility boundaries.",
+            "whyOwner": item.get("whyOwner") or "Only the repository owner can confirm intended responsibility and acceptable scope.",
             "alternatives": item.get("options") or [],
             "blockedWork": item.get("blockedWork") or "Ownership-dependent implementation and checks.",
+            "effort": item.get("effort") or "About 15–30 minutes to confirm the intended ownership.",
+            "consequence": item.get("consequence") or "The affected ownership-dependent checks stay blocked, and no coverage claim is possible for this area.",
+            "evidenceGap": item.get("evidenceGap") or "Repository layout and imports do not establish who owns this behavior.",
             "requiredBeforeImplementation": bool(item.get("essential", True)),
         })
 
@@ -483,37 +486,20 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
     ]
 
     decisions.append({
-        "question": "Which ACIMA adoption changes do you explicitly authorize?",
-        "context": "Reviewing the map or HTML report only acknowledges the proposal. It does not authorize enforcement, changing future AI-agent instructions, CI integration, or modifying application source. Each change must be selected explicitly, and the exact files must be listed in the approval record.",
-        "recommendation": "Select only the capabilities you want ACIMA to implement now. Defer or decline everything else; you can authorize additional stages later.",
-        "impact": "ACIMA will modify only the paths listed in the approved scope. Source remediation is a later, separate decision tied to a specific remediation-plan digest and exact source files.",
-        "whyOwner": "Only the repository owner can decide whether to adopt these changes now, how much disruption is acceptable, and which future agent behavior or CI policy should change.",
+        "question": "Should I implement the recommended adoption scope?",
+        "context": "The recommended scope is the smallest set that makes the boundary checks real: the approved ownership map, the local check, and the handoff. CI blocking and source remediation stay separate.",
+        "recommendation": "Approve the recommended scope first. Defer CI blocking and source remediation until you have seen the first check run.",
+        "effort": "Usually 1–2 days for the first boundary. Most of the time is reviewing ownership and wiring the existing check.",
+        "consequence": "If you defer, the assessment and proposal remain, but no repository files change and no enforcement or conformance claim is possible.",
+        "evidenceGap": "The exact effort depends on how many existing findings need a baseline or owned waiver; the Files page lists the exact paths.",
+        "whyOwner": "Only you can decide whether to spend that effort and whether merge blocking is acceptable.",
         "alternatives": [
-            "Install or extend local architecture enforcement and its automated tests.",
-            "Create the initial waiver/baseline record required by the selected enforcement setup.",
-            "Integrate the existing CI provider, with the workflow and trigger reviewed separately.",
-            "Update repository AI-agent instructions, preserving existing user-authored guidance; this is separate from adoption notifications.",
-            "Apply selected application-source remediation recommendations after a second review of the remediation plan.",
-            "Defer all implementation and retain the assessment and proposal only.",
+            {"title": "Recommended scope", "description": "Approve the map, local check and handoff. Fastest path to a real check."},
+            {"title": "Local check only", "description": "Add the map and local check; do not block merges yet."},
+            {"title": "Local check plus CI", "description": "Block new violations in pull requests; needs a CI policy and a baseline."},
+            {"title": "Proposal only", "description": "Keep the assessment and proposal; change nothing in the repository."},
         ],
-        "blockedWork": "Any unselected stage remains unimplemented. In particular, no source file, CI workflow, or AI-agent instruction is changed merely because the user reviewed the report or chose a recovery branch.",
-        "requiredBeforeImplementation": True,
-    })
-
-    decisions.append({
-        "id": "adoption-notifications",
-        "question": "Should ACIMA prepare a separate implementation proposal for user-facing adoption notifications?",
-        "context": "This is distinct from application-domain notifications and from editing AGENTS.md/CLAUDE.md. It would cover clear user-facing notices for adoption milestones, module-map decisions, report reviews, CI decisions, implementation starts/completions, blockers, remediation decisions, and final verification. No notification provider, external channel, or product source file is assumed.",
-        "recommendation": "Choose whether ACIMA should prepare a repository-grounded proposal describing events, delivery surface, affected files, user controls, privacy implications, retry/duplication behavior, and tests. Preparing the proposal is not permission to implement its recommendations.",
-        "impact": "Selecting 'approved' authorizes only the proposal document. Any notification source code, external integration, UI, persistence or product configuration requires a second review and exact file-scoped approval.",
-        "whyOwner": "The owner must decide whether adoption notices should exist, which audiences and channels are appropriate, and whether the feature belongs in the target product or only in the interactive agent experience.",
-        "alternatives": [
-            "Prepare a separate notification implementation proposal for review (proposal only).",
-            "Use only the current interactive adoption messages; do not add a target-product notification feature.",
-            "Defer the decision until core ACIMA adoption is verified.",
-            "Decline adoption notifications."
-        ],
-        "blockedWork": "No notification source code, provider, webhook, email, push channel, UI component, persistence or configuration is changed by reviewing this report or approving local enforcement.",
+        "blockedWork": "Any capability not selected stays unimplemented. No source, CI or agent-instruction change follows from reviewing this report.",
         "requiredBeforeImplementation": True,
         "status": "awaiting_owner_decision",
     })
@@ -680,7 +666,7 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
             "The assessment did not establish a distinct adoption outcome beyond the recorded requirement findings; no business benefit is inferred."
         ),
         "decisions": decisions,
-        "decisionsStatus": "The report identifies decisions requiring the repository owner's review. No decision is inferred from a branch selection.",
+        "decisionsStatus": "The report identifies ownership and scope decisions requiring the repository owner's review. Findings are not decisions, and no decision is inferred from a branch selection.",
         "fileImpact": {"inspect": inspect_changes, "create": create_changes,
                        "modify": modify_changes, "preserve": preserve_changes},
         "fileImpactStatus": "Inspection paths are evidence only. Create/modify paths remain proposed and are not authorized.",

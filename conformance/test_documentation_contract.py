@@ -235,12 +235,27 @@ class DocumentationContractTests(unittest.TestCase):
         manifest = json.loads(read("skills/acima-adoption/manifest.json"))
         for required in ("six-page html report", "report.schema.json", "render_report.py"):
             self.assertIn(required, skill)
-        for required in ("proposed file", "greenfield", "brownfield", "files.html", "evidence.html", "must not invent facts", "approval"):
+        for required in ("proposed file", "greenfield", "brownfield", "files.html", "evidence.html", "must not invent facts", "approval", "adoption path"):
             self.assertIn(required, reference)
         self.assertIn("scripts/render_report.py", manifest["scripts"])
         self.assertIn("assets/report.schema.json", manifest["assets"])
         self.assertIn("assets/report-template.css", manifest["assets"])
         self.assertIn("references/90-html-outcome-reports.md", manifest["references"])
+
+    def test_unresolved_dispositions_are_decision_briefs_not_questionnaires(self) -> None:
+        transparency = normalized("skills/acima-adoption/references/35-user-transparency.md")
+        skill = normalized("skills/acima-adoption/SKILL.md")
+        assessment = normalized("skills/acima-adoption/references/25-comprehensive-assessment.md")
+        self.assertIn("unresolved dispositions are decision briefs, not quizzes", transparency)
+        for required in ("what it protects", "what might be true", "why it is unresolved",
+                         "recommended option", "effort", "consequence",
+                         "never ask “is this acceptable?”",
+                         "an accepted limitation remains `insufficient_evidence`"):
+            self.assertIn(required, transparency)
+        self.assertIn("plain-language decision brief", skill)
+        self.assertIn("a finding is not a question", transparency)
+        self.assertIn("module ownership, path ownership and scope approval", transparency)
+        self.assertIn("not an owner quiz", assessment)
 
     def test_adoption_skill_keeps_cross_cutting_evidence_out_of_owner_decisions(self) -> None:
         skill = normalized("skills/acima-adoption/SKILL.md")

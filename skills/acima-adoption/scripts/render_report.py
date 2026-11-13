@@ -148,6 +148,54 @@ def map_evidence(items):
     return '; '.join(out) or 'No evidence references recorded'
 
 
+def adoption_path(d):
+    milestones=d.get('milestones') or {}
+    if milestones.get('implementationComplete') is True:
+        current=3
+    elif milestones.get('assessmentComplete') is True or milestones.get('adoptionProposalComplete') is True:
+        current=2
+    elif milestones:
+        current=1
+    else:
+        current=None
+    stages=[
+        ('No ACIMA','Ownership is implicit. Cross-module dependencies have no executable check.'),
+        ('Foundation','Assessment, proposed boundaries and a scoped proposal exist. The check is not running yet.'),
+        ('Implemented','The approved boundaries and checks are in place. The next step is making them routine.'),
+        ('Continuous','The check, evidence review and agent guidance are part of normal change. Exceptions expire and the map is refreshed.'),
+    ]
+    progress=0 if current is None else (max(1,min(current,4))-1)/3*100
+    steps=[]
+    for number,(title,body) in enumerate(stages,1):
+        if current is None:
+            state='Destination' if number==4 else 'Stage'
+            classes='path-step destination' if number==4 else 'path-step'
+        elif number<current:
+            state='Earlier'
+            classes='path-step earlier'
+        elif number==current:
+            state='Current'
+            classes='path-step current'
+        elif number==4:
+            state='Destination'
+            classes='path-step destination'
+        elif number==current+1:
+            state='Next'
+            classes='path-step upcoming'
+        else:
+            state='Later'
+            classes='path-step'
+        attr=' aria-current="step"' if number==current else ''
+        steps.append(f'<li class="{classes}"{attr}><span class="path-step-label">{number:02d} &middot; {e(state)}</span><h3>{e(title)}</h3><p>{e(body)}</p></li>')
+    now=stages[current-1][0] if current else 'Not recorded'
+    if current and current<3:
+        summary=f'Adoption path: current position {now}; next {stages[current][0]}; destination Continuous.'
+    elif current==3:
+        summary=f'Adoption path: current position {now}; destination Continuous.'
+    else:
+        summary='Adoption path: current position not recorded; destination Continuous.'
+    return f'''<section id="adoption-path" class="adoption-path" aria-labelledby="adoption-path-title"><div class="path-head"><div><h2 id="adoption-path-title">Where this repository sits on the adoption path</h2><p class="lead">Four states, from no ACIMA work to an operating loop. The marker reflects recorded milestones; later states are proposals, not claims.</p></div><p class="path-now"><span>Current position</span><strong>{e(now)}</strong></p></div><ol class="path-track" style="--path-progress:{progress:.0f}%" aria-label="{e(summary)}">{''.join(steps)}</ol><p class="note">The last state is a destination, not a certification: a proposal cannot prove that checks, exception reviews and map updates continue over time. Current position is based on the report's recorded milestones.</p></section>'''
+
 def module_map_sections(d):
     mm=d.get('moduleMap') or {}
     authority=mm.get('authoritativeMap') or {}
@@ -218,14 +266,13 @@ def module_map_sections(d):
     )
     observations=arr(quality.get('observations'))
     quality_table=table(['Observation','What was observed','Basis','Confidence'],[(x.get('topic'),x.get('observation'),status_label(x.get('basis')),status_label(x.get('confidence'))) for x in observations],'No architectural-quality observation was recorded for this map.',caption='Module-map quality observations',row_headers=True)
-    rec_cards=''.join(f'<article class="decision-row"><div class="row"><h3>{e(x.get("title"))}</h3>{pill(x.get("classification"),status_label(x.get("classification")))}</div><p><b>Observed:</b> {e(x.get("observed"))}</p><p><b>Why it matters:</b> {e(x.get("whyItMatters"))}</p><p><b>Recommendation:</b> {e(x.get("recommendation"))}</p><p><b>Benefit:</b> {e(x.get("benefit"))}</p><p><b>Risk and uncertainty:</b> {e(x.get("risk"))} {e(x.get("uncertainty"))}</p><p><b>Owner input:</b> {"Required" if x.get("requiresUserInput") else "Not required"} &middot; <b>Essential:</b> {"Yes" if x.get("essential") else "Optional refinement"}</p><details><summary>Evidence behind this recommendation</summary><p>{e(map_evidence(x.get("evidence")))}</p><p><b>Decision:</b> {e(status_label(x.get("decision") or "pending"))}</p></details></article>' for x in recs) or (
+    rec_cards=''.join(f'<article class="decision-row"><div class="row"><h3>{e(x.get("title"))}</h3>{pill(x.get("classification"),status_label(x.get("classification")))}</div><p><b>Observed:</b> {e(x.get("observed"))}</p><p><b>Why it matters:</b> {e(x.get("whyItMatters"))}</p><p><b>Recommendation:</b> {e(x.get("recommendation"))}</p><p><b>Benefit:</b> {e(x.get("benefit"))}</p><p><b>Risk and uncertainty:</b> {e(x.get("risk"))} {e(x.get("uncertainty"))}</p><p><b>Your decision:</b> {"Needed" if x.get("requiresUserInput") else "Not needed for this finding"} &middot; <b>Priority:</b> {"Essential" if x.get("essential") else "Optional refinement"}</p><details><summary>Evidence behind this recommendation</summary><p>{e(map_evidence(x.get("evidence")))}</p><p><b>Decision:</b> {e(status_label(x.get("decision") or "pending")) if x.get("requiresUserInput") else "No owner decision; this is a recommended fix."}</p></details></article>' for x in recs) or (
         '<p class="empty">No new module-map recommendation was generated. The existing map was evaluated in place; this does not imply that other ACIMA adoption work is unnecessary.</p>'
         if not has_proposal else
         '<p class="empty">No change is recommended from the available discovery evidence. That is a proposal judgement, not proof that the current boundaries are ideal.</p>'
     )
-    decision_rows=[(x.get('question'),x.get('context'),x.get('recommendation'),'Essential' if x.get('essential') else 'Optional',status_label(x.get('status')),', '.join(arr(x.get('options')))) for x in decisions]
-    if decision_rows:
-        decision_table=table(['Decision','Why it matters','Recommendation','Essential?','Status','Options'],decision_rows,caption='Module-map decisions requiring user input',row_headers=True)
+    if decisions:
+        decision_table=(f'<p class="reconciliation"><b>{len(decisions)} ownership decision{"s" if len(decisions)!=1 else ""} need you.</b> Each is written as a plain-language choice on the <a href="plan.html#decisions">Plan page</a>, with a recommendation, effort and what stays blocked. This page keeps the evidence behind the map.</p>')
     else:
         decision_table='<p class="empty">No new ownership decision is pending because the report is using the existing authoritative map. Existing ownership is shown above; this does not approve unrelated adoption changes.</p>'
 
@@ -371,7 +418,7 @@ def render(d):
         else:
             mechanism_rows.append((str(item),'','Identified by read-only repository assessment.'))
     existing_section=f'<section id="existing-architecture"><small>EXISTING ARCHITECTURE</small><h2>What ACIMA found and should preserve</h2><p class="lead">{e(existing_enforcement.get("summary") or existing_arch.get("note") or "The assessment did not establish existing architecture assets beyond the evidence listed below.")}</p>{table(["Existing asset","Assessment"],existing_asset_rows,"No existing architecture file paths were identified.",caption="Existing architecture and enforcement assets")}{table(["Existing enforcement","Path","Observed purpose or status"],mechanism_rows,"No existing executable enforcement mechanism was established by the assessment.",caption="Existing enforcement mechanisms")}</section>'
-    pages['proposal.html']=f'''{module_map_sections(d)}<section><small>CURRENT STATE</small><h2>How the repository works today</h2><p class="lead">{e(arch.get('currentState'))}</p><p class="cross-links"><span>Related:</span> <a href="findings.html#findings">Findings</a> <a href="files.html#file-changes">Proposed file changes</a> <a href="plan.html#adoption-plan">Adoption plan</a></p><div class="cols"><div><h3>Already working</h3>{bullets(strengths)}</div><div><h3>What would be added</h3>{bullets(arr(val.get('adds')))}</div></div></section>{existing_section}<section><small>PROPOSED STATE</small><h2>What would change</h2><p>{e(arch.get('proposedState'))}</p>{table(['Capability','What changes','What it makes possible'],[(x.get('capability'),x.get('change'),x.get('outcome')) for x in arr(arch.get('targetCapabilities'))],caption='Proposed capabilities',row_headers=True)}</section><section><small>EXPECTED OUTCOMES</small><h2>What should become easier or safer</h2><div class="stack">{outcome_cards}</div></section><section><small>TRADEOFFS</small><h2>Costs, risks, and limits</h2><div class="cols"><div><h3>Cost and effort</h3>{bullets(arr(val.get('costs')))}</div><div><h3>Risks and mitigations</h3>{bullets(arr(val.get('risks')))}</div></div><h3>What ACIMA will not do</h3>{bullets(limits)}</section>'''
+    pages['proposal.html']=f'''{adoption_path(d)}<section><small>CURRENT STATE</small><h2>How the repository works today</h2><p class="lead">{e(arch.get('currentState'))}</p><p class="cross-links"><span>Related:</span> <a href="findings.html#findings">Findings</a> <a href="files.html#file-changes">Proposed file changes</a> <a href="plan.html#adoption-plan">Adoption plan</a></p><div class="cols"><div><h3>Already working</h3>{bullets(strengths)}</div><div><h3>What would be added</h3>{bullets(arr(val.get('adds')))}</div></div></section>{existing_section}<section><small>PROPOSED STATE</small><h2>What would change</h2><p>{e(arch.get('proposedState'))}</p>{table(['Capability','What changes','What it makes possible'],[(x.get('capability'),x.get('change'),x.get('outcome')) for x in arr(arch.get('targetCapabilities'))],caption='Proposed capabilities',row_headers=True)}</section>{module_map_sections(d)}<section><small>EXPECTED OUTCOMES</small><h2>What should become easier or safer</h2><div class="stack">{outcome_cards}</div></section><section><small>TRADEOFFS</small><h2>Costs, risks, and limits</h2><div class="cols"><div><h3>Cost and effort</h3>{bullets(arr(val.get('costs')))}</div><div><h3>Risks and mitigations</h3>{bullets(arr(val.get('risks')))}</div></div><h3>What ACIMA will not do</h3>{bullets(limits)}</section>'''
     pages['findings.html']=f'''<section id="strengths"><small>EXISTING STRENGTHS</small><h2>What is already in good shape</h2>{bullets(strengths,'No strengths were recorded. This does not mean none exist.')}</section><section id="findings"><small>ASSESSMENT FINDINGS</small><h2>What needs attention</h2><p class="lead">Findings are organized around the nonconforming requirements identified during review. Each explains what was observed, why it matters, and the recommended response.</p><p class="reconciliation"><b>Findings and requirement results are separate ledgers.</b> {e(reconciliation_sentence)} <a href="evidence.html#exceptions">Review requirement exceptions</a>.</p><p class="note">Each finding links back to reviewed requirement results. The current report does not claim that separate requirements have been semantically clustered.</p><p class="cross-links"><span>Related:</span> <a href="files.html#file-changes">Proposed file changes</a> <a href="plan.html#adoption-plan">Adoption plan</a> <a href="evidence.html#exceptions">Requirement exceptions</a></p>{finding_cards}</section>'''
     inventory=d.get('fileImpact') or {}
     categorized=[]
@@ -380,8 +427,8 @@ def render(d):
         categorized.extend((x.get('path'),action,x.get('purpose'),x.get('expectedOutcome'),status_label(x.get('classification')),x.get('confidence')) for x in source)
     file_rows=[(path,action_label(act),purpose,outcome,commitment,status_label(confidence)) for path,act,purpose,outcome,commitment,confidence in categorized]
     pages['files.html']=f'''<section id="file-changes"><h2>Proposed file changes</h2><p class="lead">Some files are listed only so they can be inspected; that is not a proposed edit. Creating or changing a file remains a proposal until someone approves it.</p><p class="cross-links"><span>Related:</span> <a href="findings.html#findings">Findings</a> <a href="plan.html#adoption-plan">Adoption plan</a> <a href="evidence.html#exceptions">Requirement exceptions</a></p>{table(['File or area','Action','Why it is involved','What it should achieve','Required or optional','Confidence'],file_rows,d.get('fileImpactStatus') or 'No proposed file changes were supplied.',caption='Proposed file changes',row_headers=True)}</section><section><h2>What should stay the same</h2>{bullets(arr(d.get('preservation')),d.get('preservationStatus') or 'What should stay the same has not yet been established.')}</section><div class="metrics">{metric('FILES TO CREATE',sum(x[1]=='create' for x in categorized))}{metric('FILES TO MODIFY',sum(x[1]=='modify' for x in categorized))}{metric('FILES TO INSPECT',sum(x[1]=='inspect' for x in categorized))}{metric('FILES TO PRESERVE',sum(x[1]=='preserve' for x in categorized))}</div>'''
-    decision_html=''.join(f'<article class="decision-row"><h3>{e(x.get("question"))}</h3><p>{e(x.get("context"))}</p><p><b>Recommendation:</b> {e(x.get("recommendation"))}</p><p><b>What this blocks:</b> {e(x.get("blockedWork"))}</p><p><b>Needed before implementation:</b> {e(x.get("requiredBeforeImplementation"))}</p><details><summary>Other options and consequences</summary>{bullets(x.get("alternatives",[]),"Alternatives are not established.")}<p><b>Impact:</b> {e(x.get("impact"))}</p><p><b>Why an owner is needed:</b> {e(x.get("whyOwner"))}</p></details></article>' for x in decisions) or f'<p class="empty">{e(d.get("decisionsStatus") or "No owner decisions are recorded. The assessment has not established whether no decision is needed or discovery is incomplete.")}</p>'
-    pages['plan.html']=f'''{adoption_workflow(d)}{agent_guidance_section(d)}{remediation_outcome(d)}<section id="adoption-plan"><h2>Adoption plan</h2><p class="cross-links"><span>Related:</span> <a href="findings.html#findings">Findings</a> <a href="files.html#file-changes">Proposed file changes</a> <a href="evidence.html#exceptions">Requirement exceptions</a></p><div class="stack">{phase_cards or e(d.get("roadmapStatus") or "An adoption plan has not been established yet.")}</div></section><section><h2>Decisions that need an owner</h2>{decision_html}</section><section><h2>What approval would mean</h2><p>{e(d.get('approvalStatement') or 'Reading this report does not authorize implementation. Approval must identify the specific proposed scope.')}</p></section>'''
+    decision_html=''.join(f'<article class="decision-row"><h3>{e(x.get("question"))}</h3><p>{e(x.get("context"))}</p><p><b>Recommendation:</b> {e(x.get("recommendation"))}</p><p><b>Effort:</b> {e(x.get("effort"))}</p><p><b>If left open:</b> {e(x.get("consequence"))}</p><p><b>What this blocks:</b> {e(x.get("blockedWork"))}</p><p><b>Needed before implementation:</b> {"Yes" if x.get("requiredBeforeImplementation") else "No"}</p><details><summary>Evidence gap and other options</summary><p><b>Evidence gap:</b> {e(x.get("evidenceGap"))}</p>{bullets(x.get("alternatives",[]),"Alternatives are not established.")}<p><b>Impact:</b> {e(x.get("impact"))}</p><p><b>Why an owner is needed:</b> {e(x.get("whyOwner"))}</p></details></article>' for x in decisions) or f'<p class="empty">{e(d.get("decisionsStatus") or "No owner decisions are recorded. The assessment has not established whether no decision is needed or discovery is incomplete.")}</p>'
+    pages['plan.html']=f'''{adoption_workflow(d)}{agent_guidance_section(d)}{remediation_outcome(d)}<section id="adoption-plan"><h2>Adoption plan</h2><p class="cross-links"><span>Related:</span> <a href="findings.html#findings">Findings</a> <a href="files.html#file-changes">Proposed file changes</a> <a href="evidence.html#exceptions">Requirement exceptions</a></p><div class="stack">{phase_cards or e(d.get("roadmapStatus") or "An adoption plan has not been established yet.")}</div></section><section id="decisions"><h2>Decisions that need an owner</h2>{decision_html}</section><section><h2>What approval would mean</h2><p>{e(d.get('approvalStatement') or 'Reading this report does not authorize implementation. Approval must identify the specific proposed scope.')}</p></section>'''
     evrows=[(x.get('label') or x.get('kind'),x.get('source'),x.get('whatItSupports'),status_label(x.get('status'))) for x in evidence]
     reviewed=coverage_ratio(cov)
     unresolved='Not recorded' if cov.get('unresolvedRules') in (None,'') else str(cov.get('unresolvedRules'))

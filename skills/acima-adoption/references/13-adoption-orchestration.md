@@ -80,6 +80,12 @@ A decision-ready adoption proposal requires all 56 valid dispositions and a comp
 ownership map. Discovery and independent qualitative work may continue while a map is unresolved.
 Never claim an assessment complete merely because the catalog expects 56 records.
 
+Do not turn unresolved dispositions into a per-rule owner questionnaire. Resolve code-traceable
+unknowns yourself. If owner input is genuinely required, group related rules into a decision brief
+with plain meaning, the missing evidence, a recommended option, effort and consequence, as described
+in [35-user-transparency](35-user-transparency.md). The owner decides effort or whether to accept a
+limited claim; an accepted limitation remains unresolved and never becomes conformance.
+
 ## Guided adoption sequence
 
 ### G1. Assessment and module-map review

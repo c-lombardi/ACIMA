@@ -751,6 +751,14 @@
         "question": { "type": "string" },
         "context": { "type": "string" },
         "recommendation": { "type": "string" },
+        "effort": { "type": "string" },
+        "consequence": { "type": "string" },
+        "evidenceGap": { "type": "string" },
+        "whyOwner": { "type": "string" },
+        "impact": { "type": "string" },
+        "blockedWork": { "type": "string" },
+        "requiredBeforeImplementation": { "type": "boolean" },
+        "alternatives": { "type": "array", "items": { "type": ["string", "object"] } },
         "essential": { "type": "boolean" },
         "status": { "type": "string" },
         "options": { "type": "array", "items": { "type": "string" } }
@@ -774,6 +782,9 @@
         "recommendation": {
           "type": "string"
         },
+        "effort": { "type": "string" },
+        "consequence": { "type": "string" },
+        "evidenceGap": { "type": "string" },
         "impact": { "type": "string" },
         "whyOwner": { "type": "string" },
         "alternatives": { "type": "array", "items": { "type": ["string", "object"] } },

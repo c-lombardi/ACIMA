@@ -65,6 +65,39 @@ At each phase transition, communicate in ordinary language, briefly and specific
 | Verify | Which deterministic checks and qualitative reviews will be run | Actual pass/fail/skip/unsupported results, evidence, and what those results do and do not prove |
 | Handoff | What final review is being prepared | Deliverables, current conformance status, limitations and next steps |
 
+### Unresolved dispositions are decision briefs, not quizzes
+
+A rule with `insufficient_evidence` is not a question the owner can answer by reading a rule id.
+Never ask “Is this acceptable?” and never present a bare list of unresolved identifiers. Resolve
+every code-traceable unknown yourself. If the answer genuinely requires owner input, group related
+rules into one decision brief containing:
+
+- **What it protects** — the practical risk in this repository, in ordinary language.
+- **What might be true** — the concrete implementation possibility that remains unchecked.
+- **Why it is unresolved** — the missing file, trace, runtime observation or owner intent.
+- **Recommended option** — close it with a named audit, record it as a limitation, or treat it as a
+  gap and fix it.
+- **Effort** — the inspection or change required, with a rough size.
+- **Consequence** — what the assessment cannot claim, and how the recommendation is affected, if it
+  stays open.
+- **Question** — whether to spend that effort or accept the limitation.
+
+The owner decides effort, risk and scope, never whether a catalog rule is “acceptable.” An accepted
+limitation remains `insufficient_evidence`; it does not become conformance. The assessment remains
+incomplete and the recommendation remains `INSUFFICIENT_EVIDENCE`.
+
+This brief applies to every owner-facing decision, not only unresolved rule dispositions: module
+ownership, path ownership and scope approval. A finding is not a question. Report it as observed
+and recommended work; ask only for the owner choice that remains.
+
+For example:
+
+> A module constructor may have a default argument, which would create a second way to build it.
+> We have checked 40 of 52 constructors; the remaining 12 are not traced. Auditing them should take
+> about 30 minutes. If we stop here, we cannot claim the input requirements are fully verified, and
+> the assessment stays incomplete. I recommend the audit. Do you want me to spend that time, or
+> record this as a limitation?
+
 ### Plain-language and honesty requirements
 
 - Explain ACIMA identifiers in human terms whenever they appear in user-facing communication. Keep IDs

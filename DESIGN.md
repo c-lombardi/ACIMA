@@ -151,18 +151,29 @@ than replacing it.
 
 The proposal page explains the architectural change and its value:
 
-1. **“CURRENT STATE” / “How the repository works today.”** A lead paragraph followed by two columns:
+1. **Adoption path.** A four-stage rail from **No ACIMA** through **Foundation** and **Implemented**
+   to **Continuous**. It states the current position from recorded milestones, labels earlier stages
+   as context, and marks the last stage as a destination rather than a certification. The rail is the
+   report's one diagrammatic element; it carries no invented score or trend.
+2. **“CURRENT STATE” / “How the repository works today.”** A lead paragraph followed by two columns:
    “Already working” and “What would be added.”
-2. **“PROPOSED STATE” / “What would change.”** A paragraph describing the proposed state, followed
+3. **“EXISTING ARCHITECTURE” / “What ACIMA found and should preserve.”** Existing architecture and
+   enforcement assets are listed before proposed changes so the reader can see what remains intact.
+4. **“PROPOSED STATE” / “What would change.”** A paragraph describing the proposed state, followed
    by a three-column capability table: capability, what changes, and what it makes possible.
-3. **“EXPECTED OUTCOMES” / “What should become easier or safer.”** A stacked set of outcome rows.
+5. **Module map and ownership details.** Proposed boundaries, contracts, dependencies, quality
+   observations, recommendations, and owner decisions. This technical detail follows the plain-language
+   current and proposed state rather than leading the page.
+6. **“EXPECTED OUTCOMES” / “What should become easier or safer.”** A stacked set of outcome rows.
    Each row includes title, description, why it matters, practical change, classification, basis,
    verification, limitations, and a status pill.
-4. **“TRADEOFFS” / “Costs, risks, and limits.”** Two columns for cost/effort and risks/mitigations,
+7. **“TRADEOFFS” / “Costs, risks, and limits.”** Two columns for cost/effort and risks/mitigations,
    followed by “What ACIMA will not do.”
 
 The page deliberately separates current state, proposed state, expected outcome, and limitation. A
-proposed benefit is never presented as a delivered capability.
+proposed benefit is never presented as a delivered capability. The adoption path is a position
+statement: its current marker uses recorded milestones, and Continuous is never inferred from a
+rendered report.
 
 ### Findings (`findings.html`)
 
@@ -318,6 +329,7 @@ sideways.
 | Rail navigation | `aside`, `nav` | Six links; current page has `aria-current="page"` and an active rule. Horizontally scrollable below 900px. |
 | Page head | `.page-head` | Small location line, one `h1`, one subtitle, closed by a 2px rule. |
 | Decision panel | `.decision` | Recommendation status, summary, assessment pill; red top edge and raised paper surface. |
+| Adoption path | `.adoption-path` | Four-stage rail with a milestone-derived current marker; earlier, current, next, and destination states are labelled in text and remain legible without colour. |
 | Metric tile | `.metric` | Monospace label, strong value, optional note. The overview uses a compact two-tile row; the files page keeps four, dropping to two below 900px. |
 | Benefit card | `.benefits article` | Number, title, description, availability/proposed-benefit line; blue top edge. |
 | Finding card | `.finding` | Title and pill, what/why/response/action type, closed evidence disclosure; ochre top edge. |
@@ -325,7 +337,7 @@ sideways.
 | Cross-page links | `.cross-links` | Contextual “Related” links between findings, files, plan, and evidence; plain links, no global link bar. |
 | Outcome row | `.stack > .row` | Title, description, why, practical change, classification, basis, verification, limitation, status pill. |
 | Phase card | `.phase` | Name and status, purpose, prerequisites, deliverable, verification, completion, approval, activities disclosure. |
-| Decision row | `.decision-row` | Question, context, recommendation, blocked work, prerequisite, alternatives/impact disclosure. |
+| Decision row | `.decision-row` | Plain-language question, context, recommendation, effort, consequence, blocked work, prerequisite, evidence gap/alternatives disclosure. |
 | Table region | `.table-wrap` | Horizontal overflow container with `role="region"`, a caption reference, and `tabindex="0"`. |
 | Status pill | `.pill` | Uppercase monospace label; neutral, good, risk, or review treatment. |
 | Empty state | `.empty` | Shaded panel with an ochre left edge; explains absence rather than hiding it. |
@@ -365,7 +377,8 @@ New status vocabulary must be checked against this map and against the report's 
 - **Reconciliation:** findings and requirement results are presented as separate ledgers. Findings can carry an optional `rule` or `requirementRefs`; the report states how many findings have an explicit matching requirement result and how many remain unlinked.
 - **Print:** hides the shell and next-step CTA and keeps report components intact where possible.
 
-There are no forms, charts, maps, toggles, theme switchers, or asynchronous updates.
+There are no forms, data charts, maps, toggles, theme switchers, or asynchronous updates. The
+adoption path is a static position diagram, not an interactive chart or score.
 
 ## Responsive and reflow rules
 
@@ -405,6 +418,8 @@ These rules are part of the design, not editorial polish:
   explicit status explanation.
 - **No health score.** The report does not aggregate conformance into a single number, grade, or
   trend. Requirement-review coverage is not a conformance score.
+- **The path is a position, not a score.** Its current marker comes from recorded milestones; later
+  stages are proposals, and Continuous is a destination the report cannot certify.
 - **Coverage is not correctness.** A complete evidence record can still contain unresolved
   interpretation. Automated checks, qualitative review, and conformance claims remain distinct.
 - **Empty findings are not a pass.** The findings page directs the reader to confirm coverage before
@@ -454,7 +469,8 @@ The incumbent system deliberately does **not** include:
 
 - a hosted dashboard, account system, or shared link service;
 - a health score, grade, trend line, or benchmark comparison;
-- charts, graphs, sparklines, or decorative imagery;
+- data charts, graphs, sparklines, or decorative imagery; the evidence-grounded four-stage adoption
+  path is the single diagrammatic exception, not a trend or score;
 - client-side search, filtering, sorting, or data exploration;
 - dark mode, theme switching, or user-selectable density;
 - remote fonts, icon libraries, tracking, or third-party scripts;

@@ -14,7 +14,9 @@ what ACIMA does not prove); **Next steps** (sequence, what the user sees, decisi
 (one question, scope-limited, partial approval allowed).
 
 Recommend; do not turn the proposal into a questionnaire. State the level's practical consequence
-before naming L1/L2/L3.
+before naming L1/L2/L3. Unresolved dispositions follow the same rule: give a decision brief with
+plain meaning, evidence gap, recommended option, effort and consequence
+([35-user-transparency](35-user-transparency.md)); never ask the owner to classify a rule id.
 
 ## Orchestrated deliverables
 

@@ -651,6 +651,13 @@ def _recommendation(identifier: str, title: str, observed: str, evidence: list[d
         "affectedFiles": [],
         "changes": [],
         "decision": "pending",
+        "decisionQuestion": None,
+        "whyOwner": "Only the product owner can confirm the intended responsibility and acceptable scope.",
+        "effort": "About 15–30 minutes to confirm the intended ownership.",
+        "consequence": "The affected ownership-dependent checks stay blocked, and the report cannot claim this area is covered.",
+        "evidenceGap": "Repository layout and imports show where code lives, but not who owns its behavior.",
+        "impact": "Ownership-dependent checks stay blocked for the affected area.",
+        "blockedWork": "Ownership-dependent checks and source changes for the affected area.",
     }
 
 
@@ -777,6 +784,13 @@ def _quality_and_recommendations(root: Path, modules: list[dict], unresolved: li
             "that may require a new boundary or consolidation.",
             classification="required", affected=[], requires_user=True)
         recommendations[-1]["affectedFiles"] = unresolved[:25]
+        recommendations[-1].update({
+            "decisionQuestion": "Who should own the remaining production files?",
+            "whyOwner": "Only the product owner can say which team or area is responsible for these files.",
+            "effort": "About 15–30 minutes per path group with the person who owns the behavior.",
+            "consequence": "If left open, the assessment remains incomplete for these paths and no ownership-dependent check can cover them.",
+            "evidenceGap": "The files are production code, but their ownership is not established by layout or imports.",
+        })
     if authoritative["status"] in {"incomplete", "inconsistent", "stale"}:
         add("Complete the existing module map",
             authoritative["summary"],
@@ -788,7 +802,7 @@ def _quality_and_recommendations(root: Path, modules: list[dict], unresolved: li
             "ignoring unowned code.",
             "An existing boundary may be intentional. Do not replace it merely to make the "
             "proposal uniform.",
-            classification="required", affected=authoritative["modules"], requires_user=True)
+            classification="required", affected=authoritative["modules"], requires_user=False)
     for cycle in cycles:
         add("Resolve a candidate dependency cycle",
             "Observed imports form a cycle among " + ", ".join(cycle) + ".",
@@ -803,6 +817,13 @@ def _quality_and_recommendations(root: Path, modules: list[dict], unresolved: li
             "The observed imports may be composition or test-only wiring. Confirm the runtime "
             "dependency before restructuring.",
             classification="required", affected=cycle, requires_user=True)
+        recommendations[-1].update({
+            "decisionQuestion": f"Should {', '.join(cycle)} remain separate responsibilities?",
+            "whyOwner": "Only the product owner can decide whether these areas are separate responsibilities or should be consolidated.",
+            "effort": "About 30–60 minutes to review the dependency and choose a direction.",
+            "consequence": "If left open, the dependency cycle remains and the boundary model cannot be approved.",
+            "evidenceGap": "Static imports show the cycle; they do not show whether the runtime responsibilities are intentionally separate.",
+        })
     for module in modules:
         affected = module.get("implementation", {}).get("paths", []) + \
             module.get("contracts", {}).get("paths", [])
@@ -819,7 +840,7 @@ def _quality_and_recommendations(root: Path, modules: list[dict], unresolved: li
                     "The import may be an intentional adapter or composition-root reference. Confirm "
                     "the path before changing it.",
                     classification="required", affected=[module["id"], dependency["moduleId"]],
-                    requires_user=True)
+                    requires_user=False)
                 recommendations[-1]["affectedFiles"] = affected
         cross_dependencies = [item for item in module.get("dependencies", []) if item["moduleId"] in graph]
         if cross_dependencies and not module["contracts"]["paths"]:
@@ -833,6 +854,13 @@ def _quality_and_recommendations(root: Path, modules: list[dict], unresolved: li
                 "Creating a new folder is not automatically an improvement. Preserve an existing "
                 "public API if it already separates contract from implementation.",
                 classification="owner-decision", affected=[module["id"]], requires_user=True)
+            recommendations[-1].update({
+                "decisionQuestion": f"How should other areas use {module['name']}?",
+                "whyOwner": "Only the product owner can confirm which operations are part of the public contract.",
+                "effort": "About 30–60 minutes to review the public entry points and choose the contract shape.",
+                "consequence": "If left open, consumers cannot depend on a stable public shape and the boundary remains ambiguous.",
+                "evidenceGap": "Imports show a cross-area dependency, but not which operations are intended to be public.",
+            })
             recommendations[-1]["affectedFiles"] = affected
     return ({"observations": observations, "cycles": cycles,
              "dependencyGraph": {node: sorted(children) for node, children in graph.items()},
@@ -878,7 +906,7 @@ def _path_decision_item(identifier: str, classification: str, paths: list[str],
         "owner": owner,
         "moduleId": module_id,
         "status": status,
-        "requiresDecision": True,
+        "requiresDecision": classification in {"unresolved-production", "composition"} and status != "existing",
         "options": ["accept", "modify", "reject", "defer"],
     }
 
@@ -1048,39 +1076,82 @@ def discover(root: Path, *, config: dict | None = None) -> dict:
         module["dependencies"] = _import_evidence(root, module, modules)
     quality, recommendations = _quality_and_recommendations(
         root, modules, sorted(unresolved), authoritative, dispositions)
-    decisions = [{
-        "id": f"module:{module['id']}",
-        "kind": "module",
-        "question": f"Should {module['name']} be an ACIMA module?",
-        "context": module["responsibility"],
-        "recommendation": "Accept only if this boundary reflects real ownership, not merely a folder.",
-        "essential": True,
-        "status": "pending",
-        "options": ["accept", "modify", "reject", "defer"],
-        "affectedModules": [module["id"]],
-    } for module in modules]
-    decisions.extend({
-        "id": item["id"],
-        "kind": "path",
-        "question": f"Accept the {item['classification']} disposition for {', '.join(item['paths'])}?",
-        "context": item["reason"],
-        "recommendation": "Accept, modify into a module assignment, reject, or defer this classification.",
-        "essential": True,
-        "status": "existing" if item["status"] == "existing" else "pending",
-        "options": ["accept", "modify", "reject", "defer"],
-        "affectedPaths": item["paths"],
-    } for item in dispositions)
-    decisions.extend({
-        "id": f"recommendation:{rec['id']}",
-        "kind": "recommendation",
-        "question": rec["title"],
-        "context": rec["observed"],
-        "recommendation": rec["recommendation"],
-        "essential": rec["essential"],
-        "status": "pending",
-        "options": ["accept", "reject", "defer"],
-        "affectedModules": rec["affectedModules"],
-    } for rec in recommendations)
+    decisions = []
+    for module in modules:
+        decisions.append({
+            "id": f"module:{module['id']}",
+            "kind": "module",
+            "question": f"Is {module['name']} a separate part of the product?",
+            "context": ("Repository layout suggests this area is separate. Only you can confirm "
+                        "whether it has its own business rules and data, or is just a folder inside "
+                        "another area."),
+            "recommendation": ("Confirm it as a separate area if it has its own rules and data. "
+                               "Otherwise merge it into the area it belongs to."),
+            "whyOwner": "Only the product owner can confirm whether this is a real responsibility, not just a folder.",
+            "impact": "Checks that depend on this boundary stay blocked.",
+            "blockedWork": "Ownership-dependent checks and any source changes that cross this boundary.",
+            "effort": "About 15–30 minutes with the person who owns this area.",
+            "consequence": "If left open, the report cannot claim this area is owned or covered by checks.",
+            "evidenceGap": "Repository layout and imports show where code lives, but not who owns its behavior.",
+            "essential": True,
+            "status": "pending",
+            "options": ["Confirm it is a separate area", "Merge it into another area", "Defer"],
+            "affectedModules": [module["id"]],
+        })
+    for item in dispositions:
+        if not item.get("requiresDecision"):
+            continue
+        if item["classification"] == "unresolved-production":
+            question = f"Which part of the product should own {', '.join(item['paths'])}?"
+            context = ("This is production code, but the repository layout does not show which "
+                       "product area owns its behavior.")
+            recommendation = ("Assign it to the area that already owns this behavior. If no area "
+                              "does, add a new boundary or record an explicit exclusion.")
+            options = ["Assign to an existing area", "Create a new area", "Exclude with a reason", "Defer"]
+        else:
+            question = f"Is {', '.join(item['paths'])} the startup and wiring area, or product code?"
+            context = ("The path name looks like a composition or startup area. That is a layout "
+                       "signal, not proof.")
+            recommendation = ("Treat it as the startup and wiring area if it mainly constructs and "
+                              "connects other parts. Otherwise assign it to the product area it implements.")
+            options = ["Treat it as startup and wiring", "Assign it to a product area", "Defer"]
+        decisions.append({
+            "id": item["id"],
+            "kind": "path",
+            "question": question,
+            "context": context,
+            "recommendation": recommendation,
+            "whyOwner": "Only the product owner can confirm which area is responsible for this behavior.",
+            "impact": "Ownership-dependent checks cannot cover this path.",
+            "blockedWork": "Ownership-dependent checks and source changes for this path.",
+            "effort": "About 15–30 minutes with the person who owns this behavior.",
+            "consequence": "If left open, the assessment remains incomplete for this path and no ownership-dependent check can cover it.",
+            "evidenceGap": "The path is production code, but ownership is not inferable from layout alone.",
+            "essential": True,
+            "status": "pending",
+            "options": options,
+            "affectedPaths": item["paths"],
+        })
+    for rec in recommendations:
+        if not rec.get("requiresUserInput"):
+            continue
+        decisions.append({
+            "id": f"recommendation:{rec['id']}",
+            "kind": "recommendation",
+            "question": rec.get("decisionQuestion") or "How should this ownership question be resolved?",
+            "context": rec["observed"],
+            "recommendation": rec["recommendation"],
+            "whyOwner": rec.get("whyOwner"),
+            "impact": rec.get("impact"),
+            "blockedWork": rec.get("blockedWork"),
+            "effort": rec.get("effort"),
+            "consequence": rec.get("consequence"),
+            "evidenceGap": rec.get("evidenceGap"),
+            "essential": rec["essential"],
+            "status": "pending",
+            "options": ["Proceed with the recommendation", "Change the approach", "Defer"],
+            "affectedModules": rec["affectedModules"],
+        })
     basis = ("No module map was declared." if loaded is None else
              f"An existing map was found ({authoritative['status']}) and its usable units were preserved.")
     module_covered = [ _relative(path, root) for path in source
@@ -1116,8 +1187,9 @@ def discover(root: Path, *, config: dict | None = None) -> dict:
             "import lines. It does not prove business ownership, runtime isolation, deployment "
             "independence or public API status.",
             "Project, package, folder and runtime boundaries are signals, not approved modules.",
-            "Tests, fixtures, tooling, spikes, generated and vendored source are repository content, "
-            "not automatically modules. Their dispositions still require review.",
+            "Routine tests, fixtures, tooling, generated and vendored source are classified from "
+            "layout and do not become owner questions. Unresolved production and composition paths "
+            "still require review.",
             "The proposal must be reviewed before it can become an authoritative map.",
         ],
     }
@@ -1257,6 +1329,12 @@ def apply_review(proposal: dict, review: dict, *, root: Path | None = None) -> d
             updated = json.loads(json.dumps(disposition))
             updated["reviewDecision"] = "accept"
             updated["decisionSource"] = "existing-map"
+            path_results.append(updated)
+            continue
+        if decision is None and disposition.get("requiresDecision") is False:
+            updated = json.loads(json.dumps(disposition))
+            updated["reviewDecision"] = "accept"
+            updated["decisionSource"] = "repository-classification"
             path_results.append(updated)
             continue
         choice = decision.get("decision", "defer") if decision else "defer"
