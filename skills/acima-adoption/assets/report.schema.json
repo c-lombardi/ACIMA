@@ -9,8 +9,24 @@
     "repository",
     "recommendation"
   ],
+  "allOf": [
+    {
+      "description": "Schema 1.2 pins the progress contract: the sections a refresh may replace, and the current stage and timestamp they must carry.",
+      "if": {
+        "required": ["schemaVersion"],
+        "properties": { "schemaVersion": { "enum": ["1.2", "1.3"] } }
+      },
+      "then": {
+        "required": ["progressSections", "adoptionWorkflow"],
+        "properties": {
+          "progressSections": { "const": ["adoptionWorkflow", "milestones"] },
+          "adoptionWorkflow": { "required": ["currentStage", "asOf"] }
+        }
+      }
+    }
+  ],
   "properties": {
-    "schemaVersion": { "enum": ["1.0", "1.1"] },
+    "schemaVersion": { "enum": ["1.0", "1.1", "1.2", "1.3"] },
     "generatedAt": {
       "type": "string"
     },
@@ -36,6 +52,45 @@
       }
     },
     "assessmentStatus": { "type": "string" },
+    "console": {
+      "type": "object",
+      "description": "Stage C identity and choice catalog for the report's answer controls. Absent on assessment-only reports.",
+      "properties": {
+        "reportId": { "type": "string", "pattern": "^[a-f0-9]{20}$" },
+        "generation": { "type": "integer" },
+        "proposalSha256": { "type": ["string", "null"] },
+        "generatedAt": { "type": "string" },
+        "mode": { "enum": ["guided", "full"] },
+        "objectives": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id"],
+            "properties": {
+              "id": { "type": "string" },
+              "requiredPaths": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path"],
+            "properties": {
+              "path": { "type": "string" },
+              "requiredBy": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "progressSections": {
+      "type": "array",
+      "description": "The report sections an automatic progress refresh may replace. Schema 1.2 requires exactly adoptionWorkflow and milestones.",
+      "items": { "type": "string" },
+      "enum": [["adoptionWorkflow", "milestones"]]
+    },
     "milestones": {
       "type": "object",
       "properties": {
@@ -330,6 +385,36 @@
         "$ref": "#/$defs/fileChange"
       }
     },
+    "d016Allowlist": {
+      "type": "object",
+      "description": "An owner-facing proposal for the .NET partial-application helper allowlist. Presence means the rule is currently not executed and an approved configuration change is required for 42/42 automated coverage.",
+      "required": ["rule", "configPath", "currentExecution", "reason", "proposedValue"],
+      "properties": {
+        "rule": { "const": "ACIMA-D016" },
+        "configPath": { "type": "string", "minLength": 1 },
+        "status": { "type": "string" },
+        "currentExecution": { "type": "string" },
+        "reason": { "type": "string", "minLength": 10 },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "path": { "type": "string" },
+              "line": { "type": ["integer", "string"] },
+              "evidence": { "type": "string" }
+            },
+            "additionalProperties": true
+          }
+        },
+        "proposedValue": { "type": "array", "items": { "type": "string" } },
+        "approval": { "type": "string" },
+        "verification": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
     "outcomes": {
       "type": "array",
       "items": {
@@ -442,6 +527,14 @@
         "phase": { "type": ["string", "null"] },
         "phaseLabel": { "type": "string" },
         "phaseOrder": { "type": "array", "items": { "type": "string" } },
+        "asOf": {
+          "type": "string",
+          "description": "ISO timestamp of the progress state shown. Required by schema 1.2."
+        },
+        "currentStage": {
+          "type": ["object", "null"],
+          "description": "The stage the adoption is currently in, or null when every recorded stage is complete. Required by schema 1.2."
+        },
         "stages": {
           "type": "array",
           "items": {

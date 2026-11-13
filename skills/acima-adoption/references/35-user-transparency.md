@@ -98,6 +98,26 @@ For example:
 > the assessment stays incomplete. I recommend the audit. Do you want me to spend that time, or
 > record this as a limitation?
 
+### Answering the report
+
+The report is answered by the owner, in their own time, offline. Do not read answers off the page and
+do not ask the owner to repeat them in chat: in guided adoption the Plan and Files pages write the
+decisions file, and the workflow ingests each saved page with `acima adoption decisions --from
+<path>`. The report also shows the decision log, what changed since the last review, and any recorded
+evidence that has gone missing, so the owner can see the current state without re-reading earlier
+conversation.
+
+Tell the owner three things when they answer. First, what happened to each answer: which were applied,
+which objective a missing path deferred, which answers conflict with something already recorded, and
+whether the file was refused because it describes a different version of the report. Second, that
+answering is not approval: a draft scope still carries `authorization.explicit: false`, and the
+approval command is a separate, visible step against the same report digest. Third, what changed in
+the report, since a regeneration creates a new report identity and marks earlier answers stale rather
+than silently reusing them.
+
+Never describe an ingested answer as a decision that was approved, never fill in an answer the owner
+did not give, and never treat an unread page or an empty section as agreement.
+
 ### Plain-language and honesty requirements
 
 - Explain ACIMA identifiers in human terms whenever they appear in user-facing communication. Keep IDs

@@ -260,13 +260,46 @@ Resume from persisted state without repeating completed work or bypassing a prer
 repository revision changes materially, mark affected evidence and approvals stale and reassess
 before proceeding.
 
-The generated HTML report is part of that persisted state and stays current automatically. Every
+The generated HTML report is part of that persisted state. It lives at
+`acima/report/<reportId>/index.html`, with `report.json` recording its identity (report id,
+generation, generated-at, generation/live/decision digests, progress status) and `decisions.json`
+holding the owner's answers once they exist. A regeneration gets a new directory and a new report id,
+so a reviewed report is never overwritten in place.
+
+The report stays current automatically. Every
 recorded progress change refreshes its progress sections, so do not ask the user to regenerate or
 update it, and do not describe a previous version as the current state. A refresh may change only
 the progress sections (current phase, stage table, completed milestones, next action, remediation
 and agent-guidance status); the reviewed decision content and the generation digest stay fixed, and
 a refresh that would change decision content is refused. If a refresh fails, report the report as
-stale with its reason and regenerate it before treating it as current.
+stale with its reason, and the workflow's recorded state remains authoritative until a refresh
+succeeds. Rebuild a report that cannot be refreshed at all (`acima adoption regenerate --reason`):
+that is the only supported repair, and it is not a routine step. Regeneration increments the report
+generation, writes a new report id, returns the review to `awaiting_review`, invalidates any
+implementation receipt and marks answers written against the previous report as stale.
+
+## The answer loop
+
+The owner answers the report, not the agent's paraphrase of it. In guided adoption the Plan and Files
+pages carry the controls; each answered page saves a partial decisions file, and the workflow merges
+them by report identity, so save order does not matter. Ingest with
+`acima adoption decisions --root . --from <path>` for each saved file; do not retype answers into
+commands. Only decisions files are meant to be committed — the pages stay local unless the owner asks
+otherwise. Automated adoption has no console controls; its consolidated review is unchanged.
+
+Ingestion enforces four things. It refuses a file whose `reportId`, `reportSha256`, `decisionSha256`
+or `proposalSha256` differs from the current report, because those answers describe a document that
+is no longer current. It refuses an answer that contradicts an earlier recorded answer unless the
+file names that earlier file in `supersedes`, so history is replaced explicitly rather than
+accumulated by accident. It applies map answers only while the module map is awaiting review, and
+never after approval. And it refuses a file that does not record the report review itself.
+
+What ingestion is not: consent. Scope answers derive a draft scope whose `authorization.explicit` is
+`false` and whose `basis` says the approval command is still required. A path the owner leaves out
+defers the objective that requires it, named with the missing paths, instead of producing an
+incomplete approved scope. Remediation answers are stored as recorded intent; `adopt remediate` still
+requires its plan digest, exact paths and confirmations. Guided mode keeps its map gate, so no report
+exists at map time and map decisions stay in conversation.
 
 ## Target preservation and honest claims
 

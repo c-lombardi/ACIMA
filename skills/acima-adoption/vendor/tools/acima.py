@@ -4507,7 +4507,8 @@ def main() -> int:
     verify.add_argument("profiles", nargs="*")
 
     adoption = sub.add_parser("adoption", help="end-to-end guided or explicitly authorized adoption")
-    adoption.add_argument("action", choices=("start", "status", "approve", "apply", "continue", "remediate", "guidance"))
+    adoption.add_argument("action", choices=("start", "status", "approve", "apply", "continue",
+                                            "remediate", "guidance", "decisions", "regenerate"))
     adoption.add_argument("--root", default=".")
     adoption.add_argument("--mode", choices=("guided", "full"), default=None,
                           help="required for start: guided or automated preparation (full)")
@@ -4535,6 +4536,10 @@ def main() -> int:
     adoption.add_argument("--confirm-scope", action="store_true", dest="confirm_scope")
     adoption.add_argument("--confirm-implementation", action="store_true",
                           dest="confirm_implementation")
+    adoption.add_argument("--from", dest="source", default=None,
+                          help="decisions: owner decisions JSON produced by the report or by conversation")
+    adoption.add_argument("--reason", default=None,
+                          help="regenerate: why the report is being rebuilt; recorded in workflow state")
     adoption.add_argument("--format", choices=("json", "text"), default="json")
 
     args = parser.parse_args()
@@ -4569,6 +4574,16 @@ def main() -> int:
                 result = adoption_workflow._apply(root, adoption_workflow._load(root))
             elif args.action == "guidance":
                 result = adoption_workflow.guidance(root, approve=args.approve)
+            elif args.action == "decisions":
+                if not args.source:
+                    print("acima: adoption decisions requires --from <decisions.json>", file=sys.stderr)
+                    return 2
+                result = adoption_workflow.decisions(root, Path(args.source))
+            elif args.action == "regenerate":
+                if not args.reason:
+                    print("acima: adoption regenerate requires --reason <why>", file=sys.stderr)
+                    return 2
+                result = adoption_workflow.regenerate(root, reason=args.reason, reviewer=args.reviewer)
             elif args.action == "remediate":
                 if not args.choice:
                     print("acima: adoption remediate requires --choice none, selected, or all",

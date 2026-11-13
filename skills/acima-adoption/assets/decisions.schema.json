@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ACIMA Adoption Decisions",
+  "description": "Owner-authored answers produced by the adoption report or recorded from conversation. A decisions file is intent, not approval: ingestion validates and records it, and the workflow's approval command remains the only way to authorize implementation.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "kind",
+    "reportId",
+    "reviewer",
+    "decidedOn",
+    "package",
+    "answers"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "kind": { "const": "acima-adoption-decisions" },
+    "reportId": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{20}$",
+      "description": "The exact report these answers belong to. A different report id is a stale file."
+    },
+    "reportSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Generation digest of the report the owner reviewed. Optional: a report page cannot hash its own bytes, so the workflow completes this after checking the report on disk."
+    },
+    "decisionSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Digest of the report's decision content, which progress refreshes never change. Optional; completed by the workflow when absent."
+    },
+    "proposalSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Digest of the adoption proposal the report was generated from. Optional; completed by the workflow when absent."
+    },
+    "reportGeneratedAt": { "type": "string" },
+    "reviewer": { "type": "string", "minLength": 1 },
+    "decidedOn": { "type": "string", "format": "date" },
+    "source": { "enum": ["html-report", "conversation", "hand-edited"] },
+    "page": {
+      "enum": ["plan", "files"],
+      "description": "Which report page produced a partial file. Several partial files are merged by the workflow."
+    },
+    "package": {
+      "enum": ["recommended", "custom"],
+      "description": "How the owner reached the selection. Metadata only: answers still list every included path."
+    },
+    "supersedes": {
+      "type": ["string", "null"],
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "The sha256 of the decisions file this one replaces. Conflicting answers without it are refused."
+    },
+    "notes": { "type": "string" },
+    "answers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["kind", "id", "decision"],
+        "properties": {
+          "kind": {
+            "enum": [
+              "report-review",
+              "module",
+              "module-path",
+              "recommendation",
+              "scope-objective",
+              "scope-path",
+              "remediation"
+            ]
+          },
+          "id": { "type": "string", "minLength": 1 },
+          "decision": { "enum": ["accept", "modify", "defer", "reject"] },
+          "note": { "type": "string" }
+        }
+      }
+    }
+  }
+}

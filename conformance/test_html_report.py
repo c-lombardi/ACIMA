@@ -121,7 +121,7 @@ def large_module_map_model(count=1000):
 class HtmlReportTests(unittest.TestCase):
     def test_schema_is_valid_json_and_defines_the_file_impact_contract(self):
         schema=json.loads(SCHEMA.read_text(encoding='utf-8-sig'))
-        self.assertEqual(schema['properties']['schemaVersion']['enum'],['1.0','1.1'])
+        self.assertEqual(schema['properties']['schemaVersion']['enum'],['1.0', '1.1', '1.2', '1.3'])
         self.assertIn('qualitativeReview',schema['properties'])
         self.assertEqual(schema['properties']['conformance']['minItems'],56)
         self.assertEqual(schema['$defs']['fileChange']['required'],['path','action','purpose','expectedOutcome'])
@@ -248,6 +248,36 @@ class HtmlReportTests(unittest.TestCase):
             self.assertNotIn('No gap was recorded',page)
             self.assertIn('id="module-map"',page)
             self.assertIn('How the product is divided today',page)
+
+    def test_d016_allowlist_is_presented_as_an_owner_approved_configuration_proposal(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); src=root/'model.json'; out=root/'report'
+            data=model()
+            data['d016Allowlist']={
+                'rule':'ACIMA-D016','configPath':'acima.config.json','status':'owner_decision',
+                'currentExecution':'not_executed',
+                'reason':'partial helper allowlist not declared in acima.config.json',
+                'candidates':[],'proposedValue':[],
+                'approval':'Confirm that no partial-application helper is used, or name every exact helper.',
+                'verification':'Run the .NET enforcer and confirm ACIMA-D016 reports executed: true.',
+            }
+            data['proposedChanges'].append({
+                'path':'acima.config.json','action':'modify',
+                'purpose':'Declare the partial-application helper allowlist.',
+                'expectedOutcome':'ACIMA-D016 executes and 42/42 automated rules are covered.',
+                'classification':'owner-decision','status':'proposed',
+                'associatedFindings':['ACIMA-D016'],
+            })
+            src.write_text(json.dumps(data),encoding='utf-8')
+            result=subprocess.run([sys.executable,str(SCRIPT),'--input',str(src),'--out-dir',str(out)],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+            proposal=(out/'proposal.html').read_text(encoding='utf-8')
+            files=(out/'files.html').read_text(encoding='utf-8')
+            self.assertIn('id="d016-allowlist"',proposal)
+            self.assertIn('partialHelpers',proposal)
+            self.assertIn('Not executed',proposal)
+            self.assertIn('ACIMA-D016',proposal)
+            self.assertIn('Configuration decision for the partial-application check',files)
 
     def test_generates_six_navigable_pages_and_impact_inventory(self):
         with tempfile.TemporaryDirectory() as td:

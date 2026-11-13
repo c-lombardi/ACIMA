@@ -42,8 +42,10 @@ from module_map import (  # noqa: E402
 from executables import resolve_executable  # noqa: E402
 import agent_guidance  # noqa: E402
 from qualitative_review import ReviewValidationError, load_and_validate_review  # noqa: E402
+import adoption_decisions  # noqa: E402
 from adoption_reports import (  # noqa: E402
-    AdoptionReportError, refresh_progress_report, render_proposal_report, report_digest,
+    DECISIONS_FILE, REPORT_DIRECTORY, AdoptionReportError, refresh_progress_report,
+    render_proposal_report, report_digest,
 )
 from acima_paths import existing as _existing_artifact  # noqa: E402
 
@@ -53,6 +55,7 @@ LEGACY_STATE_FILE = ".acima/adoption-workflow.json"
 PREFLIGHT_FILE = "acima/evidence/preflight.json"
 PROPOSAL_JSON = "acima/evidence/module-map.proposal.json"
 OWNER_MAP_REVIEW_FILE = "acima/evidence/module-map-decisions.json"
+EVENTS_FILE = "acima/evidence/events.jsonl"
 SCOPE_FILE = "acima/evidence/adoption-scope.json"
 ADOPTION_PROPOSAL = "acima/report/adoption-proposal.md"
 ADOPTION_PROPOSAL_JSON = "acima/report/adoption-proposal.json"
@@ -201,8 +204,13 @@ def _revision(root: Path) -> dict:
             if result.returncode == 0 and result.stdout.strip():
                 status = subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--untracked-files=all"],
                                         capture_output=True, text=True, timeout=15)
-                diff = subprocess.run(["git", "-C", str(root), "diff", "--binary", "HEAD"],
-                                      capture_output=True, text=False, timeout=30)
+                # Report pages are workflow-owned and refresh after every recorded change, so they
+                # are excluded from the revision an approval binds to. Their integrity is tracked by
+                # the report's own live digest.
+                diff = subprocess.run(
+                    ["git", "-C", str(root), "diff", "--binary", "HEAD", "--", ".",
+                     ":(exclude)" + REPORT_DIRECTORY],
+                    capture_output=True, text=False, timeout=30)
                 branch = subprocess.run(["git", "-C", str(root), "branch", "--show-current"],
                                         capture_output=True, text=True, timeout=15)
                 untracked = subprocess.run(
@@ -210,7 +218,9 @@ def _revision(root: Path) -> dict:
                     capture_output=True, text=True, timeout=15)
                 tree_parts = [diff.stdout if diff.returncode == 0 else b""]
                 for relative in (untracked.stdout.splitlines() if untracked.returncode == 0 else []):
-                    if relative.replace("\\", "/") in {STATE_FILE, SCOPE_FILE}:
+                    normalized = relative.replace("\\", "/")
+                    if (normalized in {STATE_FILE, SCOPE_FILE, EVENTS_FILE}
+                            or normalized.startswith(REPORT_DIRECTORY + "/")):
                         continue
                     candidate = root / relative
                     if candidate.is_file():
@@ -434,6 +444,14 @@ def _ci(root: Path) -> dict:
 
 def _stage(state: dict, name: str, status: str, detail: str,
            *, evidence: Any = None, next_action: str = "") -> None:
+    previous = (state["stages"].get(name) or {}).get("status")
+    if previous != status:
+        state.setdefault("progressLog", []).append({
+            "stage": name, "from": previous or "not_started", "to": status,
+            "detail": detail, "at": _now(),
+        })
+        _queue_event(state, "stage.changed", stage=name, fromStatus=previous or "not_started",
+                     toStatus=status, detail=detail)
     state["stages"][name] = {
         "name": name,
         "label": STAGE_LABEL[name],
@@ -525,10 +543,35 @@ def _write_workspace_readme(root: Path) -> None:
 
 def _save(root: Path, state: dict) -> None:
     state["updatedAt"] = _now()
+    state.setdefault("events", EVENTS_FILE)
+    state["decisionLog"] = _decision_log(state)
+    state["sinceReview"] = _since_review(root, state)
+    state["evidenceIntegrity"] = _evidence_integrity(root, state)
+    state["consoleState"] = _console_state(root, state)
     # Every recorded progress change refreshes the report that already exists. The user is never
     # asked to update it, and the report never presents last week's stage table as current.
     _refresh_progress_report(state)
+    # Append the queued events first: persisting state with the queue still set would replay every
+    # earlier event on the next save.
+    _flush_events(root, state)
     _write_json(root, STATE_FILE, state)
+
+
+def _queue_event(state: dict, name: str, **fields) -> None:
+    """Queue one append-only event for the next state save."""
+    state.setdefault("pendingEvents", []).append({"at": _now(), "event": name, **fields})
+
+
+def _flush_events(root: Path, state: dict) -> None:
+    pending = state.get("pendingEvents") or []
+    if not pending:
+        return
+    path = root / EVENTS_FILE
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as stream:
+        for event in pending:
+            stream.write(json.dumps(event, sort_keys=True) + "\n")
+    state.pop("pendingEvents", None)
 
 
 def _refresh_progress_report(state: dict) -> None:
@@ -543,7 +586,10 @@ def _refresh_progress_report(state: dict) -> None:
         return
     try:
         refresh_progress_report(report, state)
+        _queue_event(state, "report.refreshed", reportId=report.get("reportId"))
     except (AdoptionReportError, OSError, ValueError, KeyError) as error:
+        _queue_event(state, "report.stale", reportId=report.get("reportId"),
+                     reason=str(error)[:400])
         report["progressStatus"] = "stale"
         report["progressError"] = str(error)[:400]
         state["progressReport"] = {
@@ -627,6 +673,128 @@ def _current_phase(state: dict) -> str:
     return "verify_and_hand_off"
 
 
+def _report_summary(state: dict) -> dict:
+    """The report's identity, location and freshness, without the whole artifact record."""
+    report = (state.get("artifacts") or {}).get("proposalReport")
+    if not isinstance(report, dict) or not report.get("directory"):
+        return {"status": "not_generated"}
+    return {
+        "reviewStatus": report.get("status"),
+        "progress": report.get("progressStatus") or "current",
+        "reportId": report.get("reportId"),
+        "generation": report.get("generation", 0),
+        "directory": report.get("relativeDirectory") or report.get("directory"),
+        "indexHtml": report.get("indexHtml"),
+        "sha256": report.get("sha256"),
+        "liveSha256": report.get("liveSha256"),
+        "decisionSha256": report.get("decisionSha256"),
+        "progressUpdatedAt": report.get("progressUpdatedAt"),
+        "decisionsFile": (Path(report["directory"]) / DECISIONS_FILE).is_file(),
+        "progressError": report.get("progressError"),
+    }
+
+
+def _decision_log(state: dict) -> list[dict]:
+    """Every ingested answer, in force first, with superseded and stale entries kept as history."""
+    rows: list[dict] = []
+    for source in state.get("decisionSources") or []:
+        if not isinstance(source, dict):
+            continue
+        for entry in source.get("answers") or []:
+            if not isinstance(entry, dict) or not entry.get("kind") or not entry.get("id"):
+                continue
+            rows.append({
+                "kind": entry["kind"], "id": entry["id"],
+                "decision": entry.get("decision"), "note": entry.get("note") or "",
+                "reviewer": source.get("reviewer"), "decidedOn": source.get("decidedOn"),
+                "sourceSha256": source.get("fileSha256"),
+                "status": source.get("status") or "in force",
+                "supersededBy": source.get("supersededBy"),
+                "staleReason": source.get("staleReason"),
+            })
+    rows.sort(key=lambda row: (row["status"] != "in force", row["kind"], row["id"]))
+    return rows
+
+
+def _since_review(root: Path, state: dict) -> dict:
+    """What changed since the owner's last recorded review, measured by digest.
+
+    A regeneration resets the current review to awaiting_review but keeps the previous receipt, so the
+    report can still say that the reviewed document is gone.
+    """
+    report = (state.get("artifacts") or {}).get("proposalReport") or {}
+    receipt = state.get("proposalReview") or {}
+    if receipt.get("status") != "reviewed":
+        receipt = state.get("lastReview") or receipt
+    if receipt.get("status") != "reviewed":
+        return {"status": "not_reviewed", "changed": []}
+    changed = []
+    if report.get("reportId") and receipt.get("reportId") != report.get("reportId"):
+        changed.append("a newer report generation")
+    proposal_path = root / ADOPTION_PROPOSAL_JSON
+    if proposal_path.is_file() and receipt.get("proposalSha256") not in (None, _sha(proposal_path)):
+        changed.append("the adoption proposal")
+    return {"status": "changed" if changed else "current", "changed": changed,
+            "reviewedBy": receipt.get("reviewedBy"), "reviewedOn": receipt.get("reviewedOn")}
+
+
+def _evidence_integrity(root: Path, state: dict) -> dict:
+    """Check that every artifact a stage claims still exists, so the report can say it is missing."""
+    checked, missing = 0, []
+    for name, value in sorted((state.get("artifacts") or {}).items()):
+        if not isinstance(value, str) or not value:
+            continue
+        checked += 1
+        if not (root / value).is_file():
+            missing.append({"name": name, "path": value})
+    report = (state.get("artifacts") or {}).get("proposalReport")
+    if isinstance(report, dict) and report.get("relativeDirectory"):
+        checked += 1
+        if not Path(report["directory"]).is_dir():
+            missing.append({"name": "proposalReport", "path": report["relativeDirectory"]})
+    return {"status": "missing" if missing else "complete", "checked": checked, "missing": missing}
+
+
+def _console_catalog(root: Path, state: dict) -> dict:
+    """The reviewed choices the report's controls offer: objectives and their required paths."""
+    scope = _scope_document(state, root, ci_available=bool(_ci(root).get("provider")))
+    objectives, paths = [], {}
+    for item in scope["objectives"]:
+        required = (sorted(_objective_files(root, item["id"], scope))
+                    if item["id"] in _OBJECTIVE_ORDER else [])
+        objectives.append({"id": item["id"], "requiredPaths": required})
+        for path in required:
+            paths.setdefault(path, {"path": path, "requiredBy": []})["requiredBy"].append(item["id"])
+    return {"mode": state.get("mode"), "objectives": objectives,
+            "paths": [paths[name] for name in sorted(paths)]}
+
+
+def _console_state(root: Path, state: dict) -> dict:
+    """The refreshable half of the console: answers in force and the remediation choices."""
+    answers = []
+    for source in state.get("decisionSources") or []:
+        if not isinstance(source, dict) or source.get("status") == "superseded":
+            continue
+        for entry in source.get("answers") or []:
+            if isinstance(entry, dict) and entry.get("kind") and entry.get("id"):
+                answers.append({"kind": entry["kind"], "id": entry["id"],
+                                "decision": entry.get("decision"),
+                                "sourceSha256": source.get("fileSha256")})
+    plan_path = root / REMEDIATION_PLAN
+    remediation: dict = {"available": plan_path.is_file()}
+    if plan_path.is_file():
+        plan = _read_json(plan_path)
+        remediation["planSha256"] = _sha(plan_path)
+        remediation["items"] = [
+            {"id": item.get("id"),
+             "title": item.get("title") or item.get("summary") or item.get("id"),
+             "recommendation": item.get("recommendation") or item.get("action") or item.get("description")}
+            for item in plan.get("recommendations") or [] if isinstance(item, dict)
+        ]
+    return {"answers": answers, "remediation": remediation,
+            "reviewer": (state.get("proposalReview") or {}).get("reviewedBy") or ""}
+
+
 def _summary(state: dict) -> dict:
     stages = [state["stages"][name] for name in STAGE_ORDER if name in state["stages"]]
     phase = _current_phase(state)
@@ -650,6 +818,7 @@ def _summary(state: dict) -> dict:
         "verificationAfterRemediation": state.get("verificationAfterRemediation"),
         "next": state.get("next", {}),
         "progressReport": state.get("progressReport", {}),
+        "report": _report_summary(state),
     }
 
 
@@ -1805,12 +1974,15 @@ def _proposal_report(root: Path, state: dict, module_map: dict, proposal: dict) 
     review_path = root / (state.get("assessmentReview") or {}).get("path", "")
     if not review_path.is_file():
         raise WorkflowError("the validated qualitative review disappeared; regenerate it before creating the HTML proposal")
+    proposal_path = root / ADOPTION_PROPOSAL_JSON
+    proposal_sha = _sha(proposal_path) if proposal_path.is_file() else None
+    console = _console_catalog(root, state)
+    console["proposalSha256"] = proposal_sha
     try:
-        report = render_proposal_report(root, review_path, module_map, proposal, state)
+        report = render_proposal_report(root, review_path, module_map, proposal, state, console=console)
     except (AdoptionReportError, OSError, ValueError, KeyError) as error:
         raise WorkflowError("the required HTML proposal could not be generated and validated: %s" % error) from error
-    proposal_path = root / ADOPTION_PROPOSAL_JSON
-    report["proposalSha256"] = _sha(proposal_path) if proposal_path.is_file() else None
+    report["proposalSha256"] = proposal_sha
     state.setdefault("artifacts", {})["proposalReport"] = report
     # Pin approval to the exact post-preparation target state. This digest includes
     # staged/unstaged and untracked repository changes, not only HEAD and branch.
@@ -1819,6 +1991,8 @@ def _proposal_report(root: Path, state: dict, module_map: dict, proposal: dict) 
     report["repositoryRevision"] = state["repository"]["revision"]
     report["indexUrl"] = Path(report["indexHtml"]).as_uri()
     report["pageUrls"] = {name: Path(path).as_uri() for name, path in report["pages"].items()}
+    _queue_event(state, "report.generated", reportId=report["reportId"],
+                 generation=report.get("generation"), sha256=report["sha256"])
     state["proposalReview"] = {
         "status": "awaiting_review",
         "reportId": report["reportId"],
@@ -1994,38 +2168,52 @@ def _prepare_adoption_notifications(root: Path, state: dict, scope: dict) -> dic
     return proposal
 
 
-def _implementation_paths(root: Path, scope: dict | None = None) -> list[str]:
-    """Return every file the approved infrastructure stage may create or modify."""
+# The exact files each objective may create or modify. Objectives that are absent change no target
+# files: assessment, waivers, source remediation, conformance verification and communication
+# governance are decisions or evidence, not a file package.
+_OBJECTIVE_FILES = {
+    "local-enforcement": (
+        STATE_FILE, SCOPE_FILE, CONFIG_NAME, APPROVAL_FILE, ENFORCEMENT_FILE, ARCH_TESTS_FILE,
+        WAIVERS_FILE, REMEDIATION_PLAN, VERIFICATION_FILE, REMEDIATION_RESULT,
+    ),
+    "adoption-notifications": (ADOPTION_NOTIFICATIONS_PROPOSAL,),
+    "ci-enforcement": (CI_FILE,),
+    "agent-guidance": (
+        agent_guidance.PROPOSAL_FILE, agent_guidance.RESULT_FILE, agent_guidance.ARCH_FILE,
+        agent_guidance.ENFORCEMENT_FILE, agent_guidance.JUDGMENT_FILE, agent_guidance.WORKFLOW_FILE,
+    ),
+    "developer-handoff": (HANDOFF_FILE,),
+}
+_OBJECTIVE_ORDER = ("local-enforcement", "adoption-notifications", "ci-enforcement",
+                    "agent-guidance", "developer-handoff")
+
+
+def _objective_files(root: Path, objective: str, scope: dict | None = None) -> set[str]:
+    """The exact files one objective may create or modify, including its discovered extras."""
     scope = scope or {}
-    language = _language(root)
-    plan = _enforcer(root, language)
-    objectives = _approved_objectives(scope)
-    paths: list[str] = []
-    if "local-enforcement" in objectives:
-        paths.extend([
-            STATE_FILE, SCOPE_FILE, CONFIG_NAME, APPROVAL_FILE,
-            ENFORCEMENT_FILE, ARCH_TESTS_FILE, WAIVERS_FILE, REMEDIATION_PLAN,
-            VERIFICATION_FILE, REMEDIATION_RESULT,
-        ])
+    files = set(_OBJECTIVE_FILES.get(objective, ()))
+    if objective == "local-enforcement":
+        plan = _enforcer(root, _language(root))
         if plan:
-            paths.extend(item["target"] for item in plan.get("files", []))
-    if "adoption-notifications" in objectives:
-        paths.append(ADOPTION_NOTIFICATIONS_PROPOSAL)
-    if "ci-enforcement" in objectives:
-        paths.append(CI_FILE)
-        if _ci(root).get("provider") == "github-actions" and (scope.get("ciOptions") or {}).get("createWorkflow", True):
-            paths.append(".github/workflows/acima.yml")
-    if "agent-guidance" in objectives:
-        discovery = agent_guidance.discover(root)
-        paths.extend([
-            agent_guidance.PROPOSAL_FILE, agent_guidance.RESULT_FILE,
-            discovery.get("primary") or "AGENTS.md",
-            agent_guidance.ARCH_FILE, agent_guidance.ENFORCEMENT_FILE,
-            agent_guidance.JUDGMENT_FILE, agent_guidance.WORKFLOW_FILE,
-        ])
-    if "developer-handoff" in objectives:
-        paths.append(HANDOFF_FILE)
-    return sorted(set(paths))
+            files.update(item["target"] for item in plan.get("files", []))
+    elif objective == "ci-enforcement":
+        if (_ci(root).get("provider") == "github-actions"
+                and (scope.get("ciOptions") or {}).get("createWorkflow", True)):
+            files.add(".github/workflows/acima.yml")
+    elif objective == "agent-guidance":
+        files.add(agent_guidance.discover(root).get("primary") or "AGENTS.md")
+    return files
+
+
+def _implementation_paths(root: Path, scope: dict | None = None) -> list[str]:
+    """Return every file the approved infrastructure stages may create or modify."""
+    scope = scope or {}
+    approved = _approved_objectives(scope)
+    paths: set[str] = set()
+    for objective in _OBJECTIVE_ORDER:
+        if objective in approved:
+            paths.update(_objective_files(root, objective, scope))
+    return sorted(paths)
 
 
 def _require_approved_scope(root: Path, state: dict) -> dict:
@@ -2528,6 +2716,10 @@ def approve(root: Path, *, map_decisions: Path | None = None,
         _write_json(root, SCOPE_FILE, document)
         state["artifacts"]["scope"] = SCOPE_FILE
         state["proposalReview"] = reviewed
+        _queue_event(
+            state, "approval.recorded",
+            reportId=(state.get("artifacts", {}).get("proposalReport") or {}).get("reportId"),
+            reviewer=reviewed.get("reviewedBy"), scopeSha256=_sha(root / SCOPE_FILE))
         if "adoption-notifications" in selected_objectives:
             _prepare_adoption_notifications(root, state, document)
         else:
@@ -2770,6 +2962,322 @@ def continue_workflow(root: Path) -> dict:
     return state
 
 
+def regenerate(root: Path, *, reason: str, reviewer: str | None = None) -> dict:
+    """Rebuild the current report from persisted evidence under a new report identity.
+
+    A report can disappear or go stale (OS cleanup, an interrupted branch operation, a hand edit).
+    Regeneration is the supported repair: it re-renders from the validated review, the persisted
+    module-map proposal and the adoption proposal, records why, invalidates every prior review and
+    implementation receipt, and makes any decisions file written against the old identity stale.
+    """
+    root = root.resolve()
+    reason = str(reason or "").strip()
+    if not reason:
+        raise WorkflowError("regenerating a report requires a recorded --reason")
+    state = _load(root)
+    previous = (state.get("artifacts") or {}).get("proposalReport")
+    if not isinstance(previous, dict) or not previous.get("directory"):
+        raise WorkflowError("no generated report exists; generate one before regenerating it")
+    review_path = root / str((state.get("assessmentReview") or {}).get("path") or "")
+    if not review_path.is_file():
+        raise WorkflowError("the validated qualitative review is missing; the report cannot be rebuilt")
+    proposal_path = root / ADOPTION_PROPOSAL_JSON
+    inner_path = root / PROPOSAL_JSON
+    if not proposal_path.is_file() or not inner_path.is_file():
+        raise WorkflowError("the adoption proposal or module-map proposal is missing; the report cannot be rebuilt")
+    proposal = _read_json(proposal_path)
+    inner = _read_json(inner_path)
+    discovery = discover_module_map(root)
+    module_map = {
+        "status": discovery.get("status"),
+        "proposalId": inner.get("proposalId"),
+        "proposal": inner,
+        "authoritativeMap": discovery.get("authoritativeMap"),
+        "existingArchitecture": discovery.get("existingArchitecture"),
+    }
+    state["reportGeneration"] = int(state.get("reportGeneration") or 0) + 1
+    if (state.get("proposalReview") or {}).get("status") == "reviewed":
+        state["lastReview"] = dict(state["proposalReview"])
+    report = _proposal_report(root, state, module_map, proposal)
+    # Answers written for the old identity are stale from here on; their identity check already
+    # refuses them, and marking the source keeps the decision log honest about what was replaced.
+    for source in state.get("decisionSources") or []:
+        if isinstance(source, dict) and source.get("reportId") == previous.get("reportId"):
+            source["status"] = "stale"
+            source["staleReason"] = "the report was regenerated as %s: %s" % (report.get("reportId"), reason)
+            source["staleAt"] = _now()
+    if state.get("implementationApproval"):
+        state["implementationApproval"] = {
+            "status": "invalidated", "reason": reason, "at": _now(),
+            "reportId": report.get("reportId"),
+        }
+    state["decisions"].append({
+        "id": "report-regeneration", "decision": "regenerated",
+        "by": (reviewer or "Repository owner"), "on": _today(),
+        "reason": reason, "reportId": report.get("reportId"),
+        "previousReportId": previous.get("reportId"),
+    })
+    _save(root, state)
+    return state
+
+
+def _map_review_from_decisions(entries: list[dict], document: dict, proposal: dict) -> dict:
+    """Translate report answers into the module-map review format the workflow already consumes."""
+    groups: dict[str, list] = {"module": [], "module-path": [], "recommendation": []}
+    for entry in entries:
+        bucket = groups.get(entry["kind"])
+        if bucket is None:
+            continue
+        item = {"id": entry["id"], "decision": entry["decision"]}
+        if entry.get("note"):
+            item["note"] = entry["note"]
+        bucket.append(item)
+    return {
+        "schemaVersion": "1.0",
+        "proposalId": proposal.get("proposalId"),
+        "reviewer": document["reviewer"],
+        "reviewedOn": document["decidedOn"],
+        "mapDecision": "accept",
+        "moduleDecisions": groups["module"],
+        "pathDecisions": groups["module-path"],
+        "recommendationDecisions": groups["recommendation"],
+        "source": "decisions.json",
+    }
+
+
+def _derive_scope(root: Path, state: dict, document: dict, review: dict,
+                  entries: list[dict]) -> dict:
+    """Derive an approval-ready draft scope without ever marking it explicitly approved.
+
+    Per-path selection follows the design contract: a path the owner leaves out cannot silently
+    produce an incomplete approval. The objective that requires it is deferred and named.
+    """
+    base = (_read_json(root / SCOPE_FILE) if (root / SCOPE_FILE).is_file()
+            else _scope_document(state, root, ci_available=bool(_ci(root).get("provider"))))
+    chosen = {entry["id"]: entry for entry in entries if entry["kind"] == "scope-objective"}
+    known = {item.get("id") for item in base.get("objectives", []) if isinstance(item, dict)}
+    unknown = sorted(set(chosen) - known)
+    if unknown:
+        raise WorkflowError("decisions reference unknown scope objectives: %s" % ", ".join(unknown))
+    dispositions = {"accept": "approved", "modify": "approved",
+                    "defer": "deferred", "reject": "declined"}
+    for item in base.get("objectives", []):
+        entry = chosen.get(item.get("id"))
+        if not entry:
+            continue
+        item["disposition"] = dispositions[entry["decision"]]
+        if entry.get("note"):
+            item["note"] = entry["note"]
+    proposed_paths: set[str] = set()
+    for item in base.get("objectives", []):
+        if item.get("id"):
+            proposed_paths |= _objective_files(root, item["id"], base)
+    selected_paths = {entry["id"] for entry in entries
+                      if entry["kind"] == "scope-path" and entry["decision"] in {"accept", "modify"}}
+    unknown_paths = sorted(selected_paths - proposed_paths)
+    if unknown_paths:
+        raise WorkflowError("decisions select paths the proposal does not include: %s"
+                            % ", ".join(unknown_paths))
+    deferrals = []
+    for item in base.get("objectives", []):
+        if item.get("disposition") not in {"approved", "required"} or not item.get("id"):
+            continue
+        missing = sorted(_objective_files(root, item["id"], base) - selected_paths)
+        if missing:
+            item["disposition"] = "deferred"
+            deferrals.append({
+                "objective": item["id"],
+                "missingPaths": missing,
+                "reason": "The answers exclude a path this objective requires, so the objective is deferred rather than approving an incomplete scope.",
+            })
+    # Paths that belong only to a deferred objective are simply not approved: the objective, not the
+    # path, is the unit of consent, and the deferral above already names what is missing.
+    required = set(_implementation_paths(root, base))
+    base["approvedBy"] = document["reviewer"]
+    base["approvedOn"] = document["decidedOn"]
+    base["proposal"] = ADOPTION_PROPOSAL
+    base["approvedPaths"] = sorted(required)
+    base["reportReview"] = dict(review)
+    base["authorization"] = {
+        "mode": state["mode"],
+        "explicit": False,
+        "basis": "Derived from the owner's decisions file. The implementation approval command is still required.",
+        "reportSha256": document["reportSha256"],
+        "proposalSha256": document["proposalSha256"],
+    }
+    return {"scope": base, "deferrals": deferrals}
+
+
+def decisions(root: Path, source: Path) -> dict:
+    """Ingest an owner decisions file. This records intent; approval stays a separate command."""
+    root = root.resolve()
+    state = _load(root)
+    path = source if source.is_absolute() else (Path.cwd() / source)
+    document = adoption_decisions.load(path)
+    report = (state.get("artifacts") or {}).get("proposalReport")
+    if not isinstance(report, dict) or not report.get("directory"):
+        raise WorkflowError("no generated report exists; generate one before answering it")
+    directory = Path(report["directory"])
+    if report_digest(directory) != (report.get("liveSha256") or report.get("sha256")):
+        raise WorkflowError("the report was changed outside the workflow; regenerate it before ingesting decisions")
+    if report.get("progressStatus") == "stale":
+        raise WorkflowError("the report is stale (%s); regenerate it before ingesting decisions"
+                            % (report.get("progressError") or "reason not recorded"))
+    identity = {"reportId": report.get("reportId"), "reportSha256": report.get("sha256"),
+                "decisionSha256": report.get("decisionSha256"),
+                "proposalSha256": report.get("proposalSha256")}
+    mismatched = [field for field in adoption_decisions.IDENTITY_FIELDS
+                  if document.get(field) is not None and document.get(field) != identity.get(field)]
+    if mismatched:
+        raise WorkflowError(
+            "the decisions file belongs to a different report version (%s); regenerate the report and answer again"
+            % ", ".join("%s %s != %s" % (field, document.get(field), identity.get(field))
+                         for field in mismatched))
+    # Answers downloaded from the report cannot know the digests of their own bytes; they carry the
+    # report id and proposal digest, so the workflow completes the remaining identity after checking
+    # the report on disk is exactly the one this file describes.
+    for field in ("reportSha256", "decisionSha256", "proposalSha256"):
+        if document.get(field) is None:
+            document[field] = identity[field]
+    sources = [item for item in (state.get("decisionSources") or []) if isinstance(item, dict)]
+    supersedes = document.get("supersedes")
+    if supersedes and not any(item.get("fileSha256") == supersedes for item in sources):
+        raise WorkflowError("decisions.supersedes does not match any recorded decisions file")
+    conflicting = adoption_decisions.conflicts(document, sources, supersedes)
+    if conflicting:
+        raise WorkflowError(
+            "conflicting answers need an explicit supersedes reference: %s" % "; ".join(
+                "%s %s was %s, now %s" % (item["kind"], item["id"], item["recorded"], item["proposed"])
+                for item in conflicting))
+    entries = adoption_decisions.answers(document)
+    # A report answered page by page arrives as several files. Answers in force from earlier files
+    # count as part of this answer set, so the order in which an owner saves the pages never matters.
+    merged: dict[tuple[str, str], dict] = {}
+    for source in sources:
+        if source.get("status") == "superseded":
+            continue
+        for entry in source.get("answers") or []:
+            if isinstance(entry, dict) and entry.get("kind") and entry.get("id"):
+                merged[(entry["kind"], entry["id"])] = entry
+    merged.update({(entry["kind"], entry["id"]): entry for entry in entries})
+    answers = list(merged.values())
+    if not any(entry["kind"] == "report-review" for entry in answers):
+        raise WorkflowError(
+            "no file on record for this adoption contains the report review; answer the review question first")
+    # Map answers are applied from the file that carries them, once. Scope answers use the merged set
+    # because a report answered page by page splits objectives and paths across files.
+    map_entries = [entry for entry in entries if entry["kind"] in adoption_decisions.MAP_ANSWER_KINDS]
+    scope_entries = [entry for entry in answers if entry["kind"] in adoption_decisions.SCOPE_ANSWER_KINDS]
+    remediation_entries = [entry for entry in answers if entry["kind"] == "remediation"]
+    if map_entries:
+        if (root / CONFIG_NAME).is_file() or state["stages"].get("module_map", {}).get("status") == COMPLETE:
+            raise WorkflowError("the module map is already approved; map answers in this file are stale")
+        proposal = _read_json(root / PROPOSAL_JSON) if (root / PROPOSAL_JSON).is_file() else None
+        if not proposal:
+            raise WorkflowError("no module-map proposal is available for these map answers")
+        # The same review file the map gate reads. apply_review still requires every material
+        # decision, so an incomplete answer set leaves the map awaiting review.
+        _write_json(root, OWNER_MAP_REVIEW_FILE, _map_review_from_decisions(answers, document, proposal))
+        state = approve(root, map_decisions=root / OWNER_MAP_REVIEW_FILE)
+        report = (state.get("artifacts") or {}).get("proposalReport") or report
+    # The owner recorded the review (in this file or an earlier one), so the receipt is recorded
+    # whether or not this file also answers scope questions. Approval still re-derives it from the
+    # live digests.
+    review = {
+        "status": "reviewed",
+        "reviewedBy": document["reviewer"],
+        "reviewedOn": document["decidedOn"],
+        "reportId": document["reportId"],
+        "reportSha256": document["reportSha256"],
+        "proposalSha256": document["proposalSha256"],
+        "source": "decisions.json",
+    }
+    state["proposalReview"] = dict(review)
+    derived = None
+    if scope_entries:
+        if state["stages"].get("module_map", {}).get("status") != COMPLETE:
+            raise WorkflowError("scope answers require an approved module map; approve the map first")
+        derived = _derive_scope(root, state, document, review, answers)
+        _write_json(root, SCOPE_FILE, derived["scope"])
+        state["artifacts"]["scope"] = SCOPE_FILE
+        state["decisions"].append({
+            "id": "scope-draft", "decision": "derived", "by": document["reviewer"],
+            "on": document["decidedOn"], "reportId": report.get("reportId"),
+            "approvedPaths": derived["scope"]["approvedPaths"],
+            "deferrals": derived["deferrals"],
+        })
+        _next(state, "Approve the scope derived from the owner's answers",
+              "python3 tools/acima.py adoption approve --root . --scope %s --reviewed-report-sha256 %s --reviewed-by \"%s\""
+              % (SCOPE_FILE, report.get("sha256"), document["reviewer"]),
+              approval=True, writes=True,
+              why="Answering is not approval. The approval command records the receipt bound to this report digest and these exact paths.",
+              done="The approval receipt is recorded against the current report and the chosen paths.")
+    if remediation_entries:
+        state["remediationAnswers"] = [
+            {**entry, "reportId": report.get("reportId"), "reviewer": document["reviewer"],
+             "decidedOn": document["decidedOn"]}
+            for entry in remediation_entries
+        ]
+        if not scope_entries:
+            accepted = [entry["id"] for entry in remediation_entries
+                        if entry["decision"] in {"accept", "modify"}]
+            choice = ("--choice selected " + " ".join("--selected %s" % item for item in accepted)
+                      if accepted else "--choice none")
+            _next(state, "Apply or defer the recorded remediation choices",
+                  "python3 tools/acima.py adoption remediate --root . %s --approved-by \"%s\""
+                  % (choice, document["reviewer"]),
+                  approval=True, writes=True,
+                  why="Remediation answers are intent; the plan digest, exact paths and confirmations still gate source changes.",
+                  done="The remediation decision is recorded and its authorized changes are verified.")
+    # The answered file beside the report is the canonical, committable record of these answers;
+    # it is outside the report digest, so answering never invalidates the review.
+    (directory / DECISIONS_FILE).write_text(
+        json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    entry = adoption_decisions.source_entry(document, path)
+    entry["ingestedAt"] = _now()
+    _queue_event(state, "decisions.ingested", reportId=report.get("reportId"),
+                 reviewer=document["reviewer"], answers=len(entries),
+                 fileSha256=entry["fileSha256"])
+    if supersedes:
+        for prior in sources:
+            if prior.get("fileSha256") == supersedes:
+                prior["status"] = "superseded"
+                prior["supersededBy"] = entry["fileSha256"]
+                prior["supersededAt"] = _now()
+    sources.append(entry)
+    state["decisionSources"] = sources
+    state["decisions"].append({
+        "id": "decisions-file", "decision": "ingested", "by": document["reviewer"],
+        "on": document["decidedOn"], "reportId": report.get("reportId"),
+        "fileSha256": entry["fileSha256"], "answers": len(entries),
+        "package": document.get("package"),
+    })
+    if not scope_entries and not remediation_entries:
+        scope_argument = ("--scope %s" % SCOPE_FILE if (root / SCOPE_FILE).is_file()
+                          else "--scope <scope-document>")
+        _next(state, "Approve the implementation scope for the reviewed report",
+              "python3 tools/acima.py adoption approve --root . %s --reviewed-report-sha256 %s --reviewed-by \"%s\""
+              % (scope_argument, report.get("sha256"), document["reviewer"]),
+              approval=True, writes=True,
+              why="The decisions file records intent; approval is a separate, digest-bound command.",
+              done="The approval receipt is recorded against this report.")
+    _save(root, state)
+    return {
+        "status": "applied",
+        "reportId": report.get("reportId"),
+        "reviewer": document["reviewer"],
+        "answers": len(entries),
+        "mapAnswers": len(map_entries),
+        "scopeDraft": SCOPE_FILE if derived else None,
+        "approvedPaths": derived["scope"]["approvedPaths"] if derived else [],
+        "deferrals": derived["deferrals"] if derived else [],
+        "remediationAnswers": len(remediation_entries),
+        "decisionSources": len(sources),
+        "next": state.get("next", {}),
+        "stages": state.get("stages", {}),
+    }
+
+
 def status(root: Path) -> dict:
     state = _load(root)
     summary = _summary(state)
@@ -2800,7 +3308,8 @@ def status(root: Path) -> dict:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="ACIMA end-to-end adoption workflow")
     sub = parser.add_subparsers(dest="command", required=True)
-    for name in ("start", "status", "approve", "apply", "continue", "remediate", "guidance"):
+    for name in ("start", "status", "approve", "apply", "continue", "remediate", "guidance",
+                 "decisions", "regenerate"):
         command = sub.add_parser(name)
         command.add_argument("--project", default=".")
         command.add_argument("--format", choices=("json", "text"), default="json")
@@ -2820,6 +3329,13 @@ def main(argv: list[str] | None = None) -> int:
                                  help="named owner who inspected the exact HTML proposal")
         elif name == "guidance":
             command.add_argument("--approve", action="store_true")
+        elif name == "decisions":
+            command.add_argument("--from", required=True, dest="source",
+                                 help="owner decisions JSON produced by the report or by conversation")
+        elif name == "regenerate":
+            command.add_argument("--reason", required=True,
+                                 help="why the report is being rebuilt; recorded in workflow state")
+            command.add_argument("--reviewer", default=None)
         elif name == "remediate":
             command.add_argument("--choice", choices=("none", "selected", "all"), required=True)
             command.add_argument("--maturity-choice", choices=("greenfield", "brownfield"), default=None)
@@ -2853,6 +3369,10 @@ def main(argv: list[str] | None = None) -> int:
             result = _apply(root, _load(root))
         elif args.command == "guidance":
             result = guidance(root, approve=args.approve)
+        elif args.command == "decisions":
+            result = decisions(root, Path(args.source))
+        elif args.command == "regenerate":
+            result = regenerate(root, reason=args.reason, reviewer=args.reviewer)
         elif args.command == "remediate":
             result = remediate(root, args.choice, selected=args.selected,
                                approved_by=args.approved_by, confirm=args.confirm,

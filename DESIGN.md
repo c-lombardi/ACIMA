@@ -8,9 +8,10 @@ document should be corrected.
 The report is the primary designed surface for a comprehensive ACIMA assessment or adoption
 proposal. It is generated from an evidence-grounded JSON model, written as static files, and opened
 directly from disk. There is no application server, build step, JavaScript bundle, or network
-dependency in the generated output. A small inline script, emitted only when a module map is present,
-adds search and status filtering to the module directory; without it the full directory remains
-readable in document order.
+dependency in the generated output. The only script is a small inline block: it adds search and status
+filtering to the module directory when a map is present, and in guided adoption it builds the answer
+file on the Plan and Files pages. Both are enhancements. Without script the directory stays in
+document order and both answer pages print a template instead of controls.
 
 ## Scope
 
@@ -20,6 +21,7 @@ This document covers:
 - the shared shell and page-level information hierarchy;
 - the local visual system: colour, typography, spacing, and layout;
 - reusable components and their behaviour;
+- the guided answer console, the answers file it builds, and the history tables;
 - responsive, print, and accessibility behaviour;
 - the content-truth and validation rules that constrain what the design may display.
 
@@ -32,7 +34,9 @@ a future hosted dashboard. Those are separate surfaces.
 |---|---|
 | `skills/acima-adoption/scripts/render_report.py` | Defines the six pages, section order, labels, default copy, status pills, tables, the module atlas and directory, and document shell. |
 | `skills/acima-adoption/assets/report-template.css` | Defines all visual tokens, layout, components, responsive rules, focus treatment, and print styles. |
-| `skills/acima-adoption/assets/report.schema.json` | Defines the normalized input contract for the report model. |
+| `skills/acima-adoption/assets/report.schema.json` | Defines the normalized input contract for the report model, including the guided `console` block. |
+| `skills/acima-adoption/assets/decisions.schema.json` | Defines the answers file a guided report page builds and the workflow ingests. |
+| `conformance/adoption_workflow.py` | Owns workflow state, the console's answer state, decisions ingestion, and the refresh that keeps history current. |
 | `skills/acima-adoption/references/90-html-outcome-reports.md` | Defines the information model, page questions, truth rules, and accessibility baseline. |
 | `report-data.json` (generated) | Preserves the structured model used to produce the six HTML pages. |
 
@@ -64,8 +68,9 @@ Five commitments shape the visual and interaction decisions:
   visible.
 - **One document, six questions.** Navigation is a reading path, not a feature menu.
 - **Local and offline.** No external fonts, images, scripts, analytics, or hosted assets.
-- **Static by design.** Interaction is navigation, disclosure, table scrolling, and the module
-  directory's optional search and status filters.
+- **Static files, local interaction.** Interaction is navigation, disclosure, table scrolling, the
+  module directory's optional search and status filters, and, in guided adoption, an answer console
+  that writes one local answers file and makes no network call.
 
 ## Readers and reading contexts
 
@@ -92,8 +97,8 @@ horizontal section strip on narrow screens.
 | `index.html` | Overview | Overview | The decision at a glance | Should we adopt ACIMA, and what value would it provide here? |
 | `proposal.html` | Proposal | What would change | The proposed architecture and what it would deliver | What would change, and what are the benefits and tradeoffs? |
 | `findings.html` | Findings | What we found | What is working and what needs attention | What is already good, what did the assessment find, and why does it matter? |
-| `files.html` | Files | Files and impact | Exactly what is proposed to change | Which files would be created, modified, removed, or only inspected? |
-| `plan.html` | Plan | Plan and decisions | What happens, in what order, and who decides | What happens next, and which decisions need an owner? |
+| `files.html` | Files | Files and impact | Exactly what is proposed to change | Which files would be created, modified, removed, or only inspected, and which may be approved? |
+| `plan.html` | Plan | Plan and decisions | What happens, in what order, and who decides | What happens next, which decisions need an owner, and where do I record my answers? |
 | `evidence.html` | Evidence | Evidence and limits | What was checked and what the results prove | What supports the conclusions, and what remains uncertain? |
 
 The rail labels are shorter than the page titles. This is intentional: the rail is a compact reading
@@ -230,9 +235,24 @@ The files page is the proposed-change inventory:
 The table comes before the counts. The reader sees the named paths and their purpose before seeing
 aggregate totals. The page does not turn inspection into an implied edit.
 
+In guided adoption the page ends with **“YOUR SCOPE” / “Choose the files this adoption may change.”**
+A fieldset lists every proposed path as a native checkbox, with a *Needed for <stage>* note where a
+stage requires that file. No box is ticked at generation; recorded answers are prefilled when the
+report is reopened. *Select all proposed files* is a secondary button the reader chooses, never a
+default. A reviewer name is required, and the controls build
+`acima-decisions-<reportId>-files.json`. The report review answer lives on the Plan page; the workflow
+merges the two page files by identity. With script off, the page prints a template for its path
+answers instead of controls.
+
 ### Plan (`plan.html`)
 
-The plan page is the execution and authority page:
+The plan page is the execution, authority, and answering page. It opens with **“Where the adoption
+stands”**: mode, current phase, current stage, a stage table (stage, status, what this proves or
+blocks, next action), the next action, and a note that the section refreshes after a recorded workflow
+change. That progress is rewritten in place; the reviewed decision content is not. After the status
+section, and the agent-guidance and remediation sections where those apply, the page reads in
+workflow order — what will happen, what needs a decision, how to answer, what approval would mean —
+and ends with the record:
 
 1. **“Plan.”** A stack of phase cards. Each card has a phase name and status pill, purpose,
    what comes before it, what it produces, how to verify it, when it is done, who approves it, and a
@@ -241,10 +261,26 @@ The plan page is the execution and authority page:
    what the decision blocks, what is needed before implementation, and a closed disclosure for other
    options, impact, and why an owner is needed. If no decisions are recorded, the empty state
    explicitly distinguishes “no decision needed” from incomplete discovery.
-3. **“What approval would mean.”** A short statement that reading the report does not authorize
+3. **“Answer this report” (guided adoption only).** The console pairs each stage with three native
+   options — *Implement*, *Defer*, *Decline* — and a “Needed for …” or “No file changes” note. A
+   reviewer name and a confirmation that all six pages were reviewed are required before the page
+   builds one `acima-decisions-<reportId>-plan.json` answers file; answering is never approval.
+   *Save answers file* downloads the file (with an in-place save where the browser supports it),
+   *Copy answers* copies it, and both fill the read-only paste-back area. Validation failures appear
+   in an alert that receives focus; a cancelled save writes nothing. When a page would change an
+   answer already recorded, it names that answer's file in `supersedes`, so re-saving one page
+   replaces exactly that file. With script off, the page prints a JSON template instead of controls.
+4. **“What approval would mean.”** A short statement that reading the report does not authorize
    implementation and that approval must identify a specific proposed scope.
+5. **“What is settled, and how it got there.”** Read-only history under one kicker: **Current
+   answers** (kind, answer, decision, reviewer, date), **Earlier answers** behind a native disclosure
+   with *Replaced* and *Out of date* states and the stored reason, and **Stage changes** (when, stage,
+   from, to, what changed). A closing note either confirms that every recorded evidence file exists
+   or names the ones that no longer do. Answer names use the same labels as the controls.
 
 The adoption plan describes proposed phases; a phase is not complete because it appears in the plan.
+History follows the plan and the answer controls so outcomes never precede the work they describe;
+automated reports carry the same history and no controls.
 
 ### Evidence (`evidence.html`)
 
@@ -325,6 +361,8 @@ display type its compact, industrial character.
 - Cards use 18–26px internal padding and thin border tops rather than heavy shadows.
 - The decision panel and next-step band are the only strongly elevated or inverted surfaces.
 - Rules and borders do the structural work; the palette stays quiet.
+- The console column is capped at 78ch, the report's reading measure; answer rows use 44px targets and
+  one statement per row.
 
 ## Layout behaviour
 
@@ -358,6 +396,12 @@ sideways.
 | Outcome row | `.stack > .row` | Title, description, why, practical change, classification, basis, verification, limitation, status pill. |
 | Phase card | `.phase` | Name and status, purpose, prerequisites, deliverable, verification, completion, approval, activities disclosure. |
 | Decision row | `.decision-row` | Plain-language question, context, recommendation, effort, consequence, blocked work, prerequisite, evidence gap/alternatives disclosure. |
+| Console identity strip | `.console-strip` | Reports with a console block: report id, answer version, answers in force, a decision-log link, and — in guided mode — the *Answer this report* link; automated reports replace that link with a sentence saying answers are recorded in one consolidated review. |
+| Answer console | `.answers` | A 78ch column of fieldsets: report review, stage choices, source fixes, scope paths. Native controls only. |
+| Answer row | `.answer-row` / `.choices` | Label and note on the left, aligned radio columns or a path checkbox on the right; stacks below 600px. |
+| Console button | `.button` | Primary save and secondary copy/select-all; 44px minimum height, two-tone focus ring, disabled state for unreadable data. |
+| Console message | `.answers-error` / `#answers-status` | Error in a focusable `role="alert"` region; save, copy and cancellation results in a polite live region. |
+| No-script template | `.template` | Read-only JSON or path template shown when script is off, so both answer pages stay answerable in chat. |
 | Table region | `.table-wrap` | Horizontal overflow container with `role="region"`, a caption reference, and `tabindex="0"`. |
 | Status pill | `.pill` | Uppercase monospace label; neutral, good, risk, or review treatment. |
 | Empty state | `.empty` | Shaded panel with an ochre left edge; explains absence rather than hiding it. |
@@ -391,16 +435,18 @@ New status vocabulary must be checked against this map and against the report's 
 - **Table overflow:** horizontal scrolling inside a focusable, labelled region. The module directory also bounds its vertical height so a thousand rows do not make the page unpaginated; its header stays sticky within that region.
 - **Keyboard:** skip link, visible two-tone focus ring, logical document order, no keyboard trap.
 - **Pointer:** no drag, timed, or gesture-dependent interaction. The atlas hover outline is decorative; the directory carries the same links and text.
-- **State:** the browser's open/closed state for disclosures is the only persistent state. A module query and selected status filter are ephemeral and reset on reload; a `#module-...` anchor reveals its row and opens the record.
+- **Answering (guided):** native radios and checkboxes record closed-set choices. *Save answers file* downloads one `acima-decisions-<reportId>-<page>.json` (in-place save only where the File System Access API exists on a secure context); *Copy answers* copies the same document. The page requires a reviewer name, the Plan page also requires the review confirmation, and the read-only paste-back area is filled only by these actions. Answers live in the file and in the form, never in browser storage. Reopening a page prefills answers recorded in the report snapshot, and a changed answer names the file it replaces in `supersedes`. The console cannot approve anything; approval remains a separate workflow command.
+- **State:** the browser's open/closed state for disclosures is the only other persistent state. A module query and selected status filter are ephemeral and reset on reload; a `#module-...` anchor reveals its row and opens the record.
 - **Module atlas:** the atlas is presentational and hidden from assistive technology. Each tile is a link to the matching directory row; the legend and directory carry the same status in text, so colour is never the only carrier.
 - **Search and filtering:** one labelled search field and a row of status filter buttons narrow the module directory. A polite live region reports the result count, and an explicit empty state appears when nothing matches. The controls are hidden until the inline script runs; without JavaScript, the full directory is still present and browser Find remains usable.
 - **Cross-page links:** contextual “Related” links connect findings, file impact, plan, and evidence. Anchors identify the destination section, such as `#file-changes`, `#adoption-plan`, and `#exceptions`.
 - **Reconciliation:** problems and check results are presented separately. A problem can carry an optional `rule` or `requirementRefs`; the report states how many problems have an explicit matching check result and how many remain unlinked.
 - **Print:** hides the shell and next-step CTA and keeps report components intact where possible.
 
-There are no data-entry forms, charts, scores, theme switchers, or asynchronous updates. The
-adoption path is a static position diagram, and the module atlas is a navigational index, not an
-interactive chart or score.
+The only data entry is the guided console's closed-set answers and reviewer name; there are no
+free-form fields, charts, scores, theme switchers, or asynchronous updates. The adoption path is a
+static position diagram, and the module atlas is a navigational index, not an interactive chart or
+score.
 
 ## Responsive and reflow rules
 
@@ -410,6 +456,7 @@ interactive chart or score.
 - Tables keep their column structure and scroll horizontally rather than collapsing into cards.
 - The module atlas wraps to the available width. The module directory keeps a bounded vertical area on desktop and mobile, with its header sticky inside that area.
 - The compact overview row stays two columns; full metric strips, such as the file counts, reduce from four to two below 900px.
+- The console keeps its 78ch measure; below 600px the stage choices sit in two columns under their label, and long paths wrap inside the row.
 - The report does not rely on hover to reveal meaning.
 - The layout is checked at 320 CSS pixels and 200% zoom; tables are the expected local scroll
   exception, not the page itself.
@@ -429,6 +476,9 @@ The report targets **WCAG 2.2 AA** for the content and interaction it provides.
   carry the same links and state in text.
 - The module directory search has a persistent label, status filters expose `aria-pressed`, and the
   result count is announced politely. Every row remains in the document without JavaScript.
+- Console fieldsets use legends, every radio, checkbox and the name field has a visible label, and the reviewer field is capped at 120 characters.
+- Validation failures render in a `role="alert"` region that receives focus; save, copy and cancellation results are announced through a polite live region.
+- The console identity strip and its *Answer this report* link give a keyboard path to the controls; without script, the template stays readable and selectable.
 - Status is conveyed by text as well as colour.
 - Core text and status pairs meet contrast targets enforced by the conformance suite.
 - Reduced-motion preferences disable transitions, animation, and smooth scrolling.
@@ -465,12 +515,20 @@ These rules are part of the design, not editorial polish:
   come from the model and its validation.
 - **No sensitive material.** Credentials, tokens, private keys, secrets, personal data, and
   unnecessary source excerpts do not belong in the report model or generated pages.
+- **An answer is not approval.** The console records intent in a local file; only the digest-bound
+  approval command authorizes implementation. A checked box never stands in for consent.
+- **Prefill is not consent.** A page shows recorded answers so the reader can revise them; seeing an
+  answer back is not a new decision, and saving re-states it without turning it into approval.
+- **History is a record, not a control.** Current, replaced and out-of-date answers are read-only;
+  they do not count toward the scope until the workflow ingests a file.
 
 Schema 1.1 enforces the decision-ready contract: 56 requirement dispositions, exact catalog
 fingerprint, evidence references, matching coverage counts, and a validated qualitative review. A
 review with unresolved requirements can render only with an `INSUFFICIENT_EVIDENCE` recommendation
-and an incomplete assessment status. Rendering the report is report-generation completion; it does
-not mark assessment, proposal, implementation, or conformance complete.
+and an incomplete assessment status. Schema 1.2 pins the refreshable progress sections so a workflow
+refresh cannot alter reviewed decision content; schema 1.3 adds the guided console block described
+below. Rendering the report is report-generation completion; it does not mark assessment, proposal,
+implementation, or conformance complete.
 
 ## Data and rendering contract
 
@@ -479,8 +537,8 @@ repository identity, recommendation, overview, value, architecture, coverage, st
 proposed changes, outcomes, phases, decisions, evidence, limitations, conformance, milestones,
 preservation, file impact, and provenance fields.
 
-Schema 1.0 remains accepted for legacy, non-decision-ready reports. New decision-ready reports use
-schema 1.1. The renderer:
+Schema 1.0 remains accepted for legacy, non-decision-ready reports. New reports are generated at
+schema 1.3. The renderer:
 
 1. validates required fields and supported enum values;
 2. revalidates the embedded qualitative review against the target repository and pinned catalog;
@@ -491,8 +549,22 @@ schema 1.1. The renderer:
    refreshes the progress sections of a report it already generated after every recorded change;
    a refresh that would alter reviewed decision content is refused and recorded as stale.
 
+Schema 1.3 adds the guided `console` block to the model: report id, answer generation, proposal
+digest, objectives with the paths each needs, the selectable paths, and the recorded answers used for
+prefill. Automated reports keep mode `full` and carry no controls.
+
 The generated report has no third-party runtime dependencies. It can be opened directly from the
 output directory and does not require a web server.
+
+Guided reports are answerable but not approving. The console writes one
+`acima-decisions-<reportId>-<page>.json` per page under decisions schema 1.0: report identity and
+proposal digest, reviewer, decision date, page name, closed-set answers, and an optional `supersedes`
+naming the earlier answers file it replaces. Answers from different pages merge by identity, so save
+order cannot change the resulting scope, and the review answer is required once per adoption. The
+workflow ingests the file with `acima adoption decisions --from <path>` and records the outcome in
+`acima/evidence/events.jsonl`; approval remains a separate, digest-bound command. The product
+rationale for this surface is in
+[`docs/product/adoption-console.md`](docs/product/adoption-console.md).
 
 ## Boundaries and non-goals
 
@@ -514,19 +586,22 @@ The incumbent system deliberately does **not** include:
 The current tables are intentionally native and horizontally scrollable on narrow screens. The
 current status pills are text-first: known values are mapped to reader language, then classified for
 colour. The current print treatment favors legibility and page-break avoidance over forcing every
-disclosure open. These are implementation choices of the incumbent system, not promises about a
-future interactive report.
+disclosure open. The guided console is a closed-set answer sheet, not free-form data entry, and it
+cannot approve anything. These are implementation choices of the incumbent system, not promises
+about a hosted product.
 
 ## Maintenance rules
 
 When changing the report:
 
-1. Update `render_report.py` for structure and labels, and `report-template.css` for visual change;
-2. keep `references/90-html-outcome-reports.md`, the schema, and this document aligned;
+1. Update `render_report.py` for structure and labels, `report-template.css` for visual change, and
+   `decisions.schema.json` with the workflow when an answer or history field changes;
+2. keep `references/90-html-outcome-reports.md`, both schemas, and this document aligned;
 3. preserve the six-page reading path and the one-`h1`-per-page structure;
 4. preserve the truth rules above, especially the distinction between coverage and conformance;
 5. run the HTML report conformance tests and the documentation contract tests;
-6. check the changed pages at desktop width, 320 CSS pixels, keyboard-only, and print;
+6. check the changed pages at desktop width, 320 CSS pixels, keyboard-only, print, and the console's
+   empty, error, cancelled-save and no-script states;
 7. treat screen-reader and real-browser zoom checks as manual release checks.
 
 The report's visual identity is local to this repository. Do not replace it with a generic component

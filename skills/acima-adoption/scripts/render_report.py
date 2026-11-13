@@ -155,6 +155,14 @@ def human_date(v):
         minutes=int(offset.total_seconds()//60); sign='+' if minutes>=0 else '-'; minutes=abs(minutes)
         zone='UTC' if minutes==0 else f'UTC{sign}{minutes//60:02d}:{minutes%60:02d}'
     return f'{date} at {hour}:{minute:02d} {ampm} ({zone})'
+def when_text(v):
+    return e(human_date(v)) if v else e('Date not recorded')
+
+
+def decision_status(v):
+    return {'superseded': 'Replaced', 'stale': 'Out of date'}.get(str(v), status_label(v))
+
+
 def time_tag(v):
     if v is None or v=='': return e('Date not recorded')
     return f'<time datetime="{e(v)}">{e(human_date(v))}</time>'
@@ -553,6 +561,34 @@ def plain_language_gaps_section(d):
             f'The <a href="findings.html#findings">Findings page</a> keeps the detailed evidence.</p>'
             f'<ol class="gap-list">{"".join(cards)}</ol>{more}</section>')
 
+def d016_allowlist_section(d):
+    proposal=d.get('d016Allowlist') or {}
+    if not proposal:
+        return ''
+    candidates=arr(proposal.get('candidates'))
+    rows=[(item.get('name'),item.get('path'),item.get('line'),item.get('evidence')) for item in candidates if isinstance(item,dict)]
+    proposed=arr(proposal.get('proposedValue'))
+    snippet=json.dumps({'partialHelpers':proposed},indent=2,ensure_ascii=False)
+    current=proposal.get('currentExecution') or 'not executed'
+    reason=proposal.get('reason') or 'The enforcer did not report why this check did not run.'
+    approval=proposal.get('approval') or 'The repository owner must approve this configuration change before it is applied.'
+    verification=proposal.get('verification') or 'After approval, run the enforcer and confirm the check reports executed: true.'
+    candidate_table=table(['Helper candidate','File','Line','Evidence'],rows,
+        'No helper names were discovered by this assessment. Confirm that the repository has no partial-application helpers, or add their exact names before approving.',
+        caption='Partial-application helper candidates')
+    empty_note=('The proposed value is an explicit empty list. It records an owner decision that no partial-application helper is used. '
+                if not proposed else '')
+    return (f'<section id="d016-allowlist"><small>COMPLETE THE AUTOMATED CHECK SET</small>'
+            f'<h2>One configuration decision is still blocking a check</h2>'
+            f'<p class="lead">The partial-application check is not running because the repository has not declared which helper names it should inspect. '
+            f'Without that declaration the run cannot reach the full automated rule set; this is a configuration gap, not a clean result.</p>'
+            f'<p class="reconciliation"><b>Current state:</b> {e(status_label(current))}. {e(reason)}</p>'
+            f'{candidate_table}'
+            f'<p><b>Proposed configuration</b></p><pre><code>{e(snippet)}</code></pre>'
+            f'<p>{e(empty_note)}<b>Owner approval:</b> {e(approval)}</p>'
+            f'<p><b>After approval:</b> {e(verification)}</p>'
+            f'<p class="note">This changes which helper calls the check inspects. It does not waive a finding or make an unlisted helper safe. Internal reference: {e(proposal.get("rule") or "D016")}.</p></section>')
+
 def module_map_sections(d):
     mm=d.get('moduleMap') or {}
     authority=mm.get('authoritativeMap') or {}
@@ -735,9 +771,394 @@ def module_map_overview(d):
         count_label='PARTS WRITTEN DOWN'
     return f'<section id="module-ownership"><small>HOW THE PRODUCT IS DIVIDED</small><h2>Can the checks run?</h2>{body}<div class="metrics compact">{metric("WRITTEN-DOWN MAP",status_label(status))}{metric(count_label,count_value)}{metric("CAN CHECKS RUN?",status_label(gate.get("status") or "blocked"),f"{len(rules)} checks need an agreed map" if rules else "No checks need an agreed map")}</div><p class="cross-links"><span>Related:</span> <a href="proposal.html#module-map">Map of the product</a> <a href="proposal.html#map-decisions">Decisions</a> <a href="evidence.html#ownership-blocked">Checks needing an agreed map</a></p></section>'
 
+OBJECTIVE_LABELS={
+    'assessment':'Assessment','local-enforcement':'Local enforcement','baseline-waivers':'Baseline waivers',
+    'ci-enforcement':'CI enforcement','developer-handoff':'Developer handoff','agent-guidance':'AI agent guidance',
+    'adoption-notifications':'Adoption notifications','source-remediation':'Source remediation',
+    'full-conformance':'Full conformance','communication-governance':'Communication governance',
+}
+KIND_LABELS={
+    'report-review':'Report review','module':'Part of the product','module-path':'File ownership',
+    'recommendation':'Recommendation','scope-objective':'Stage','scope-path':'File','remediation':'Remediation',
+}
+CONSOLE_JS="""
+<script>
+(function(){
+  var data=document.getElementById('acima-console');
+  if(!data){return;}
+  var catalog={},state={};
+  try{catalog=JSON.parse(data.textContent||'{}')}catch(e){catalog={}}
+  var stateNode=document.getElementById('acima-console-state');
+  try{state=stateNode?JSON.parse(stateNode.textContent||'{}'):{}}catch(e){state={}}
+  var page=data.getAttribute('data-page')||'plan';
+  var error=document.getElementById('answers-error');
+  var text=document.getElementById('answers-text');
+  var status=document.getElementById('answers-status');
+  var packageChoice=document.getElementById('answers-package');
+  function show(message,focus){
+    if(!error){return}
+    error.textContent=message; error.hidden=false; if(focus){error.focus()}
+  }
+  if(!catalog.reportId){
+    show('This report\\'s answer data could not be read. Regenerate the report and try again.',false);
+    Array.prototype.forEach.call(document.querySelectorAll('#answers-save,#answers-copy,#use-recommended'),function(button){
+      button.disabled=true;
+    });
+    return;
+  }
+  var inForce={};
+  (state.answers||[]).forEach(function(a){
+    inForce[a.kind+':'+a.id]={decision:a.decision,source:a.sourceSha256||''};
+  });
+  function radios(name){return Array.prototype.slice.call(document.querySelectorAll('input[name="'+name+'"]'))}
+  function checkedValue(name){var found=radios(name).filter(function(r){return r.checked});return found.length?found[0].value:''}
+  function markCustom(){if(packageChoice){packageChoice.value='custom'}}
+  (catalog.objectives||[]).forEach(function(o){
+    var prior=inForce['scope-objective:'+o.id];
+    radios('objective:'+o.id).forEach(function(r){if(prior&&r.value===prior.decision){r.checked=true}});
+  });
+  (catalog.paths||[]).forEach(function(p){
+    var prior=inForce['scope-path:'+p.path];
+    var box=document.querySelector('input[name="path:'+p.path+'"]');
+    if(box&&prior&&prior.decision!=='reject'){box.checked=true}
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('input[name^="objective:"],input[name^="path:"],input[name^="remediation:"]'),function(input){
+    input.addEventListener('change',markCustom);
+  });
+  var reviewer=document.getElementById('reviewer-name');
+  if(reviewer&&!reviewer.value&&state.reviewer){reviewer.value=state.reviewer}
+  var recommended=document.getElementById('use-recommended');
+  if(recommended){recommended.addEventListener('click',function(){
+    Array.prototype.forEach.call(document.querySelectorAll('input[name^="path:"]'),function(box){box.checked=true});
+    if(packageChoice){packageChoice.value='recommended'}
+    if(status){status.textContent='All proposed files are selected. Unticking one records a custom scope.'}
+  })}
+  function pageKinds(){return page==='files'?['scope-path']:['report-review','scope-objective','remediation']}
+  function sourceKinds(hash){
+    var kinds={};
+    (state.answers||[]).forEach(function(a){if(a.sourceSha256===hash){kinds[a.kind]=true}});
+    return Object.keys(kinds);
+  }
+  function collect(){
+    var problems=[];
+    var who=reviewer?reviewer.value.trim().replace(/\\s+/g,' '):'';
+    if(!who){problems.push('Add your name so the file records who answered.')}
+    var review=document.getElementById('reviewed-all');
+    if(page==='plan'&&!(review&&review.checked)){problems.push('Confirm you have reviewed all six pages.')}
+    var answers=[];
+    if(page==='plan'&&review&&review.checked){answers.push({kind:'report-review',id:'all-pages',decision:'accept'})}
+    (catalog.objectives||[]).forEach(function(o){
+      var value=checkedValue('objective:'+o.id);
+      if(value){answers.push({kind:'scope-objective',id:o.id,decision:value})}
+    });
+    if(page==='files'){
+      (catalog.paths||[]).forEach(function(p){
+        var box=document.querySelector('input[name="path:'+p.path+'"]');
+        if(box&&box.checked){answers.push({kind:'scope-path',id:p.path,decision:'accept'})}
+      });
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('input[name^="remediation:"]'),function(input){
+      if(input.checked){answers.push({kind:'remediation',id:input.name.slice('remediation:'.length),decision:input.value})}
+    });
+    return {problems:problems,answers:answers,reviewer:who};
+  }
+  function build(){
+    var result=collect();
+    if(result.problems.length){return {problems:result.problems}}
+    if(page==='files'&&!result.answers.length){
+      return {problems:['Tick at least one file, or save the Plan page to record the review.']}
+    }
+    var changed={},sources={};
+    result.answers.forEach(function(a){
+      var prior=inForce[a.kind+':'+a.id];
+      if(prior&&prior.decision!==a.decision){
+        changed[a.kind+':'+a.id]=true;
+        if(prior.source){sources[prior.source]=true}
+      }
+    });
+    var supersedes=null;
+    var hashes=Object.keys(sources);
+    if(Object.keys(changed).length){
+      if(!hashes.length){
+        return {problems:['This report does not record which answers file holds the decision being changed. Regenerate the report, then revise the answer.']}
+      }
+      if(hashes.length>1){
+        return {problems:['These answers change decisions recorded in more than one answers file. Supersede them one file at a time, or ask the agent to combine them.']}
+      }
+      supersedes=hashes[0];
+      var allowed=pageKinds();
+      var extra=sourceKinds(supersedes).filter(function(kind){return allowed.indexOf(kind)<0});
+      if(extra.length){
+        return {problems:['The answers file being replaced also records choices this page does not save. Ask the agent to supersede it so those choices are kept.']}
+      }
+    }
+    var today=new Date();
+    today.setMinutes(today.getMinutes()-today.getTimezoneOffset());
+    return {document:{
+      schemaVersion:'1.0',kind:'acima-adoption-decisions',reportId:catalog.reportId,
+      proposalSha256:catalog.proposalSha256,reportGeneratedAt:catalog.generatedAt,
+      reviewer:result.reviewer,decidedOn:today.toISOString().slice(0,10),source:'html-report',
+      package:(packageChoice&&packageChoice.value)||'custom',page:page,supersedes:supersedes,
+      answers:result.answers
+    }};
+  }
+  function download(name,body){
+    var link=document.createElement('a');
+    link.href=URL.createObjectURL(new Blob([body],{type:'application/json'}));
+    link.download=name; document.body.appendChild(link); link.click(); link.remove();
+  }
+  function saved(name,count){
+    if(status){status.textContent='Created '+name+' with '+count+' answers. Answering is not approval: the workflow prints the approval command after checking the file.'}
+  }
+  function save(){
+    var built=build();
+    if(built.problems){show('Nothing was saved. '+built.problems.join(' '),true);return}
+    if(error){error.hidden=true}
+    var body=JSON.stringify(built.document,null,2)+String.fromCharCode(10);
+    if(text){text.value=body}
+    var name='acima-decisions-'+catalog.reportId+'-'+page+'.json';
+    var count=built.document.answers.length;
+    if(window.showSaveFilePicker){
+      window.showSaveFilePicker({suggestedName:name,types:[{description:'ACIMA decisions',accept:{'application/json':['.json']}}]})
+        .then(function(handle){return handle.createWritable()})
+        .then(function(writable){return writable.write(body).then(function(){return writable.close()})})
+        .then(function(){saved(name,count)},function(failure){
+          if(failure&&failure.name==='AbortError'){
+            if(status){status.textContent='Save cancelled. Nothing was written; use Copy answers to paste them into the conversation instead.'}
+            return;
+          }
+          download(name,body); saved(name,count);
+        });
+    } else {download(name,body); saved(name,count)}
+  }
+  var saveButton=document.getElementById('answers-save');
+  if(saveButton){saveButton.addEventListener('click',save)}
+  var copyButton=document.getElementById('answers-copy');
+  if(copyButton){copyButton.addEventListener('click',function(){
+    var built=build();
+    if(built.problems){show('Nothing was copied. '+built.problems.join(' '),true);return}
+    if(error){error.hidden=true}
+    var body=JSON.stringify(built.document,null,2)+String.fromCharCode(10);
+    if(text){text.value=body}
+    function selected(){
+      if(text){text.focus(); text.select()}
+      if(status){status.textContent='This browser blocked the clipboard. The answers below are selected; press Ctrl+C to copy them.'}
+    }
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(body).then(function(){
+        if(status){status.textContent='Copied. Paste it into the conversation and the agent will write the answers file.'}
+      },selected);
+    } else {selected()}
+  })}
+})();
+</script>"""
+
+
+def _json(value):
+    import json as _json_module
+    return _json_module.dumps(value, ensure_ascii=False).replace('</', '<\\/')
+
+
+def console_state_json(d):
+    wf=d.get('adoptionWorkflow') or {}
+    console=wf.get('consoleState') or {}
+    return _json({'answers':console.get('answers') or [],'reviewer':console.get('reviewer') or '',
+                  'remediation':console.get('remediation') or {}})
+
+
+def console_strip(d,file):
+    console=d.get('console') or {}
+    if not console.get('reportId'):
+        return ''
+    wf=d.get('adoptionWorkflow') or {}
+    log=[x for x in arr(wf.get('decisionLog')) if isinstance(x,dict) and x.get('status')=='in force']
+    answered=len({(x.get('kind'),x.get('id')) for x in log})
+    mode=console.get('mode') or 'guided'
+    answer_link=('<a href="plan.html#owner-answers">Answer this report</a>' if mode!='full' else
+                 '<span>Automated adoption records answers in one consolidated review, not on this page.</span>')
+    return (f'<p class="console-strip"><small>REPORT IDENTITY</small> <code>{e(console.get("reportId"))}</code> '
+            f'<span aria-hidden="true">&middot;</span> version {e(int(console.get("generation") or 0) + 1)} '
+            f'<span aria-hidden="true">&middot;</span> {(str(answered) + " answers in force") if answered else "No answers in force yet"} '
+            f'<span aria-hidden="true">&middot;</span> <a href="plan.html#decision-log">Decision log</a> '
+            f'<span aria-hidden="true">&middot;</span> {answer_link}</p>')
+
+
+def answer_label(kind, identifier):
+    """History names the same answer the page names: stage labels, not raw ids."""
+    if kind=='scope-objective':
+        return OBJECTIVE_LABELS.get(identifier,identifier)
+    if kind=='report-review' and identifier=='all-pages':
+        return 'All pages'
+    return identifier
+
+
+def stage_label(value):
+    text=str(value or '').replace('_',' ').replace('-',' ').strip()
+    return text[:1].upper()+text[1:] if text else text
+
+
+def workflow_history(d):
+    wf=d.get('adoptionWorkflow') or {}
+    since=wf.get('sinceReview') or {}
+    banner=''
+    if since.get('status')=='changed':
+        banner=f'<p class="reconciliation"><b>Changed since your review:</b> {e(", ".join(str(x) for x in arr(since.get("changed"))))}. Read the pages again before approving; your recorded review no longer describes everything here.</p>'
+    elif since.get('status')=='current':
+        banner=f'<p class="note">Reviewed by {e(since.get("reviewedBy") or "the owner")} on {e(since.get("reviewedOn") or "a recorded date")}; nothing that was reviewed has changed since.</p>'
+    log=[x for x in arr(wf.get('progressLog')) if isinstance(x,dict)]
+    timeline=table(['When','Stage','From','To','What changed'],
+                   [(when_text(x.get('at')),stage_label(x.get('stage')),status_label(x.get('from')),status_label(x.get('to')),x.get('detail')) for x in log[-25:]],
+                   'No stage changes are recorded yet.',caption='Stage changes',row_headers=True) if log else ''
+    entries=[x for x in arr(wf.get('decisionLog')) if isinstance(x,dict)]
+    current=[x for x in entries if x.get('status')=='in force']
+    history=[x for x in entries if x.get('status')!='in force']
+    current_table=table(['Kind','Answer','Decision','Reviewer','Date'],
+                        [(KIND_LABELS.get(x.get('kind'),x.get('kind')),answer_label(x.get('kind'),x.get('id')),status_label(x.get('decision')),x.get('reviewer'),x.get('decidedOn')) for x in current],
+                        'No answers recorded yet. Nothing here is approved.',caption='Current answers',row_headers=True)
+    history_table=''
+    if history:
+        history_table=('<details><summary>Earlier answers that no longer apply ('+str(len(history))+')</summary>'
+                       +table(['Kind','Answer','Decision','Status','Reason'],
+                              [(KIND_LABELS.get(x.get('kind'),x.get('kind')),answer_label(x.get('kind'),x.get('id')),status_label(x.get('decision')),decision_status(x.get('status')),x.get('staleReason') or x.get('supersededBy')) for x in history],
+                              'No earlier answers.',caption='Earlier answers',row_headers=True)+'</details>')
+    integrity=wf.get('evidenceIntegrity') or {}
+    missing=arr(integrity.get('missing'))
+    if missing:
+        integrity_html=('<p class="reconciliation"><b>Recorded but missing:</b> '
+                        +', '.join(e(x.get('name'))+' ('+e(x.get('path'))+')' for x in missing)
+                        +'. The stage that relies on it is not complete.</p>')
+    elif integrity:
+        integrity_html=f'<p class="note">All {e(integrity.get("checked"))} recorded evidence files exist.</p>'
+    else:
+        integrity_html=''
+    return (f'<section id="decision-log"><small>HISTORY</small><h2>What is settled, and how it got there</h2>{banner}'
+            f'<h3>Current answers</h3>{current_table}{history_table}'
+            f'<h3>Stage changes</h3>{timeline}'
+            f'<h3>Evidence files</h3>{integrity_html}'
+            f'<p class="note">Earlier answers are shown for context only. They are not controls and do not count toward the current scope.</p></section>')
+
+
+def owner_answers(d):
+    console=d.get('console') or {}
+    if (console.get('mode') or 'guided')=='full' or not console.get('reportId'):
+        return ''
+    remediation=(d.get('adoptionWorkflow') or {}).get('consoleState',{}).get('remediation') or {}
+    objectives=''
+    for item in arr(console.get('objectives')):
+        identifier=item.get('id'); label=OBJECTIVE_LABELS.get(identifier,identifier)
+        required=arr(item.get('requiredPaths'))
+        needs=(f'<span class="required-note">Needs {len(required)} file{"s" if len(required)!=1 else ""} chosen on the Files page</span>' if required else '<span class="required-note">No file changes</span>')
+        options=''.join(f'<label><input type="radio" name="objective:{e(identifier)}" value="{value}"> {label_text}</label>' for value,label_text in (('accept','Implement'),('defer','Defer'),('reject','Decline')))
+        objectives+=f'<div class="answer-row"><div><b>{e(label)}</b> {needs}</div><div class="choices">{options}</div></div>'
+    remediation_html=''
+    if remediation.get('available'):
+        rows=''.join(
+            f'<div class="answer-row"><div><b>{e(item.get("id"))}</b> {e(item.get("title"))} <span class="required-note">Suggested fix: {e(item.get("recommendation"))}</span></div>'
+            f'<div class="choices"><label><input type="radio" name="remediation:{e(item.get("id"))}" value="accept"> Fix now</label>'
+            f'<label><input type="radio" name="remediation:{e(item.get("id"))}" value="defer"> Defer</label></div></div>'
+            for item in arr(remediation.get('items')))
+        remediation_html=(f'<fieldset><legend>Source fixes</legend><p class="note">Fix now still requires the remediation plan digest, its exact paths and its confirmations.</p>{rows}</fieldset>')
+    template=('{"schemaVersion":"1.0","kind":"acima-adoption-decisions","reportId":"'+str(console.get('reportId'))+'",'
+              '"reviewer":"<your name>","decidedOn":"<YYYY-MM-DD>","source":"html-report","package":"custom",'
+              '"answers":[{"kind":"report-review","id":"all-pages","decision":"accept"},'
+              '{"kind":"scope-objective","id":"<stage id>","decision":"accept"},'
+              '{"kind":"scope-path","id":"<file path>","decision":"accept"}]}')
+    return (f'<section id="owner-answers" class="answers"><small>YOUR ANSWERS</small><h2>Answer this report</h2>'
+            f'<p class="note">Answering is not approval and changes nothing in the repository. These controls build one answers file; the workflow checks it and then prints the approval command.</p>'
+            f'<div id="answers-error" class="answers-error" role="alert" tabindex="-1" hidden></div>'
+            f'<label class="field">Your name <input id="reviewer-name" name="reviewer" autocomplete="off" maxlength="120" required></label>'
+            f'<fieldset><legend>Report review</legend><label><input type="checkbox" id="reviewed-all"> I reviewed all six pages of this report</label></fieldset>'
+            f'<fieldset><legend>Which stages may be implemented?</legend><p class="note">Leave every stage unanswered to record the review without choosing work.</p>{objectives}</fieldset>'
+            f'{remediation_html}'
+            f'<input type="hidden" id="answers-package" value="custom">'
+            f'<div class="actions"><button type="button" class="button" id="answers-save">Save answers file</button>'
+            f'<button type="button" class="button secondary" id="answers-copy">Copy answers</button></div>'
+            f'<label class="field">Answers to paste back <textarea id="answers-text" rows="8" readonly placeholder="Save or copy builds the answers file here."></textarea></label>'
+            f'<p id="answers-status" class="note" aria-live="polite"></p>'
+            f'<noscript><p class="note">JavaScript is off, so Save and Copy cannot build the file. Copy this template into the conversation, fill in your decisions, and the agent will write the answers file.</p><pre class="template">{e(template)}</pre></noscript>'
+            f'<script type="application/json" id="acima-console" data-page="plan">{_json(console)}</script>'
+            f'<script type="application/json" id="acima-console-state">{console_state_json(d)}</script>'
+            f'{CONSOLE_JS}</section>')
+
+
+def scope_paths(d):
+    console=d.get('console') or {}
+    if (console.get('mode') or 'guided')=='full' or not console.get('reportId'):
+        return ''
+    paths=arr(console.get('paths'))
+    if not paths:
+        return ''
+    def path_row(item):
+        required=arr(item.get("requiredBy"))
+        # One statement per row: the note names the stage that needs this file.
+        needed=(f'<span class="required-note">Needed for {e(", ".join(OBJECTIVE_LABELS.get(x,x) for x in required))}</span>'
+                if required else '')
+        return (f'<div class="answer-row"><label><input type="checkbox" name="path:{e(item.get("path"))}"> '
+                f'<code>{e(item.get("path"))}</code></label>{needed}</div>')
+    rows=''.join(path_row(item) for item in paths)
+    files_template=('{"schemaVersion":"1.0","kind":"acima-adoption-decisions","reportId":"'+str(console.get('reportId'))+'",'
+                    '"reviewer":"<your name>","decidedOn":"<YYYY-MM-DD>","source":"html-report","package":"custom",'
+                    '"page":"files","answers":[{"kind":"scope-path","id":"<file path>","decision":"accept"}]}')
+    return (f'<section id="scope-paths" class="answers"><small>YOUR SCOPE</small><h2>Choose the files this adoption may change</h2>'
+            f'<p class="note">A file is selected only when you tick it. Leaving a required file unticked defers its stage rather than producing an incomplete approval.</p>'
+            f'<div class="actions"><button type="button" class="button secondary" id="use-recommended">Select all proposed files</button></div>'
+            f'<fieldset><legend class="visually-hidden">Proposed files</legend>{rows}</fieldset>'
+            f'<label class="field">Your name <input id="reviewer-name" name="reviewer" autocomplete="off" maxlength="120"></label>'
+            f'<div id="answers-error" class="answers-error" role="alert" tabindex="-1" hidden></div>'
+            f'<input type="hidden" id="answers-package" value="custom">'
+            f'<div class="actions"><button type="button" class="button" id="answers-save">Save answers file</button>'
+            f'<button type="button" class="button secondary" id="answers-copy">Copy answers</button></div>'
+            f'<label class="field">Answers to paste back <textarea id="answers-text" rows="8" readonly placeholder="Save or copy builds the answers file here."></textarea></label>'
+            f'<p id="answers-status" class="note" aria-live="polite"></p>'
+            f'<p class="note">The review answer lives on the Plan page. Save that page too, or let the workflow merge both files.</p>'
+            f'<noscript><p class="note">JavaScript is off, so Save and Copy cannot build the file. Copy this template into the conversation, list every file you want in it, and the agent will write the answers file.</p>'
+            f'<pre class="template">{e(files_template)}</pre></noscript>'
+            f'<script type="application/json" id="acima-console" data-page="files">{_json(console)}</script>'
+            f'<script type="application/json" id="acima-console-state">{console_state_json(d)}</script>'
+            f'{CONSOLE_JS}</section>')
+
+
+def validate_console(d):
+    p=[]
+    console=d.get('console')
+    if console is None:
+        return p
+    if not isinstance(console,dict):
+        return ['console must be an object when supplied.']
+    if not console:
+        return p
+    if not re.fullmatch(r'[a-f0-9]{20}',str(console.get('reportId') or '')):
+        p.append('console.reportId must be a 20-hex report identity.')
+    if console.get('mode') not in ('guided','full'):
+        p.append('console.mode must be guided or full.')
+    seen=set()
+    for item in arr(console.get('objectives')):
+        identifier=item.get('id') if isinstance(item,dict) else None
+        if not identifier or identifier in seen:
+            p.append('console.objectives must list unique objective ids.')
+            continue
+        seen.add(identifier)
+        for item_path in arr(item.get('requiredPaths')):
+            if (not isinstance(item_path,str) or not item_path or Path(item_path).is_absolute()
+                    or '..' in Path(item_path).parts):
+                p.append('console required paths must be repository-relative: %s' % item_path)
+    known={x.get('path') for x in arr(console.get('paths')) if isinstance(x,dict)}
+    for item in arr(console.get('objectives')):
+        for item_path in arr(item.get('requiredPaths')) if isinstance(item,dict) else []:
+            if item_path not in known:
+                p.append('console path %s is required but not listed as selectable.' % item_path)
+    for item in arr(console.get('paths')):
+        if not isinstance(item,dict) or not isinstance(item.get('path'),str):
+            p.append('console.paths entries need a repository-relative path.')
+            continue
+        if Path(item['path']).is_absolute() or '..' in Path(item['path']).parts:
+            p.append('console path %s must not escape the repository.' % item['path'])
+    return p
+
+
 def shell(data,file,title,subtitle,body):
     repo=e((data.get('repository') or {}).get('name') or 'Repository assessment'); active=''.join(f'<a href="{href}" class="{"active" if href==file else ""}"'+(' aria-current="page"' if href==file else '')+f'>{label}</a>' for href,label in NAV)
-    return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="description" content="Plain-language ACIMA assessment for {repo}"><title>{e(title)} &middot; {repo} &middot; ACIMA</title><link rel="stylesheet" href="assets/report.css"></head><body><a class="skip" href="#main">Skip to report content</a><header><a class="brand" href="index.html" aria-label="ACIMA Architecture Outcome Report"><b aria-hidden="true">A</b><span>ACIMA<small>ARCHITECTURE OUTCOME REPORT</small></span></a><div class="meta"><span>{repo}</span><span>{time_tag(data.get('generatedAt'))}</span></div></header><div class="layout"><aside aria-label="Report navigation"><small>REPORT SECTIONS</small><nav aria-label="Report sections">{active}</nav><p class="rail-note">A practical guide to what ACIMA found, what it proposes, and what the proposed work would deliver.</p></aside><main id="main" tabindex="-1" aria-labelledby="page-title"><div class="page-head"><small>{repo} / {e(PAGES[file])}</small><h1 id="page-title">{e(title)}</h1><p>{e(subtitle)}</p></div>{body}<footer>ACIMA &middot; Architecture that enforces itself. <span>Generated from the accompanying evidence model.</span></footer></main></div></body></html>'''
+    return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="description" content="Plain-language ACIMA assessment for {repo}"><title>{e(title)} &middot; {repo} &middot; ACIMA</title><link rel="stylesheet" href="assets/report.css"></head><body><a class="skip" href="#main">Skip to report content</a><header><a class="brand" href="index.html" aria-label="ACIMA Architecture Outcome Report"><b aria-hidden="true">A</b><span>ACIMA<small>ARCHITECTURE OUTCOME REPORT</small></span></a><div class="meta"><span>{repo}</span><span>{time_tag(data.get('generatedAt'))}</span></div></header><div class="layout"><aside aria-label="Report navigation"><small>REPORT SECTIONS</small><nav aria-label="Report sections">{active}</nav><p class="rail-note">A practical guide to what ACIMA found, what it proposes, and what the proposed work would deliver.</p></aside><main id="main" tabindex="-1" aria-labelledby="page-title"><div class="page-head"><small>{repo} / {e(PAGES[file])}</small><h1 id="page-title">{e(title)}</h1><p>{e(subtitle)}</p></div>{console_strip(data,file)}{body}<footer>ACIMA &middot; Architecture that enforces itself. <span>Generated from the accompanying evidence model.</span></footer></main></div></body></html>'''
 def render(d):
     repo=d.get('repository') or {}; rec=d.get('recommendation') or {}; ov=d.get('overview') or {}; val=d.get('value') or {}; arch=d.get('architecture') or {}; cov=d.get('coverage') or {}; gate=d.get('ownershipGate') or {}
     strengths=arr(d.get('strengths')); findings=arr(d.get('findings')); changes=arr(d.get('proposedChanges')); outcomes=arr(d.get('outcomes')); phases=arr((d.get('roadmap') or {}).get('phases')) or arr(d.get('phases')); decisions=arr(d.get('decisions')); evidence=arr(d.get('evidence')); limits=arr(d.get('limitations'))
@@ -775,7 +1196,7 @@ def render(d):
         else:
             mechanism_rows.append((str(item),'','Identified by read-only repository assessment.'))
     existing_section=f'<section id="existing-architecture"><small>WHAT TO KEEP</small><h2>What already works and should stay</h2><p class="lead">{e(existing_enforcement.get("summary") or existing_arch.get("note") or "The assessment did not establish existing architecture assets beyond the evidence listed below.")}</p>{table(["Existing asset","Assessment"],existing_asset_rows,"No existing architecture file paths were identified.",caption="Existing architecture and enforcement assets")}{table(["Existing enforcement","Path","Observed purpose or status"],mechanism_rows,"No existing executable enforcement mechanism was established by the assessment.",caption="Existing enforcement mechanisms")}</section>'
-    pages['proposal.html']=f'''{adoption_path(d)}<section><small>TODAY</small><h2>How the repository works today</h2><p class="lead">{e(arch.get('currentState'))}</p><p class="cross-links"><span>Related:</span> <a href="findings.html#findings">Findings</a> <a href="files.html#file-changes">Proposed file changes</a> <a href="plan.html#adoption-plan">Plan</a></p><div class="cols"><div><h3>Already working</h3>{bullets(strengths)}</div><div><h3>What would be added</h3>{bullets(arr(val.get('adds')))}</div></div></section>{existing_section}<section><small>WHAT WOULD CHANGE</small><h2>What would change</h2><p>{e(arch.get('proposedState'))}</p>{table(['Capability','What changes','What it makes possible'],[(x.get('capability'),x.get('change'),x.get('outcome')) for x in arr(arch.get('targetCapabilities'))],caption='Proposed capabilities',row_headers=True)}</section>{plain_language_gaps_section(d)}{module_map_sections(d)}<section><small>WHAT GETS BETTER</small><h2>What should become easier or safer</h2><div class="stack">{outcome_cards}</div></section><section><small>TRADEOFFS</small><h2>Costs, risks, and limits</h2><div class="cols"><div><h3>Cost and effort</h3>{bullets(arr(val.get('costs')))}</div><div><h3>Risks and mitigations</h3>{bullets(arr(val.get('risks')))}</div></div><h3>What this work will not do</h3>{bullets(limits)}</section>'''
+    pages['proposal.html']=f'''{adoption_path(d)}<section><small>TODAY</small><h2>How the repository works today</h2><p class="lead">{e(arch.get('currentState'))}</p><p class="cross-links"><span>Related:</span> <a href="findings.html#findings">Findings</a> <a href="files.html#file-changes">Proposed file changes</a> <a href="plan.html#adoption-plan">Plan</a></p><div class="cols"><div><h3>Already working</h3>{bullets(strengths)}</div><div><h3>What would be added</h3>{bullets(arr(val.get('adds')))}</div></div></section>{existing_section}<section><small>WHAT WOULD CHANGE</small><h2>What would change</h2><p>{e(arch.get('proposedState'))}</p>{table(['Capability','What changes','What it makes possible'],[(x.get('capability'),x.get('change'),x.get('outcome')) for x in arr(arch.get('targetCapabilities'))],caption='Proposed capabilities',row_headers=True)}</section>{d016_allowlist_section(d)}{plain_language_gaps_section(d)}{module_map_sections(d)}<section><small>WHAT GETS BETTER</small><h2>What should become easier or safer</h2><div class="stack">{outcome_cards}</div></section><section><small>TRADEOFFS</small><h2>Costs, risks, and limits</h2><div class="cols"><div><h3>Cost and effort</h3>{bullets(arr(val.get('costs')))}</div><div><h3>Risks and mitigations</h3>{bullets(arr(val.get('risks')))}</div></div><h3>What this work will not do</h3>{bullets(limits)}</section>'''
     pages['findings.html']=f'''<section id="strengths"><small>WHAT IS ALREADY WORKING</small><h2>What is already in good shape</h2>{bullets(strengths,'No strengths were recorded. This does not mean none exist.')}</section><section id="findings"><small>PROBLEMS FOUND</small><h2>What needs attention</h2><p class="lead">These are the problems found, what each one could cost you, and what fixing it would involve. Technical references stay in the details at the bottom of each card.</p><p class="reconciliation"><b>Problems and checks are counted separately.</b> {e(reconciliation_sentence)} <a href="evidence.html#exceptions">See which checks need attention</a>.</p><p class="note">Each problem shows the check behind it. The report does not claim that checks with similar wording describe the same underlying issue.</p><p class="cross-links"><span>Related:</span> <a href="files.html#file-changes">Proposed file changes</a> <a href="plan.html#adoption-plan">Plan</a> <a href="evidence.html#exceptions">Checks that need attention</a></p>{finding_cards}</section>'''
     inventory=d.get('fileImpact') or {}
     categorized=[]
@@ -783,9 +1204,9 @@ def render(d):
         source=arr(inventory.get(action)) or [x for x in changes if x.get('action')==action]
         categorized.extend((x.get('path'),action,x.get('purpose'),x.get('expectedOutcome'),status_label(x.get('classification')),x.get('confidence')) for x in source)
     file_rows=[(path,action_label(act),purpose,outcome,commitment,status_label(confidence)) for path,act,purpose,outcome,commitment,confidence in categorized]
-    pages['files.html']=f'''<section id="file-changes"><h2>Proposed file changes</h2><p class="lead">Some files are listed only so they can be inspected; that is not a proposed edit. Creating or changing a file remains a proposal until someone approves it.</p><p class="cross-links"><span>Related:</span> <a href="findings.html#findings">Findings</a> <a href="plan.html#adoption-plan">Plan</a> <a href="evidence.html#exceptions">Checks needing attention</a></p>{table(['File or area','Action','Why it is involved','What it should achieve','Must do or optional','How sure'],file_rows,d.get('fileImpactStatus') or 'No proposed file changes were supplied.',caption='Proposed file changes',row_headers=True)}</section><section><h2>What should stay the same</h2>{bullets(arr(d.get('preservation')),d.get('preservationStatus') or 'What should stay the same has not yet been established.')}</section><div class="metrics">{metric('FILES TO CREATE',sum(x[1]=='create' for x in categorized))}{metric('FILES TO MODIFY',sum(x[1]=='modify' for x in categorized))}{metric('FILES TO INSPECT',sum(x[1]=='inspect' for x in categorized))}{metric('FILES TO PRESERVE',sum(x[1]=='preserve' for x in categorized))}</div>'''
+    pages['files.html']=f'''<section id="file-changes"><h2>Proposed file changes</h2><p class="lead">Some files are listed only so they can be inspected; that is not a proposed edit. Creating or changing a file remains a proposal until someone approves it.</p><p class="cross-links"><span>Related:</span> <a href="findings.html#findings">Findings</a> <a href="plan.html#adoption-plan">Plan</a> <a href="evidence.html#exceptions">Checks needing attention</a>{' <a href="proposal.html#d016-allowlist">Configuration decision for the partial-application check</a>' if d.get('d016Allowlist') else ''}</p>{table(['File or area','Action','Why it is involved','What it should achieve','Must do or optional','How sure'],file_rows,d.get('fileImpactStatus') or 'No proposed file changes were supplied.',caption='Proposed file changes',row_headers=True)}</section><section><h2>What should stay the same</h2>{bullets(arr(d.get('preservation')),d.get('preservationStatus') or 'What should stay the same has not yet been established.')}</section><div class="metrics">{metric('FILES TO CREATE',sum(x[1]=='create' for x in categorized))}{metric('FILES TO MODIFY',sum(x[1]=='modify' for x in categorized))}{metric('FILES TO INSPECT',sum(x[1]=='inspect' for x in categorized))}{metric('FILES TO PRESERVE',sum(x[1]=='preserve' for x in categorized))}</div>{scope_paths(d)}'''
     decision_html=''.join(f'<article class="decision-row"><h3>{e(x.get("question"))}</h3><p>{e(x.get("context"))}</p><p><b>Recommendation:</b> {e(x.get("recommendation"))}</p><p><b>Effort:</b> {e(x.get("effort"))}</p><p><b>If left open:</b> {e(x.get("consequence"))}</p><p><b>What this blocks:</b> {e(x.get("blockedWork"))}</p><p><b>Needed before implementation:</b> {"Yes" if x.get("requiredBeforeImplementation") else "No"}</p><details><summary>Evidence gap and other options</summary><p><b>Evidence gap:</b> {e(x.get("evidenceGap"))}</p>{bullets(x.get("alternatives",[]),"Alternatives are not established.")}<p><b>Impact:</b> {e(x.get("impact"))}</p><p><b>Why an owner is needed:</b> {e(x.get("whyOwner"))}</p></details></article>' for x in decisions) or f'<p class="empty">{e(d.get("decisionsStatus") or "No owner decisions are recorded. The assessment has not established whether no decision is needed or discovery is incomplete.")}</p>'
-    pages['plan.html']=f'''{adoption_workflow(d)}{agent_guidance_section(d)}{remediation_outcome(d)}<section id="adoption-plan"><h2>Plan</h2><p class="cross-links"><span>Related:</span> <a href="findings.html#findings">Findings</a> <a href="files.html#file-changes">Proposed file changes</a> <a href="evidence.html#exceptions">Checks needing attention</a></p><div class="stack">{phase_cards or e(d.get("roadmapStatus") or "An adoption plan has not been established yet.")}</div></section><section id="decisions"><h2>Decisions only you can make</h2>{decision_html}</section><section><h2>What approval would mean</h2><p>{e(d.get('approvalStatement') or 'Reading this report does not authorize implementation. Approval must identify the specific proposed scope.')}</p></section>'''
+    pages['plan.html']=f'''{adoption_workflow(d)}{agent_guidance_section(d)}{remediation_outcome(d)}<section id="adoption-plan"><h2>Plan</h2><p class="cross-links"><span>Related:</span> <a href="findings.html#findings">Findings</a> <a href="files.html#file-changes">Proposed file changes</a> <a href="evidence.html#exceptions">Checks needing attention</a></p><div class="stack">{phase_cards or e(d.get("roadmapStatus") or "An adoption plan has not been established yet.")}</div></section><section id="decisions"><h2>Decisions only you can make</h2>{decision_html}</section>{owner_answers(d)}<section><h2>What approval would mean</h2><p>{e(d.get('approvalStatement') or 'Reading this report does not authorize implementation. Approval must identify the specific proposed scope.')}</p></section>{workflow_history(d)}'''
     evrows=[(x.get('label') or x.get('kind'),x.get('source'),x.get('whatItSupports'),status_label(x.get('status'))) for x in evidence]
     reviewed=coverage_ratio(cov)
     unresolved='Not recorded' if cov.get('unresolvedRules') in (None,'') else str(cov.get('unresolvedRules'))
@@ -825,6 +1246,11 @@ def validate_progress(d):
         p.append('adoptionWorkflow.phase must be a string or null.')
     if not isinstance(workflow.get('phaseOrder',[]),list):
         p.append('adoptionWorkflow.phaseOrder must be an array.')
+    if d.get('schemaVersion') in ('1.2','1.3'):
+        if d.get('progressSections') != ['adoptionWorkflow','milestones']:
+            p.append('progressSections must declare exactly adoptionWorkflow and milestones for schema 1.2.')
+        if not str(workflow.get('asOf') or '').strip():
+            p.append('adoptionWorkflow.asOf is required by report schema 1.2.')
     for i,stage in enumerate(arr(workflow.get('stages'))):
         if not isinstance(stage,dict) or not stage.get('name') or not stage.get('status'):
             p.append(f'adoptionWorkflow.stages[{i}] needs name and status.')
@@ -838,7 +1264,8 @@ def validate_progress(d):
 def validate(d):
     p=[]
     if not isinstance(d,dict):return ['Report model must be a JSON object.']
-    if d.get('schemaVersion') not in ('1.0','1.1'):p.append("schemaVersion must be '1.0' or '1.1'.")
+    p.extend(validate_console(d))
+    if d.get('schemaVersion') not in ('1.0','1.1','1.2','1.3'):p.append("schemaVersion must be '1.0', '1.1', '1.2' or '1.3'.")
     if not isinstance(d.get('repository'),dict) or not d['repository'].get('name'):p.append('repository.name is required.')
     if not d.get('generatedAt'):p.append('generatedAt is required.')
     if not isinstance(d.get('recommendation'),dict) or not d['recommendation'].get('status') or not d['recommendation'].get('summary'):p.append('recommendation.status and recommendation.summary are required.')
@@ -859,6 +1286,16 @@ def validate(d):
                 if unknown: p.append(f'findings[{i}] references unknown catalog rule(s): '+', '.join(sorted(set(unknown)))+'.')
     for i,x in enumerate(arr(d.get('proposedChanges'))):
         if not isinstance(x,dict) or not x.get('path') or x.get('action') not in ('create','modify','delete','inspect','no-change') or not x.get('purpose') or not x.get('expectedOutcome'):p.append(f'proposedChanges[{i}] needs path, supported action, purpose and expectedOutcome.')
+    allow=d.get('d016Allowlist')
+    if allow is not None:
+        if not isinstance(allow,dict):p.append('d016Allowlist must be an object when supplied.')
+        else:
+            if allow.get('rule')!='ACIMA-D016':p.append('d016Allowlist.rule must be ACIMA-D016.')
+            for field in ('configPath','currentExecution','reason'):
+                if not isinstance(allow.get(field),str) or not allow.get(field).strip():p.append(f'd016Allowlist.{field} is required.')
+            if not isinstance(allow.get('proposedValue'),list) or any(not isinstance(item,str) for item in allow.get('proposedValue') or []):p.append('d016Allowlist.proposedValue must be an array of strings.')
+            for i,item in enumerate(arr(allow.get('candidates'))):
+                if not isinstance(item,dict) or not item.get('name'):p.append(f'd016Allowlist.candidates[{i}] needs a name.')
     mm=d.get('moduleMap')
     if mm is not None:
         if not isinstance(mm,dict): p.append('moduleMap must be an object when supplied.')
@@ -898,7 +1335,7 @@ def validate(d):
         elif gate.get('status') == 'blocked' and gate.get('deterministicChecksBlocked') is not True: p.append('A blocked ownership gate must mark deterministicChecksBlocked true.')
         for i,rule in enumerate(arr(gate.get('ownershipDependentRules'))):
             if not re.match(r'^ACIMA-[A-Z][0-9]{3}$',str(rule)): p.append(f'ownershipGate.ownershipDependentRules[{i}] must be a catalog rule ID.')
-    if d.get('schemaVersion') == '1.1':
+    if d.get('schemaVersion') in ('1.1','1.2','1.3'):
         for key, reason in (('outcomes','outcomesStatus'),('decisions','decisionsStatus'),('preservation','preservationStatus')):
             if key not in d: p.append(f'{key} is required by report schema 1.1.')
             elif not d[key] and not d.get(reason): p.append(f'Empty {key} requires an explicit {reason} explanation.')

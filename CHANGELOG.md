@@ -4,6 +4,104 @@ All normative changes to the ACIMA standard. The machine-readable catalog is
 [`tools/acima-spec/rules.json`](tools/acima-spec/rules.json); this file explains *why* it changed and
 what an adopting repository has to do about it.
 
+## Unreleased — the guided adoption console: answers, history and events
+
+**Skill and report change only.** The catalog, standard version, rule ids, levels, severity and claim
+semantics are unchanged; `acima-adoption` moves from 1.40.0 to 1.41.0. No adopting repository has to
+change configuration, waivers or evidence.
+
+### Why
+
+The report became the owner's decision document but the owner still answered it in conversation, and
+the rendered report showed neither history nor what had changed since the last review. A reviewer
+returning to an adoption could not see which answer was in force, and a stage whose evidence had
+disappeared still looked complete.
+
+### What changed
+
+- Guided reports carry a schema 1.3 `console` block — report id, generation, proposal digest,
+  objectives, selectable paths and which stage requires each path. The Plan and Files pages render
+  native radio and checkbox controls with visible labels; the Files page offers *Select all proposed
+  files* as an explicit click, starts unticked, and prefills only from answers already recorded.
+- *Save answers file* writes `acima-decisions-<reportId>-<page>.json` (download; in-place save is a
+  feature-detected enhancement), *Copy answers* supports paste-back, and a no-JavaScript template on
+  both pages keeps the report answerable in chat. Answering is never approval: the workflow still prints the
+  separate, digest-bound approval command.
+- The console is hardened for its real failure paths: a cancelled save writes nothing and says so, a
+  blocked clipboard selects the answers instead, unreadable answer data disables the controls with an
+  explanation, and an empty Files page refuses to save an empty answer set. Reviewer names are capped
+  at 120 characters and normalized. Path rows wrap at 320 px, focus rings use the two-tone token pair,
+  and every answer control meets the 44 px touch target.
+- Revising a recorded answer from a page sets `supersedes` to the file that held it, so re-saving one
+  page replaces exactly that file. A supersede no longer waives conflicts from other files: answers
+  recorded elsewhere still have to be superseded one file at a time.
+- A report page cannot hash its own bytes, so `reportSha256` and `decisionSha256` are optional in the
+  decisions contract. The workflow fills them from the report it has verified on disk; supplied
+  values are still checked strictly. A file names its `reportId` and proposal digest, so staleness and
+  supersede rules are unchanged.
+- Answers saved from different pages are partial files with the same identity. The workflow merges
+  answers in force, so the order in which pages are saved cannot change the resulting scope, and the
+  review answer is required once per adoption rather than once per file.
+- The report now shows history after the plan and the answer controls, so the page reads in workflow
+  order: an append-only `progressLog`, a decision log with the answers in force
+  and superseded or stale answers as read-only history, *changed since your review* measured against
+  the reviewed digests, and evidence integrity that renders a missing artifact as recorded but missing.
+  These ride in the refreshable progress sections, so recording an answer never changes the reviewed
+  decision content or the report's generation digest.
+- `acima/evidence/events.jsonl` appends `report.generated`, `report.refreshed`, `report.stale`,
+  `decisions.ingested`, `approval.recorded` and `stage.changed`. It is local, append-only and excluded
+  from the revision an approval binds to.
+- Automated adoption gets the same report and history but no answer controls: its consolidated review
+  is unchanged.
+
+### Adopting repositories
+
+Nothing to change. A guided owner can now answer the report directly and save the file; an owner who
+prefers chat can copy the answers instead. Existing hand-written decisions files remain valid.
+
+## Unreleased — the adoption console loop: report identities and owner answers
+
+**Skill and report change only.** The catalog, standard version, rule ids, levels, severity and claim
+semantics are unchanged; `acima-adoption` moves from 1.39.0 to 1.40.0. No adopting repository has to
+change configuration, waivers or evidence.
+
+### Why
+
+The report is the owner's decision document, but it lived at a fixed path and the owner's answers had
+no machine-readable form. A regenerated report silently replaced a reviewed one, and answers given
+in the page had to be retyped into commands, where the workflow could not tell a current answer from
+an answer to an older proposal.
+
+### What changed
+
+- Reports live at `acima/report/<reportId>/`, one directory per generation, with a `report.json`
+  sidecar recording the report id, generation, generation digest, live digest, decision digest and
+  progress status. A regeneration creates a new identity instead of overwriting a reviewed report.
+- `acima adoption regenerate --reason` is the supported repair for a report that cannot be refreshed.
+  It returns the review to `awaiting_review`, invalidates prior approval receipts and marks earlier
+  answers stale; it is refused without a reason.
+- The report model is schema 1.2: `progressSections` pins the refreshable sections to
+  `adoptionWorkflow` and `milestones`, and `adoptionWorkflow.currentStage` and `asOf` are required.
+  A report generated under schema 1.1 still refreshes under the same two sections, because that is
+  what its refresh already replaced; a model that declares other sections, or one that predates the
+  progress contract (1.0), is refused and has to be regenerated.
+- The owner answers the six pages and exports `decisions.json`, validated by
+  `assets/decisions.schema.json` and ingested with `acima adoption decisions --from`. Ingestion
+  refuses an answer bound to a different report identity and an answer that contradicts a recorded one
+  unless the file explicitly supersedes that earlier file.
+- Scope answers derive a draft scope with `authorization.explicit: false`; a required path left out
+  defers and names the objective that needs it instead of approving an incomplete scope. Remediation
+  answers are recorded intent only. The approval command remains the only consent.
+- Only `decisions.json` is meant to be committed; the pages stay local. The report remains offline
+  and WCAG 2.2 AA, and reading or answering it never starts a server.
+
+### Adopting repositories
+
+Nothing to change. Existing reports keep refreshing under their current identity, including reports
+generated under schema 1.1; the next report the
+workflow generates uses schema 1.2 and the new directory. Committing `acima/report/<reportId>/` is
+optional, and only its `decisions.json` is intended for version control.
+
 ## Unreleased — keep the adoption report current automatically
 
 **Skill and report change only.** The catalog, standard version, rule ids, levels, severity and claim

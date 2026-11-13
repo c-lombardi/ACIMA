@@ -74,6 +74,16 @@ source-code excerpts in the report model or generated pages. Cite paths, symbols
 short sanitized observations instead. Preserve machine-readable evidence separately; HTML is a
 navigable view, not a replacement for it.
 
+## Owner approval for the partial-application allowlist
+
+The proposal page may include `d016Allowlist` when the .NET partial-application check cannot run
+because `partialHelpers` is absent from `acima.config.json`. This is not a silent skip: show the
+current `not_executed` state, the recorded reason, any candidate helper names with evidence, the
+proposed JSON (including an explicit empty list), the owner approval statement and the verification
+needed afterwards. An explicit empty list records the owner's decision that no helper is used and
+lets the rule execute; it does not waive the check. The Files page links to the same section and may
+list the configuration file as a proposed change.
+
 ## Plain-language gap briefing
 
 Before the map, the proposal page answers the reader's practical question: what could go wrong, what
@@ -212,7 +222,80 @@ approved. The adoption workflow's own progress refresh is not an overwrite: it r
 progress sections of a report it already generated and keeps the reviewed decision content pinned.
 
 When output is inside the target repository, obtain approval for the exact report directory first.
-Prefer `acima/report/<assessment-id>/` so generated pages remain separate from product source.
+The adoption workflow writes one directory per generation at `acima/report/<reportId>/`, holding the
+six pages, `assets/report.css`, `report-data.json` and a `report.json` identity sidecar. A new
+generation gets a new `reportId` and a new directory, so a reviewed report is never replaced in place.
+
+`report.json` records the report id, generation, generated-at timestamp, the generation digest
+(`sha256`), the live digest of the files on disk (`liveSha256`), the decision digest and the
+decision-file digest (`decisionSha256`) and the progress status. The generation digest covers only
+the report's own files. `decisions.json` sits beside them, is excluded from every digest, and is the
+only file in the directory meant to be committed.
+
+## Answering the report
+
+The owner answers pages locally and each answered page writes one decisions file, validated by
+`assets/decisions.schema.json`. It carries the identity of the report it answers (`reportId`,
+`proposalSha256`), one named reviewer, the decision date, and an `answers` array whose entries name a
+`kind`, an `id` and a `decision` of `accept`, `modify`, `defer` or `reject`. A checked box is never
+consent: approving implementation remains a separate command bound to the report digest.
+
+In guided adoption the Plan and Files pages carry the controls: objectives and remediation on Plan,
+per-path scope on Files, with visible labels, a *Needed for* note on paths a stage needs, and
+every proposed file selected only by an explicit click. *Save answers file* downloads
+`acima-decisions-<reportId>-<page>.json`; in-place save is offered only where the File System Access
+API exists on a secure context. *Copy answers* supports paste-back in chat, and a no-JavaScript
+template shows the answers current at generation so the report stays answerable without script; the
+Files page prints the same template for its path answers. In automated adoption the pages show
+history but no answer controls.
+
+A page cannot hash its own bytes, so `reportSha256` and `decisionSha256` are optional: the workflow
+completes them from the report it has verified on disk, after checking `reportId` and the live
+generation. Supplied digests are still checked strictly. Because pages answer separately, files with
+the same identity are partial; the workflow merges answers in force, so save order cannot change the
+resulting scope, and the review answer is required once per adoption rather than once per file.
+
+Ingest it with `acima adoption decisions --from <path>`. A file from a different report identity is
+refused as stale. An answer that contradicts a recorded answer is refused unless the file names the
+earlier file in `supersedes`; a page sets that reference itself when it revises an answer, and only
+the named file is replaced — answers recorded by other files still conflict and are superseded one
+file at a time. Map answers are accepted only while the map is awaiting review. Scope
+answers derive a draft scope that records `authorization.explicit: false`; the approval command still
+has to run. If a required path is left out, the objective that needs it is deferred and named rather
+than approved incompletely. Remediation answers are recorded intent, not a remediation decision.
+
+A report that cannot be refreshed — files deleted, edited, or left inconsistent by an interrupted
+operation — is rebuilt with `acima adoption regenerate --reason "<why>"`. Regeneration is a repair:
+it creates a new report identity, returns the review to `awaiting_review`, invalidates prior
+approvals and marks earlier answers stale.
+
+## Console history, decision log and events
+
+The plan page renders history from the refreshable progress payload, never from reviewed decision
+content: the decision log shows the answers in force and lists superseded or stale answers as
+read-only history; *changed since your review* compares the current report identity and generation
+digests against the last reviewed receipt; evidence integrity lists each artifact the workflow
+recorded and marks one that has disappeared as recorded but missing rather than complete. A stage
+history lists transitions with their time and detail. Recording an answer therefore never changes
+the reviewed pages or the generation digest.
+
+`acima/evidence/events.jsonl` is an append-only local event stream: `report.generated`,
+`report.refreshed`, `report.stale`, `decisions.ingested`, `approval.recorded` and `stage.changed`. It
+is not a conformance claim and is excluded from the revision an approval binds to.
+
+## Progress contract, schema 1.2
+
+Schema 1.2 pins the progress contract in the model itself. It declares
+`progressSections: ["adoptionWorkflow", "milestones"]` — exactly the sections a refresh may replace —
+and requires `adoptionWorkflow.currentStage` and `adoptionWorkflow.asOf`. The renderer rejects a 1.2
+model that omits either, or that claims different progress sections, so a refresh cannot quietly
+widen its own write surface. A report generated under schema 1.1 still refreshes under the same two
+sections, because that release already refreshed exactly those; a model that declares other sections,
+or one that predates the progress contract entirely (1.0), is refused and must be regenerated rather
+than refreshed. Schema 1.1 and 1.0 remain readable for reports generated earlier. Schema 1.3 keeps that progress contract and adds a
+`console` block: report id, generation, proposal digest, objectives with the paths they require, and
+the selectable paths with the stages that require them. Automated reports carry the block with
+`mode: full` and still render no answer controls.
 
 ## Decision-ready model, schema 1.1
 

@@ -160,3 +160,43 @@ header{border-bottom-width:1px}
 @media(prefers-reduced-motion:reduce){.atlas-cell{transition:none!important}.atlas-cell:hover{transform:none}}
 @media(forced-colors:active){.atlas-cell,.atlas-swatch{border:1px solid CanvasText}.filter-chip[aria-pressed="true"]{background:Highlight;color:HighlightText}}
 @media print{.module-atlas,.module-legend,.map-tools{display:none!important}.module-table-wrap{max-height:none;overflow:visible}.module-table{min-width:0}.module-table thead th{position:static}}
+
+.console-strip{margin:14px 0 0;padding:10px 14px;background:var(--shade);border-left:1px solid var(--ochre);color:var(--mid);font-size:12px;overflow-wrap:anywhere}
+.console-strip small{color:var(--blue);font:700 10px var(--mono);letter-spacing:.08em;margin-right:6px}
+.answers{margin-top:34px;border-top:2px solid var(--ink);padding-top:20px;max-width:78ch}
+.answers fieldset{margin:16px 0;padding:14px 16px;border:1px solid var(--strong);background:var(--lit)}
+.answers legend{font:700 12px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--mid);padding:0 6px}
+.answers label{display:flex;align-items:center;gap:8px;padding:6px 0;min-height:44px}
+.answers input[type=checkbox],.answers input[type=radio]{width:18px;height:18px;accent-color:var(--blue);flex:0 0 auto}
+.answers input[type=text],.answers input:not([type]),.answers textarea{width:100%;padding:10px 12px;border:1px solid var(--strong);background:var(--paper);color:var(--ink);font:16px var(--font)}
+.answers textarea{font:13px var(--mono);min-height:140px}
+.answers .field{display:block;margin:14px 0;font:700 12px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--mid)}
+.answers .field input,.answers .field textarea{margin-top:8px;text-transform:none;letter-spacing:normal;font-weight:400;color:var(--ink)}
+.answer-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 18px;padding:10px 0;border-bottom:1px solid var(--rule)}
+.answer-row:last-child{border-bottom:0}
+.answer-row>div,.answer-row>label{min-width:0}
+.answer-row>label{flex:1 1 240px}
+.answer-row code{overflow-wrap:anywhere;word-break:break-word}
+.choices{display:flex;flex-wrap:wrap;gap:4px 14px}
+.choices label{padding:0;min-width:7.5em}
+.required-note{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}
+.button{display:inline-block;background:var(--accent-deep);color:#fff;border:2px solid var(--accent-deep);padding:11px 16px;font:700 12px var(--head);text-transform:uppercase;letter-spacing:.04em;cursor:pointer;min-height:44px}
+.button:hover{background:var(--blue);border-color:var(--blue)}
+.button.secondary{background:transparent;color:var(--ink);border-color:var(--ink)}
+.button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--focus-inner);outline-offset:2px;box-shadow:0 0 0 6px var(--focus-outer)}
+.button:disabled{background:var(--muted);border-color:var(--muted);color:var(--paper);cursor:not-allowed;opacity:.75}
+@media(forced-colors:active){.button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid Highlight;box-shadow:none}}
+.answers-error{margin:14px 0;padding:12px 14px;border-left:1px solid var(--ochre);background:var(--shade);color:var(--ink);font-weight:600}
+.template{white-space:pre-wrap;overflow-wrap:anywhere;font:12px var(--mono);background:var(--shade);padding:12px 14px;border-left:1px solid var(--ochre)}
+@media(max-width:600px){.answer-row{flex-direction:column;align-items:stretch;gap:6px}.answer-row>label{flex:1 1 auto;width:100%}.choices{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 8px;justify-content:start}.choices label{min-width:0;min-height:44px}.button{width:100%;text-align:center}}
+
+#answers-status:empty{display:none}
+
+#decision-log td{overflow-wrap:normal}
+#decision-log h3{margin-top:28px}
+table{font-variant-numeric:tabular-nums}
+
+#decision-log td:first-child,#decision-log th:first-child{white-space:nowrap}
+
+.answers input::placeholder,.answers textarea::placeholder{color:var(--muted);opacity:1}

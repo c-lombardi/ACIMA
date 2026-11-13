@@ -388,7 +388,7 @@ For a non-specialist:
 
 ## Decision-ready report contract
 
-Use schema 1.1 for new HTML outcome reports. Keep normative conformance dispositions separate from adoption recommendations:
+Use schema 1.2 for new HTML outcome reports (1.1 remains accepted for reports already generated): it declares the refreshable `progressSections` and pins `adoptionWorkflow.currentStage` and `adoptionWorkflow.asOf`. Answering a report is intent, not approval: answers are ingested with `acima adoption decisions --from`, a draft scope keeps `authorization.explicit: false`, and the approval command still has to run. Keep normative conformance dispositions separate from adoption recommendations:
 - Conformance answers whether evidence establishes that an applicable requirement is satisfied. Retain unverified, not assessed, unsupported and blocked as distinct states.
 - Recommendation classification answers what kind of action is proposed: required, recommended, optional, or owner decision.
 

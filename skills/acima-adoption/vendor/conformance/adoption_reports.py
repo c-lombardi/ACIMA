@@ -1,8 +1,8 @@
 """Decision-ready HTML proposal reports for guided and automated ACIMA adoption.
 
 The report is generated from the same pinned catalog and qualitative-review evidence
-as the adoption workflow. It is stored outside the target repository until the owner
-explicitly approves report/document files as part of the implementation scope.
+as the adoption workflow. It lives inside the target at ``acima/report/<reportId>/``;
+the pages stay local and only its ``decisions.json`` is meant to be committed.
 """
 from __future__ import annotations
 
@@ -55,16 +55,21 @@ def _sha(path: Path) -> str:
 
 
 def report_digest(directory: Path) -> str:
-    """Hash every user-visible report file, including the CSS and source data model."""
+    """Hash the report files only, so a decision or metadata file cannot change report identity.
+
+    The canonical list is fixed: six pages, the stylesheet and the report model. A file an owner or
+    the workflow adds beside them (``decisions.json``, ``report.json``) is deliberately excluded, so
+    answering questions never invalidates the review it belongs to.
+    """
     if not directory.is_dir():
         raise AdoptionReportError("the proposal report directory is missing")
+    missing = [name for name in REPORT_FILES if not (directory / name).is_file()]
+    if missing:
+        raise AdoptionReportError("the proposal report is incomplete: missing %s" % ", ".join(missing))
     digest = hashlib.sha256()
-    files = sorted(path for path in directory.rglob("*") if path.is_file())
-    if not files:
-        raise AdoptionReportError("the proposal report directory is empty")
-    for path in files:
-        relative = path.relative_to(directory).as_posix()
-        digest.update(relative.encode("utf-8"))
+    for name in REPORT_FILES:
+        path = directory / name
+        digest.update(name.encode("utf-8"))
         digest.update(b"\0")
         digest.update(path.read_bytes())
         digest.update(b"\0")
@@ -74,6 +79,14 @@ def report_digest(directory: Path) -> str:
 # Report sections that describe adoption progress rather than the reviewed decision. They are
 # refreshed after every recorded workflow change; no other section may change after generation.
 PROGRESS_KEYS = ("adoptionWorkflow", "milestones")
+
+# The report lives inside the target under acima/report/<reportId>/. These are the files that make up
+# the report itself; decisions.json and report.json sit beside them and never change its identity.
+REPORT_DIRECTORY = "acima/report"
+REPORT_METADATA = "report.json"
+DECISIONS_FILE = "decisions.json"
+REPORT_FILES = ("index.html", "proposal.html", "findings.html", "files.html", "plan.html",
+                "evidence.html", "report-data.json", "assets/report.css")
 
 
 def decision_digest(model: dict) -> str:
@@ -338,6 +351,13 @@ def _workflow_progress(state: dict) -> dict:
         "remediation": summary.get("remediation") or {},
         "agentGuidance": summary.get("agentGuidance") or {},
         "asOf": state.get("updatedAt"),
+        # Console history. These are workflow facts, not reviewed proposal content, so they refresh
+        # with the progress sections and never change the report's decision digest.
+        "progressLog": state.get("progressLog") or [],
+        "decisionLog": state.get("decisionLog") or [],
+        "evidenceIntegrity": state.get("evidenceIntegrity") or {},
+        "sinceReview": state.get("sinceReview"),
+        "consoleState": state.get("consoleState") or {},
     }
     if summary.get("staleWarning"):
         workflow["staleWarning"] = summary["staleWarning"]
@@ -345,7 +365,7 @@ def _workflow_progress(state: dict) -> dict:
 
 
 def build_report_model(root: Path, review_path: Path, module_map: dict,
-                       proposal: dict, state: dict) -> dict:
+                           proposal: dict, state: dict) -> dict:
     """Build and independently validate the schema 1.1 report model."""
     root = root.resolve()
     skill = _skill_root()
@@ -432,6 +452,31 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
         },
     }
 
+    coverage_reasons = (assessment.get("coverage") or {}).get("notExecutedReasons") or {}
+    d016_execution = (assessment.get("execution") or {}).get("ACIMA-D016") or {}
+    d016_reason = coverage_reasons.get("ACIMA-D016")
+    if not d016_reason and d016_execution.get("executed") is False:
+        d016_reason = d016_execution.get("reason") or "partial helper allowlist not declared in acima.config.json"
+    d016_allowlist = None
+    if d016_reason:
+        d016_allowlist = {
+            "rule": "ACIMA-D016",
+            "configPath": "acima.config.json",
+            "status": "owner_decision",
+            "currentExecution": "not_executed",
+            "reason": str(d016_reason),
+            "candidates": [],
+            "proposedValue": [],
+            "approval": (
+                "The repository owner must confirm that no partial-application helper is used, "
+                "or name every exact helper that the check should inspect."
+            ),
+            "verification": (
+                "After the approved configuration change, run the .NET enforcer and confirm "
+                "ACIMA-D016 reports executed: true and the execution map covers all 42 automated rules."
+            ),
+        }
+
     create_changes = []
     preserve_changes = []
     for item in (proposal.get("implementationImpact") or {}).get("create", []):
@@ -454,6 +499,27 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
             item.get("expectedOutcome") or "The approved behavior is established.",
             "owner-decision",
         ))
+
+    if d016_allowlist:
+        config_change = next(
+            (item for item in create_changes + modify_changes
+             if item.get("path") == d016_allowlist["configPath"]),
+            None,
+        )
+        if config_change is None:
+            config_change = _file_change(
+                d016_allowlist["configPath"],
+                "modify" if (root / d016_allowlist["configPath"]).is_file() else "create",
+                "Declare the partial-application helper allowlist so the partial-application check can run.",
+                "The .NET execution map covers all 42 automated rules instead of skipping the partial-application check.",
+                "owner-decision",
+            )
+            if config_change["action"] == "create":
+                create_changes.append(config_change)
+            else:
+                modify_changes.append(config_change)
+        config_change["associatedFindings"] = ["ACIMA-D016"]
+        config_change["status"] = "proposed"
 
     inspect_paths = set()
     for item in review_document.get("rules", []):
@@ -659,7 +725,8 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
     progress_sections = _workflow_progress(state)
 
     model = {
-        "schemaVersion": "1.1",
+        "schemaVersion": "1.3",
+        "progressSections": list(PROGRESS_KEYS),
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "skillVersion": json.loads((skill / "manifest.json").read_text(encoding="utf-8"))["skillVersion"],
         "standardVersion": json.loads((skill / "manifest.json").read_text(encoding="utf-8"))["standard"],
@@ -715,6 +782,7 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
                and existing_enforcement.get("summary") else [])
         )),
         "findings": findings,
+        "d016Allowlist": d016_allowlist,
         "proposedChanges": proposed_changes,
         "outcomes": outcomes,
         "outcomesStatus": (
@@ -762,19 +830,33 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
 
 
 def render_proposal_report(root: Path, review_path: Path, module_map: dict,
-                           proposal: dict, state: dict) -> dict:
-    """Generate a six-page report outside the target and return its reviewable identity."""
+                           proposal: dict, state: dict, console: dict | None = None) -> dict:
+    """Generate the six-page report in the target and return its reviewable identity."""
     root = root.resolve()
     skill = _skill_root()
     renderer_path = skill / "scripts" / "render_report.py"
     model = build_report_model(root, review_path, module_map, proposal, state)
+    generation = int(state.get("reportGeneration") or 0)
     report_id = hashlib.sha256(
         (str(root) + "|" + str(state.get("startedAt")) + "|" +
-         str(module_map.get("proposalId")) + "|" + str(proposal.get("generatedAt"))).encode("utf-8")
+         str(module_map.get("proposalId")) + "|" + str(proposal.get("generatedAt")) +
+         "|" + str(generation)).encode("utf-8")
     ).hexdigest()[:20]
-    output = Path(tempfile.gettempdir()) / "acima-adoption-reports" / (root.name + "-" + report_id)
+    # The console identity belongs to the generation, so it is added after the model itself has been
+    # validated. The page can know its report id but not a digest of its own bytes; the workflow
+    # completes reportSha256/decisionSha256 when it ingests the answers this page writes.
+    model["console"] = {**(console or {}), "reportId": report_id, "generation": generation,
+                        "generatedAt": model.get("generatedAt")}
+    renderer = _load_module(renderer_path, "acima_adoption_html_renderer")
+    console_problems = renderer.validate_console(model)
+    if console_problems:
+        raise AdoptionReportError("report console rejected by the HTML renderer:\n- "
+                                  + "\n- ".join(console_problems))
+    output = root / REPORT_DIRECTORY / report_id
     if output.exists():
-        raise AdoptionReportError("report output already exists; refusing to overwrite %s" % output)
+        raise AdoptionReportError(
+            "report %s already exists; use regenerate to create a new report identity" % report_id
+        )
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".json", delete=False) as stream:
         model_path = Path(stream.name)
@@ -790,8 +872,7 @@ def render_proposal_report(root: Path, review_path: Path, module_map: dict,
         model_path.unlink(missing_ok=True)
     if result.returncode != 0:
         raise AdoptionReportError(result.stderr.strip() or result.stdout.strip() or "HTML renderer failed")
-    expected = ["index.html", "proposal.html", "findings.html", "files.html",
-                "plan.html", "evidence.html", "report-data.json", "assets/report.css"]
+    expected = list(REPORT_FILES)
     missing = [name for name in expected if not (output / name).is_file()]
     if missing:
         raise AdoptionReportError("HTML renderer returned without all required pages/assets: %s" % ", ".join(missing))
@@ -801,10 +882,12 @@ def render_proposal_report(root: Path, review_path: Path, module_map: dict,
     stored_model = json.loads((output / "report-data.json").read_text(encoding="utf-8"))
     decision = decision_digest(stored_model)
     progress = progress_digest({key: stored_model.get(key) for key in PROGRESS_KEYS})
-    return {
+    report = {
         "status": "awaiting_review",
         "reportId": report_id,
+        "generation": generation,
         "directory": str(output),
+        "relativeDirectory": output.relative_to(root).as_posix(),
         "indexHtml": str(output / "index.html"),
         "proposalHtml": str(output / "proposal.html"),
         "pages": {name: str(output / name) for name in expected if name.endswith(".html")},
@@ -817,6 +900,33 @@ def render_proposal_report(root: Path, review_path: Path, module_map: dict,
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "rendererOutput": result.stdout.strip(),
     }
+    _write_report_metadata(output, report)
+    return report
+
+
+def _write_report_metadata(directory: Path, report: dict) -> None:
+    """Write the directory's own provenance so it stays readable without state.json.
+
+    Deliberately outside REPORT_FILES: rewriting it never changes the report digest.
+    """
+    value = {
+        "schemaVersion": "1.0",
+        "kind": "acima-adoption-report",
+        "reportId": report.get("reportId"),
+        "generation": report.get("generation"),
+        "generatedAt": report.get("generatedAt"),
+        "sha256": report.get("sha256"),
+        "liveSha256": report.get("liveSha256"),
+        "decisionSha256": report.get("decisionSha256"),
+        "progressSha256": report.get("progressSha256"),
+        "progressStatus": report.get("progressStatus"),
+        "progressUpdatedAt": report.get("progressUpdatedAt"),
+    }
+    if report.get("proposalSha256"):
+        value["proposalSha256"] = report["proposalSha256"]
+    (directory / REPORT_METADATA).write_text(
+        json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
 
 
 def refresh_progress_report(report: dict, state: dict) -> dict:
@@ -833,6 +943,19 @@ def refresh_progress_report(report: dict, state: dict) -> dict:
     if not data_path.is_file():
         raise AdoptionReportError("the generated report data is missing; regenerate the report")
     model = json.loads(data_path.read_text(encoding="utf-8"))
+    version = model.get("schemaVersion")
+    if version not in ("1.1", "1.2", "1.3"):
+        raise AdoptionReportError(
+            "report schema %r predates automatic progress refresh; regenerate the report instead"
+            % (version,))
+    # Schema 1.1 reports refresh too: the release that introduced the refresh replaced exactly these
+    # two sections, and 1.2 only pinned that contract in the model. A model that names other sections
+    # would widen the write surface, so it is refused rather than trimmed.
+    declared = model.get("progressSections")
+    if declared is not None and declared != list(PROGRESS_KEYS):
+        raise AdoptionReportError(
+            "the report model declares progress sections %s; a refresh may replace only %s"
+            % (declared, list(PROGRESS_KEYS)))
     progress = _workflow_progress(state)
     signature = progress_digest(progress)
     if signature == report.get("progressSha256"):
@@ -875,4 +998,6 @@ def refresh_progress_report(report: dict, state: dict) -> dict:
     report["progressStatus"] = "current"
     report.pop("progressError", None)
     report["liveSha256"] = report_digest(directory)
+    if directory.is_dir():
+        _write_report_metadata(directory, report)
     return report

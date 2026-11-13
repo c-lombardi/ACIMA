@@ -27,6 +27,12 @@ proceeds only within its explicit authorization. Every artifact records its stat
 recommendation has an implementation path or an explicit deferral. A proposal is not an approved
 map, a written CI file is not a remote run, and a copied enforcer is not a conformance claim.
 
+The generated adoption report is a stage artifact with an identity of its own: `acima/report/<reportId>/`
+holds the six pages, `report.json` and, once the owner answers, `decisions.json`. A regeneration
+creates a new report id and directory rather than overwriting a reviewed report. Only `decisions.json`
+is meant to be committed, and ingesting it (`acima adoption decisions --from <path>`) records answers
+and derives a draft scope; it never substitutes for the approval command.
+
 The final remediation decision produces `acima/evidence/remediation-plan.json` and
 `acima/evidence/remediation-result.json`. The plan discloses maturity, affected files, prerequisites,
 risk, all recommendations and their readiness; the result records none/selected/all, changed files,

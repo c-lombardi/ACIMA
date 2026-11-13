@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import tempfile
@@ -106,6 +107,39 @@ def scope(root: Path) -> Path:
     document["approvedPaths"] = workflow._implementation_paths(root, document)
     path.write_text(json.dumps(document), encoding="utf-8")
     return path
+
+
+def decisions_file(root: Path, state: dict, *, answers: list | None = None, review: bool = True,
+                   **overrides) -> Path:
+    report = state["artifacts"]["proposalReport"]
+    document = {
+        "schemaVersion": "1.0",
+        "kind": "acima-adoption-decisions",
+        "reportId": report["reportId"],
+        "reportSha256": report["sha256"],
+        "decisionSha256": report["decisionSha256"],
+        "proposalSha256": report["proposalSha256"],
+        "reviewer": "Repository owner",
+        "decidedOn": workflow._today(),
+        "source": "html-report",
+        "package": "custom",
+        "supersedes": None,
+        "answers": ([{"kind": "report-review", "id": "all-pages", "decision": "accept"}]
+                    if review else []),
+    }
+    document.update(overrides)
+    document["answers"].extend(answers or [])
+    path = root.parent / (root.name + "-decisions-%s.json" % len(list(root.parent.glob(root.name + "-decisions-*.json"))))
+    path.write_text(json.dumps(document), encoding="utf-8")
+    return path
+
+
+def all_objectives_and_paths(root: Path, state: dict) -> tuple[list[str], list[str]]:
+    document = workflow._scope_document(state, root, ci_available=True)
+    objectives = [item["id"] for item in document["objectives"]]
+    for item in document["objectives"]:
+        item["disposition"] = "approved"
+    return objectives, workflow._implementation_paths(root, document)
 
 
 def approve_scope(root: Path, scope_path: Path) -> dict:
@@ -345,6 +379,479 @@ class AdoptionWorkflowTests(unittest.TestCase):
             plan_page = (Path(report["directory"]) / "plan.html").read_text(encoding="utf-8")
             self.assertIn("Enforcement implementation", plan_page)
             self.assertIn("Current stage: <b>Immediate remediation", plan_page)
+
+    def test_progress_refresh_tolerates_a_legacy_schema_11_report(self) -> None:
+        import adoption_reports
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            workflow.start(root, "guided")
+            state = workflow.approve(root, map_decisions=map_review(root))
+            report = dict(state["artifacts"]["proposalReport"])
+            data_path = Path(report["directory"]) / "report-data.json"
+            legacy = json.loads(data_path.read_text(encoding="utf-8"))
+            legacy["schemaVersion"] = "1.1"
+            legacy.pop("progressSections", None)
+            data_path.write_text(json.dumps(legacy), encoding="utf-8")
+            report["decisionSha256"] = adoption_reports.decision_digest(legacy)
+            report["progressSha256"] = "0" * 64
+            refreshed = adoption_reports.refresh_progress_report(report, state)
+            self.assertEqual(refreshed["reportId"], report["reportId"])
+            self.assertEqual(refreshed["sha256"], report["sha256"])
+            self.assertEqual(refreshed["progressStatus"], "current")
+            stored = json.loads(data_path.read_text(encoding="utf-8"))
+            self.assertEqual(stored["schemaVersion"], "1.1")
+            self.assertNotIn("progressSections", stored)
+            self.assertTrue(stored["adoptionWorkflow"]["asOf"])
+            metadata = json.loads((data_path.parent / "report.json").read_text(encoding="utf-8"))
+            self.assertEqual(metadata["progressStatus"], "current")
+            self.assertEqual(metadata["sha256"], report["sha256"])
+            # A model that would widen the write surface, or predate the contract, is still refused.
+            wider = dict(legacy)
+            wider["progressSections"] = ["adoptionWorkflow", "milestones", "findings"]
+            data_path.write_text(json.dumps(wider), encoding="utf-8")
+            with self.assertRaisesRegex(adoption_reports.AdoptionReportError, "may replace only"):
+                adoption_reports.refresh_progress_report(dict(refreshed), state)
+            ancient = dict(legacy)
+            ancient["schemaVersion"] = "1.0"
+            data_path.write_text(json.dumps(ancient), encoding="utf-8")
+            with self.assertRaisesRegex(adoption_reports.AdoptionReportError, "predates"):
+                adoption_reports.refresh_progress_report(dict(refreshed), state)
+
+    def test_report_lives_in_the_repository_with_its_own_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            fixture(root)
+            workflow.start(root, "guided")
+            state = workflow.approve(root, map_decisions=map_review(root))
+            report = state["artifacts"]["proposalReport"]
+            report_directory = Path(report["directory"])
+            self.assertTrue(report_directory.is_relative_to(root))
+            self.assertEqual(report["relativeDirectory"], "acima/report/" + report["reportId"])
+            metadata = json.loads((report_directory / "report.json").read_text(encoding="utf-8"))
+            self.assertEqual(metadata["reportId"], report["reportId"])
+            self.assertEqual(metadata["sha256"], report["sha256"])
+            self.assertEqual(metadata["decisionSha256"], report["decisionSha256"])
+            model = json.loads((report_directory / "report-data.json").read_text(encoding="utf-8"))
+            self.assertEqual(model["schemaVersion"], "1.3")
+            self.assertEqual(model["progressSections"], ["adoptionWorkflow", "milestones"])
+            self.assertTrue(model["adoptionWorkflow"]["asOf"])
+            summary = workflow.status(root)
+            self.assertEqual(summary["report"]["directory"], report["relativeDirectory"])
+            self.assertFalse(summary["report"]["decisionsFile"])
+            self.assertEqual(summary["report"]["sha256"], report["sha256"])
+            # A decision file beside the report is not part of the report's identity.
+            before = workflow.report_digest(report_directory)
+            (report_directory / "decisions.json").write_text("{}", encoding="utf-8")
+            self.assertEqual(workflow.report_digest(report_directory), before)
+            self.assertTrue(workflow.status(root)["report"]["decisionsFile"])
+
+    def test_regenerate_creates_a_new_identity_and_invalidates_receipts(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            workflow.start(root, "guided")
+            state = workflow.approve(root, map_decisions=map_review(root))
+            first = state["artifacts"]["proposalReport"]
+            decisions_path = decisions_file(root, state)
+            workflow.decisions(root, decisions_path)
+            self.assertTrue((Path(first["directory"]) / "decisions.json").is_file())
+            state = workflow.regenerate(root, reason="the report directory was removed by the OS")
+            second = state["artifacts"]["proposalReport"]
+            self.assertNotEqual(second["reportId"], first["reportId"])
+            self.assertEqual(second["generation"], 1)
+            self.assertEqual(state["proposalReview"]["status"], "awaiting_review")
+            self.assertTrue((Path(second["directory"]) / "index.html").is_file())
+            self.assertTrue((Path(first["directory"]) / "index.html").is_file())
+            self.assertEqual(state["decisionSources"][0]["reportId"], first["reportId"])
+            self.assertIn("regenerated", state["decisionSources"][0]["staleReason"])
+            self.assertEqual(state["decisions"][-1]["id"], "report-regeneration")
+            with self.assertRaisesRegex(workflow.WorkflowError, "reason"):
+                workflow.regenerate(root, reason="  ")
+
+    def test_decisions_file_derives_a_scope_draft_that_still_needs_approval(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            workflow.start(root, "guided")
+            state = workflow.approve(root, map_decisions=map_review(root))
+            objectives, paths = all_objectives_and_paths(root, state)
+            answers = [{"kind": "scope-objective", "id": name, "decision": "accept"}
+                       for name in objectives]
+            answers += [{"kind": "scope-path", "id": path, "decision": "accept"} for path in paths]
+            result = workflow.decisions(root, decisions_file(root, state, answers=answers))
+            self.assertEqual(result["status"], "applied")
+            self.assertEqual(result["scopeDraft"], workflow.SCOPE_FILE)
+            scope = workflow._read_json(root / workflow.SCOPE_FILE)
+            self.assertEqual(scope["approvedBy"], "Repository owner")
+            self.assertEqual(sorted(scope["approvedPaths"]), sorted(paths))
+            self.assertFalse(scope["authorization"]["explicit"])
+            self.assertEqual(scope["reportReview"]["status"], "reviewed")
+            state = workflow._load(root)
+            self.assertEqual(state["proposalReview"]["status"], "reviewed")
+            self.assertEqual(len(state["decisionSources"]), 1)
+            self.assertFalse((root / "acima/tooling/python/acima_arch.py").exists())
+            # The derived draft is not consent: the existing approval command still runs and records it.
+            state = approve_scope(root, root / workflow.SCOPE_FILE)
+            self.assertEqual(state["stages"]["implementation"]["status"], "complete")
+            self.assertTrue((root / "acima/tooling/python/acima_arch.py").is_file())
+
+    def test_full_decisions_file_approves_the_map_and_derives_a_scope(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root, manifests=True)
+            state = workflow.start(root, "full", authorize_full=True,
+                                   reviewer="candidate ownership test")
+            self.assertEqual(state["stages"]["module_map"]["status"], "awaiting_approval")
+            review = json.loads(map_review(root).read_text(encoding="utf-8"))
+            answers = []
+            for kind, key in (("module", "moduleDecisions"),
+                              ("module-path", "pathDecisions"),
+                              ("recommendation", "recommendationDecisions")):
+                answers += [{"kind": kind, "id": item["id"], "decision": item["decision"]}
+                            for item in review.get(key) or []]
+            result = workflow.decisions(root, decisions_file(root, state, answers=answers))
+            self.assertEqual(result["status"], "applied")
+            self.assertEqual(result["stages"]["module_map"]["status"], "complete")
+            self.assertTrue((root / "acima.config.json").is_file())
+            applied = json.loads((root / workflow.OWNER_MAP_REVIEW_FILE).read_text(encoding="utf-8"))
+            self.assertEqual(applied["source"], "decisions.json")
+            state = workflow._load(root)
+            self.assertEqual(state["proposalReview"]["status"], "reviewed")
+            self.assertIn("scope", result["next"]["action"].lower())
+
+            objectives, paths = all_objectives_and_paths(root, state)
+            answers = [{"kind": "scope-objective", "id": name, "decision": "accept"}
+                       for name in objectives]
+            answers += [{"kind": "scope-path", "id": path, "decision": "accept"} for path in paths]
+            result = workflow.decisions(root, decisions_file(root, state, answers=answers))
+            self.assertEqual(result["status"], "applied")
+            self.assertEqual(result["scopeDraft"], workflow.SCOPE_FILE)
+            scope = workflow._read_json(root / workflow.SCOPE_FILE)
+            self.assertFalse(scope["authorization"]["explicit"])
+
+    def test_decisions_refuse_a_stale_report_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            workflow.start(root, "guided")
+            state = workflow.approve(root, map_decisions=map_review(root))
+            document = decisions_file(root, state, reportSha256="0" * 64)
+            with self.assertRaisesRegex(workflow.WorkflowError, "different report version"):
+                workflow.decisions(root, document)
+            self.assertFalse((root / workflow.SCOPE_FILE).exists())
+
+    def test_decisions_refuse_conflicts_without_an_explicit_supersede(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            workflow.start(root, "guided")
+            state = workflow.approve(root, map_decisions=map_review(root))
+            first = decisions_file(root, state, answers=[
+                {"kind": "scope-objective", "id": "ci-enforcement", "decision": "accept"}])
+            workflow.decisions(root, first)
+            second = decisions_file(root, state, answers=[
+                {"kind": "scope-objective", "id": "ci-enforcement", "decision": "reject"}])
+            with self.assertRaisesRegex(workflow.WorkflowError, "conflicting answers"):
+                workflow.decisions(root, second)
+            third = decisions_file(root, state, supersedes=workflow._sha(first), answers=[
+                {"kind": "scope-objective", "id": "ci-enforcement", "decision": "reject"}])
+            workflow.decisions(root, third)
+            state = workflow._load(root)
+            self.assertEqual(state["decisionSources"][0]["status"], "superseded")
+            self.assertEqual(state["decisionSources"][1]["status"], "in force")
+            scope = workflow._read_json(root / workflow.SCOPE_FILE)
+            objectives = {item["id"]: item["disposition"] for item in scope["objectives"]}
+            self.assertEqual(objectives["ci-enforcement"], "declined")
+
+    def test_decisions_defer_an_objective_whose_required_path_was_excluded(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            workflow.start(root, "guided")
+            state = workflow.approve(root, map_decisions=map_review(root))
+            objectives, paths = all_objectives_and_paths(root, state)
+            excluded = "acima.config.json"
+            selected = [path for path in paths if path != excluded]
+            answers = [{"kind": "scope-objective", "id": name, "decision": "accept"}
+                       for name in objectives]
+            answers += [{"kind": "scope-path", "id": path, "decision": "accept"} for path in selected]
+            result = workflow.decisions(root, decisions_file(root, state, answers=answers))
+            self.assertTrue(result["deferrals"])
+            self.assertEqual(result["deferrals"][0]["objective"], "local-enforcement")
+            self.assertIn(excluded, result["deferrals"][0]["missingPaths"])
+            scope = workflow._read_json(root / workflow.SCOPE_FILE)
+            objectives_by_id = {item["id"]: item["disposition"] for item in scope["objectives"]}
+            self.assertEqual(objectives_by_id["local-enforcement"], "deferred")
+            self.assertNotIn(excluded, scope["approvedPaths"])
+
+    def test_decisions_refuse_unknown_paths_and_stale_map_answers(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            workflow.start(root, "guided")
+            state = workflow.approve(root, map_decisions=map_review(root))
+            unknown = decisions_file(root, state, answers=[
+                {"kind": "scope-path", "id": "src/not-in-the-proposal.py", "decision": "accept"}])
+            with self.assertRaisesRegex(workflow.WorkflowError, "does not include"):
+                workflow.decisions(root, unknown)
+            proposal = json.loads((root / workflow.PROPOSAL_JSON).read_text(encoding="utf-8"))
+            stale_map = decisions_file(root, state, answers=[
+                {"kind": "module", "id": proposal["modules"][0]["id"], "decision": "accept"}])
+            with self.assertRaisesRegex(workflow.WorkflowError, "already approved"):
+                workflow.decisions(root, stale_map)
+
+    def test_decisions_record_remediation_answers_as_intent_only(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            workflow.start(root, "guided")
+            state = workflow.approve(root, map_decisions=map_review(root))
+            result = workflow.decisions(root, decisions_file(root, state, answers=[
+                {"kind": "remediation", "id": "ACIMA-D001", "decision": "defer"}]))
+            self.assertEqual(result["remediationAnswers"], 1)
+            state = workflow._load(root)
+            self.assertEqual(state["remediationAnswers"][0]["id"], "ACIMA-D001")
+            self.assertFalse((root / "acima/evidence/remediation-result.json").exists())
+
+    def test_decisions_contract_rejects_malformed_owner_input(self) -> None:
+        sys.path.insert(0, str(ROOT / "conformance"))
+        import adoption_decisions
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            workflow.start(root, "guided")
+            state = workflow.approve(root, map_decisions=map_review(root))
+            base = json.loads(decisions_file(root, state).read_text(encoding="utf-8"))
+            cases = [
+                ({"reviewer": "  "}, "reviewer"),
+                ({"decidedOn": "2999-01-01"}, "decidedOn"),
+                ({"package": "everything"}, "package"),
+                ({"schemaVersion": "2.0"}, "schemaVersion"),
+                ({"reportSha256": "not-a-digest"}, "reportSha256"),
+                ({"answers": []}, "answers"),
+                ({"answers": [{"kind": "module", "id": "x", "decision": "maybe"}]}, "decision"),
+                ({"answers": [{"kind": "report-review", "id": "all-pages", "decision": "accept"},
+                              {"kind": "report-review", "id": "all-pages", "decision": "accept"}]},
+                 "repeats"),
+                ({"answers": [{"kind": "scope-objective", "id": "ci-enforcement",
+                              "decision": "modify"}]}, "modification"),
+            ]
+            for index, (changes, message) in enumerate(cases):
+                document = json.loads(json.dumps(base))
+                document.update(changes)
+                path = root.parent / ("invalid-decisions-%s.json" % index)
+                path.write_text(json.dumps(document), encoding="utf-8")
+                with self.assertRaisesRegex(adoption_decisions.DecisionError, message):
+                    adoption_decisions.load(path)
+
+    def test_guided_report_offers_console_controls_and_no_script_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            workflow.start(root, "guided")
+            state = workflow.approve(root, map_decisions=map_review(root))
+            report = state["artifacts"]["proposalReport"]
+            plan = (Path(report["directory"]) / "plan.html").read_text(encoding="utf-8")
+            files = (Path(report["directory"]) / "files.html").read_text(encoding="utf-8")
+            self.assertIn('id="owner-answers"', plan)
+            self.assertIn('name="objective:local-enforcement"', plan)
+            self.assertIn('id="reviewed-all"', plan)
+            self.assertIn("<noscript>", plan)
+            self.assertIn('id="acima-console-state"', plan)
+            self.assertIn('id="decision-log"', plan)
+            # The page reads in workflow order: plan, then the answer controls, then the record.
+            self.assertLess(plan.find('id="adoption-plan"'), plan.find('id="owner-answers"'))
+            self.assertLess(plan.find('id="owner-answers"'), plan.find('id="decision-log"'))
+            self.assertIn('name="path:acima.config.json"', files)
+            self.assertIn('id="use-recommended"', files)
+            self.assertIn("Select all proposed files", files)
+            self.assertIn("Needed for", files)
+            self.assertIn("Save answers file", plan)
+            self.assertIn("Implement", plan)
+            self.assertIn("Answers to paste back", plan)
+            self.assertNotIn('checked="checked"', files)
+            self.assertIn("<noscript>", files)
+            self.assertIn('maxlength="120"', files)
+            self.assertIn("Proposed files", files)
+            model = json.loads((Path(report["directory"]) / "report-data.json").read_text(encoding="utf-8"))
+            self.assertEqual(model["console"]["reportId"], report["reportId"])
+            self.assertEqual(model["console"]["mode"], "guided")
+            self.assertTrue(model["console"]["objectives"])
+
+    def test_console_script_is_valid_javascript(self) -> None:
+        node = shutil.which("node")
+        if node is None:
+            self.skipTest("node is not installed")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            workflow.start(root, "guided")
+            state = workflow.approve(root, map_decisions=map_review(root))
+            report = state["artifacts"]["proposalReport"]
+            for page in ("plan", "files"):
+                html = (Path(report["directory"]) / (page + ".html")).read_text(encoding="utf-8")
+                script = re.findall(r"<script>(.*?)</script>", html, re.S)[-1]
+                source = Path(directory) / (page + ".js")
+                source.write_text(script, encoding="utf-8")
+                result = subprocess.run([node, "--check", str(source)],
+                                        capture_output=True, text=True, timeout=60)
+                self.assertEqual(result.returncode, 0,
+                                 "%s console script does not parse: %s" % (page, result.stderr))
+
+    def test_automated_report_has_no_console_approval_controls(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            state = full_start(root)
+            report = state["artifacts"]["proposalReport"]
+            plan = (Path(report["directory"]) / "plan.html").read_text(encoding="utf-8")
+            self.assertNotIn('id="owner-answers"', plan)
+            self.assertIn('id="decision-log"', plan)
+            self.assertLess(plan.find('id="adoption-plan"'), plan.find('id="decision-log"'))
+            files = (Path(report["directory"]) / "files.html").read_text(encoding="utf-8")
+            self.assertNotIn('id="scope-paths"', files)
+
+    def test_console_answers_without_digests_are_completed_on_ingest(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            workflow.start(root, "guided")
+            state = workflow.approve(root, map_decisions=map_review(root))
+            objectives, paths = all_objectives_and_paths(root, state)
+            answers = [{"kind": "scope-objective", "id": name, "decision": "accept"} for name in objectives]
+            answers += [{"kind": "scope-path", "id": path, "decision": "accept"} for path in paths]
+            # A report page cannot hash its own bytes: no reportSha256 and no decisionSha256.
+            document = decisions_file(root, state, answers=answers, reportSha256=None,
+                                      decisionSha256=None, source="html-report", page="plan")
+            result = workflow.decisions(root, document)
+            self.assertEqual(result["status"], "applied")
+            state = workflow._load(root)
+            source = state["decisionSources"][0]
+            self.assertEqual(source["reportSha256"], state["artifacts"]["proposalReport"]["sha256"])
+            self.assertEqual(source["decisionSha256"], state["artifacts"]["proposalReport"]["decisionSha256"])
+            self.assertTrue(state["decisionLog"])
+            answers = state["consoleState"]["answers"]
+            self.assertTrue(answers)
+            self.assertTrue(all(entry.get("sourceSha256") for entry in answers),
+                            "the page needs to know which file holds each answer it revises")
+
+    def test_page_revision_replaces_only_the_file_it_supersedes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            workflow.start(root, "guided")
+            state = workflow.approve(root, map_decisions=map_review(root))
+            objectives, _paths = all_objectives_and_paths(root, state)
+            answers = [{"kind": "scope-objective", "id": name, "decision": "accept"} for name in objectives]
+            first = decisions_file(root, state, reportSha256=None, decisionSha256=None, answers=answers)
+            workflow.decisions(root, first)
+            first_sha = hashlib.sha256(first.read_bytes()).hexdigest()
+            before = {item["id"]: item["disposition"]
+                      for item in workflow._read_json(root / workflow.SCOPE_FILE)["objectives"]}
+            revised = [{"kind": "scope-objective", "id": objectives[0], "decision": "defer"}]
+            revised += [{"kind": "scope-objective", "id": name, "decision": "accept"} for name in objectives[1:]]
+            second = decisions_file(root, state, reportSha256=None, decisionSha256=None,
+                                    supersedes=first_sha, answers=revised)
+            self.assertEqual(workflow.decisions(root, second)["status"], "applied")
+            state = workflow._load(root)
+            statuses = {source["fileSha256"]: source["status"] for source in state["decisionSources"]}
+            self.assertEqual(statuses[first_sha], "superseded")
+            scope = workflow._read_json(root / workflow.SCOPE_FILE)
+            dispositions = {item["id"]: item["disposition"] for item in scope["objectives"]}
+            self.assertEqual(dispositions[objectives[0]], "deferred")
+            for name in objectives[1:]:
+                self.assertEqual(dispositions[name], before[name], name)
+
+    def test_supersede_does_not_waive_conflicts_from_other_files(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            workflow.start(root, "guided")
+            state = workflow.approve(root, map_decisions=map_review(root))
+            objectives, paths = all_objectives_and_paths(root, state)
+            plan = decisions_file(root, state, reportSha256=None, decisionSha256=None,
+                                  answers=[{"kind": "scope-objective", "id": name, "decision": "accept"}
+                                           for name in objectives])
+            workflow.decisions(root, plan)
+            paths_file = decisions_file(root, state, review=False, reportSha256=None, decisionSha256=None,
+                                        answers=[{"kind": "scope-path", "id": path, "decision": "accept"}
+                                                 for path in paths])
+            workflow.decisions(root, paths_file)
+            wrong_target = hashlib.sha256(paths_file.read_bytes()).hexdigest()
+            revised = [{"kind": "scope-objective", "id": objectives[0], "decision": "defer"}]
+            revised += [{"kind": "scope-objective", "id": name, "decision": "accept"} for name in objectives[1:]]
+            changing = decisions_file(root, state, reportSha256=None, decisionSha256=None,
+                                      supersedes=wrong_target, answers=revised)
+            with self.assertRaisesRegex(workflow.WorkflowError, "supersede"):
+                workflow.decisions(root, changing)
+
+    def test_page_files_merge_in_any_order_and_require_the_review_once(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            workflow.start(root, "guided")
+            state = workflow.approve(root, map_decisions=map_review(root))
+            objectives, paths = all_objectives_and_paths(root, state)
+            path_only = decisions_file(root, state, review=False, reportSha256=None, decisionSha256=None,
+                                       answers=[{"kind": "scope-path", "id": path, "decision": "accept"}
+                                                for path in paths])
+            with self.assertRaisesRegex(workflow.WorkflowError, "report review"):
+                workflow.decisions(root, path_only)
+            plan_only = decisions_file(root, state, reportSha256=None, decisionSha256=None,
+                                       answers=[{"kind": "scope-objective", "id": name, "decision": "accept"}
+                                                for name in objectives])
+            workflow.decisions(root, plan_only)
+            self.assertTrue(workflow._read_json(root / workflow.SCOPE_FILE)["objectives"])
+            workflow.decisions(root, path_only)
+            scope = workflow._read_json(root / workflow.SCOPE_FILE)
+            self.assertEqual(sorted(scope["approvedPaths"]), sorted(paths))
+            self.assertFalse(scope["authorization"]["explicit"])
+
+    def test_progress_log_and_event_stream_record_the_workflow(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            workflow.start(root, "guided")
+            state = workflow.approve(root, map_decisions=map_review(root))
+            self.assertTrue(state["progressLog"])
+            self.assertTrue(any(entry["stage"] == "module_map" for entry in state["progressLog"]))
+            self.assertEqual(state["events"], workflow.EVENTS_FILE)
+            events = (root / workflow.EVENTS_FILE).read_text(encoding="utf-8").splitlines()
+            names = {json.loads(line)["event"] for line in events}
+            self.assertIn("report.generated", names)
+            self.assertIn("stage.changed", names)
+
+    def test_since_review_reports_a_new_generation_and_marks_answers_stale(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            workflow.start(root, "guided")
+            state = workflow.approve(root, map_decisions=map_review(root))
+            workflow.decisions(root, decisions_file(root, state))
+            state = workflow.regenerate(root, reason="the report directory was removed")
+            self.assertEqual(state["sinceReview"]["status"], "changed")
+            self.assertIn("a newer report generation", state["sinceReview"]["changed"])
+            self.assertEqual(state["decisionSources"][0]["status"], "stale")
+
+    def test_workflow_history_renders_missing_evidence_as_missing(self) -> None:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "report_renderer", ROOT / "skills/acima-adoption/scripts/render_report.py")
+        renderer = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(renderer)
+        html = renderer.workflow_history({"adoptionWorkflow": {
+            "evidenceIntegrity": {"status": "missing", "checked": 4,
+                                  "missing": [{"name": "enforcement", "path": "acima/evidence/enforcement.json"}]},
+            "decisionLog": [{"kind": "scope-objective", "id": "ci-enforcement", "decision": "accept",
+                             "status": "in force", "reviewer": "Repository owner", "decidedOn": "2026-11-13"}],
+            "progressLog": [{"stage": "module_map", "from": "awaiting_approval", "to": "complete",
+                             "at": "2026-11-13T10:00:00+00:00", "detail": "approved"}],
+        }})
+        self.assertIn("Recorded but missing", html)
+        self.assertIn("acima/evidence/enforcement.json", html)
+        self.assertIn("Current answers", html)
+        self.assertIn("Stage changes", html)
 
     def test_workspace_readme_names_the_canonical_layout(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
