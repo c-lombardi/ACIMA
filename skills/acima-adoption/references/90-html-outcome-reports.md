@@ -142,6 +142,25 @@ covered, validation problems, and the limitation that structural validation does
 coding agent will follow the guidance. Never describe a generated instruction file as empirically
 verified agent behavior.
 
+## Automatic progress refresh
+
+The report is a living view of the adoption, not a snapshot the owner has to ask for again. After
+every recorded workflow change the adoption workflow refreshes the generated pages, so the Overview
+and Plan pages show the current phase, current stage, completed milestones, next action, and
+remediation or agent-guidance state without a prompt or a second command.
+
+A refresh may replace only the progress sections: `adoptionWorkflow` and `milestones`. The reviewed
+decision content — findings, module map, file impact, evidence and every other section — stays
+byte-identical. The report layer compares a decision digest and refuses to write a refresh that
+would change it, so an open page cannot silently become a different proposal. The generation digest
+recorded at review remains the review identity; a separate live digest tracks the files on disk and
+detects edits made outside the workflow.
+
+A refresh failure never blocks the workflow. It is recorded as stale with its reason, and the
+report is not presented as current until a refresh succeeds. The refreshed model is written back to
+`report-data.json`, so the pages the owner reviewed remain the single report. Do not treat a
+refreshed page as a new report, a new review, or new evidence.
+
 ## Accessibility baseline
 
 The generated report targets **WCAG 2.2 AA** for the content and interaction it provides. Criteria
@@ -189,7 +208,8 @@ python scripts/render_report.py --input <report-model.json> --out-dir <output-di
 The command writes six HTML pages, `assets/report.css`, and `report-data.json`. It has no third-party
 runtime dependencies; generated reports need no network or build step. Existing report files are not
 overwritten unless `--overwrite` is explicitly supplied. Only use that flag when replacement has been
-approved.
+approved. The adoption workflow's own progress refresh is not an overwrite: it rewrites only the
+progress sections of a report it already generated and keeps the reviewed decision content pinned.
 
 When output is inside the target repository, obtain approval for the exact report directory first.
 Prefer `acima/report/<assessment-id>/` so generated pages remain separate from product source.

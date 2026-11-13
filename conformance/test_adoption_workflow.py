@@ -291,7 +291,10 @@ class AdoptionWorkflowTests(unittest.TestCase):
             self.assertEqual(state["stages"]["adoption_proposal"]["status"], "complete")
             self.assertEqual(state["stages"]["proposal_report"]["status"], "awaiting_approval")
             report = state["artifacts"]["proposalReport"]
-            self.assertEqual(workflow.report_digest(Path(report["directory"])), report["sha256"])
+            # Every save refreshes the report's progress sections, so the directory matches the
+            # live digest while the reviewed generation digest remains the review identity.
+            self.assertEqual(workflow.report_digest(Path(report["directory"])), report["liveSha256"])
+            self.assertEqual(report["progressStatus"], "current")
             self.assertTrue((Path(report["directory"]) / "index.html").is_file())
             self.assertTrue((Path(report["directory"]) / "proposal.html").is_file())
             report_data = json.loads((Path(report["directory"]) / "report-data.json").read_text(encoding="utf-8"))
@@ -310,6 +313,38 @@ class AdoptionWorkflowTests(unittest.TestCase):
             self.assertTrue((root / "acima.config.json").is_file())
             self.assertTrue((root / "acima/tooling/python/acima_arch.py").is_file())
             self.assertTrue((root / "acima/evidence/verification.json").is_file())
+
+    def test_report_progress_is_refreshed_without_a_prompt(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            workflow.start(root, "guided")
+            workflow.approve(root, map_decisions=map_review(root))
+            state = workflow._load(root)
+            report = state["artifacts"]["proposalReport"]
+            data_path = Path(report["directory"]) / "report-data.json"
+            before = json.loads(data_path.read_text(encoding="utf-8"))
+            reviewed, decision = report["sha256"], report["decisionSha256"]
+            self.assertEqual(before["adoptionWorkflow"]["currentStage"]["name"], "proposal_report")
+            approve_scope(root, scope(root))
+            state = workflow._load(root)
+            report = state["artifacts"]["proposalReport"]
+            after = json.loads(data_path.read_text(encoding="utf-8"))
+            stages = {stage["name"]: stage["status"]
+                      for stage in after["adoptionWorkflow"]["stages"]}
+            self.assertEqual(stages["implementation"], "complete")
+            self.assertEqual(after["adoptionWorkflow"]["currentStage"]["name"], "remediation")
+            self.assertTrue(after["milestones"]["implementationComplete"])
+            self.assertNotEqual(before["adoptionWorkflow"], after["adoptionWorkflow"])
+            # The progress refresh must never touch the reviewed decision content.
+            self.assertEqual(report["sha256"], reviewed)
+            self.assertEqual(report["decisionSha256"], decision)
+            for key in ("findings", "moduleMap", "fileImpact", "qualitativeReview"):
+                self.assertEqual(after[key], before[key])
+            self.assertEqual(report["progressStatus"], "current")
+            plan_page = (Path(report["directory"]) / "plan.html").read_text(encoding="utf-8")
+            self.assertIn("Enforcement implementation", plan_page)
+            self.assertIn("Current stage: <b>Immediate remediation", plan_page)
 
     def test_workspace_readme_names_the_canonical_layout(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

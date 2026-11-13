@@ -42,7 +42,9 @@ from module_map import (  # noqa: E402
 from executables import resolve_executable  # noqa: E402
 import agent_guidance  # noqa: E402
 from qualitative_review import ReviewValidationError, load_and_validate_review  # noqa: E402
-from adoption_reports import AdoptionReportError, render_proposal_report, report_digest  # noqa: E402
+from adoption_reports import (  # noqa: E402
+    AdoptionReportError, refresh_progress_report, render_proposal_report, report_digest,
+)
 from acima_paths import existing as _existing_artifact  # noqa: E402
 
 STATE_FILE = "acima/state.json"
@@ -523,7 +525,37 @@ def _write_workspace_readme(root: Path) -> None:
 
 def _save(root: Path, state: dict) -> None:
     state["updatedAt"] = _now()
+    # Every recorded progress change refreshes the report that already exists. The user is never
+    # asked to update it, and the report never presents last week's stage table as current.
+    _refresh_progress_report(state)
     _write_json(root, STATE_FILE, state)
+
+
+def _refresh_progress_report(state: dict) -> None:
+    """Keep the generated HTML report in step with recorded adoption progress.
+
+    Only the progress sections may change; the reviewed decision content is immutable, which the
+    report layer enforces with a decision digest. A refresh failure never blocks the workflow, but
+    it is recorded so a stale report is never presented as current.
+    """
+    report = (state.get("artifacts") or {}).get("proposalReport")
+    if not isinstance(report, dict) or not report.get("directory"):
+        return
+    try:
+        refresh_progress_report(report, state)
+    except (AdoptionReportError, OSError, ValueError, KeyError) as error:
+        report["progressStatus"] = "stale"
+        report["progressError"] = str(error)[:400]
+        state["progressReport"] = {
+            "status": "stale", "reportId": report.get("reportId"),
+            "directory": report.get("directory"), "reason": str(error)[:400],
+        }
+        return
+    state["progressReport"] = {
+        "status": "current", "reportId": report.get("reportId"),
+        "directory": report.get("directory"), "indexHtml": report.get("indexHtml"),
+        "updatedAt": report.get("progressUpdatedAt"),
+    }
 
 
 def _load(root: Path) -> dict:
@@ -617,6 +649,7 @@ def _summary(state: dict) -> dict:
         "agentGuidance": state.get("agentGuidance", {}),
         "verificationAfterRemediation": state.get("verificationAfterRemediation"),
         "next": state.get("next", {}),
+        "progressReport": state.get("progressReport", {}),
     }
 
 
@@ -1816,9 +1849,11 @@ def _report_review_valid(root: Path, state: dict, report_sha256: str,
     if not report.get("directory") or not report.get("sha256"):
         raise WorkflowError("no generated HTML proposal report is available; implementation is blocked")
     current_digest = report_digest(Path(report["directory"]))
-    if current_digest != report.get("sha256"):
-        raise WorkflowError("the HTML proposal report changed after generation; regenerate it and review the new version")
-    if report_sha256 != current_digest:
+    # Automatic progress refreshes rewrite only the progress sections, so the directory digest is
+    # compared with the last refresh. The reviewed identity stays the generation digest.
+    if current_digest != (report.get("liveSha256") or report.get("sha256")):
+        raise WorkflowError("the HTML proposal report changed after generation or was edited outside the workflow; regenerate it and review the new version")
+    if report_sha256 != report.get("sha256"):
         raise WorkflowError("the supplied report digest does not match the exact HTML proposal that was generated")
     proposal_path = root / ADOPTION_PROPOSAL_JSON
     if not proposal_path.is_file() or _sha(proposal_path) != report.get("proposalSha256"):
@@ -1833,7 +1868,11 @@ def _report_review_valid(root: Path, state: dict, report_sha256: str,
         "status": "reviewed",
         "reviewedBy": reviewed_by.strip(),
         "reviewedOn": _today(),
-        "reportSha256": current_digest,
+        # The reviewed identity is the generation digest the owner was given. The live digest is
+        # recorded separately because automatic progress refreshes rewrite only the progress
+        # sections of the same report.
+        "reportSha256": report.get("sha256"),
+        "liveReportSha256": current_digest,
         "proposalSha256": report.get("proposalSha256"),
         "reportId": report.get("reportId"),
     })
@@ -1999,8 +2038,9 @@ def _require_approved_scope(root: Path, state: dict) -> dict:
         raise WorkflowError("the adoption scope is a draft, not explicit implementation authorization")
     report_review = scope.get("reportReview") or {}
     report = state.get("artifacts", {}).get("proposalReport") or {}
-    if not report.get("directory") or report_digest(Path(report["directory"])) != report.get("sha256"):
-        raise WorkflowError("the HTML report is missing or has changed since its approval")
+    if (not report.get("directory")
+            or report_digest(Path(report["directory"])) != (report.get("liveSha256") or report.get("sha256"))):
+        raise WorkflowError("the HTML report is missing or has been changed outside the workflow since its approval")
     proposal_file = root / ADOPTION_PROPOSAL_JSON
     if not proposal_file.is_file() or _sha(proposal_file) != report.get("proposalSha256"):
         raise WorkflowError("the proposal changed after approval; regenerate the report and obtain fresh consent")

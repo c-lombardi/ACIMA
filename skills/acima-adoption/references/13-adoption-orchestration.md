@@ -260,6 +260,14 @@ Resume from persisted state without repeating completed work or bypassing a prer
 repository revision changes materially, mark affected evidence and approvals stale and reassess
 before proceeding.
 
+The generated HTML report is part of that persisted state and stays current automatically. Every
+recorded progress change refreshes its progress sections, so do not ask the user to regenerate or
+update it, and do not describe a previous version as the current state. A refresh may change only
+the progress sections (current phase, stage table, completed milestones, next action, remediation
+and agent-guidance status); the reviewed decision content and the generation digest stay fixed, and
+a refresh that would change decision content is refused. If a refresh fails, report the report as
+stale with its reason and regenerate it before treating it as current.
+
 ## Target preservation and honest claims
 
 Never overwrite user-authored instructions outside generated markers. Preserve existing architecture

@@ -9,6 +9,8 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -67,6 +69,26 @@ def report_digest(directory: Path) -> str:
         digest.update(path.read_bytes())
         digest.update(b"\0")
     return digest.hexdigest()
+
+
+# Report sections that describe adoption progress rather than the reviewed decision. They are
+# refreshed after every recorded workflow change; no other section may change after generation.
+PROGRESS_KEYS = ("adoptionWorkflow", "milestones")
+
+
+def decision_digest(model: dict) -> str:
+    """Hash the reviewed decision content of a report model, excluding the progress sections."""
+    stable = {key: value for key, value in model.items() if key not in PROGRESS_KEYS}
+    return hashlib.sha256(
+        json.dumps(stable, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+
+
+def progress_digest(progress: dict) -> str:
+    """Hash only the progress sections, so an unchanged state does not rewrite the report."""
+    return hashlib.sha256(
+        json.dumps(progress, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
 
 
 def _file_change(path: str, action: str, purpose: str, outcome: str,
@@ -271,6 +293,55 @@ def _canonical_phase(state: dict) -> dict:
         return module._summary(state) or {}
     except (KeyError, TypeError, AttributeError, ImportError, OSError):
         return {}
+
+
+def _milestones(state: dict) -> dict:
+    """Derive milestone state from recorded stages; never infer completion from file presence."""
+    stages = state.get("stages") or {}
+
+    def status(name: str):
+        stage = stages.get(name)
+        return stage.get("status") if isinstance(stage, dict) else None
+
+    return {
+        "assessmentComplete": status("assessment") == "complete",
+        "reportGenerationComplete": bool((state.get("artifacts") or {}).get("proposalReport")),
+        "adoptionProposalComplete": status("adoption_proposal") == "complete",
+        "implementationComplete": status("implementation") == "complete",
+        "conformanceVerified": status("verification") == "complete",
+    }
+
+
+def _workflow_progress(state: dict) -> dict:
+    """Build the progress-only report sections for the current workflow state.
+
+    The workflow module owns the phase vocabulary, so the report projects its summary instead of
+    deriving a second one. These sections may change after generation; ``decision_digest`` covers
+    everything else and an automatic refresh must leave it unchanged.
+    """
+    summary = _canonical_phase(state)
+    stages = [stage for stage in (summary.get("stages") or []) if isinstance(stage, dict)]
+    current_stage = next(
+        (stage for stage in stages if stage.get("status") not in ("complete", "not_applicable")),
+        None,
+    )
+    workflow = {
+        "mode": state.get("mode", "guided"),
+        "authorized": bool(state.get("authorized")),
+        "repositoryRevision": (state.get("repository") or {}).get("revision"),
+        "phase": summary.get("phase"),
+        "phaseLabel": summary.get("phaseLabel") or "Not recorded",
+        "phaseOrder": summary.get("phaseOrder", []),
+        "stages": stages,
+        "currentStage": current_stage,
+        "next": state.get("next", {}),
+        "remediation": summary.get("remediation") or {},
+        "agentGuidance": summary.get("agentGuidance") or {},
+        "asOf": state.get("updatedAt"),
+    }
+    if summary.get("staleWarning"):
+        workflow["staleWarning"] = summary["staleWarning"]
+    return {"adoptionWorkflow": workflow, "milestones": _milestones(state)}
 
 
 def build_report_model(root: Path, review_path: Path, module_map: dict,
@@ -585,15 +656,7 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
             ", ".join(preserved_assets) + ". They are not replaced merely to introduce ACIMA."
         )
 
-    workflow_stages = []
-    for name, stage in (state.get("stages") or {}).items():
-        if isinstance(stage, dict):
-            workflow_stages.append({
-                "name": name, "label": stage.get("label") or name,
-                "status": stage.get("status"), "detail": stage.get("detail"),
-                "nextAction": stage.get("nextAction") or "",
-            })
-    workflow_phase = _canonical_phase(state)
+    progress_sections = _workflow_progress(state)
 
     model = {
         "schemaVersion": "1.1",
@@ -610,13 +673,7 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
             "language": assessment.get("language"),
         },
         "assessmentStatus": "Qualitative review complete; module ownership and implementation review are pending.",
-        "milestones": {
-            "assessmentComplete": True,
-            "reportGenerationComplete": True,
-            "adoptionProposalComplete": True,
-            "implementationComplete": False,
-            "conformanceVerified": False,
-        },
+        "milestones": progress_sections["milestones"],
         "repository": {
             "name": repo_name, "path": str(root),
             **({"commit": revision} if revision else {}),
@@ -694,12 +751,7 @@ def build_report_model(root: Path, review_path: Path, module_map: dict,
             "ownershipDependentRules": [], "independentReviewContinues": True,
             "deterministicChecksBlocked": True, "proposalReviewRequired": True,
         },
-        "adoptionWorkflow": {"mode": state.get("mode", "guided"), "authorized": False,
-                             "repositoryRevision": revision_record,
-                             "phase": workflow_phase.get("phase"),
-                             "phaseLabel": workflow_phase.get("phaseLabel") or "Not recorded",
-                             "phaseOrder": workflow_phase.get("phaseOrder", []),
-                             "stages": workflow_stages, "next": state.get("next", {})},
+        "adoptionWorkflow": progress_sections["adoptionWorkflow"],
     }
 
     renderer = _load_module(skill / "scripts" / "render_report.py", "acima_adoption_html_renderer")
@@ -744,6 +796,11 @@ def render_proposal_report(root: Path, review_path: Path, module_map: dict,
     if missing:
         raise AdoptionReportError("HTML renderer returned without all required pages/assets: %s" % ", ".join(missing))
     digest = report_digest(output)
+    # The writer normalizes the model it stores, so the recorded decision identity is read back
+    # from the report the owner will actually open, not from the builder's in-memory copy.
+    stored_model = json.loads((output / "report-data.json").read_text(encoding="utf-8"))
+    decision = decision_digest(stored_model)
+    progress = progress_digest({key: stored_model.get(key) for key in PROGRESS_KEYS})
     return {
         "status": "awaiting_review",
         "reportId": report_id,
@@ -752,6 +809,70 @@ def render_proposal_report(root: Path, review_path: Path, module_map: dict,
         "proposalHtml": str(output / "proposal.html"),
         "pages": {name: str(output / name) for name in expected if name.endswith(".html")},
         "sha256": digest,
+        "liveSha256": digest,
+        "decisionSha256": decision,
+        "progressSha256": progress,
+        "progressStatus": "current",
+        "progressUpdatedAt": (stored_model.get("adoptionWorkflow") or {}).get("asOf"),
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "rendererOutput": result.stdout.strip(),
     }
+
+
+def refresh_progress_report(report: dict, state: dict) -> dict:
+    """Re-render the generated report so it shows the current adoption progress.
+
+    Only the progress sections are replaced. The reviewed decision content stays byte-identical,
+    which is why the full qualitative-review revalidation does not run here: the refresh compares
+    the decision digest and refuses to write anything that would differ from the reviewed model.
+    Files are written to a staging directory first so an open report never shows a half-written
+    page.
+    """
+    directory = Path(str(report.get("directory") or ""))
+    data_path = directory / "report-data.json"
+    if not data_path.is_file():
+        raise AdoptionReportError("the generated report data is missing; regenerate the report")
+    model = json.loads(data_path.read_text(encoding="utf-8"))
+    progress = _workflow_progress(state)
+    signature = progress_digest(progress)
+    if signature == report.get("progressSha256"):
+        return report
+    updated = dict(model)
+    updated.update(progress)
+    if report.get("decisionSha256") and decision_digest(updated) != report["decisionSha256"]:
+        raise AdoptionReportError(
+            "a progress refresh would change reviewed decision content; regenerate the report instead"
+        )
+    if updated.get("generatedAt") != model.get("generatedAt"):
+        raise AdoptionReportError("a progress refresh must preserve the original generation time")
+    renderer = _load_module(_skill_root() / "scripts" / "render_report.py",
+                            "acima_adoption_html_renderer")
+    problems = renderer.validate_progress(updated)
+    if problems:
+        raise AdoptionReportError(
+            "the refreshed progress was rejected by the HTML renderer:\n- " + "\n- ".join(problems)
+        )
+    staging = Path(tempfile.mkdtemp(prefix="acima-progress-report-"))
+    try:
+        for name, body in renderer.render(updated).items():
+            (staging / name).write_text(body, encoding="utf-8")
+        (staging / "assets").mkdir(exist_ok=True)
+        (staging / "assets" / "report.css").write_text(
+            Path(renderer.CSS).read_text(encoding="utf-8"), encoding="utf-8")
+        (staging / "report-data.json").write_text(
+            json.dumps(updated, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        (directory / "assets").mkdir(parents=True, exist_ok=True)
+        for name in list(renderer.PAGES) + ["report-data.json", "assets/report.css"]:
+            source = staging / name
+            destination = directory / name
+            if destination.is_file() and destination.read_bytes() == source.read_bytes():
+                continue
+            os.replace(source, destination)
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+    report["progressSha256"] = signature
+    report["progressUpdatedAt"] = (updated.get("adoptionWorkflow") or {}).get("asOf")
+    report["progressStatus"] = "current"
+    report.pop("progressError", None)
+    report["liveSha256"] = report_digest(directory)
+    return report

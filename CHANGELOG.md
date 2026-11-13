@@ -4,6 +4,41 @@ All normative changes to the ACIMA standard. The machine-readable catalog is
 [`tools/acima-spec/rules.json`](tools/acima-spec/rules.json); this file explains *why* it changed and
 what an adopting repository has to do about it.
 
+## Unreleased — keep the adoption report current automatically
+
+**Skill and report change only.** The catalog, standard version, rule ids, levels, severity and claim
+semantics are unchanged; `acima-adoption` moves from 1.38.1 to 1.39.0. No adopting repository has to
+change configuration, waivers or evidence.
+
+### Why
+
+The HTML report is the decision document for the adoption, but it froze at generation. Once a stage
+advanced — map approval, scope approval, enforcement, CI, remediation, verification — its Overview and
+Plan pages still described the earlier state, so the owner had to ask for a fresh render or read the
+persisted state to know where the adoption stood.
+
+### What changed
+
+- The workflow refreshes a generated report after every recorded progress change. The Overview and Plan
+  pages now show the current phase, current stage, milestone completion, next action, and remediation
+  or agent-guidance state without a prompt.
+- A refresh may replace only `adoptionWorkflow` and `milestones`. The report layer compares a decision
+  digest and refuses a refresh that would change reviewed decision content, so the reviewed proposal
+  cannot silently become a different document.
+- The generation digest recorded at report review remains the review identity; a separate live digest
+  tracks the files on disk and detects edits made outside the workflow. A refresh failure is recorded as
+  stale with its reason and never blocks the workflow.
+- The workflow section of the model now carries the current stage, an as-of timestamp and the
+  remediation and agent-guidance summaries, and milestones are derived from recorded stages instead of
+  being fixed at generation.
+- The report contract, orchestration guidance and design record state that the agent keeps the report
+  current and never asks the owner to regenerate it.
+
+### Adopting repositories
+
+Nothing to change. Resume the engagement with the updated skill and the existing report keeps itself
+current. No repository configuration, evidence or assessment changes are required.
+
 ## Unreleased — omit empty gap briefing
 
 **Skill and report change only.** The catalog, standard version, rule ids, levels, severity and claim

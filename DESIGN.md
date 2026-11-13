@@ -487,7 +487,9 @@ schema 1.1. The renderer:
 3. checks coverage counts and one-to-one requirement results;
 4. rejects incomplete, stale, duplicated, or inconsistent decision-ready models;
 5. writes six HTML pages, the stylesheet, and `report-data.json`;
-6. refuses to overwrite an existing report without explicit approval.
+6. refuses to overwrite an existing report without explicit approval, while the adoption workflow
+   refreshes the progress sections of a report it already generated after every recorded change;
+   a refresh that would alter reviewed decision content is refused and recorded as stale.
 
 The generated report has no third-party runtime dependencies. It can be opened directly from the
 output directory and does not require a web server.

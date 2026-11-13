@@ -694,7 +694,10 @@ def adoption_workflow(d):
         changed=table(['Recommendation','Files'],[(x.get('id'),', '.join(arr(x.get('files')))) for x in arr(result.get('changed'))],caption='Remediation changes applied',row_headers=True) if result else ''
         remaining=table(['Recommendation','Status','Reason'],[(x.get('id'),status_label(x.get('status')),x.get('reason')) for x in arr(result.get('failures'))],caption='Remediation items still outstanding',row_headers=True) if result and result.get('failures') else ''
         remediation=f'<div class="reconciliation"><b>Immediate remediation:</b> {e(result_text)} <b>Maturity:</b> {e(status_label((rem.get("maturity") or {}).get("mode") or "not established"))}. <b>Risk:</b> {e(status_label((rem.get("risk") or {}).get("level") or "not established"))}.</div>{changed}{remaining}'
-    return f'<section id="adoption-workflow"><small>ADOPTION WORKFLOW</small><h2>Where the adoption stands</h2><p class="lead">Mode: <b>{e(status_label(wf.get("mode") or "unknown"))}</b>. Current phase: <b>{e(phase)}</b>. Current stage: <b>{e(status_label((wf.get("currentStage") or {}).get("label") or "not started"))}</b>.</p>{warning}{guidance_summary}{remediation}{stage_table}<p class="note"><b>Next action:</b> {e(next_text)}</p><p class="note">Configured, generated and verified are separate states. This section does not turn a proposal or a CI file into proof that a remote check ran.</p></section>'
+    as_of=str(wf.get('asOf') or '')
+    stamp=f"{as_of[:16].replace('T',' ')} UTC" if as_of else ''
+    progress_note=(f'<p class="note">Progress as of <time datetime="{e(as_of)}">{e(stamp)}</time>. This section refreshes automatically after every recorded workflow change; the reviewed proposal content does not change.</p>' if stamp else '<p class="note">This section refreshes automatically after every recorded workflow change; the reviewed proposal content does not change.</p>')
+    return f'<section id="adoption-workflow"><small>ADOPTION WORKFLOW</small><h2>Where the adoption stands</h2><p class="lead">Mode: <b>{e(status_label(wf.get("mode") or "unknown"))}</b>. Current phase: <b>{e(phase)}</b>. Current stage: <b>{e(status_label((wf.get("currentStage") or {}).get("label") or "not started"))}</b>.</p>{progress_note}{warning}{guidance_summary}{remediation}{stage_table}<p class="note"><b>Next action:</b> {e(next_text)}</p><p class="note">Configured, generated and verified are separate states. This section does not turn a proposal or a CI file into proof that a remote check ran.</p></section>'
 
 
 def module_map_overview(d):
@@ -810,6 +813,28 @@ def render(d):
     pages['evidence.html']=f'''<section id="evidence-summary"><small>EVIDENCE SUMMARY</small><h2>What the evidence shows</h2><p class="lead">{e(summary_sentence)}</p><ul class="summary-facts"><li><b>{e(reviewed)}</b><span>checks reviewed</span></li><li><b>{e(unresolved)}</b><span>still unresolved</span></li><li><b>{e(exception_count)}</b><span>checks needing attention</span></li></ul><p class="note">Coverage is not a passing score. Automated checks, the evidence-backed review and the final results are counted separately.</p><p class="cross-links"><span>Related:</span> <a href="findings.html#findings">Findings</a> <a href="files.html#file-changes">Proposed file changes</a> <a href="plan.html#adoption-plan">Plan</a></p></section><section id="exceptions"><small>CHECKS NEEDING ATTENTION</small><h2>What needs attention</h2>{exception_panel}</section><section id="limits"><small>WHAT WE COULDN'T ESTABLISH</small><h2>What could not be established</h2>{bullets(limits,'No limitations supplied. Confirm the assessment explicitly considered coverage and tooling limits.')}</section><section id="ownership-blocked"><small>CHECKS THAT NEED AN AGREED MAP</small><h2>Which checks need an agreed map</h2><p class="lead">{e(ownership_sentence)}</p>{blocked_table}<p class="note">The rest of the review can continue. A missing or unapproved map does not make the whole architecture unassessed.</p></section><section id="detailed-evidence"><small>DETAILS</small><h2>Evidence details</h2><p class="lead">Open a section to see what was checked, every result, the sources behind it and how this report was made.</p><details><summary>Review coverage: {e(reviewed)}</summary>{coverage_table}</details><details><summary>{e(result_label)}</summary>{conformance_table}</details><details><summary>Supporting evidence ({len(evidence)})</summary>{evidence_table}</details><details><summary>How this report was made</summary>{provenance_table}</details></section>'''
     titles={'index.html':('Overview','The decision at a glance'), 'proposal.html':('What would change','The proposed architecture and what it would deliver'),'findings.html':('What we found','What is working and what needs attention'),'files.html':('Files and impact','Exactly what is proposed to change'),'plan.html':('Plan and decisions','What happens, in what order, and who decides'),'evidence.html':('Evidence and limits','What was checked and what the results prove')}
     return {f:shell(d,f,*titles[f],body) for f,body in pages.items()}
+def validate_progress(d):
+    """Validate only the progress section that an automatic refresh may replace."""
+    p=[]
+    workflow=d.get('adoptionWorkflow')
+    if workflow is None:
+        return p
+    if not isinstance(workflow,dict) or workflow.get('mode') not in ('guided','full'):
+        return ['adoptionWorkflow.mode must be guided or full.']
+    if workflow.get('phase') is not None and not isinstance(workflow.get('phase'),str):
+        p.append('adoptionWorkflow.phase must be a string or null.')
+    if not isinstance(workflow.get('phaseOrder',[]),list):
+        p.append('adoptionWorkflow.phaseOrder must be an array.')
+    for i,stage in enumerate(arr(workflow.get('stages'))):
+        if not isinstance(stage,dict) or not stage.get('name') or not stage.get('status'):
+            p.append(f'adoptionWorkflow.stages[{i}] needs name and status.')
+    current=workflow.get('currentStage')
+    if current is not None and (not isinstance(current,dict) or not current.get('name')):
+        p.append('adoptionWorkflow.currentStage must be a stage record or null.')
+    if not isinstance(workflow.get('next',{}),dict):
+        p.append('adoptionWorkflow.next must be an object.')
+    return p
+
 def validate(d):
     p=[]
     if not isinstance(d,dict):return ['Report model must be a JSON object.']
@@ -866,14 +891,7 @@ def validate(d):
                     if proposal.get('status') == 'approved' and not mm.get('review'): p.append('An approved module map requires recorded review provenance.')
             review=mm.get('review')
             if review is not None and (not isinstance(review,dict) or review.get('status') not in ('approved','partially_approved','rejected','deferred','pending')): p.append('moduleMap.review.status must be approved, partially_approved, rejected, deferred or pending.')
-    workflow=d.get('adoptionWorkflow')
-    if workflow is not None:
-        if not isinstance(workflow,dict) or workflow.get('mode') not in ('guided','full'):
-            p.append('adoptionWorkflow.mode must be guided or full.')
-        else:
-            for i,stage in enumerate(arr(workflow.get('stages'))):
-                if not isinstance(stage,dict) or not stage.get('name') or not stage.get('status'):
-                    p.append(f'adoptionWorkflow.stages[{i}] needs name and status.')
+    p.extend(validate_progress(d))
     gate=d.get('ownershipGate')
     if gate is not None:
         if not isinstance(gate,dict) or gate.get('status') not in ('ready','blocked'): p.append('ownershipGate.status must be ready or blocked.')
