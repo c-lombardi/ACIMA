@@ -4,6 +4,30 @@ All normative changes to the ACIMA standard. The machine-readable catalog is
 [`tools/acima-spec/rules.json`](tools/acima-spec/rules.json); this file explains *why* it changed and
 what an adopting repository has to do about it.
 
+## Unreleased — omit empty gap briefing
+
+**Skill and report change only.** The catalog, standard version, rule ids, levels, severity and claim
+semantics are unchanged; `acima-adoption` moves from 1.38.0 to 1.38.1. No adopting repository has to
+change configuration, waivers or evidence.
+
+### Why
+
+An approved map with no recorded findings still rendered a “What to know before the map” section
+with an empty state. That made a clean map look as if a gap had gone missing, and contradicted the
+documented fallback behavior.
+
+### What changed
+
+- The proposal omits the gap briefing entirely when there are no findings, no explicit
+  `plainLanguageGaps`, and no unresolved map risks.
+- Added a regression test for an approved map with no recorded gaps. It confirms the gap section and
+  its empty-state copy are absent while the map still renders.
+
+### Adopting repositories
+
+Regenerate the HTML report from the updated skill. No repository configuration, evidence or assessment
+changes are required.
+
 ## Unreleased — plain-language gap briefing
 
 **Skill and report change only.** The catalog, standard version, rule ids, levels, severity and claim

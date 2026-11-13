@@ -222,6 +222,33 @@ class HtmlReportTests(unittest.TestCase):
             self.assertIn('What fixing it involves:',gap_section)
             self.assertNotIn('ACIMA-',gap_section)
 
+    def test_approved_map_with_no_recorded_gaps_omits_gap_briefing(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); src=root/'model.json'; out=root/'report'
+            data=model(); data['findings']=[]
+            units=[{'id':'orders-impl','module':'orders','role':'implementation','paths':['src/orders']}]
+            data['moduleMap']={
+                'status':'authoritative',
+                'summary':'The existing map was checked without replacement.',
+                'proposal':None,
+                'review':{'status':'approved','approval':{'status':'approved','reviewer':'Repository owner','reviewedOn':'2026-11-12'}},
+                'authoritativeMap':{
+                    'present':True,'status':'complete','unitCount':1,
+                    'coveredProduction':1,'productionFiles':1,'unownedPaths':[],'issues':[],'units':units,
+                },
+                'authoritativeUnits':units,
+            }
+            data['ownershipGate']={'status':'ready','deterministicChecksBlocked':False,
+                                   'ownershipDependentRules':[],'independentReviewContinues':True}
+            src.write_text(json.dumps(data),encoding='utf-8')
+            result=subprocess.run([sys.executable,str(SCRIPT),'--input',str(src),'--out-dir',str(out)],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+            page=(out/'proposal.html').read_text(encoding='utf-8')
+            self.assertNotIn('id="plain-language-gaps"',page)
+            self.assertNotIn('No gap was recorded',page)
+            self.assertIn('id="module-map"',page)
+            self.assertIn('How the product is divided today',page)
+
     def test_generates_six_navigable_pages_and_impact_inventory(self):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td); src=root/'model.json'; out=root/'report'; src.write_text(json.dumps(model()),encoding='utf-8')

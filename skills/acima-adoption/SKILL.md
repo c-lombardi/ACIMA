@@ -6,7 +6,7 @@ compatibility: Python 3.9+ for the preflight script. The target language toolcha
 allowed-tools: Read Grep Glob Bash Edit Write
 metadata:
   standard: "1.9.0-draft.2"
-  skill-version: "1.38.0"
+  skill-version: "1.38.1"
   catalog-sha256: "e3b0926d571d24673b0f4e821ede042a208f3a5e961e5502ffc15cde024ee11c"
 ---
 

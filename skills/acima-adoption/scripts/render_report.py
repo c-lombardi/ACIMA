@@ -524,9 +524,7 @@ def plain_language_gaps_section(d):
         return ''
     records=plain_gap_records(d)
     if not records:
-        return ('<section id="plain-language-gaps" class="plain-gaps"><small>WHAT COULD GO WRONG</small>'
-                '<h2>What to know before the map</h2>'
-                '<p class="empty">No gap was recorded in the material available to this report. That does not prove there is none; check the <a href="evidence.html#evidence-summary">evidence page</a> for what was not reviewed.</p></section>')
+        return ''
     shown=records[:6]
     cards=[]
     for index,record in enumerate(shown,1):
