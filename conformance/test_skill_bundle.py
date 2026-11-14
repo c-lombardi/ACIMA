@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / "skills/acima-adoption"
 VENDOR = SKILL / "vendor"
 sys.path.insert(0, str(ROOT / "tools"))
-from bundle_skill import digest  # noqa: E402
+from bundle_skill import digest, shipped_files  # noqa: E402
 
 
 class SkillBundleTests(unittest.TestCase):
@@ -72,10 +72,7 @@ class SkillBundleTests(unittest.TestCase):
 
     def test_no_unrecorded_files_are_shipped(self) -> None:
         expected = set(self.bundle["files"]) | {"MANIFEST.json"}
-        actual = {path.relative_to(VENDOR).as_posix()
-                  for path in VENDOR.rglob("*")
-                  if path.is_file() and "__pycache__" not in path.parts
-                  and path.suffix != ".pyc"}
+        actual = {path.relative_to(VENDOR).as_posix() for path in shipped_files(VENDOR)}
         self.assertEqual(actual, expected)
 
 

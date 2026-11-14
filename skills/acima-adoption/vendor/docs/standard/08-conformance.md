@@ -190,13 +190,17 @@ checkout may be called current conformance.
 The count is derived from `rules.json`; never copy a fixed number. At L2 the catalog requires 38
 rules. The reference portable enforcers execute 33 of those and report `L004`, `C003`, `C007`,
 `C008` and `G004` as not executed; without manual evidence for those five, the correct claim is
-`PARTIAL ASSESSMENT`, not `FULL CONFORMANCE`. At L3 the catalog requires 56 rules; 42 execute in Python, 41 in TypeScript, 24 in .NET and 23 in Go. The fourteen rules requiring human judgement in every profile are `L004`, `C003`, `C007`, `C008`, `A002`, `A004`, `A010`–`A015`, `N003`
-and `G004`. The five
-third-party tier rules, the two explicit-input rules, the two value rules, the two composition
-rules, the two functional-capture rules, the three lifecycle rules and the two naming rules
-(`N001`–`N002`) execute in the Python and TypeScript enforcers; a Go or .NET run reports those
-eighteen `executed: false`, so that repository needs manual evidence for them or the scoped statement
-in §8.10. `N003` is one of the fourteen manual rules, not an automated gap.
+`PARTIAL ASSESSMENT`, not `FULL CONFORMANCE`. At L3 the catalog requires 56 rules; 42 execute in Python, 41 in TypeScript, 42 in .NET and 27 in Go. The fourteen rules requiring human judgement in every profile are `L004`, `C003`, `C007`, `C008`, `A002`, `A004`, `A010`–`A015`, `N003`
+and `G004`. The four third-party tier rules and the two explicit-input rules execute in the Python,
+TypeScript and .NET enforcers; `G006` executes in all four, with Go reading direct `go.mod`
+dependencies against `approvedDependencies`. `A005` and `D015` execute in all four reference enforcers. The value
+rule (`A006`), the two composition rules, the functional-capture rule (`D016`), the three lifecycle
+rules and the two naming rules (`N001`–`N002`) execute in Python, TypeScript and .NET; Go executes
+`N002` over type declarations. A Go run reports the remaining fifteen automated rules `executed: false`;
+a .NET run executes all 42 when `partialHelpers` is declared; an explicit empty list counts as a
+declaration, while an absent property leaves `D016` not executed.
+Either repository needs manual evidence for its gaps or the scoped statement in §8.10. `N003` is one
+of the fourteen manual rules, not an automated gap.
 
 The claim class is computed, not chosen by the author:
 
@@ -329,7 +333,8 @@ The third-party gate is two artefacts and one experiment:
 
 1. **The declaration** — an `externals` entry for every manifest package, each with a tier, an owner,
    a reason, a review date and an expiry. Chapters 4 §4.10 and 7 §7.4 define the shape; `G006` fails
-   the run when a package is missing or an entry has expired.
+   the run when a package is missing or an entry has expired. Go declares direct module paths in
+   `approvedDependencies`; `G006` compares them with `go.mod` and ignores `// indirect` entries.
 2. **The seam** — for `tier: integration`, exactly one adapter unit and one port unit (`L006`). Only
    the adapter imports the vendor (`L005`); no vendor type appears outside it (`L007`); the port names
    nothing but its own types (`D010`).

@@ -2,16 +2,18 @@
 
 The HTML report is the primary reader-facing explanation for a comprehensive ACIMA assessment or adoption proposal. It is designed for product owners and engineers who may not know ACIMA or the repository's codebase. The report is generated from a normalized, evidence-grounded model; it is not a new assessment engine and must not invent facts.
 
-## Six pages, six questions
+## Six pages, eight sections
 
-| Page | Immediate question answered |
+| Page | Reader question answered |
 |---|---|
-| `index.html` | Should we adopt ACIMA, and what value would it provide here? |
-| `proposal.html` | What would change in the architecture, and what are the benefits and tradeoffs? |
-| `findings.html` | What is already good, what did the assessment find, and why does it matter? |
-| `files.html` | Exactly which files would be created, modified, removed, or only inspected? |
-| `plan.html` | What happens next, in what order, and which decisions need an owner? |
-| `evidence.html` | What was actually checked, what remains uncertain, and what supports the conclusions? |
+| `index.html` — Overview | Should we adopt ACIMA, and what value would it provide here? |
+| `proposal.html` — Architecture and map | What would change in the architecture, and what are the benefits and tradeoffs? |
+| `findings.html` — Findings | What is already good, what did the assessment find, and why does it matter? |
+| `files.html` — Changes and files | Exactly which files would be created, modified, removed, or only inspected? |
+| `plan.html` — Plan and decisions | What happens next, in what order, and which decisions need an owner? |
+| `evidence.html` — Evidence and limits | What was actually checked, what remains uncertain, and what supports the conclusions? |
+
+Those pages carry eight primary sections in this order: **The decision**, **What would change**, **What needs attention**, **Which files change**, **What happens, in what order**, **What needs your decision**, **What the evidence shows**, and **What could not be established**. Supporting sections and disclosures stay inside the page that owns them; they do not create another primary section or another page.
 
 All pages share responsive navigation and an offline stylesheet. `index.html` is the entry point.
 
@@ -32,11 +34,11 @@ complete.
 
 ## Owner decision briefs
 
-The Plan page renders each owner decision as a brief, not a rule-id questionnaire: the plain-language
+The Plan and decisions page renders each owner decision as a brief, not a rule-id questionnaire: the plain-language
 question, context, recommendation, effort, consequence of leaving it open, evidence gap, other
 options and what stays blocked. Module ownership, path ownership and scope approval all use the same
 shape. Findings remain findings; the renderer labels required fixes as “no owner decision” rather than
-asking the owner to accept a classification. The proposal page links to the Plan page instead of
+asking the owner to accept a classification. The Architecture and map page links to the Plan and decisions page instead of
 duplicating the decision table.
 
 ## Input contract
@@ -81,7 +83,7 @@ because `partialHelpers` is absent from `acima.config.json`. This is not a silen
 current `not_executed` state, the recorded reason, any candidate helper names with evidence, the
 proposed JSON (including an explicit empty list), the owner approval statement and the verification
 needed afterwards. An explicit empty list records the owner's decision that no helper is used and
-lets the rule execute; it does not waive the check. The Files page links to the same section and may
+lets the rule execute; it does not waive the check. The Changes and files page links to the same section and may
 list the configuration file as a proposed change.
 
 ## Plain-language gap briefing
@@ -138,7 +140,7 @@ review decisions or an authoritative declaration; a `pending` module is not pres
 
 ## Adoption workflow status
 
-The report model may include `adoptionWorkflow` with the selected mode, stage records, current
+The report model may include `adoptionWorkflow` with the current phase, stage records, current
 stage, stale warning and one next action. Show configured, generated, verified and blocked states
 separately on the plan page and overview. The workflow status is a progress and decision aid, not a
 conformance claim; a CI file or copied enforcer does not prove a remote run. Show the final
@@ -156,7 +158,7 @@ verified agent behavior.
 
 The report is a living view of the adoption, not a snapshot the owner has to ask for again. After
 every recorded workflow change the adoption workflow refreshes the generated pages, so the Overview
-and Plan pages show the current phase, current stage, completed milestones, next action, and
+and Plan and decisions pages show the current phase, current stage, completed milestones, next action, and
 remediation or agent-guidance state without a prompt or a second command.
 
 A refresh may replace only the progress sections: `adoptionWorkflow` and `milestones`. The reviewed
@@ -240,13 +242,13 @@ The owner answers pages locally and each answered page writes one decisions file
 `kind`, an `id` and a `decision` of `accept`, `modify`, `defer` or `reject`. A checked box is never
 consent: approving implementation remains a separate command bound to the report digest.
 
-The Plan and Files pages carry the controls: objectives and remediation on Plan,
+The Plan and decisions and Changes and files pages carry the controls: objectives and remediation on Plan and decisions,
 per-path scope on Files, with visible labels, a *Needed for* note on paths a stage needs, and
 every proposed file selected only by an explicit click. *Save answers file* downloads
 `acima-decisions-<reportId>-<page>.json`; in-place save is offered only where the File System Access
 API exists on a secure context. *Copy answers* supports paste-back in chat, and a no-JavaScript
 template shows the answers current at generation so the report stays answerable without script; the
-Files page prints the same template for its path answers.
+Changes and files page prints the same template for its path answers.
 
 A page cannot hash its own bytes, so `reportSha256` and `decisionSha256` are optional: the workflow
 completes them from the report it has verified on disk, after checking `reportId` and the live

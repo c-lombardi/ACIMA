@@ -141,9 +141,19 @@ Field notes:
   - An entry whose `expires` date has passed is `G006`; an entry missing a required field, naming an
     unknown unit or an unknown tier is `G001`.
 - `manifests` lists the files `G006` reads. When absent, `package.json`, `pyproject.toml` and
-  `requirements.txt` are read if present. `devDependencies` are not checked: they do not ship.
-- When `externals` is absent the five tier rules (`L005`–`L007`, `D010`, `G006`) report
-  `executed: false` with that reason. A repository with a manifest should declare it —
+  `requirements.txt` are read if present; the .NET enforcer reads `.csproj` files and their direct
+  `PackageReference` entries; the Go enforcer reads `go.mod`. `devDependencies` are not checked:
+  they do not ship.
+- `approvedDependencies` (Go) is the direct-dependency policy `G006` checks against `go.mod`. It is a
+  list of module paths, not versions. Entries marked `// indirect` are ignored. Without the property
+  `G006` reports `executed: false`; an explicit empty list is a declaration that executes the rule.
+- `partialHelpers` (optional) is the .NET `D016` allowlist: exact method or delegate names that
+  bind a dependency inside an implementation or adapter. Without the property the rule reports
+  `executed: false`; an explicit empty list is a valid owner declaration that no helper is used and
+  executes the rule. Generic `Partial`/`Bind` matching is deliberately not inferred.
+- When `externals` is absent the four tier rules (`L005`–`L007`, `D010`) report `executed: false`
+  with that reason; `G006` reports `executed: false` for Python, TypeScript and .NET, while Go uses
+  `approvedDependencies`. A repository with a manifest should declare the applicable policy —
   `acima.py externals --write-draft` produces the first version:
 
 ```bash

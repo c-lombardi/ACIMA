@@ -50,7 +50,7 @@ Validate that:
 - source hashes of the map, enforcement, verification and CI are current.
 
 A valid file is not proof of agent behavior. Representative feature, dependency, contract, data,
-state and composition tasks should be evaluated manually where feasible. In guided mode, modifying
-existing user instructions requires approval; generating a proposal does not. In full automation,
-apply within the authorized adoption scope. After remediation, refresh the guidance from the final
-map and fresh verification.
+state and composition tasks should be evaluated manually where feasible. Modifying existing user
+instructions requires explicit approval; generating a proposal does not. Apply only within the
+authorized adoption scope. After remediation, refresh the guidance from the final map and fresh
+verification.

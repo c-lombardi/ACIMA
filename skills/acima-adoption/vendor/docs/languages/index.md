@@ -13,7 +13,7 @@ enforced depends on what the language and its ecosystem give you.
 
 ## Coverage matrix
 
-Python executes **42** automated rules, TypeScript 41, Go 23 and .NET 24, all with the same ids and
+Python executes **42** automated rules, TypeScript 41, Go 27 and .NET 42, all with the same ids and
 finding format. Fourteen rules are **manual in every profile**:
 
 | Rule | Why not portable | Where it is covered |
@@ -33,21 +33,23 @@ finding format. Fourteen rules are **manual in every profile**:
 | `G004` API baseline | needs a stable surface format per language | specified in [07](../standard/07-executable-governance.md); regeneration is a per-language command |
 | `N003` naming clarity | responsibility, side effects, units, boolean polarity and domain consistency are semantic judgements | adoption skill review; chapter 18 |
 
-Go and .NET carry the catalog entries for the tier rules (`L005`–`L007`, `D010`, `G006`), the
-explicit-input rules (`D011`, `D012`), the value rules (`A005`, `A006`), the composition rules
-(`D013`, `D014`), the functional-capture rules (`D015`, `D016`), the lifecycle rules
-(`A007`–`A009`) and the naming rules (`N001`–`N002`), and report those eighteen `executed: false`.
-Go additionally reports `D017` because it has no native named-argument syntax. `N003` is one of the
-fourteen manual rules, not an automated gap.
+Go executes `G006` from direct `go.mod` requirements against `approvedDependencies`, `N002` over
+Go type declarations, and `A005`/`D015`; it reports the remaining fifteen automated rules
+`executed: false`: the four tier rules, two explicit-input rules, `A006`, two composition rules,
+`D016`, three lifecycle rules, one naming rule (`N001`) and `D017`.
+.NET now executes all 42 automated rules: the five tier rules from project-level Roslyn semantic compilations,
+the explicit-input rules (`D011`, `D012`) from Roslyn syntax trees, and the value, composition,
+functional-capture, lifecycle and naming rules from the project-level source model. `N003` is one of
+the fourteen manual rules, not an automated gap.
 
 Each profile implements what its language can express. This table is the measured coverage of
 the reference enforcers, not the coverage of the standard:
 
 | Coverage | Python | TypeScript | Go | .NET | Java |
 |---|---|---|---|---|---|
-| Automated rules fired by the gallery | 42 / 42 | 41 / 42 | 23 / 42 | 24 / 42 | — |
+| Automated rules fired by the gallery | 42 / 42 | 41 / 42 | 27 / 42 | 42 / 42 | — |
 | Manual rules executed | 0 / 14 | 0 / 14 | 0 / 14 | 0 / 14 | 0 / 14 |
-| Documented gaps | fourteen manual | one automated + fourteen manual | nineteen automated + fourteen manual | eighteen automated + fourteen manual | no enforcer |
+| Documented gaps | fourteen manual | one automated + fourteen manual | fifteen automated + fourteen manual | fourteen manual | no enforcer |
 
 A rule counts only when a violation fixture makes it fire **and** the resulting finding is checked by
 `conformance/run.py`. Rules in the documented-gap column are still normative for that language; the

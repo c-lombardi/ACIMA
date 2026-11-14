@@ -14,7 +14,7 @@ this repository, not a claim that an adopting application's runtime closures hav
 |---|---:|---:|---|
 | Python | 36 / 36 | 6 manual | `D015`, `D016` automated; violations and positive fixture |
 | TypeScript | 36 / 36 | 6 manual | `D015`, `D016` automated; violations and positive fixture |
-| Go | 23 / 36 | 13 | catalog entries only; `D015`, `D016` report `executed: false` |
+| Go | 25 / 36 | 13 | `D015` automated for package-binding captures; `D016` reports `executed: false` |
 | .NET | 23 / 36 | 13 | catalog entries only; `D015`, `D016` report `executed: false` |
 | Java | — | — | no reference enforcer; manual review only |
 
@@ -66,7 +66,7 @@ its sources; preflight exits `0`; the diff check is clean.
 - Confirm a factory that constructs its own collaborator has a reviewed lifetime and ownership.
 - Confirm `bind`/`partial` of a dependency is at the composition boundary, including through
   framework-specific wrappers.
-- For Go, .NET and Java, record manual evidence for `D015`/`D016` until a validated native analyzer
+- For Go, `.NET` and Java, record manual evidence for `D016` until a validated native analyzer
   exists.
 
 ## Toolchain limitation

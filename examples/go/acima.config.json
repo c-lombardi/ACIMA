@@ -5,6 +5,7 @@
   "level": "L3",
   "root": ".",
   "modulePath": "acima.example",
+  "approvedDependencies": [],
   "units": [
     {
       "id": "catalog.contracts",

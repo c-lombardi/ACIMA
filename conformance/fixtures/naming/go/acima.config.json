@@ -1,0 +1,17 @@
+{
+  "standard": "1.7.0-draft.1",
+  "mode": "base",
+  "language": "go",
+  "level": "L3",
+  "root": ".",
+  "modulePath": "example.test/naming",
+  "units": [
+    {
+      "id": "host",
+      "role": "host",
+      "paths": [
+        "src/host"
+      ]
+    }
+  ]
+}

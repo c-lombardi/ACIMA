@@ -101,7 +101,7 @@ For example:
 ### Answering the report
 
 The report is answered by the owner, in their own time, offline. Do not read answers off the page and
-do not ask the owner to repeat them in chat: in guided adoption the Plan and Files pages write the
+do not ask the owner to repeat them in chat: in guided adoption the Plan and decisions and Changes and files pages write the
 decisions file, and the workflow ingests each saved page with `acima adoption decisions --from
 <path>`. The report also shows the decision log, what changed since the last review, and any recorded
 evidence that has gone missing, so the owner can see the current state without re-reading earlier

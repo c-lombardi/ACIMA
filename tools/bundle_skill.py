@@ -23,6 +23,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / "skills/acima-adoption"
 VENDOR = SKILL / "vendor"
+BUILD_OUTPUT_PARTS = frozenset({".git", ".vs", "bin", "obj", "node_modules", "__pycache__"})
+
+
+def shipped_files(root: Path) -> list[Path]:
+    """Return files a copied skill ships, ignoring local build outputs."""
+    return [
+        path for path in root.rglob("*")
+        if path.is_file()
+        and path.suffix != ".pyc"
+        and not any(part in BUILD_OUTPUT_PARTS for part in path.relative_to(root).parts)
+    ]
 
 SOURCES = [
     # the machine catalog, and the CLI that reads it
@@ -168,8 +179,7 @@ def check() -> int:
         elif digest(vendored) != recorded["sha256"]:
             problems.append(f"vendored file edited by hand: {relative}")
     expected = set(manifest["files"]) | {"MANIFEST.json"}
-    for extra in sorted(p.relative_to(VENDOR).as_posix() for p in VENDOR.rglob("*")
-                        if p.is_file() and "__pycache__" not in p.parts and p.suffix != ".pyc"):
+    for extra in sorted(p.relative_to(VENDOR).as_posix() for p in shipped_files(VENDOR)):
         if extra not in expected:
             problems.append(f"unexpected file: {extra}")
     catalog = manifest["catalogSha256"]

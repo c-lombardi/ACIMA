@@ -4,7 +4,7 @@
 
 **Product framing:** Architecture that enforces itself.
 
-**Status:** historical orchestration plan and workstream contracts. These documents do not change the normative ACIMA standard or authorize changes to another repository. The mode choice and five-phase model recorded here were superseded by the approved [adoption redesign](adoption-redesign-implementation.md): one flow, four phases, read-only preparation, CI before remediation and a repeatable remediation loop.
+**Status:** historical orchestration plan and workstream contracts. These documents do not change the normative ACIMA standard or authorize changes to another repository. The mode choice and five-phase model recorded here were superseded by the approved [adoption redesign](../adoption-redesign-implementation.md): one flow, four phases, read-only preparation, CI before remediation and a repeatable remediation loop.
 
 ## The product in one explanation
 
@@ -84,7 +84,7 @@ These are product requirements, not optional simplification choices:
 2. **All 56 requirements are reviewed.** Each receives an individual, evidence-backed disposition. Incomplete or unresolved review cannot be presented as a decision-ready clean assessment.
 3. **A missing module map is not a reason to skip assessment.** Propose evidence-backed ownership candidates, continue independent qualitative review, and block only checks that genuinely require approved ownership.
 4. **Discovery is not ownership.** A directory, project, package, service, namespace or runtime host is evidence, not an approved ACIMA module. Never auto-approve inferred boundaries.
-5. **The report is a decision document.** Generate and validate the six offline pages: Overview, Proposal, Findings, Files, Plan and Evidence. The user must be shown the exact report before approval is requested.
+5. **The report is a decision document.** Generate and validate the six offline pages with eight primary sections: Overview, Architecture and map, Findings, Changes and files, Plan and decisions, and Evidence and limits. The user must be shown the exact report before approval is requested.
 6. **Approval is explicit and scoped.** Record the reviewer and exact report/proposal/repository identity. Partial approval is supported. A changed report, proposal or target invalidates stale approval.
 7. **No writes before approval.** Adoption intent, assessment completion, report generation or acknowledgement is not permission to edit.
 8. **Existing architecture is evaluated, not discarded.** Preserve sound existing maps, analyzers, gates, instructions, workflows and tests. ACIMA adds missing guarantees; it does not replace working systems without evidence and approval.

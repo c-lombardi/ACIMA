@@ -2,9 +2,18 @@
 
 56 rules. Six categories. Every rule has a permanent id, a severity, a conformance level and a
 detection strategy. Python, TypeScript, Go and .NET each have a reference enforcer; Java is a
-documented profile only and has no reference enforcer in this revision. The five third-party tier
-rules (`L005`–`L007`, `D010`, `G006`) are implemented by the Python and TypeScript enforcers in this
-revision and reported `executed: false` by Go and .NET. The explicit-input and named-call rules (`D011`, `D012`, `D017`), the value rules (`A005`, `A006`), the composition rules (`D013`, `D014`), the functional-capture rules (`D015`, `D016`), the lifecycle rules (`A007`–`A009`) and the naming rules (`N001`–`N002`) follow the same split. `C008`, `A010`–`A015` and `N003` are manual in every profile: no portable analyzer can decide them reliably.
+documented profile only and has no reference enforcer in this revision. The four third-party tier
+rules (`L005`–`L007`, `D010`) are implemented by Python, TypeScript and .NET; Go reports them
+`executed: false`. `G006` is implemented by all four reference enforcers; Go checks direct `go.mod`
+requirements against `approvedDependencies`. The explicit-input rules (`D011`, `D012`) are implemented by Python, TypeScript
+and .NET, and reported `executed: false` by Go. The named-call rule (`D017`) is implemented by Python
+and .NET, and reported `executed: false` by TypeScript and Go. `A005` and `D015` execute in all four
+reference enforcers. The value rule (`A006`), the composition rules (`D013`, `D014`), the
+functional-capture rule (`D016`), the lifecycle rules (`A007`–`A009`) and the naming rules
+(`N001`–`N002`) execute in Python, TypeScript and .NET; Go executes `N002` over type declarations and
+reports `N001` `executed: false`.
+`C008`, `A010`–`A015` and `N003` are manual in every profile: no portable analyzer can decide them
+reliably.
 
 The machine-readable source of truth is [`tools/acima-spec/rules.json`](../../tools/acima-spec/rules.json).
 This catalog is its human-readable form; if they disagree, the JSON is authoritative.
@@ -164,9 +173,10 @@ claim is `PARTIAL ASSESSMENT`. See [Conformance §8.9](../standard/08-conformanc
 
 `G003` is executed, but a human still writes and reviews the documentation it looks for. The other
 42 rules execute in at least one reference enforcer and have gallery fixtures; the third-party tier,
-explicit-input, value, composition, functional-capture, lifecycle and naming rules are scoped to
-Python and TypeScript in this revision, so a Go or .NET run reports those eighteen plus the fourteen
-manual rules `executed: false` and a full claim needs manual evidence for all of them.
+explicit-input, value, composition, functional-capture, lifecycle and naming rules execute in Python,
+TypeScript and .NET. A Go run reports eighteen automated rules plus the fourteen manual rules
+`executed: false`; a .NET run reports only the fourteen manual rules, so a full claim needs manual
+evidence for those unexecuted rules.
 
 A rule that mixes machine and human judgement must say which part is which — otherwise the tool gets
 blamed for the human's decision, and the rule gets disabled.

@@ -7,6 +7,10 @@ class LifecycleOrderValidator {
 
 class LifecycleRequestContext {}
 
+class LifecycleInjectedService {
+  constructor(private readonly context: LifecycleRequestContext) {}
+}
+
 class LifecycleOrdersService {
   constructor(private readonly context: LifecycleRequestContext) {}
 }
@@ -17,5 +21,6 @@ class LifecyclePriceCache {
 
 register(LifecycleOrderValidator, { lifetime: 'transient' });
 register(LifecycleRequestContext, { lifetime: 'scoped' });
+register(LifecycleInjectedService, { lifetime: 'transient' });
 register(LifecycleOrdersService, { lifetime: 'singleton' });
 register(LifecyclePriceCache, { lifetime: 'singleton' });

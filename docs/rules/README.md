@@ -22,7 +22,7 @@ There is exactly one catalog. Do not create a second one in a report, spreadshee
 
 ## Automated versus human judgement
 
-42 of 56 catalog rules are marked automated. The actual executed set is language-dependent: Python executes 42, TypeScript 41, .NET 24, and Go 23. Fourteen rules require human judgement in every profile; additional language-specific rules are reported as `executed: false` when that language cannot enforce them. D017 is executed only where the language supports native named call arguments (Python and C#); TypeScript/JavaScript and Go report it as not executed rather than inventing wrapper conventions. The language-specific unsupported set is recorded in `conformance/coverage.json`. Human-judgement requirements include:
+42 of 56 catalog rules are marked automated. The actual executed set is language-dependent: Python executes 42, TypeScript 41, .NET 42, and Go 27. Fourteen rules require human judgement in every profile; additional language-specific rules are reported as `executed: false` when that language cannot enforce them. D017 is executed only where the language supports native named call arguments (Python and C#); TypeScript/JavaScript and Go report it as not executed rather than inventing wrapper conventions. The language-specific unsupported set is recorded in `conformance/coverage.json`. Human-judgement requirements include:
 
 | Rule | Who decides |
 |---|---|

@@ -4513,8 +4513,6 @@ def main() -> int:
     adoption.add_argument("--root", default=".")
     adoption.add_argument("--mode", choices=("guided", "full"), default=None,
                           help="legacy compatibility only; new engagements use one flow")
-    adoption.add_argument("--authorize-full", action="store_true", dest="authorize_full",
-                          help=argparse.SUPPRESS)
     adoption.add_argument("--reviewer", default=None)
     adoption.add_argument("--review", default=None,
                           help="validated 56-rule qualitative review JSON required before adoption")
@@ -4568,7 +4566,7 @@ def main() -> int:
                           file=sys.stderr)
                     return 2
                 result = adoption_workflow.start(
-                    root, args.mode or "guided", authorize_full=False,
+                    root, args.mode or "guided",
                     reviewer=args.reviewer,
                     review_path=Path(args.review) if args.review else None)
             elif args.action == "status":

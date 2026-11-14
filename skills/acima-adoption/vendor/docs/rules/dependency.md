@@ -450,8 +450,9 @@ rather than a message.
 
 Every import in a port unit is a finding, plus every vendor type token in its signatures, fields and
 exports (`L007`'s token set). Declared vendors and undeclared third-party packages are treated the
-same way: a port has no third-party dependencies at all. **Implemented for Python and TypeScript**;
-Go and .NET report the rule `executed: false` in this revision.
+same way: a port has no third-party dependencies at all. .NET resolves the namespace or type symbol
+through a Roslyn semantic compilation and maps its containing assembly back to the declared package.
+**Implemented for Python, TypeScript and .NET**; Go reports the rule `executed: false` in this revision.
 
 ---
 
@@ -498,11 +499,12 @@ pass `null` explicitly, which is the decision this rule is asking for.
 ### Detection
 
 Python reads `__init__` with `ast` and flags positional and keyword-only parameters that carry a
-default. TypeScript scans class constructors and flags `?` parameters and initialisers. Contracts are
-out of scope (their optional members are additive evolution, chapter 5 §5.7, and `C007` covers
-one-step construction), as are test, tooling and end-to-end units. Framework-managed construction and
-reflection are not analysed and remain manual review. **Implemented for Python and TypeScript**;
-Go and .NET report the rule `executed: false` in this revision.
+default. TypeScript scans class constructors and flags `?` parameters and initialisers. .NET walks
+the Roslyn syntax tree and flags defaulted parameters on constructors and primary constructors.
+Contracts are out of scope (their optional members are additive evolution, chapter 5 §5.7, and
+`C007` covers one-step construction), as are test, tooling and end-to-end units. Framework-managed
+construction and reflection are not analysed and remain manual review. **Implemented for Python,
+TypeScript and .NET**; Go reports the rule `executed: false` in this revision.
 
 ---
 
@@ -543,10 +545,12 @@ abstractions to avoid one boolean — the requirement is visibility, not ceremon
 ### Detection
 
 Python flags defaults on module-level functions and methods (dunders and `@overload` stubs excluded).
-TypeScript flags `function` declarations, class methods and `?`/initialised parameters. Contracts,
-tests and tooling are out of scope; overload resolution and dynamic dispatch are not analysed, so a
-clean run does not prove every call site is explicit. **Implemented for Python and TypeScript**;
-Go and .NET report the rule `executed: false` in this revision.
+TypeScript flags `function` declarations, class methods and `?`/initialised parameters. .NET flags
+defaults on methods and local functions, skipping `override`, `abstract` and `extern` declarations
+because their defaults are not a new caller-visible path. Contracts, tests and tooling are out of
+scope; overload resolution and dynamic dispatch are not analysed, so a clean run does not prove every
+call site is explicit. **Implemented for Python, TypeScript and .NET**; Go reports the rule
+`executed: false` in this revision.
 
 ---
 
@@ -756,8 +760,9 @@ tier is a reviewable decision, not an inference. If it is a runtime or framework
 For every `externals` entry with `tier: integration`, every import specifier outside the entry's
 adapter unit is a finding. Specifiers are matched against the entry key and its `specifiers` list, so
 a PyPI distribution name and its import name can differ. Host code is not exempt: the host names the
-adapter, never the vendor. **Implemented for Python and TypeScript**; Go and .NET report the rule
-`executed: false` in this revision.
+adapter, never the vendor. .NET resolves each using directive to its package assembly and compares
+the file's unit with the entry's adapter; tooling and test units are outside the product graph.
+**Implemented for Python, TypeScript and .NET**; Go reports the rule `executed: false` in this revision.
 
 ---
 
@@ -814,9 +819,10 @@ port: an unused adapter is a dependency you are paying for without a user.
 ### Detection
 
 Two halves, both a finding: an `integration` entry that omits `adapter` or `port`, and an
-`adapter`-role unit that no entry names. An entry naming an unknown unit id is `G001`, because a
-dangling seam is a configuration error, not an architecture decision. **Implemented for Python and
-TypeScript**; Go and .NET report the rule `executed: false` in this revision.
+`adapter`-role unit that no entry names. An entry naming an unknown unit id is `G001`, because a dangling seam is a
+configuration error, not an architecture decision. .NET validates the adapter and port unit ids and
+then checks every adapter unit against the reviewed entries. **Implemented for Python, TypeScript and
+.NET**; Go reports the rule `executed: false` in this revision.
 
 ---
 
@@ -864,9 +870,10 @@ imports are excluded (they are `L005`/`D010`). Port units are excluded here and 
 one leak is one finding. A token shorter than three characters is ignored to avoid matching unrelated
 code. When one adapter covers a vendor and a wrapper around it (`monaco-editor` and
 `@monaco-editor/react`) and both entries declare the same type, a line is reported once and named
-after the shorter package, so the finding points at the vendor rather than its wrapper.
-**Implemented for Python and TypeScript**; Go and .NET report the rule `executed: false` in this
-revision.
+after the shorter package, so the finding points at the vendor rather than its wrapper. .NET resolves
+type symbols to their containing assembly and package; declared `types` remain the fallback when the
+compilation cannot resolve a package. **Implemented for Python, TypeScript and .NET**; Go reports the
+rule `executed: false` in this revision.
 
 ---
 
@@ -918,9 +925,13 @@ input, check in or reproduce the discovered set, and record the reviewed excepti
 `pkgutil.iter_modules`, `importlib.import_module`, `__import__`, and explicit
 `autodiscover`/`auto_register`/`scan_packages`/`register_all` calls in Python; `import.meta.glob`,
 `require.context`, `autodiscover`, `autoRegister`, `scanPackages` and `registerAll` in TypeScript.
-It does not flag a framework's own router or infrastructure registration. **Implemented for Python
-and TypeScript**; Go and .NET report `executed: false` in this revision, and Java is manual-review
-only. A framework scan that the detector cannot see is a manual-review item, not a pass.
+The .NET host detector scans `Assembly.GetTypes`/`GetExportedTypes`/`DefinedTypes`,
+`AppDomain.GetAssemblies`, and explicit assembly scanning through `Scan`, `FromAssemblyOf`,
+`FromAssemblies`, `AddClasses` and `RegisterAssemblyTypes`. It does not flag a framework's own router
+or infrastructure registration, `Activator.CreateInstance`, single-type resolution, or
+MediatR/FluentValidation/AutoMapper setup. **Implemented for Python, TypeScript and .NET**; Go reports
+`executed: false`, and Java is manual-review only. A framework scan that the detector cannot see is a
+manual-review item, not a pass.
 
 ---
 
@@ -971,8 +982,10 @@ The Python detector reports class-field annotations whose outer name is `Provide
 `Autowired`. The TypeScript detector reports `@Inject`/`@inject`/`@Autowired`/`@autowire` decorators
 immediately above a field declaration; constructor parameter decorators are not findings. Both are
 syntax-level candidates: framework-specific field injection, unqualified wrappers and post-construction
-assignment through arbitrary methods remain manual review. **Implemented for Python and TypeScript**;
-Go and .NET report `executed: false` in this revision, and Java is manual-review only.
+assignment through arbitrary methods remain manual review. The .NET detector reports `[Inject]`,
+`[Autowired]`, `[Dependency]`, `[FromServices]` and `[FromKeyedServices]` on fields and properties;
+constructor and method parameters are not findings. **Implemented for Python, TypeScript and .NET**;
+Go reports `executed: false`, and Java is manual-review only.
 
 ---
 
@@ -1019,8 +1032,11 @@ Python compares direct loads in each function/lambda with its parameters and loc
 enclosing scopes. Module bindings and enclosing locals are captures; enclosing parameters are the
 explicit curried form. TypeScript uses a lightweight function-scope model over arrows and function
 declarations. Both are syntax-level candidates; `getattr`/`globals`, framework callbacks and full
-type resolution remain manual review. **Implemented for Python and TypeScript**; Go and .NET report
-`executed: false`; Java is manual-review only.
+type resolution remain manual review. The .NET detector uses the project semantic model to distinguish
+static fields and enclosing locals from instance fields and parameters. **Implemented for Python,
+TypeScript, .NET and Go**; Go detects function literals that capture a package-level binding whose
+name denotes a collaborator, resolving declarations across sibling files in the same package; Java is
+manual-review only.
 
 ---
 
@@ -1065,5 +1081,10 @@ dependency as a parameter. Pure partially applied values (`partial(multiply, 2)`
 
 Python reports `partial`/`functools.partial` in implementation or adapter units when an argument
 names a dependency. TypeScript reports `partial(...)` and `.bind(...)` in those units under the same
-condition. Host composition is excluded. **Implemented for Python and TypeScript**; Go and .NET
-report `executed: false`; Java is manual-review only.
+condition. Host composition is excluded. C# has no native partial-application form, so .NET executes
+`D016` only for a declared `partialHelpers` allowlist in the configuration; without the property the
+rule reports `executed: false`. An explicit empty list is a valid owner declaration that no helper
+is used, and it executes the rule. Generated HTML reports carry a `d016Allowlist` proposal when this
+configuration is missing, including the proposed JSON, approval statement and post-approval
+verification. **Implemented for Python and TypeScript, and opt-in for .NET**; Go reports
+`executed: false`; Java is manual-review only.

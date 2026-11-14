@@ -28,6 +28,7 @@ If two documents disagree, the order above wins: `rules.json` over `rules/index.
 | `commands.md` | every command, its flags and exit codes, mapped to the adoption step that uses it |
 | `status.md` | verified vs proposed capability, with limits |
 | `product-contract.md` | consumer guarantees, known gaps, release gates |
+| `product/adoption-console.md` | proposed interactive decision surface for the adoption report — design record only, not implemented |
 
 ## Reading order
 

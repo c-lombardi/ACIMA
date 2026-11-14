@@ -163,8 +163,11 @@ Overload resolution, framework-managed construction, and reflection-based wiring
 those remain manual-review cases. A clean portable run is not evidence that a constructor has no
 hidden path.
 
-**Go and .NET** report both rules `executed: false` in this revision. Their catalogs name the rules
-so the obligation is visible; a full claim needs manual evidence for them (chapter 8 §8.9).
+**Go** reports both rules `executed: false` in this revision. Its catalog names the rules so the
+obligation is visible; a full claim needs manual evidence for them (chapter 8 §8.9). The .NET
+enforcer now executes both from Roslyn syntax trees: constructors and primary constructors for
+`D011`, and methods and local functions for `D012`. It skips contract, test and tooling units, plus
+`override`, `abstract` and `extern` declarations whose defaults are not a new caller-visible path.
 
 ## 13.8 Relationship to the other rules
 

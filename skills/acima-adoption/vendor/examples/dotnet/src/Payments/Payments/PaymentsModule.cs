@@ -25,7 +25,7 @@ internal sealed class FakeGateway(decimal declineAbove) : IPaymentGateway
 public sealed class PaymentsModule
 {
     /// <summary>Builds Payments with a fake gateway that declines above the threshold.</summary>
-    public PaymentsModule(decimal declineAbove = 1000m) => Port = new FakeGateway(declineAbove: declineAbove);
+    public PaymentsModule(decimal declineAbove) => Port = new FakeGateway(declineAbove: declineAbove);
 
     /// <summary>The port other modules consume.</summary>
     public IPaymentGateway Port { get; }

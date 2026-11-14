@@ -15,13 +15,13 @@ container, thread safety, tenant isolation or resource cleanup has been proved.
 |---|---:|---:|---|
 | Python | 39 / 39 | 6 manual | `A007`–`A009` automated; controlled violations and positive fixture |
 | TypeScript | 39 / 39 | 6 manual | `A007`–`A009` automated; controlled violations and positive fixture |
-| Go | 23 / 39 | 16 | catalog entries only; `A007`–`A009` report `executed: false` |
+| Go | 25 / 39 | 14 | `A005` and `D015` already validated elsewhere; `A007`–`A009` report `executed: false` |
 | .NET | 23 / 39 | 16 | catalog entries only; `A007`–`A009` report `executed: false` |
 | Java | — | — | no reference enforcer; manual review only |
 
 The six manual rules remain `C003`, `C007`, `L004`, `A002`, `A004` and `G004`. Go and .NET also
-report the tier, explicit-input, value, composition and functional-capture rules `executed: false`;
-the sixteen unexecuted rules are the thirteen from 1.5 plus `A007`–`A009`.
+report the tier, explicit-input, remaining value, composition and functional-capture rules
+`executed: false`; the fourteen unexecuted rules are the eleven from 1.5 plus `A007`–`A009`.
 
 ## Decision model
 

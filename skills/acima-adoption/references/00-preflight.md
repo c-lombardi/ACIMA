@@ -122,15 +122,16 @@ not permission to suppress every future finding in the unit. The file is structu
 replaces it, because an unowned exception is not an accepted exception. That is intentional. An
 automatically generated exception file that passes review is how governance dies.
 
-## Automation mode
+## Adoption flow
 
-Preflight is read-only. Before consequential work, ask the user to choose **guided adoption** or
-**full automation** and record it with
-`acima.py adoption start --root <target> --mode guided` or
-`acima.py adoption start --root <target> --mode full --authorize-full`. A request to assess or adopt
-is not full-automation consent. `preflight.py --automation-mode guided|full` reports the choice; full
-also requires `--authorize-full-automation` and still only authorizes the adoption workflow, never a
-deployment, release, commit or push.
+Preflight is read-only. There is one adoption flow: do not ask the user to choose guided or full
+automation. Start the read-only assessment without a mode and record it with
+`acima.py adoption start --root <target> --mode guided`. Legacy `full` state can be resumed through
+the same checkpoints, but a new `--mode full` start is refused. A request to assess or adopt is not
+consent to implementation, CI, a deployment, release, commit or push.
+
+`preflight.py --automation-mode guided|full` remains a read-only compatibility report. It does not
+start adoption and does not authorize any target write.
 
 ## Reading the report
 

@@ -10,7 +10,7 @@ proposal. It is generated from an evidence-grounded JSON model, written as stati
 directly from disk. There is no application server, build step, JavaScript bundle, or network
 dependency in the generated output. The only script is a small inline block: it adds search and status
 filtering to the module directory when a map is present, and in guided adoption it builds the answer
-file on the Plan and Files pages. Both are enhancements. Without script the directory stays in
+file on the Plan and decisions and Changes and files pages. Both are enhancements. Without script the directory stays in
 document order and both answer pages print a template instead of controls.
 
 ## Scope
@@ -95,11 +95,24 @@ horizontal section strip on narrow screens.
 | File | Rail label | Page `h1` | Subtitle | Immediate question |
 |---|---|---|---|---|
 | `index.html` | Overview | Overview | The decision at a glance | Should we adopt ACIMA, and what value would it provide here? |
-| `proposal.html` | Proposal | What would change | The proposed architecture and what it would deliver | What would change, and what are the benefits and tradeoffs? |
+| `proposal.html` | Architecture and map | What would change | The proposed architecture and what it would deliver | What would change, and what are the benefits and tradeoffs? |
 | `findings.html` | Findings | What we found | What is working and what needs attention | What is already good, what did the assessment find, and why does it matter? |
-| `files.html` | Files | Files and impact | Exactly what is proposed to change | Which files would be created, modified, removed, or only inspected, and which may be approved? |
-| `plan.html` | Plan | Plan and decisions | What happens, in what order, and who decides | What happens next, which decisions need an owner, and where do I record my answers? |
-| `evidence.html` | Evidence | Evidence and limits | What was checked and what the results prove | What supports the conclusions, and what remains uncertain? |
+| `files.html` | Changes and files | Files and impact | Exactly what is proposed to change | Which files would be created, modified, removed, or only inspected, and which may be approved? |
+| `plan.html` | Plan and decisions | Plan and decisions | What happens, in what order, and who decides | What happens next, which decisions need an owner, and where do I record my answers? |
+| `evidence.html` | Evidence and limits | Evidence and limits | What was checked and what the results prove | What supports the conclusions, and what remains uncertain? |
+
+The six pages carry **eight primary sections**. A page may contain supporting sections, disclosures and tables, but these eight markers define the stable reading path and are asserted by the structural report test.
+
+| Primary section | Page | Reader question |
+|---|---|---|
+| **The decision** | Overview | Should we adopt, and what is the recommendation? |
+| **What would change** | Architecture and map | What is proposed, and what would it deliver? |
+| **What needs attention** | Findings | What is already working, and what needs fixing? |
+| **Which files change** | Changes and files | What would be created, modified, removed or only inspected? |
+| **What happens, in what order** | Plan and decisions | What work is proposed, and in what order? |
+| **What needs your decision** | Plan and decisions | Which choices belong to the owner? |
+| **What the evidence shows** | Evidence and limits | What was checked, and what supports the conclusions? |
+| **What could not be established** | Evidence and limits | What remains unknown or unproven? |
 
 The rail labels are shorter than the page titles. This is intentional: the rail is a compact reading
 path, while the page head carries the fuller framing. The current page is marked with
@@ -155,7 +168,7 @@ The intended reading order is recommendation → short explanation → evidence 
 completion boundary → value → tradeoffs → next action. Tables and metrics support that order rather
 than replacing it.
 
-### Proposal (`proposal.html`)
+### Architecture and map (`proposal.html`)
 
 The proposal page explains the architectural change and its value:
 
@@ -222,7 +235,7 @@ If no problems are recorded, the page does not declare a pass. The empty state d
 the evidence page to confirm that the review was complete before interpreting the absence as a
 clean result.
 
-### Files (`files.html`)
+### Changes and files (`files.html`)
 
 The files page is the proposed-change inventory:
 
@@ -240,11 +253,11 @@ A fieldset lists every proposed path as a native checkbox, with a *Needed for <s
 stage requires that file. No box is ticked at generation; recorded answers are prefilled when the
 report is reopened. *Select all proposed files* is a secondary button the reader chooses, never a
 default. A reviewer name is required, and the controls build
-`acima-decisions-<reportId>-files.json`. The report review answer lives on the Plan page; the workflow
+`acima-decisions-<reportId>-files.json`. The report review answer lives on the Plan and decisions page; the workflow
 merges the two page files by identity. With script off, the page prints a template for its path
 answers instead of controls.
 
-### Plan (`plan.html`)
+### Plan and decisions (`plan.html`)
 
 The plan page is the execution, authority, and answering page. It opens with **“Where the adoption
 stands”**: mode, current phase, current stage, a stage table (stage, status, what this proves or
@@ -254,7 +267,7 @@ section, and the agent-guidance and remediation sections where those apply, the 
 workflow order — what will happen, what needs a decision, how to answer, what approval would mean —
 and ends with the record:
 
-1. **“Plan.”** A stack of phase cards. Each card has a phase name and status pill, purpose,
+1. **“What happens, in what order.”** A stack of phase cards. Each card has a phase name and status pill, purpose,
    what comes before it, what it produces, how to verify it, when it is done, who approves it, and a
    closed “Work and affected areas” disclosure.
 2. **“Decisions only you can make.”** Decision rows with the question, context, recommendation,
@@ -282,7 +295,7 @@ The adoption plan describes proposed phases; a phase is not complete because it 
 History follows the plan and the answer controls so outcomes never precede the work they describe;
 automated reports carry the same history and no controls.
 
-### Evidence (`evidence.html`)
+### Evidence and limits (`evidence.html`)
 
 The evidence page is the audit trail and the limits page:
 
@@ -435,7 +448,7 @@ New status vocabulary must be checked against this map and against the report's 
 - **Table overflow:** horizontal scrolling inside a focusable, labelled region. The module directory also bounds its vertical height so a thousand rows do not make the page unpaginated; its header stays sticky within that region.
 - **Keyboard:** skip link, visible two-tone focus ring, logical document order, no keyboard trap.
 - **Pointer:** no drag, timed, or gesture-dependent interaction. The atlas hover outline is decorative; the directory carries the same links and text.
-- **Answering (guided):** native radios and checkboxes record closed-set choices. *Save answers file* downloads one `acima-decisions-<reportId>-<page>.json` (in-place save only where the File System Access API exists on a secure context); *Copy answers* copies the same document. The page requires a reviewer name, the Plan page also requires the review confirmation, and the read-only paste-back area is filled only by these actions. Answers live in the file and in the form, never in browser storage. Reopening a page prefills answers recorded in the report snapshot, and a changed answer names the file it replaces in `supersedes`. The console cannot approve anything; approval remains a separate workflow command.
+- **Answering (guided):** native radios and checkboxes record closed-set choices. *Save answers file* downloads one `acima-decisions-<reportId>-<page>.json` (in-place save only where the File System Access API exists on a secure context); *Copy answers* copies the same document. The page requires a reviewer name, the Plan and decisions page also requires the review confirmation, and the read-only paste-back area is filled only by these actions. Answers live in the file and in the form, never in browser storage. Reopening a page prefills answers recorded in the report snapshot, and a changed answer names the file it replaces in `supersedes`. The console cannot approve anything; approval remains a separate workflow command.
 - **State:** the browser's open/closed state for disclosures is the only other persistent state. A module query and selected status filter are ephemeral and reset on reload; a `#module-...` anchor reveals its row and opens the record.
 - **Module atlas:** the atlas is presentational and hidden from assistive technology. Each tile is a link to the matching directory row; the legend and directory carry the same status in text, so colour is never the only carrier.
 - **Search and filtering:** one labelled search field and a row of status filter buttons narrow the module directory. A polite live region reports the result count, and an explicit empty state appears when nothing matches. The controls are hidden until the inline script runs; without JavaScript, the full directory is still present and browser Find remains usable.

@@ -62,8 +62,8 @@ go run ./tools/archtest --root . --format json
 ```
 
 **Reference enforcer (this repository):** `tools/archtest` — reads imports, declarations and struct
-fields from source text with a small import/declaration scanner; it does **not** use `go/parser` or
-`go/ast`. It classifies packages from `acima.config.json` (Go needs the config too: `internal/`
+fields from source text; `A005`/`D015`/`N002` use Go's `go/parser` and `go/ast` syntax tree (without type
+checking), while the remaining checks use a small source scanner. It classifies packages from `acima.config.json` (Go needs the config too: `internal/`
 prevents cross-module *imports*, but not cross-module copies of a contracts type, SQL strings, or
 mutable exported state).
 
@@ -117,6 +117,30 @@ whose constructor rejects zero values); do not treat the zero value as a default
 enforcer reports `D011` and `D012` `executed: false` in this revision, so a Go repository records
 manual evidence for them (chapter 8 §8.9).
 
+### Manifest dependencies (`G006`)
+
+`G006` reads the direct `require` entries in `go.mod` and compares their module paths with the
+`approvedDependencies` list in `acima.config.json`. Approval is by module path; versions do not
+participate. Entries marked `// indirect` are not direct dependencies and are ignored, as are
+`replace`, `exclude` and `retract` directives. The `manifests` list may point at another go.mod-format
+file for a fixture or a nested module; when it is absent the enforcer reads `go.mod`.
+
+An absent `approvedDependencies` property reports `G006` `executed: false`: the policy was never
+declared, so passing silently would misstate the gate. An explicit empty list is a declaration and
+executes the rule, so a repository with no direct dependencies can state that fact. The finding is
+reported at the manifest line and names the unapproved module:
+
+```
+ACIMA-G006  warning  manifest dependency example.com/unapproved has no approvedDependencies entry:
+                      declare it in acima.config.json before importing it.
+  go.mod:7
+  example.com/unapproved
+```
+
+Use `go list -m all` to review the resolved graph, then add only the direct modules the repository
+has reviewed. A module that is not imported directly but pulled into the build remains visible in
+`go.sum` and `go list -m all`; `G006` governs the direct declaration, not the transitive graph.
+
 ### Values and configuration (`A005`, `A006`)
 
 Pass a typed `Settings` struct into the module constructor; do not call `os.Getenv` inside the module.
@@ -124,8 +148,12 @@ Go has no named-constant enforcement for struct fields, so review meaningful val
 zero-value field must not stand in for a policy decision. Name stable policy in `const` blocks; use a
 validated settings struct for deployment values; keep secrets out of both. Report equal values with
 different receivers as separate until a reviewer establishes semantic identity. The reference
-enforcer reports `A005` and `A006` `executed: false`; a Go repository records manual evidence for
-them with file and line citations (chapter 8 §8.9).
+enforcer reports `A005` for direct `os.Getenv`, `os.LookupEnv`, `os.Environ`, `os.ExpandEnv` and
+`os.Args` reads, plus selectors in the standard `flag` package, in implementation and adapter
+packages. Resolve those values in `cmd/` and pass them in; host and tooling units are exempt. The
+AST resolves aliased `os`/`flag` imports and ignores a locally shadowed package name.
+`A006` reports `executed: false`; a Go repository records manual evidence for it with file and line
+citations (chapter 8 §8.9).
 
 ### Composition and injection (`D013`, `D014`)
 
@@ -141,8 +169,12 @@ requirement. This profile has no executable `D013`/`D014` in this revision; reco
 A function literal must receive a collaborator through its parameters or an explicitly constructed
 struct field, not capture a package-level repository or service. Passing a dependency to a
 constructor is the normal Go form. Partial application via a returned closure is allowed only when
-the dependency is an explicit outer parameter; binding it inside a component hides the graph. This
-profile has no executable `D015`/`D016`; record manual evidence (chapter 16, chapter 8 §8.9).
+the dependency is an explicit outer parameter; binding it inside a component hides the graph. The
+reference enforcer reports `D015` for a function literal that captures a package-level binding,
+including a declaration in a sibling file of the same package, whose name denotes a repository,
+store, service, client, gateway, adapter, logger, configuration, cache or similar collaborator.
+`D016` remains `executed: false`; record manual evidence for partial
+application (chapter 16, chapter 8 §8.9).
 
 ### Lifecycle and state ownership (`A007`–`A009`)
 
@@ -160,9 +192,14 @@ cleanup (chapter 17, chapter 8 §8.9).
 Exported identifiers use `MixedCaps` and unexported identifiers use `mixedCaps`; package names are
 short and role-oriented, not `util` or `common`; interfaces name the capability; initialisms keep
 their conventional case (`ID`, `URL`, `HTTP`). Name the responsibility, not a generic `Manager` or
-`Helper`. This profile reports `N001`–`N003` `executed: false`; record manual evidence for type
-casing, generic responsibilities, units, side effects, domain terminology and boolean clarity
-(chapter 18, chapter 8 §8.9).
+`Helper`. `N002` reads every Go `TypeSpec` in a naming role with `go/ast` and reports a type whose
+name is exactly `Helper`, `Manager`, `Handler`, `Processor`, `Utility`, `Service`, `Provider`,
+`Factory`, `Common`, `Base`, `Default` or `Generic`, or whose name ends in `Helper`, `Manager`,
+`Processor`, `Utility`, `Common`, `Default` or `Generic`. The exact-name rule deliberately leaves
+`OrderService`, `RequestHandler` and `OrderFactory` to review; only an exact token or a generic
+suffix is a candidate. This profile still reports `N001` and `N003` `executed: false`; record manual
+evidence for type casing, semantic naming, units, side effects, domain terminology and boolean
+clarity (chapter 18, chapter 8 §8.9).
 
 ## 6. Service topology profile
 

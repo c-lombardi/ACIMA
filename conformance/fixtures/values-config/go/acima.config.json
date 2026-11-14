@@ -1,0 +1,27 @@
+{
+  "standard": "1.4.0-draft.1",
+  "mode": "base",
+  "language": "go",
+  "level": "L3",
+  "root": ".",
+  "modulePath": "example.test/values",
+  "approvedDependencies": [],
+  "units": [
+    {
+      "id": "orders",
+      "module": "orders",
+      "role": "implementation",
+      "paths": ["src/orders"]
+    },
+    {
+      "id": "host",
+      "role": "host",
+      "paths": ["src/host"]
+    },
+    {
+      "id": "tools",
+      "role": "tooling",
+      "paths": ["tools"]
+    }
+  ]
+}

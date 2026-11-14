@@ -55,8 +55,9 @@ rename a framework-required, generated or external type to satisfy the rule.
 
 Python and TypeScript inspect class, interface, type-alias and enum declarations in application
 units. Python expects `PascalCase` (an optional leading underscore is allowed); TypeScript expects
-`PascalCase`. The scanners do not see generated code, framework decoration or external packages.
-Go, .NET and Java report `executed: false` in this revision.
+`PascalCase`; .NET checks class, struct, record, interface and enum declarations. The scanners do not
+see generated code, framework decoration or external packages. Go and Java report `executed: false`
+in this revision.
 
 ---
 
@@ -118,7 +119,10 @@ Python and TypeScript inspect user-defined type declarations. N002 reports exact
 `Manager`, `Handler`, `Processor`, `Utility`, `Service`, `Provider`, `Factory`, `Common`, `Base`,
 `Default` and `Generic`, and names ending in `Helper`, `Manager`, `Processor`, `Utility`, `Common`,
 `Default` or `Generic`. It does not report `OrderService`, `PaymentProvider` or `OrderFactory`.
-Framework, generated and external types are not inspected. Go, .NET and Java report
+Framework, generated and external types are not inspected. The .NET detector uses the same exact-name
+and suffix set over application type declarations. Go inspects `TypeSpec` declarations with
+`go/ast` in naming roles using the same exact-name and suffix set, so `OrderService`,
+`RequestHandler` and `OrderFactory` are not reported; Go's `N001` and Java's `N001`–`N002` report
 `executed: false`.
 
 ---

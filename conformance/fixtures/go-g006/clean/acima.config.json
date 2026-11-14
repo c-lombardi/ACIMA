@@ -1,0 +1,13 @@
+{
+  "standard": "1.0.0",
+  "mode": "base",
+  "language": "go",
+  "level": "L3",
+  "root": ".",
+  "modulePath": "example.test/g006-clean",
+  "approvedDependencies": [
+    "example.com/approved"
+  ],
+  "units": [],
+  "exclude": []
+}

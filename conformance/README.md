@@ -50,7 +50,7 @@ Positive fixtures (the clean reference implementations) and negative fixtures (t
 
 ## What a pass proves, and what it does not
 
-Passing means: for the four implemented languages, the reference enforcers detect the portable rules on checked-in fixtures (42 in Python, 41 in TypeScript, 24 in .NET and 23 in Go; the remaining automated rules and all fourteen manual rules report `executed: false`), agree on finding shape, and do not fire on a clean tree, and the claim model refuses to overstate. The fourteen manual rules are reported `executed: false` in every profile: `C003`, `C007`, `C008`, `L004`, `A002`, `A004`, `A010`–`A015`, `G004` and `N003`.
+Passing means: for the four implemented languages, the reference enforcers detect the portable rules on checked-in fixtures (42 in Python, 41 in TypeScript, 42 in .NET and 27 in Go; the remaining automated rules and all fourteen manual rules report `executed: false`), agree on finding shape, and do not fire on a clean tree, and the claim model refuses to overstate. The fourteen manual rules are reported `executed: false` in every profile: `C003`, `C007`, `C008`, `L004`, `A002`, `A004`, `A010`–`A015`, `G004` and `N003`.
 
 Passing does **not** mean:
 

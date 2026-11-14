@@ -12,10 +12,14 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -28,14 +32,16 @@ type unit struct {
 }
 
 type config struct {
-	Standard     string   `json:"standard"`
-	Language     string   `json:"language"`
-	Level        string   `json:"level"`
-	ModulePath   string   `json:"modulePath"`
-	Units        []unit   `json:"units"`
-	SharedKernel string   `json:"sharedKernel"`
-	Exclude      []string `json:"exclude"`
-	Waivers      string   `json:"waivers"`
+	Standard             string    `json:"standard"`
+	Language             string    `json:"language"`
+	Level                string    `json:"level"`
+	ModulePath           string    `json:"modulePath"`
+	Units                []unit    `json:"units"`
+	Manifests            []string  `json:"manifests"`
+	ApprovedDependencies *[]string `json:"approvedDependencies"`
+	SharedKernel         string    `json:"sharedKernel"`
+	Exclude              []string  `json:"exclude"`
+	Waivers              string    `json:"waivers"`
 }
 
 type finding struct {
@@ -86,8 +92,21 @@ var catalog = map[string][2]string{
 	"ACIMA-N001": {"warning", "L3"}, "ACIMA-N002": {"warning", "L3"}, "ACIMA-N003": {"warning", "L3"},
 }
 
+var namingRoles = map[string]bool{
+	"contracts": true, "implementation": true, "adapter": true,
+	"host": true, "port": true, "shared-kernel": true,
+}
+
+var genericTypeNames = map[string]bool{
+	"Helper": true, "Manager": true, "Handler": true, "Processor": true,
+	"Utility": true, "Service": true, "Provider": true, "Factory": true,
+	"Common": true, "Base": true, "Default": true, "Generic": true,
+}
+
+var genericTypeSuffixes = []string{"Helper", "Manager", "Processor", "Utility", "Common", "Default", "Generic"}
+
 var notExecuted = map[string]string{
-    "ACIMA-D017": "Go has no native named-argument call syntax; wrapper objects are not required as a substitute.",
+	"ACIMA-D017": "Go has no native named-argument call syntax; wrapper objects are not required as a substitute.",
 	"ACIMA-C003": "behaviour versus validation is a semantic judgement",
 	"ACIMA-C007": "constructor completeness needs symbol and API analysis",
 	"ACIMA-L004": "service-locator APIs are framework-specific",
@@ -98,20 +117,16 @@ var notExecuted = map[string]string{
 	"ACIMA-L005": "third-party tier rules are implemented by the python and typescript enforcers in this revision",
 	"ACIMA-L006": "third-party tier rules are implemented by the python and typescript enforcers in this revision",
 	"ACIMA-L007": "third-party tier rules are implemented by the python and typescript enforcers in this revision",
-	"ACIMA-G006": "manifest package governance is implemented by the python and typescript enforcers in this revision",
 	"ACIMA-D011": "explicit-input rules are implemented by the python and typescript enforcers in this revision",
 	"ACIMA-D012": "explicit-input rules are implemented by the python and typescript enforcers in this revision",
-	"ACIMA-A005": "value and configuration rules are implemented by the python and typescript enforcers in this revision",
 	"ACIMA-A006": "value and configuration rules are implemented by the python and typescript enforcers in this revision",
 	"ACIMA-D013": "composition rules are implemented by the python and typescript enforcers in this revision",
 	"ACIMA-D014": "composition rules are implemented by the python and typescript enforcers in this revision",
-	"ACIMA-D015": "functional capture rules are implemented by the python and typescript enforcers in this revision",
 	"ACIMA-D016": "functional capture rules are implemented by the python and typescript enforcers in this revision",
 	"ACIMA-A007": "lifecycle rules are implemented by the python and typescript enforcers in this revision",
 	"ACIMA-A008": "lifecycle rules are implemented by the python and typescript enforcers in this revision",
 	"ACIMA-A009": "lifecycle rules are implemented by the python and typescript enforcers in this revision",
 	"ACIMA-N001": "naming rules are implemented by the python and typescript enforcers in this revision",
-	"ACIMA-N002": "naming rules are implemented by the python and typescript enforcers in this revision",
 	"ACIMA-N003": "semantic naming quality needs human review",
 	"ACIMA-C008": "business behavior visibility is a semantic contract review",
 	"ACIMA-A010": "effect ownership and commit boundaries require application and operational review",
@@ -252,6 +267,10 @@ func main() {
 	checkLayering(add, files, cfg)
 	checkSQL(add, files, cfg)
 	checkStatics(add, files, edges, byDir)
+	checkConfiguration(add, files)
+	checkFunctionalCapture(add, files)
+	checkNaming(add, files)
+	checkDependencyPolicy(add, cfg, absRoot)
 	waiverFindings := []finding{}
 	addWaiver := func(rule, message, path string, line int, evidence string) {
 		if rank[catalog[rule][1]] > rank[level] {
@@ -271,7 +290,9 @@ func main() {
 	findings = dedupe(findings)
 	execution := map[string]map[string]any{}
 	for rule := range catalog {
-		if reason, ok := notExecuted[rule]; ok {
+		if rule == "ACIMA-G006" && cfg.ApprovedDependencies == nil {
+			execution[rule] = map[string]any{"executed": false, "reason": "approvedDependencies is not declared in acima.config.json"}
+		} else if reason, ok := notExecuted[rule]; ok {
 			execution[rule] = map[string]any{"executed": false, "reason": reason}
 		} else {
 			execution[rule] = map[string]any{"executed": true}
@@ -825,6 +846,360 @@ func checkStatics(add func(string, string, string, int, string), files map[strin
 				add("ACIMA-A003", fmt.Sprintf("%s imports and may mutate the static state %s owned by %s.", from.unit.ID, name, decl.unit.ID), decl.path, 1, name)
 			}
 		}
+	}
+}
+
+func checkConfiguration(add func(string, string, string, int, string), files map[string]*source) {
+	for _, path := range sortedKeys(files) {
+		file := files[path]
+		if file.unit == nil || (file.unit.Role != "implementation" && file.unit.Role != "adapter") {
+			continue
+		}
+		tree, positions := parseGoFile(file.text)
+		if tree == nil {
+			continue
+		}
+		osName := "os"
+		flagName := ""
+		for _, imported := range tree.Imports {
+			path := strings.Trim(imported.Path.Value, `"`)
+			switch path {
+			case "os":
+				if imported.Name != nil {
+					osName = imported.Name.Name
+				}
+			case "flag":
+				flagName = "flag"
+				if imported.Name != nil {
+					flagName = imported.Name.Name
+				}
+			}
+		}
+		lines := strings.Split(file.text, "\n")
+		ast.Inspect(tree, func(node ast.Node) bool {
+			if selector, ok := node.(*ast.SelectorExpr); ok {
+				receiver, ok := selector.X.(*ast.Ident)
+				if !ok || receiver.Obj != nil {
+					return true
+				}
+				access := ""
+				switch {
+				case receiver.Name == osName && selector.Sel.Name == "Args":
+					access = "the process arguments"
+				case flagName != "" && receiver.Name == flagName:
+					access = "flag configuration"
+				}
+				if access == "" {
+					return true
+				}
+				line := positions.Position(selector.Pos()).Line
+				evidence := ""
+				if line >= 1 && line <= len(lines) {
+					evidence = strings.TrimSpace(lines[line-1])
+				}
+				add("ACIMA-A005", fmt.Sprintf("%s reads %s directly; resolve it at a composition boundary and pass the value into the component.", file.unit.ID, access), path, line, evidence)
+				return true
+			}
+			call, ok := node.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			selector, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			receiver, ok := selector.X.(*ast.Ident)
+			if !ok || receiver.Name != osName || receiver.Obj != nil {
+				return true
+			}
+			name := selector.Sel.Name
+			if name != "Getenv" && name != "LookupEnv" && name != "Environ" && name != "ExpandEnv" {
+				return true
+			}
+			line := positions.Position(call.Pos()).Line
+			access := "the process environment"
+			if (name == "Getenv" || name == "LookupEnv") && len(call.Args) > 0 {
+				if literal, ok := call.Args[0].(*ast.BasicLit); ok && literal.Kind == token.STRING {
+					if key, err := strconv.Unquote(literal.Value); err == nil && key != "" {
+						access = "the environment key " + key
+					}
+				}
+			}
+			evidence := ""
+			if line >= 1 && line <= len(lines) {
+				evidence = strings.TrimSpace(lines[line-1])
+			}
+			add("ACIMA-A005", fmt.Sprintf("%s reads %s directly; resolve it at a composition boundary and pass the value into the component.", file.unit.ID, access), path, line, evidence)
+			return true
+		})
+	}
+}
+
+func checkFunctionalCapture(add func(string, string, string, int, string), files map[string]*source) {
+	positions := token.NewFileSet()
+	groups := map[string]map[string]*ast.File{}
+	for _, path := range sortedKeys(files) {
+		file := files[path]
+		if file.unit == nil || (file.unit.Role != "implementation" && file.unit.Role != "adapter") {
+			continue
+		}
+		tree, err := parser.ParseFile(positions, path, file.text, 0)
+		if err != nil || tree == nil {
+			continue
+		}
+		key := filepath.Dir(path) + "\x00" + tree.Name.Name
+		if groups[key] == nil {
+			groups[key] = map[string]*ast.File{}
+		}
+		groups[key][path] = tree
+	}
+	keys := make([]string, 0, len(groups))
+	for key := range groups {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		group := groups[key]
+		_, _ = ast.NewPackage(positions, group, nil, nil)
+		bindings := map[*ast.Object]string{}
+		for _, path := range sortedTreeKeys(group) {
+			for _, declaration := range group[path].Decls {
+				general, ok := declaration.(*ast.GenDecl)
+				if !ok || general.Tok != token.VAR {
+					continue
+				}
+				for _, specification := range general.Specs {
+					values, ok := specification.(*ast.ValueSpec)
+					if !ok {
+						continue
+					}
+					for index, name := range values.Names {
+						if name.Obj == nil || !functionalName(name.Name) {
+							continue
+						}
+						var initializer ast.Expr
+						if len(values.Values) == len(values.Names) {
+							initializer = values.Values[index]
+						} else if len(values.Values) == 1 {
+							initializer = values.Values[0]
+						}
+						if isDependencyInitializer(initializer) {
+							bindings[name.Obj] = name.Name
+						}
+					}
+				}
+			}
+		}
+		if len(bindings) == 0 {
+			continue
+		}
+		seen := map[string]bool{}
+		for _, path := range sortedTreeKeys(group) {
+			file := files[path]
+			lines := strings.Split(file.text, "\n")
+			ast.Inspect(group[path], func(node ast.Node) bool {
+				literal, ok := node.(*ast.FuncLit)
+				if !ok {
+					return true
+				}
+				ast.Inspect(literal.Body, func(inner ast.Node) bool {
+					identifier, ok := inner.(*ast.Ident)
+					if !ok {
+						return true
+					}
+					name, ok := bindings[identifier.Obj]
+					if !ok {
+						return true
+					}
+					line := positions.Position(identifier.Pos()).Line
+					key := fmt.Sprintf("%s:%d:%s", path, line, name)
+					if seen[key] {
+						return true
+					}
+					seen[key] = true
+					evidence := ""
+					if line >= 1 && line <= len(lines) {
+						evidence = strings.TrimSpace(lines[line-1])
+					}
+					add("ACIMA-D015", fmt.Sprintf("%s captures the module-owned dependency %s from an enclosing scope; pass it as a parameter or supply it at the composition boundary.", file.unit.ID, name), path, line, evidence)
+					return true
+				})
+				return false
+			})
+		}
+	}
+}
+
+func genericTypeName(name string) bool {
+	if genericTypeNames[name] {
+		return true
+	}
+	for _, suffix := range genericTypeSuffixes {
+		if strings.HasSuffix(name, suffix) {
+			return true
+		}
+	}
+	return false
+}
+
+func checkNaming(add func(string, string, string, int, string), files map[string]*source) {
+	for _, path := range sortedKeys(files) {
+		file := files[path]
+		if file.unit == nil || !namingRoles[file.unit.Role] {
+			continue
+		}
+		tree, positions := parseGoFile(file.text)
+		if tree == nil {
+			continue
+		}
+		lines := strings.Split(file.text, "\n")
+		ast.Inspect(tree, func(node ast.Node) bool {
+			specification, ok := node.(*ast.TypeSpec)
+			if !ok {
+				return true
+			}
+			name := specification.Name.Name
+			if !genericTypeName(name) {
+				return true
+			}
+			line := positions.Position(specification.Name.Pos()).Line
+			evidence := ""
+			if line >= 1 && line <= len(lines) {
+				evidence = strings.TrimSpace(lines[line-1])
+			}
+			add("ACIMA-N002", fmt.Sprintf("%s names the type %s after a generic role; name the responsibility or domain concept instead.", file.unit.ID, name), path, line, evidence)
+			return true
+		})
+	}
+}
+
+type goModuleRequirement struct {
+	path string
+	line int
+}
+
+func goModRequirements(text string) []goModuleRequirement {
+	requirements := []goModuleRequirement{}
+	inRequireBlock := false
+	for index, raw := range strings.Split(text, "\n") {
+		line := strings.TrimSpace(raw)
+		if line == "" || strings.HasPrefix(line, "//") {
+			continue
+		}
+		if line == "require (" {
+			inRequireBlock = true
+			continue
+		}
+		if inRequireBlock && line == ")" {
+			inRequireBlock = false
+			continue
+		}
+		if strings.HasPrefix(line, "require ") && !strings.HasPrefix(line, "require (") {
+			line = strings.TrimSpace(strings.TrimPrefix(line, "require "))
+		} else if !inRequireBlock {
+			continue
+		}
+		indirect := false
+		if comment := strings.Index(line, "//"); comment >= 0 {
+			indirect = strings.Contains(strings.ToLower(line[comment:]), "indirect")
+			line = strings.TrimSpace(line[:comment])
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 || indirect {
+			continue
+		}
+		requirements = append(requirements, goModuleRequirement{path: fields[0], line: index + 1})
+	}
+	return requirements
+}
+
+func checkDependencyPolicy(add func(string, string, string, int, string), cfg config, root string) {
+	if cfg.ApprovedDependencies == nil {
+		return
+	}
+	approved := map[string]bool{}
+	for _, module := range *cfg.ApprovedDependencies {
+		if module = strings.TrimSpace(module); module != "" {
+			approved[module] = true
+		}
+	}
+	manifests := cfg.Manifests
+	if len(manifests) == 0 {
+		manifests = []string{"go.mod"}
+	}
+	for _, manifest := range manifests {
+		raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(manifest)))
+		if err != nil {
+			continue
+		}
+		for _, requirement := range goModRequirements(string(raw)) {
+			if approved[requirement.path] {
+				continue
+			}
+			add("ACIMA-G006", fmt.Sprintf("manifest dependency %s has no approvedDependencies entry: declare it in acima.config.json before importing it.", requirement.path), manifest, requirement.line, requirement.path)
+		}
+	}
+}
+
+func sortedTreeKeys(files map[string]*ast.File) []string {
+	keys := make([]string, 0, len(files))
+	for key := range files {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func parseGoFile(text string) (*ast.File, *token.FileSet) {
+	positions := token.NewFileSet()
+	tree, err := parser.ParseFile(positions, "", text, 0)
+	if err != nil {
+		return nil, positions
+	}
+	return tree, positions
+}
+
+func isDependencyInitializer(expression ast.Expr) bool {
+	if unary, ok := expression.(*ast.UnaryExpr); ok && unary.Op == token.AND {
+		expression = unary.X
+	}
+	switch expression.(type) {
+	case *ast.CallExpr, *ast.CompositeLit:
+		return true
+	default:
+		return false
+	}
+}
+
+func functionalName(name string) bool {
+	token := ""
+	for _, character := range name {
+		if character == '_' || character == '-' || character == '.' {
+			if functionalToken(token) {
+				return true
+			}
+			token = ""
+			continue
+		}
+		if character >= 'A' && character <= 'Z' && token != "" {
+			if functionalToken(token) {
+				return true
+			}
+			token = ""
+		}
+		token += strings.ToLower(string(character))
+	}
+	return functionalToken(token)
+}
+
+func functionalToken(token string) bool {
+	switch token {
+	case "repository", "repo", "store", "service", "client", "gateway", "adapter", "logger", "logging",
+		"config", "configuration", "settings", "database", "db", "connection", "session", "provider",
+		"bus", "queue", "publisher", "consumer", "auth", "authorization", "cache", "clock", "registry":
+		return true
+	default:
+		return false
 	}
 }
 

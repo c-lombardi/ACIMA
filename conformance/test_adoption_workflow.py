@@ -243,7 +243,7 @@ class AdoptionWorkflowTests(unittest.TestCase):
             root = Path(directory)
             fixture(root)
             with self.assertRaisesRegex(workflow.WorkflowError, "automated adoption was removed"):
-                workflow.start(root, "full", authorize_full=True)
+                workflow.start(root, "full")
             self.assertFalse((root / "acima/state.json").exists())
 
     def test_full_generates_enforcement_ci_state_and_verification(self) -> None:
@@ -1042,7 +1042,7 @@ class AdoptionWorkflowTests(unittest.TestCase):
             fixture(root)
             full = subprocess.run(
                 [sys.executable, str(ROOT / "tools/acima.py"), "adoption", "start",
-                 "--root", str(root), "--mode", "full", "--authorize-full", "--format", "json"],
+                 "--root", str(root), "--mode", "full", "--format", "json"],
                 capture_output=True, text=True)
             self.assertEqual(full.returncode, 2)
             self.assertIn("automated adoption was removed", full.stderr)
@@ -1288,6 +1288,22 @@ class AdoptionWorkflowTests(unittest.TestCase):
                 )
             self.assertFalse((root / "acima/tooling/python/acima_arch.py").exists())
             self.assertFalse((root / "acima/evidence/enforcement.json").exists())
+
+    def test_final_scope_boundary_rejects_paths_outside_the_approved_package(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            full_start(root)
+            state = workflow._load(root)
+            scope_path = root / workflow.SCOPE_FILE
+            document = json.loads(scope_path.read_text(encoding="utf-8"))
+            document["approvedPaths"].append("src/unapproved.py")
+            scope_path.write_text(json.dumps(document), encoding="utf-8")
+            state["implementationApproval"]["approvedPaths"] = document["approvedPaths"]
+            state["implementationApproval"]["scopeSha256"] = workflow._sha(scope_path)
+            workflow._save(root, state)
+            with self.assertRaisesRegex(workflow.WorkflowError, "exactly the paths"):
+                workflow._require_approved_scope(root, state)
 
     def test_source_remediation_requires_plan_digest_and_exact_approved_paths(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

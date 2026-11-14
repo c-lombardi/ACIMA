@@ -17,13 +17,15 @@ cd examples/go         && go run ./tools/archtest --root . --config acima.galler
 cd examples/dotnet     && dotnet run --project tools/Acima.ArchTests -- --root . --config acima.gallery.config.json
 ```
 
-Not every language fires every rule. Python executes 42 automated rules and TypeScript 41; Go
-executes 23 and .NET 24. The five tier rules (`L005`–`L007`, `D010`, `G006`), the two
-explicit-input rules (`D011`, `D012`), the two value rules (`A005`, `A006`), the two composition
-rules (`D013`, `D014`), the two functional-capture rules (`D015`, `D016`), the three lifecycle rules
-(`A007`–`A009`) and the two naming rules (`N001`–`N002`) report `executed: false` in Go and .NET.
-TypeScript and Go also report `D017` as not executed because they have no native named-call syntax.
-The fourteen manual rules, including `N003`, report `executed: false` in every language. Each profile documents
+Not every language fires every rule. Python executes 42 automated rules, TypeScript 41 and .NET
+42; Go executes 27. Go executes `G006` from direct `go.mod` requirements against
+`approvedDependencies` and `N002` over type declarations, and reports the four tier rules (`L005`–`L007`, `D010`), the value rule
+(`A006`), the two composition rules (`D013`, `D014`), the functional-capture rule (`D016`), the
+three lifecycle rules (`A007`–`A009`) and `N001` `executed: false`.
+Go also reports the explicit-input rules (`D011`, `D012`)
+`executed: false`; TypeScript and Go report `D017` as not executed because they have no native
+named-call syntax. The fourteen manual rules, including `N003`, report `executed: false` in every
+language. Each profile documents
 the other constructs it cannot see; the gaps are listed in [the language profiles](../languages/index.md).
 
 ---

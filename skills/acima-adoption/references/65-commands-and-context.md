@@ -16,8 +16,8 @@ Every command below is read-only unless marked.
 | `acima.py claim --report <run> --level <L> --require full` | `FULL`/`PARTIAL`, bound to current provenance, and gate it | no |
 | `summarize.py --root <target> --report <run>` | run → reader-facing summary | `--out` only |
 | `preflight.py --project <target>` | calibration, classification and automatic module-map proposal | `--write-*` only |
-| `preflight.py --automation-mode guided\|full` | report the explicit guided/full choice; full also needs `--authorize-full-automation` | no |
-| `acima.py adoption start --root <target> --mode guided\|full` | persist the selected mode; full requires `--authorize-full` | writes `acima/state.json` and generated artifacts |
+| `preflight.py --automation-mode guided\|full` | read-only compatibility report; does not start adoption or authorize a write | no |
+| `acima.py adoption start --root <target> --mode guided` | start the one adoption flow; legacy `full` state resumes but a new `full` start is refused | writes `acima/state.json` and generated artifacts |
 | `acima.py adoption status --root <target>` | current stage, artifacts, blockers and one next action | no |
 | `acima.py adoption approve --root <target> --map-decisions <json> --scope <json>` | record the scoped map and adoption approvals, then implement | the approved artifacts only |
 | `acima.py adoption remediate --root <target> --choice none` | decline immediate source remediation and retain the proposal | decision and handoff artifacts only |

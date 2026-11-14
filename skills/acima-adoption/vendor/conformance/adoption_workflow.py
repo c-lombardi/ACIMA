@@ -1308,29 +1308,6 @@ def _write_enforcement(root: Path, state: dict, config: dict) -> dict:
     return enforcement
 
 
-def _integrate_ci(root: Path, state: dict, command: str | None) -> dict:
-    discovered = _ci(root)
-    document = dict(discovered)
-    document["command"] = command
-    if not command:
-        document["status"] = "blocked"
-        document["reason"] = "No executable enforcer command is available."
-    elif discovered.get("provider"):
-        document["status"] = "manual_instructions"
-        document["instructions"] = [
-            "Add the command to the detected provider's pull-request validation stage.",
-            "Fail the job on a non-zero exit code and preserve the JSON result as an artifact.",
-        ]
-    else:
-        document["status"] = "no_provider"
-    document["claim"] = ("Configured locally; no remote CI run was observed or claimed."
-                         if document["status"] in ("configured", "already_present", "manual_instructions")
-                         else "No CI integration was made.")
-    _write_json(root, CI_FILE, document)
-    state["artifacts"]["ci"] = CI_FILE
-    return document
-
-
 def _scan_findings(root: Path, config: dict) -> list[dict]:
     """Run the copied enforcer once and return its findings, failing closed on bad output."""
     language = config.get("language") or _language(root)
@@ -1361,16 +1338,17 @@ def ci(root: Path, *, plan_only: bool = False, approve: bool = False, decline: b
         raise WorkflowError("--refresh is only valid with --plan")
     if plan_only:
         if refresh:
-            # Returning for CI is not a jump straight to CI. Rebuild the reviewed document from
-            # current evidence and invalidate old approvals before offering the plan again.
+            # Returning for CI is not a jump straight to CI. Rebuild assessment evidence, the
+            # module-map proposal, the proposed config and the report from current sources.
+            def source_snapshot() -> dict[str, bytes]:
+                return {path.relative_to(root).as_posix(): path.read_bytes()
+                        for path in root.rglob("*")
+                        if path.is_file()
+                        and not path.relative_to(root).as_posix().startswith("acima/")}
+            source_before = source_snapshot()
             state = regenerate(root, reason=reason or "CI re-entry refresh",
-                               reviewer=reviewed_by or None)
-            source_before = {path.relative_to(root).as_posix(): path.read_bytes()
-                             for path in root.rglob("*")
-                             if path.is_file() and not path.relative_to(root).as_posix().startswith("acima/")}
-            if source_before != {path.relative_to(root).as_posix(): path.read_bytes()
-                                 for path in root.rglob("*")
-                                 if path.is_file() and not path.relative_to(root).as_posix().startswith("acima/")}:
+                               reviewer=reviewed_by or None, refresh_map=True)
+            if source_before != source_snapshot():
                 raise WorkflowError("CI refresh changed application source; no CI plan is offered")
         document = adoption_ci.plan(root)
         state["artifacts"]["ciPlan"] = adoption_ci.PLAN_FILE
@@ -1406,7 +1384,9 @@ def ci(root: Path, *, plan_only: bool = False, approve: bool = False, decline: b
               done="A remediation choice is recorded, or the adoption is handed off without a ratchet claim.")
         _save(root, state)
         return state
-    # Approval must be based on a successful scan, not on an assumed clean run.
+    # Approval must be based on an exact current scope that explicitly selected CI, not on
+    # a successful scan or a previously verified local enforcer alone.
+    _require_ci_scope(root, state)
     verification = _read_json(root / VERIFICATION_FILE) if (root / VERIFICATION_FILE).is_file() else {}
     if verification.get("status") != "verified":
         raise WorkflowError("CI requires a verified local enforcer; finish architectural verification first")
@@ -1443,6 +1423,10 @@ def ci(root: Path, *, plan_only: bool = False, approve: bool = False, decline: b
                                "by": reviewed_by, "on": _today(),
                                "planSha256": result.get("planSha256"),
                                "baseline": adoption_ci.BASELINE_FILE})
+    # The approved CI workflow is a target write. Re-pin the revision after it so the
+    # separately approved remediation round validates against the post-CI tree.
+    state["repository"]["revision"] = _revision(root)
+    state["repository"]["applicationRevision"] = _application_revision(root)
     _next(state, "Choose immediate remediation: none, selected, or all",
           "python3 tools/acima.py adoption remediate --root . --choice none|selected|all",
           approval=True, writes=True,
@@ -2377,6 +2361,16 @@ def _implementation_paths(root: Path, scope: dict | None = None) -> list[str]:
     return sorted(paths)
 
 
+def _require_ci_scope(root: Path, state: dict) -> dict:
+    """Require the exact owner scope and an explicit CI-enforcement selection."""
+    scope = _require_approved_scope(root, state)
+    if "ci-enforcement" not in _approved_objectives(scope):
+        raise WorkflowError(
+            "CI enforcement was not selected in the approved adoption scope; no CI workflow may be written"
+        )
+    return scope
+
+
 def _require_approved_scope(root: Path, state: dict) -> dict:
     """Fail closed unless scope, report review, proposal, repository and paths all match."""
     scope_path = root / SCOPE_FILE
@@ -2416,9 +2410,18 @@ def _require_approved_scope(root: Path, state: dict) -> dict:
         raise WorkflowError("scope.approvedPaths must list every exact target file approved for implementation")
     approved_paths = {Path(path).as_posix() for path in approved_paths}
     required = set(_implementation_paths(root, scope))
-    missing = sorted(required - approved_paths)
-    if missing:
-        raise WorkflowError("implementation scope does not approve every required file path: %s" % ", ".join(missing))
+    if approved_paths != required:
+        missing = sorted(required - approved_paths)
+        extra = sorted(approved_paths - required)
+        detail = []
+        if missing:
+            detail.append("missing %s" % ", ".join(missing))
+        if extra:
+            detail.append("outside the approved package: %s" % ", ".join(extra))
+        raise WorkflowError(
+            "implementation scope must name exactly the paths required by the selected objectives (%s)"
+            % "; ".join(detail)
+        )
     if any(Path(path).is_absolute() or ".." in Path(path).parts for path in approved_paths):
         raise WorkflowError("approved paths must be repository-relative and cannot escape the target")
     # A branch picker or recovery branch is context only. The reviewed scope is invalid
@@ -2606,8 +2609,8 @@ def _validate_qualitative_review(root: Path, review_path: Path | None) -> dict:
     }
 
 
-def start(root: Path, mode: str, *, authorize_full: bool = False,
-          reviewer: str | None = None, review_path: Path | None = None) -> dict:
+def start(root: Path, mode: str, *, reviewer: str | None = None,
+          review_path: Path | None = None) -> dict:
     root = root.resolve()
     if not root.is_dir():
         raise WorkflowError("project does not exist: %s" % root)
@@ -2685,32 +2688,29 @@ def start(root: Path, mode: str, *, authorize_full: bool = False,
     proposal_document = None
     if adopted:
         proposal_document = _write_proposal(root, module_map, state)
-    if True:
-        map_pending = state["stages"].get("module_map", {}).get("status") == AWAITING
-        if map_pending:
-            _stage(state, "adoption_proposal", IN_PROGRESS,
-                   "Proposal generation is deliberately held until the user approves the module map.")
-        else:
-            _stage(state, "adoption_proposal", COMPLETE,
-                   "The adoption proposal data is ready for HTML rendering.",
-                   evidence=ADOPTION_PROPOSAL)
-            proposal_document = proposal_document or _read_json(root / ADOPTION_PROPOSAL_JSON)
-            _proposal_report(root, state, module_map, proposal_document)
-        if map_pending:
-            _next(state, "Review the proposed module map",
-                  "python3 conformance/adoption_workflow.py approve --project . --map-decisions <review.json>",
-                  approval=True, writes=True,
-                  why="Inferred ownership must not become authoritative before the map review.",
-                  done="The map review approves a complete map; only then is the six-page HTML adoption proposal generated.")
-        else:
-            report = state["artifacts"]["proposalReport"]
-            _next(state, "Open and review the HTML adoption proposal",
-                  "Open the user-facing report now: %s . Inspect all six pages. Then answer the separate ACIMA adoption-notifications question (prepare a proposal, use only interactive messages, defer, or decline), record explicit approval for report digest %s, and select exact objectives and paths." % (report["indexUrl"], report["sha256"]),
-                  approval=True, writes=False,
-                  why="A Markdown summary, a vague 'continue', or a branch selection is not review of the HTML proposal and does not authorize implementation.",
-                  done="The owner has inspected all six pages and submits a scope bound to this report digest with explicit objectives and target paths.")
-        _save(root, state)
-        return state
+    map_pending = state["stages"].get("module_map", {}).get("status") == AWAITING
+    if map_pending:
+        _stage(state, "adoption_proposal", IN_PROGRESS,
+               "Proposal generation is deliberately held until the user approves the module map.")
+        _next(state, "Review the proposed module map",
+              "python3 conformance/adoption_workflow.py approve --project . --map-decisions <review.json>",
+              approval=True, writes=True,
+              why="Inferred ownership must not become authoritative before the map review.",
+              done="The map review approves a complete map; only then is the six-page HTML adoption proposal generated.")
+    else:
+        _stage(state, "adoption_proposal", COMPLETE,
+               "The adoption proposal data is ready for HTML rendering.",
+               evidence=ADOPTION_PROPOSAL)
+        proposal_document = proposal_document or _read_json(root / ADOPTION_PROPOSAL_JSON)
+        _proposal_report(root, state, module_map, proposal_document)
+        report = state["artifacts"]["proposalReport"]
+        _next(state, "Open and review the HTML adoption proposal",
+              "Open the user-facing report now: %s . Inspect all six pages. Then answer the separate ACIMA adoption-notifications question (prepare a proposal, use only interactive messages, defer, or decline), record explicit approval for report digest %s, and select exact objectives and paths." % (report["indexUrl"], report["sha256"]),
+              approval=True, writes=False,
+              why="A Markdown summary, a vague 'continue', or a branch selection is not review of the HTML proposal and does not authorize implementation.",
+              done="The owner has inspected all six pages and submits a scope bound to this report digest with explicit objectives and target paths.")
+    _save(root, state)
+    return state
 
 
 def approve(root: Path, *, map_decisions: Path | None = None,
@@ -2770,13 +2770,12 @@ def approve(root: Path, *, map_decisions: Path | None = None,
                 # implementation gates begin from the post-map state, not the pre-map tree.
                 state["repository"]["revision"] = _revision(root)
                 state["repository"]["applicationRevision"] = _application_revision(root)
-                if state.get("mode") == "guided":
-                    reviewed_map = discover_module_map(root)
-                    proposal_document = _write_proposal(root, reviewed_map, state)
-                    _stage(state, "adoption_proposal", COMPLETE,
-                           "The owner-approved module map is reflected in the adoption proposal.",
-                           evidence=ADOPTION_PROPOSAL)
-                    _proposal_report(root, state, reviewed_map, proposal_document)
+                reviewed_map = discover_module_map(root)
+                proposal_document = _write_proposal(root, reviewed_map, state)
+                _stage(state, "adoption_proposal", COMPLETE,
+                       "The owner-approved module map is reflected in the adoption proposal.",
+                       evidence=ADOPTION_PROPOSAL)
+                _proposal_report(root, state, reviewed_map, proposal_document)
             else:
                 _stage(state, "module_map", AWAITING, "The review is %s; no config was written." %
                        result.get("status"), evidence=APPROVAL_FILE)
@@ -2845,13 +2844,20 @@ def approve(root: Path, *, map_decisions: Path | None = None,
             raise WorkflowError("scope.approvedPaths must not escape the repository")
         document["approvedPaths"] = sorted(set(Path(path).as_posix() for path in document["approvedPaths"]))
         selected_objectives = _approved_objectives(document)
+        approved_paths = set(document["approvedPaths"])
         required_paths = set(_implementation_paths(root, document))
-        missing_paths = sorted(required_paths - set(document["approvedPaths"]))
-        if missing_paths:
-            raise WorkflowError("scope does not explicitly approve every target path required for the selected stages: %s" % ", ".join(missing_paths))
-        unexpected_paths = sorted(set(document["approvedPaths"]) - set(_implementation_paths(root, document)))
-        if unexpected_paths:
-            raise WorkflowError("scope includes paths outside the proposed adoption implementation package: %s" % ", ".join(unexpected_paths))
+        if approved_paths != required_paths:
+            missing_paths = sorted(required_paths - approved_paths)
+            unexpected_paths = sorted(approved_paths - required_paths)
+            detail = []
+            if missing_paths:
+                detail.append("missing %s" % ", ".join(missing_paths))
+            if unexpected_paths:
+                detail.append("outside the proposed package: %s" % ", ".join(unexpected_paths))
+            raise WorkflowError(
+                "scope must name exactly the paths required by the selected stages (%s)"
+                % "; ".join(detail)
+            )
         _write_json(root, SCOPE_FILE, document)
         state["artifacts"]["scope"] = SCOPE_FILE
         state["proposalReview"] = reviewed
@@ -3080,10 +3086,9 @@ def continue_workflow(root: Path) -> dict:
               done="The owner records none, selected IDs, or all; authorized changes are then verified.")
         _save(root, state)
         return state
-    if ((root / CONFIG_NAME).is_file() and (root / SCOPE_FILE).is_file()
-            and (state.get("implementationApproval") or {}).get("status") == "approved"):
-        return _apply(root, state)
-    if (root / SCOPE_FILE).is_file() and (state.get("implementationApproval") or {}).get("status") != "approved":
+    if (root / CONFIG_NAME).is_file() and (root / SCOPE_FILE).is_file():
+        if (state.get("implementationApproval") or {}).get("status") == "approved":
+            return _apply(root, state)
         _save(root, state)
         return state
     if state["stages"].get("module_map", {}).get("status") in (AWAITING, BLOCKED):
@@ -3102,13 +3107,144 @@ def continue_workflow(root: Path) -> dict:
     return state
 
 
-def regenerate(root: Path, *, reason: str, reviewer: str | None = None) -> dict:
+def _refresh_evidence(root: Path, state: dict) -> dict:
+    """Rebuild read-only assessment evidence and the proposed ownership map.
+
+    CI re-entry is not just a report refresh. Re-run preflight and discovery, revalidate the
+    qualitative review, replace the persisted module-map proposal and rebuild the proposed config
+    from the owner-approved units. No application source is written. If the repository has changed
+    enough that the approved proposal no longer matches, stop and require a fresh map review.
+    """
+    review = state.get("assessmentReview") or {}
+    review_path = root / str(review.get("path") or "")
+    if not review_path.is_file():
+        raise WorkflowError("the validated qualitative review is missing; CI cannot be refreshed")
+    try:
+        refreshed_review = _validate_qualitative_review(root, review_path)
+    except (WorkflowError, ReviewValidationError, OSError) as error:
+        raise WorkflowError(
+            "the qualitative review no longer validates against the current repository: %s" % error
+        ) from error
+    state["assessmentReview"] = refreshed_review
+
+    preflight = _run_preflight(root)
+    blockers = list((preflight.get("payload") or {}).get("blockers") or [])
+    if preflight.get("payload"):
+        _write_json(root, PREFLIGHT_FILE, preflight["payload"])
+        state["artifacts"]["preflight"] = PREFLIGHT_FILE
+    if preflight.get("exitCode") != 0 or blockers:
+        detail = ", ".join(blockers) or preflight.get("error") or "no valid preflight result"
+        _stage(state, "preflight", BLOCKED, "CI refresh preflight blocked: %s" % detail,
+               evidence=PREFLIGHT_FILE)
+        state["blockers"].append("CI refresh preflight blocked")
+        _save(root, state)
+        raise WorkflowError("CI cannot be refreshed while preflight is blocked: %s" % detail)
+    _stage(state, "preflight", COMPLETE, "Preflight passed for the refreshed adoption evidence.",
+           evidence={"mode": state.get("mode"), "explicitAuthorization": False,
+                     "preflight": PREFLIGHT_FILE})
+
+    try:
+        discovery = discover_module_map(root)
+    except (ModuleMapError, OSError) as error:
+        _stage(state, "discovery", BLOCKED, "CI refresh discovery failed: %s" % error)
+        state["blockers"].append("CI refresh discovery failed")
+        _save(root, state)
+        raise WorkflowError("CI cannot be refreshed while discovery fails: %s" % error) from error
+    proposal_discovery = discovery
+    proposal = discovery.get("proposal") or {}
+    if not proposal:
+        # An authoritative root config makes normal discovery short-circuit to "authoritative"
+        # without a proposal. Rebuild the proposal view from source so the persisted map proposal
+        # and proposed config are refreshed rather than left stale. The owner approval is only
+        # reused when this fresh proposal still has the same identity.
+        try:
+            proposal_discovery = discover_module_map(root, config={})
+        except (ModuleMapError, OSError) as error:
+            _stage(state, "discovery", BLOCKED, "CI refresh proposal discovery failed: %s" % error)
+            state["blockers"].append("CI refresh proposal discovery failed")
+            _save(root, state)
+            raise WorkflowError("CI cannot be refreshed while discovery fails: %s" % error) from error
+        proposal = proposal_discovery.get("proposal") or {}
+    if not proposal:
+        _stage(state, "discovery", BLOCKED, "CI refresh discovery returned no proposal.")
+        state["blockers"].append("CI refresh discovery returned no proposal")
+        _save(root, state)
+        raise WorkflowError("CI cannot be refreshed without a module-map proposal")
+    _write_json(root, PROPOSAL_JSON, proposal)
+    state["artifacts"]["moduleMapProposal"] = PROPOSAL_JSON
+    _stage(state, "discovery", COMPLETE,
+           "Refreshed discovery found %s candidate module(s)." % len(proposal.get("modules") or []),
+           evidence={"proposalId": proposal_discovery.get("proposalId"),
+                     "authoritative": discovery.get("authoritativeMap", {}).get("status")})
+    _stage(state, "assessment", COMPLETE,
+           "The qualitative review was revalidated against the current catalog and repository.",
+           evidence={"review": refreshed_review.get("path"),
+                     "reviewed": refreshed_review.get("reviewed"),
+                     "required": refreshed_review.get("required"),
+                     "catalogSha256": refreshed_review.get("catalogSha256")})
+
+    authoritative = (discovery.get("authoritativeMap", {}).get("status") == "complete"
+                     and (root / CONFIG_NAME).is_file())
+    if authoritative:
+        # The implementation stage already wrote the owner-approved authoritative map. Rebuild
+        # the proposed config from that current contract instead of forcing a fresh map review;
+        # the source proposal above is still replaced with current discovery evidence.
+        config = _read_json(root / CONFIG_NAME)
+        _write_json(root, PROPOSED_CONFIG, config)
+        state["artifacts"]["moduleMap"] = PROPOSED_CONFIG
+        _stage(state, "module_map", COMPLETE,
+               "The proposed config was rebuilt from the current authoritative map.",
+               evidence={"configProposal": PROPOSED_CONFIG, "config": CONFIG_NAME})
+        return {**discovery, "proposal": proposal,
+                "proposalId": proposal_discovery.get("proposalId")}
+
+    approval_path = root / APPROVAL_FILE
+    approval = _read_json(approval_path) if approval_path.is_file() else {}
+    refreshed_id = proposal_discovery.get("proposalId")
+    if (approval.get("status") != "approved"
+            or approval.get("proposalId") != refreshed_id):
+        _stage(state, "module_map", AWAITING,
+               "The refreshed proposal no longer matches the owner-approved map; review it again before CI.",
+               evidence=PROPOSAL_JSON)
+        _next(state, "Review the refreshed module map",
+              "Approve the refreshed map and report before planning CI again.",
+              approval=True, writes=False,
+              why="CI must not run against ownership decisions that no longer describe the repository.",
+              done="A fresh map review matches the refreshed proposal and report.")
+        _save(root, state)
+        raise WorkflowError(
+            "the refreshed module map no longer matches the owner-approved proposal; review the map again before CI"
+        )
+    try:
+        existing = _read_json(root / CONFIG_NAME) if (root / CONFIG_NAME).is_file() else None
+        config = build_config(
+            {"proposal": proposal, "proposalId": refreshed_id},
+            approval, existing=existing, language=_language(root),
+        )
+    except ModuleMapError as error:
+        _stage(state, "module_map", BLOCKED, "The refreshed proposed config could not be rebuilt: %s" % error)
+        state["blockers"].append("refreshed proposed config could not be rebuilt")
+        _save(root, state)
+        raise WorkflowError("the refreshed proposed config could not be rebuilt: %s" % error) from error
+    _write_json(root, PROPOSED_CONFIG, config)
+    state["artifacts"]["moduleMapApproval"] = APPROVAL_FILE
+    state["artifacts"]["moduleMap"] = PROPOSED_CONFIG
+    _stage(state, "module_map", COMPLETE,
+           "The refreshed proposal and proposed config reflect the owner-approved map.",
+           evidence={"configProposal": PROPOSED_CONFIG, "approval": APPROVAL_FILE})
+    return discovery
+
+
+def regenerate(root: Path, *, reason: str, reviewer: str | None = None,
+               refresh_map: bool = False) -> dict:
     """Rebuild the current report from persisted evidence under a new report identity.
 
     A report can disappear or go stale (OS cleanup, an interrupted branch operation, a hand edit).
     Regeneration is the supported repair: it re-renders from the validated review, the persisted
     module-map proposal and the adoption proposal, records why, invalidates every prior review and
     implementation receipt, and makes any decisions file written against the old identity stale.
+    With ``refresh_map`` it first rebuilds preflight, discovery, the map proposal and the proposed
+    config from the current repository.
     """
     root = root.resolve()
     reason = str(reason or "").strip()
@@ -3121,17 +3257,22 @@ def regenerate(root: Path, *, reason: str, reviewer: str | None = None) -> dict:
     review_path = root / str((state.get("assessmentReview") or {}).get("path") or "")
     if not review_path.is_file():
         raise WorkflowError("the validated qualitative review is missing; the report cannot be rebuilt")
-    proposal_path = root / ADOPTION_PROPOSAL_JSON
-    inner_path = root / PROPOSAL_JSON
-    if not proposal_path.is_file() or not inner_path.is_file():
-        raise WorkflowError("the adoption proposal or module-map proposal is missing; the report cannot be rebuilt")
-    proposal = _read_json(proposal_path)
-    inner = _read_json(inner_path)
-    discovery = discover_module_map(root)
+    if refresh_map:
+        discovery = _refresh_evidence(root, state)
+        proposal = _write_proposal(root, discovery, state)
+    else:
+        proposal_path = root / ADOPTION_PROPOSAL_JSON
+        inner_path = root / PROPOSAL_JSON
+        if not proposal_path.is_file() or not inner_path.is_file():
+            raise WorkflowError("the adoption proposal or module-map proposal is missing; the report cannot be rebuilt")
+        proposal = _read_json(proposal_path)
+        inner = _read_json(inner_path)
+        discovery = discover_module_map(root)
     module_map = {
         "status": discovery.get("status"),
-        "proposalId": inner.get("proposalId"),
-        "proposal": inner,
+        "proposalId": (discovery.get("proposalId") if refresh_map
+                       else inner.get("proposalId")),
+        "proposal": (discovery.get("proposal") if refresh_map else inner),
         "authoritativeMap": discovery.get("authoritativeMap"),
         "existingArchitecture": discovery.get("existingArchitecture"),
     }
@@ -3455,7 +3596,6 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("--format", choices=("json", "text"), default="json")
         if name == "start":
             command.add_argument("--mode", choices=MODES, required=True)
-            command.add_argument("--authorize-full", action="store_true", dest="authorize_full")
             command.add_argument("--reviewer", default=None)
             command.add_argument("--review", default=None,
                                  help="validated complete qualitative review JSON for the current catalog")
@@ -3505,7 +3645,7 @@ def main(argv: list[str] | None = None) -> int:
     root = Path(args.project).resolve()
     try:
         if args.command == "start":
-            result = start(root, args.mode, authorize_full=args.authorize_full,
+            result = start(root, args.mode,
                            reviewer=args.reviewer,
                            review_path=Path(args.review) if args.review else None)
         elif args.command == "status":

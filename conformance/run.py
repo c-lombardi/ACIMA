@@ -146,6 +146,9 @@ def check_tools() -> bool:
                  "conformance/test_third_party_governance.py",
                  "conformance/test_explicit_inputs.py",
                  "conformance/test_values_config.py",
+                 "conformance/test_go_values_capture.py",
+                 "conformance/test_go_dependency_policy.py",
+                 "conformance/test_go_naming.py",
                  "conformance/test_composition.py"):
         result = subprocess.run([sys.executable, test], cwd=ROOT, capture_output=True, text=True)
         if result.returncode != 0:

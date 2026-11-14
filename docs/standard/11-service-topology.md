@@ -187,7 +187,8 @@ contract change with its own review — which is the correct amount of friction.
 
 **This shape is no longer profile-only.** The base catalog enforces the same seam without the layer
 model: chapter 4 §4.10 defines the three tiers and the `adapter`/`port` roles, `L005`–`L007` and
-`D010` check them, and `G006` keeps the `externals` declaration current. `ST-8` is the service
+`D010` check them, and `G006` keeps the `externals` declaration current (Go keeps its direct
+`go.mod` requirements current against `approvedDependencies`). `ST-8` is the service
 form of that requirement — every third-party library behind `<Service>.<Vendor>.Contracts` and
 implemented only in `<Service>.<Vendor>` — and the swap drill in chapter 8 §8.10 is the evidence
 both profiles can cite. A repository that has not adopted the profile still gets `L006` when an

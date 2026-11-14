@@ -56,7 +56,7 @@ has one owner.
 | Meaningful value without one immutable owner | `ACIMA-A006` (warning) | Python/TypeScript candidate scanner; manual elsewhere | Declare it immutably in its genuine owner, or inject it from configuration; do not consolidate on equal literals. |
 | Discovery chooses module-owned components | `ACIMA-D013` (warning) | Python/TypeScript automated; manual elsewhere | Name registrations/constructors; keep discovery only in a reviewed, proven exception. |
 | Dependency injected into a property or field | `ACIMA-D014` (warning) | Python/TypeScript automated; manual elsewhere | Move the dependency to the constructor and supply it from the host. |
-| Collaborator captured by a closure or callback | `ACIMA-D015` (warning) | Python/TypeScript automated; manual elsewhere | Pass it as a parameter or declared field; keep pure closures. |
+| Collaborator captured by a closure or callback | `ACIMA-D015` (warning) | Python/TypeScript/.NET/Go automated; manual elsewhere | Pass it as a parameter or declared field; keep pure closures. |
 | Dependency partially applied inside a component | `ACIMA-D016` (warning) | Python/TypeScript automated; manual elsewhere | Move `bind`/`partial` to the composition boundary or keep it as a parameter. |
 | Dependency cycle | `ACIMA-D005` | `examples/python/violations/d005_cycle_orders.py`, `d005_cycle_payments.py` | Invert the dependency, publish an event, or merge the modules. |
 | Unapproved architectural exception | `ACIMA-G001`, `G002` | `examples/python/violations/waivers.json` | Owner, reason, scope, expiry, review date. |

@@ -20,10 +20,10 @@ plain meaning, evidence gap, recommended option, effort and consequence
 
 ## Orchestrated deliverables
 
-When the workflow mode is selected, generate the module-map proposal, adoption proposal,
+During the one adoption flow, generate the module-map proposal, adoption proposal,
 `acima/evidence/adoption-scope.json`, enforcement record, architecture-test record, CI decision and final
-handoff as stage artifacts. Guided mode presents the map and scope for approval; full automation
-proceeds only within its explicit authorization. Every artifact records its status and every
+handoff as stage artifacts. The flow presents the map and scope for separate approval; CI and
+remediation remain separately approved decisions. Every artifact records its status and every
 recommendation has an implementation path or an explicit deferral. A proposal is not an approved
 map, a written CI file is not a remote run, and a copied enforcer is not a conformance claim.
 

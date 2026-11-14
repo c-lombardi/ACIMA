@@ -350,7 +350,7 @@ host registrations only, and they differ in what "explicit" means.
 |---|---|---|---|
 | TypeScript/JavaScript | module bindings, DI containers, request-scoped providers, closures, caches, callbacks | `A007`–`A009` for `register(Class, { lifetime })` and `addSingleton`/`addScoped`/`addTransient` | no framework container; no factory closures or module-level instances |
 | Python | module singletons, provider functions, scopes, decorators, context managers, mutable defaults | `A007`–`A009` for `register(... lifetime=...)` and `add_singleton`/`add_scoped`/`add_transient` | no runtime container; no decorator/factory retention |
-| C#/.NET | singleton/scoped/transient registrations, `IDisposable`, `IHostedService`, statics, delegates | none executed; catalog entries report `executed: false` | manual review and framework validation required |
+| C#/.NET | singleton/scoped/transient registrations, `IDisposable`, `IHostedService`, statics, delegates | `A007`–`A009` for direct `AddSingleton`/`AddScoped`/`AddTransient`/`TryAdd*` registrations | no factory/keyed/open-generic graph; A007 accepts readonly constructor dependencies; concurrency, tenant isolation and cleanup remain manual |
 | Go | package-level values, constructor functions, goroutines, `context.Context`, mutexes | none executed; catalog entries report `executed: false` | manual review; no goroutine or lock analysis |
 | Java | singleton/prototype/request scopes, static state, functional interfaces | no reference enforcer | manual review; profile only |
 
@@ -390,8 +390,14 @@ canonical `A009`. `IDisposable`/`IAsyncDisposable` establish a cleanup contract,
 and are already constrained by `A003` when they cross modules; they remain shared mutable state
 within a module.
 
-The .NET enforcer does not execute `A007`–`A009` in this revision. A .NET repository needs manual
-evidence, or a native analyzer, for a full claim.
+The .NET enforcer executes `A007`–`A009` from Roslyn syntax for direct registrations. `A007` treats
+a class as behaviorally stateless when it has one required construction path, no mutable instance or
+static state, no setter or `init` accessor and no field/property assignment outside its constructor;
+a readonly field or get-only property populated from a constructor parameter is a dependency, not
+state. `A008` resolves direct constructor dependencies through the host lifetime map. `A009` reports
+a shared class with a mutable container field or property. The check is syntactic; factories, keyed
+services, open generics, decorators, proxies, tenant isolation, thread safety and cleanup remain
+manual evidence.
 
 ### 17.9.4 Go
 
@@ -436,12 +442,14 @@ other waiver. "The container made it easy" is not a reason.
 
 ## 17.11 Enforcement and limits
 
-`A007`, `A008` and `A009` execute in the Python and TypeScript reference enforcers. They read
-explicit host registrations and inspect the registered class body:
+`A007`, `A008` and `A009` execute in the Python, TypeScript and .NET reference enforcers. They
+read explicit host registrations and inspect the registered class body:
 
-- **A007** fires when a transient registration targets a class with no `this`/`self` field writes
-  and no constructor-assigned state. That is evidence of statelessness, not proof of thread safety;
-  a class may be stateless and still use a non-thread-safe global.
+- **A007** fires when a transient registration targets a behaviorally stateless class: one required
+  construction path, no mutable instance or static state, no property setter and no assignment
+  outside that constructor. Readonly constructor-injected dependencies are allowed. That is evidence
+  of statelessness, not proof of thread safety; a class may be stateless and still use a
+  non-thread-safe global.
 - **A008** fires when a shared/singleton registration targets a class whose constructor declares a
   dependency that is registered scoped in the same host. It follows direct constructor annotations
   only; it does not see framework proxies, factories, property injection or runtime resolution.
@@ -458,8 +466,9 @@ The rules deliberately do **not** flag:
 - safely synchronised or explicitly owned shared state;
 - resource-owning components with documented cleanup.
 
-They also do not execute for Go, .NET or Java. Those profiles report the rules `executed: false`,
-and a full claim needs repository-scoped manual evidence. The report MUST distinguish:
+They also do not execute for Go or Java. Those profiles report the rules `executed: false`, and a
+full claim needs repository-scoped manual evidence. The .NET enforcer executes the three rules from
+direct host registrations, with the conservative limits above. The report MUST distinguish:
 
 1. a confirmed syntactic registration mismatch;
 2. a potential mismatch in framework-managed code;
@@ -614,8 +623,8 @@ what state does it retain?
 - [ ] Is a factory or closure retaining a dependency beyond its intended scope?
 - [ ] Is shared mutable state synchronised or confined, and is the policy documented?
 - [ ] Is process-local state described as process-local rather than globally consistent?
-- [ ] Are Go, .NET and Java lifecycle claims backed by manual evidence rather than a clean portable
-      run?
+- [ ] Are Go and Java lifecycle claims backed by manual evidence rather than a clean portable run,
+      and are .NET factory, keyed-service and concurrency claims backed by review?
 - [ ] Does the report separate a confirmed registration mismatch from a manual review of thread
       safety, isolation, resource cleanup and distributed consistency?
 

@@ -108,12 +108,12 @@ Full boundary and artifact matrix: [15-consent-and-scope](15-consent-and-scope.m
 
 
 
-## Guided and full automation
+## One four-phase adoption flow
 
-There is one authoritative user workflow. Automated adoption was removed; legacy `full` state resumes through the same checkpoints.
-Guided mode has distinct map, proposal, CI and implementation-stage review checkpoints. Automated
-mode completes the shared assessment and prepares the adoption package before a consolidated review;
-the user then selects one or more implementation stages. Mode selection authorizes analysis and
+There is one authoritative user workflow with four phases: Assess, Review and authorize, Implement,
+and Verify and hand off. Automated adoption was removed; legacy `full` state resumes through the
+same checkpoints, but a new `full` start is refused. Map, proposal, CI and implementation-stage
+reviews are distinct checkpoints. Starting or resuming a workflow authorizes analysis and
 preparation, not unreviewed consequential changes. Do not auto-approve inferred module ownership.
 Preserve approvals and stage status in the persisted workflow state. See
 [13-adoption-orchestration](13-adoption-orchestration.md) for the exact sequence, consent rules,

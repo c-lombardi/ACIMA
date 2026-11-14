@@ -226,9 +226,11 @@ The languages do not share a DI convention. The invariant is the same; the repre
 | Go | `cmd/<service>/main.go` and explicit constructor calls | `NewX(dep)` returning a value; no init-time registry | package `init()` registration, global registries, reflection-based lookup | HTTP framework handler adaptation; handler struct fields must be set at construction |
 | Java | `Main`, Spring configuration or explicit factory | constructor injection; `@Bean` methods naming the implementation | classpath scanning that selects module-owned components, field injection, `ApplicationContext.getBean` in domain code | framework-managed controllers with constructor injection |
 
-The reference enforcers implement `D013` and `D014` for Python and TypeScript. Go and .NET carry the
-catalog entries but report them `executed: false` in this revision; Java has no reference enforcer.
-A language profile is not claiming support until its enforcer and conformance fixtures pass.
+The reference enforcers implement `D013` and `D014` for Python, TypeScript and .NET. The .NET detector
+uses a narrow reflection/assembly-scanning list for `D013` and field/property attributes for `D014`;
+post-construction assignment remains manual. Go reports both `executed: false` in this revision;
+Java has no reference enforcer. A language profile is not claiming support until its enforcer and
+conformance fixtures pass.
 
 ## 15.8 Examples
 

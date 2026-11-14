@@ -1109,8 +1109,58 @@ function classBodies() {
 }
 
 function classStateless(body) {
-  if (/\bthis\./.test(body)) return false;
-  return !/(?:^|\n)\s*(?:(?:private|public|protected|readonly|static|declare|abstract)\s+)*[A-Za-z_$][\w$]*\s*[!?]?\s*[:=]/.test(body);
+  // A field is behaviorally stateless when it is readonly and is not a mutable container.
+  // A constructor parameter property must also be readonly. Reads of this.x remain allowed;
+  // only assignments outside the single constructor, setters, or non-readonly fields disqualify.
+  const masked = maskSource(body);
+  const fields = [];
+  for (const line of masked.split('\n')) {
+    const match = /^\s*((?:(?:public|private|protected|static|readonly|declare|abstract)\s+)+)([A-Za-z_$][\w$]*)\s*[!?]?\s*(?::[^=;\n]+)?\s*(?:=[^;\n]+)?;?\s*$/.exec(line);
+    if (!match) continue;
+    const modifiers = match[1];
+    fields.push({
+      name: match[2],
+      static: /\bstatic\b/.test(modifiers),
+      readonly: /\breadonly\b/.test(modifiers),
+      mutable: /(?:^|[=:]\s*)(?:\[|\{|new\s+(?:Map|Set|Array|WeakMap|WeakSet)\b)/.test(line)
+        || /:\s*(?:[A-Za-z_$][\w$]*\[\]|Array<|Map<|Set<|Record<)/.test(line),
+    });
+  }
+  if (fields.some(field => field.static && !field.readonly)) return false;
+  if (fields.some(field => !field.static && !field.readonly)) return false;
+  if (fields.some(field => field.mutable)) return false;
+  if (/\bset\s+[A-Za-z_$][\w$]*\s*\(/.test(masked)) return false;
+
+  const assignments = [...masked.matchAll(/\bthis\s*\.\s*([A-Za-z_$][\w$]*)\s*(?:[+\-*/%]?=|\+\+|--)/g)];
+  const constructors = [...masked.matchAll(/\bconstructor\s*\(/g)];
+  if (constructors.length === 0) return assignments.length === 0;
+  if (constructors.length !== 1) return false;
+
+  const open = constructors[0].index + constructors[0][0].length - 1;
+  const close = matchingIndex(masked, open, '(', ')');
+  if (close < 0) return false;
+  const bodyStart = masked.indexOf('{', close);
+  const bodyEnd = bodyStart < 0 ? -1 : matchingIndex(masked, bodyStart, '{', '}');
+  if (bodyStart < 0 || bodyEnd < 0) return false;
+
+  const parameters = splitTopLevel(body.slice(open + 1, close)).map(parameter => parameter.trim()).filter(Boolean);
+  if (parameters.some(parameter => parameter.startsWith('...') || parameter.includes('?') || parameter.includes('='))) {
+    return false;
+  }
+  if (parameters.some(parameter => /^(?:public|private|protected)\b/.test(parameter) && !/\breadonly\b/.test(parameter))) {
+    return false;
+  }
+
+  const readonlyFields = new Set(fields.filter(field => field.readonly).map(field => field.name));
+  for (const parameter of parameters) {
+    const parameterProperty = /\b(?:public|private|protected)\s+readonly\s+([A-Za-z_$][\w$]*)/.exec(parameter);
+    if (parameterProperty) readonlyFields.add(parameterProperty[1]);
+  }
+  for (const assignment of assignments) {
+    if (assignment.index < bodyStart || assignment.index > bodyEnd) return false;
+    if (!readonlyFields.has(assignment[1])) return false;
+  }
+  return true;
 }
 
 function classMutable(body) {

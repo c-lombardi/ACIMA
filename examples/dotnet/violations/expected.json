@@ -5,6 +5,21 @@
   "ACIMA-A003": [
     "violations/a003_static.cs"
   ],
+  "ACIMA-A005": [
+    "violations/values_impl.cs"
+  ],
+  "ACIMA-A006": [
+    "violations/values_impl.cs"
+  ],
+  "ACIMA-A007": [
+    "violations/lifecycle_host.cs"
+  ],
+  "ACIMA-A008": [
+    "violations/lifecycle_host.cs"
+  ],
+  "ACIMA-A009": [
+    "violations/lifecycle_host.cs"
+  ],
   "ACIMA-C001": [
     "violations/c001_mutable.cs"
   ],
@@ -58,6 +73,27 @@
     "violations/a003_use.cs",
     "violations/d001_d009_impl.cs"
   ],
+  "ACIMA-D010": [
+    "violations/tier_port.cs"
+  ],
+  "ACIMA-D011": [
+    "violations/d011_optional_constructor.cs"
+  ],
+  "ACIMA-D012": [
+    "violations/d012_optional_method.cs"
+  ],
+  "ACIMA-D013": [
+    "violations/composition_host.cs"
+  ],
+  "ACIMA-D014": [
+    "violations/composition_impl.cs"
+  ],
+  "ACIMA-D015": [
+    "violations/composition_impl.cs"
+  ],
+  "ACIMA-D016": [
+    "violations/composition_impl.cs"
+  ],
   "ACIMA-D017": [
     "violations/d017_unlabeled_arguments.cs"
   ],
@@ -74,6 +110,9 @@
   "ACIMA-G005": [
     "violations/g005_orphan.cs"
   ],
+  "ACIMA-G006": [
+    "violations/TierFixtures.csproj"
+  ],
   "ACIMA-L001": [
     "violations/l001_domain_db.cs"
   ],
@@ -83,5 +122,20 @@
   ],
   "ACIMA-L003": [
     "src/Catalog/Catalog/CatalogModule.cs"
+  ],
+  "ACIMA-L005": [
+    "violations/tier_l005.cs"
+  ],
+  "ACIMA-L006": [
+    "violations/tier_orphan_adapter.cs"
+  ],
+  "ACIMA-L007": [
+    "violations/tier_l005.cs"
+  ],
+  "ACIMA-N001": [
+    "violations/naming_impl.cs"
+  ],
+  "ACIMA-N002": [
+    "violations/naming_impl.cs"
   ]
 }

@@ -245,7 +245,9 @@ choice a one-line change in one file.
 - `L006` — an adapter with no port (or an integration entry missing one of the pair).
 - `L007` — a vendor type in a signature, field or export outside the adapter.
 - `D010` — a port that imports a third-party package or names a vendor type.
-- `G006` — a manifest package with no `externals` entry, or an entry past its review date.
+- `G006` — a manifest package with no `externals` entry, or an entry past its review date. Go has
+  no tier metadata in this revision; its `G006` checks direct `go.mod` requirements against the
+  module-path list in `approvedDependencies`.
 
 They do not weaken `D004`, `L001`, `L002` or `D007`: contracts and the kernel remain third-party-free,
 and `L001` keeps its database semantics. An `integration` entry **supersedes the `L001` token list for

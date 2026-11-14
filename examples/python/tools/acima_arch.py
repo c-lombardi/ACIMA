@@ -1432,13 +1432,125 @@ class Enforcer:
     MUTABLE_CONSTRUCTORS = frozenset({"list", "dict", "set", "defaultdict", "OrderedDict"})
 
     @staticmethod
+    def _class_has_setter(node: ast.ClassDef) -> bool:
+        for member in node.body:
+            if not isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            for decorator in member.decorator_list:
+                if isinstance(decorator, ast.Attribute) and decorator.attr == "setter":
+                    return True
+        return False
+
+    @staticmethod
+    def _is_dataclass(node: ast.ClassDef) -> bool:
+        for decorator in node.decorator_list:
+            target = decorator.func if isinstance(decorator, ast.Call) else decorator
+            if Enforcer._call_name(target).split(".")[-1] == "dataclass":
+                return True
+        return False
+
+    @staticmethod
+    def _is_frozen_dataclass(node: ast.ClassDef) -> bool:
+        for decorator in node.decorator_list:
+            target = decorator.func if isinstance(decorator, ast.Call) else decorator
+            name = Enforcer._call_name(target).split(".")[-1]
+            if name != "dataclass" or not isinstance(decorator, ast.Call):
+                continue
+            for keyword in decorator.keywords:
+                if keyword.arg == "frozen" and isinstance(keyword.value, ast.Constant) \
+                        and keyword.value.value is True:
+                    return True
+        return False
+
+    @staticmethod
     def _class_stateless(node: ast.ClassDef) -> bool:
-        """No instance fields at all: the conservative shared-service shape."""
-        for child in ast.walk(node):
-            if isinstance(child, ast.Attribute) and isinstance(child.ctx, ast.Store) \
-                    and isinstance(child.value, ast.Name) and child.value.id == "self":
+        """Behaviorally stateless, with one explicit construction path.
+
+        A readonly/constructor-injected dependency is allowed. What is not allowed is mutable
+        instance state, a field assigned outside the constructor, a secondary/optional
+        construction path, or a property setter. D011 owns the separate defaulted-parameter
+        finding; A007 simply does not classify an optional constructor as stateless.
+        """
+        if Enforcer._class_has_setter(node):
+            return False
+        if Enforcer._class_mutable(node):
+            return False
+
+        constructors = [
+            member for member in node.body
+            if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and member.name == "__init__"
+        ]
+        if len(constructors) > 1:
+            return False
+
+        stores = [
+            child for child in ast.walk(node)
+            if isinstance(child, ast.Attribute)
+            and isinstance(child.value, ast.Name) and child.value.id == "self"
+            and isinstance(child.ctx, (ast.Store, ast.Del))
+        ]
+        if not constructors:
+            if stores:
                 return False
+            if Enforcer._is_dataclass(node) and not Enforcer._is_frozen_dataclass(node):
+                return False
+            if not Enforcer._is_frozen_dataclass(node):
+                return True
+            for member in node.body:
+                if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)) \
+                        and member.name == "__post_init__":
+                    return False
+                if isinstance(member, ast.AnnAssign) and isinstance(member.target, ast.Name):
+                    annotation = member.annotation
+                    if isinstance(annotation, ast.Name) and annotation.id in ("ClassVar", "InitVar"):
+                        continue
+                    if member.value is not None:
+                        return False
+            return True
+
+        constructor = constructors[0]
+        arguments = constructor.args
+        positional = [*arguments.posonlyargs, *arguments.args]
+        if not positional or positional[0].arg != "self":
+            return False
+        if arguments.defaults or any(default is not None for default in arguments.kw_defaults):
+            return False
+        if arguments.vararg is not None or arguments.kwarg is not None:
+            return False
+
+        constructor_nodes = {id(child) for child in ast.walk(constructor)}
+        if not all(id(store) in constructor_nodes for store in stores):
+            return False
+
+        parameter_names = {
+            argument.arg for argument in [*positional[1:], *arguments.kwonlyargs]
+        }
+
+        def explicit_field_target(target: ast.expr, value: ast.expr | None) -> bool:
+            if not (isinstance(target, ast.Attribute) and isinstance(target.ctx, ast.Store)
+                    and isinstance(target.value, ast.Name) and target.value.id == "self"):
+                return True
+            return isinstance(value, ast.Name) and value.id in parameter_names
+
+        for node in ast.walk(constructor):
+            if isinstance(node, ast.Assign):
+                if not all(explicit_field_target(target, node.value) for target in node.targets):
+                    return False
+            elif isinstance(node, ast.AnnAssign):
+                if not explicit_field_target(node.target, node.value):
+                    return False
+            elif isinstance(node, ast.AugAssign):
+                if not explicit_field_target(node.target, None):
+                    return False
         return True
+
+    @staticmethod
+    def _mutable_annotation(annotation: ast.expr) -> bool:
+        if not isinstance(annotation, ast.Subscript):
+            return False
+        name = Enforcer._call_name(annotation.value).split(".")[-1].lower()
+        return name in Enforcer.MUTABLE_CONSTRUCTORS
 
     @staticmethod
     def _class_mutable(node: ast.ClassDef) -> bool:
@@ -1449,7 +1561,11 @@ class Enforcer:
             if isinstance(child, ast.Assign):
                 value = child.value
                 targets = list(child.targets)
-            elif isinstance(child, ast.AnnAssign) and child.value is not None:
+            elif isinstance(child, ast.AnnAssign):
+                if Enforcer._mutable_annotation(child.annotation):
+                    return True
+                if child.value is None:
+                    continue
                 value = child.value
                 targets = [child.target]
             if value is None:

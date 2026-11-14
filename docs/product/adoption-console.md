@@ -5,7 +5,7 @@ behaviour, schema, workflow or skill text has changed; this is the contract to r
 work starts.
 
 **Owner decisions (2026-11-13):** the repository commits only the decision, not the generated pages;
-one named reviewer per adoption, with no multi-reviewer merge; the Files page allows per-path scope
+one named reviewer per adoption, with no multi-reviewer merge; the Changes and files page allows per-path scope
 selection; and remediation choice (`fix now` / `defer`) is answered in the HTML report. Where a
 section below described alternatives, these decisions are now the contract.
 
@@ -220,19 +220,19 @@ sentence that answering is not approval.
 
 | Page | Controls | Decision ids | Notes |
 |---|---|---|---|
-| Overview | *I have reviewed all six pages* checkbox, reviewer name, link to the Plan page | `report-review` | No recommendation is accepted here |
-| Proposal | Accept / modify / defer / reject per proposed part and per path disposition, and per recommendation | `module`, `module-path`, `recommendation` | Unassigned and unresolved paths are shown but not silently assigned |
+| Overview | *I have reviewed all six pages* checkbox, reviewer name, link to the Plan and decisions page | `report-review` | No recommendation is accepted here |
+| Architecture and map | Accept / modify / defer / reject per proposed part and per path disposition, and per recommendation | `module`, `module-path`, `recommendation` | Unassigned and unresolved paths are shown but not silently assigned |
 | Findings | Per remediation recommendation: *fix now* or *defer*, with the plan digest and the reason for the recommendation shown | `remediation` | Never lets a finding be marked conforming; the two confirmations still apply. These controls appear only on the refreshed report after enforcement is verified, because the remediation plan does not exist at first generation |
-| Files | Per exact path: include it in the approved scope, or leave it out; required paths are labelled *Needed for* the stage that needs them, and *Select all proposed files* is an explicit option that fills every box visibly | `scope-path` | No globs, no directories; boxes are unticked at generation and prefilled only from answers already recorded; excluding a required path defers the stage that needs it instead of producing an invalid scope |
-| Plan | Per scope objective: accept / defer / reject; approval block with reviewer, digest confirmation and explicit path list | `scope-objective`, `report-review` | The only page that can start an approval, and only through the command |
-| Evidence | Read-only | — | Shows freshness, integrity and what remains unknown |
+| Changes and files | Per exact path: include it in the approved scope, or leave it out; required paths are labelled *Needed for* the stage that needs them, and *Select all proposed files* is an explicit option that fills every box visibly | `scope-path` | No globs, no directories; boxes are unticked at generation and prefilled only from answers already recorded; excluding a required path defers the stage that needs it instead of producing an invalid scope |
+| Plan and decisions | Per scope objective: accept / defer / reject; approval block with reviewer, digest confirmation and explicit path list | `scope-objective`, `report-review` | The only page that can start an approval, and only through the command |
+| Evidence and limits | Read-only | — | Shows freshness, integrity and what remains unknown |
 
 Persistent indicators on every page: *answered N of M* (answers in force only), *this report is current
 as of …*, and a link to the decision log. Percentages are not a score; they count answers, not quality.
 
 ### Per-path scope selection
 
-The Files page is the one place where an owner can narrow the approved scope, so its semantics are
+The Changes and files page is the one place where an owner can narrow the approved scope, so its semantics are
 exact:
 
 - every row is a repository-relative file path from the proposal; there are no directories, globs or
@@ -342,7 +342,7 @@ Stage B before Stage C is deliberate: a page with checkboxes and no ingestion co
 while ingestion alone already changes how every adoption is conducted.
 
 **Status:** Stages A–E are implemented — in-repository report identity and regeneration, the decisions
-contract, guided answer controls on the Plan and Files pages with download, paste-back and a no-script
+contract, guided answer controls on the Plan and decisions and Changes and files pages with download, paste-back and a no-script
 template, history (progress log, decision log with superseded history, since-review digests, evidence
 integrity) and the `events.jsonl` stream. Automated adoption keeps its consolidated review and shows
 history without answer controls.
@@ -369,7 +369,7 @@ Recorded 2026-11-13; they replace the open questions this record previously carr
    visibly stale rather than silently wrong.
 2. **One reviewer per adoption.** No `decisions/<reviewer>.json`, no merge step. A second file from the
    same reviewer must set `supersedes` explicitly, and conflicting answers are otherwise refused.
-3. **The Files page allows per-path scope selection.** Guarded by the required/optional distinction:
+3. **The Changes and files page allows per-path scope selection.** Guarded by the required/optional distinction:
    excluding a required path defers the objective that needs it, and the workflow's path-completeness
    check stays the final authority.
 4. **Remediation choice lives in the HTML.** `fix now` / `defer` answers are recorded per

@@ -97,5 +97,17 @@
     "obj",
     "violations"
   ],
+  "externals": {
+    "Microsoft.CodeAnalysis.CSharp": {
+      "tier": "utility",
+      "owner": "team-architecture",
+      "reason": "Roslyn syntax APIs are used only by the repository's architecture runner.",
+      "reviewedOn": "2026-11-13",
+      "expires": "2027-11-13"
+    }
+  },
+  "partialHelpers": [
+    "Partial"
+  ],
   "waivers": ".acima/waivers.json"
 }

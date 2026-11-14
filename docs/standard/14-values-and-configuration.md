@@ -393,16 +393,18 @@ for index, line in enumerate(order.lines):
 
 | Requirement | Rule | Mechanism |
 |---|---|---|
-| Ambient configuration is not read by a component | `A005` | automated in Python and TypeScript; other profiles report it not executed |
-| Meaningful inline values, mutable declarations and same-module duplicates are candidates | `A006` | automated candidate detection in Python and TypeScript; review required |
+| Ambient configuration is not read by a component | `A005` | automated in Python, TypeScript, Go and .NET; Java reports it not executed |
+| Meaningful inline values, mutable declarations and same-module duplicates are candidates | `A006` | automated candidate detection in Python, TypeScript and .NET; review required |
 | Configuration, runtime and secret classification is deliberate | `A006`, §14.4 | candidate detection for configuration/secret-looking names; review required |
 | A module does not read another module's key | `A002` | manual review |
 | Runtime changes have a propagation and failure contract | §14.5 | review evidence |
 | Shared values across services have an owner | §14.7 | review evidence |
 
-`A005` detects direct access to the process environment in declared `implementation` and `adapter`
-units. A `host` unit is excluded because it is a declared composition boundary. The finding is a
-confirmed access; whether the value belongs to that component is still an architectural judgement.
+`A005` detects direct access to the process environment, the process argument list (`os.Args`) and
+the Go `flag` package in declared `implementation` and `adapter` units. A `host` unit is excluded
+because it is a declared composition boundary, and `tooling` units are excluded because they are
+operator surfaces rather than the product graph. The finding is a confirmed access; whether the
+value belongs to that component is still an architectural judgement.
 
 `A006` detects:
 
@@ -426,9 +428,11 @@ same name in different modules are not automatically the same value, and matchin
 still produce only a review candidate. When equivalence is uncertain, preserve the separate
 declarations and record the evidence for human review.
 
-`A006` does not rewrite source and does not perform automatic refactoring. Go, .NET and Java report
+`A006` does not rewrite source and does not perform automatic refactoring. Go and Java report
 `executed: false` in this revision; a repository using those profiles records manual or AI-assisted
-review evidence with source citations. A clean A006 scan does not prove semantic consolidation or
+review evidence with source citations. The .NET enforcer executes `A006` as a candidate detector over
+meaningful declarations, source-declared call arguments, duplicate immutable values and
+configuration/secret-looking literals. A clean A006 scan does not prove semantic consolidation or
 the correctness of a configuration category.
 
 ## 14.10 Checklist

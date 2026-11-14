@@ -65,8 +65,9 @@ which depend on a scoped component. A stateless service registered transient is 
 component directly capturing a scoped dependency is `A008`; a shared component owning a mutable
 container without a stated owner, isolation key and concurrency policy is `A009` (chapter 17). Do
 not convert transient registrations to singletons as a migration shortcut: decide the state
-owner first, then choose the lifetime. Go, .NET and Java report these rules `executed: false` in
-this revision, so their lifecycle decisions need recorded manual evidence.
+owner first, then choose the lifetime. Go and Java report these rules `executed: false` in this
+revision, so their lifecycle decisions need recorded manual evidence. The .NET enforcer executes the
+three rules from direct host registrations, with the conservative limits in chapter 17.
 
 Then review effects before adding retries, transactions or background consumers. For each effect,
 name the owning module, the execution boundary and the truthful outcome; say whether a retry is

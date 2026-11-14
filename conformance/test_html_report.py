@@ -292,6 +292,49 @@ class HtmlReportTests(unittest.TestCase):
             self.assertIn('acima.config.json',files); self.assertIn('src/Orders/OrderService.cs',files)
             self.assertIn('Replace private implementation reference',files)
             self.assertTrue((out/'assets/report.css').is_file()); self.assertTrue((out/'report-data.json').is_file())
+    def test_page_and_eight_section_structure_is_locked(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); src=root/'model.json'; out=root/'report'
+            src.write_text(json.dumps(model()),encoding='utf-8')
+            result=subprocess.run([sys.executable,str(SCRIPT),'--input',str(src),'--out-dir',str(out)],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+            expected={
+                'index.html':(['decision'],'Overview'),
+                'proposal.html':(['what-would-change'],'Architecture and map'),
+                'findings.html':(['findings'],'Findings'),
+                'files.html':(['file-changes'],'Changes and files'),
+                'plan.html':(['plan','decisions'],'Plan and decisions'),
+                'evidence.html':(['evidence','limits'],'Evidence and limits'),
+            }
+            expected_text={
+                'index.html':['RECOMMENDATION'],
+                'proposal.html':['What would change'],
+                'findings.html':['What needs attention'],
+                'files.html':['Proposed file changes'],
+                'plan.html':['What happens, in what order','Decisions only you can make'],
+                'evidence.html':['What the evidence shows','What could not be established'],
+            }
+            nav_pages=[]; nav_labels=[]; all_sections=[]
+            for name,(sections,label) in expected.items():
+                page=(out/name).read_text(encoding='utf-8')
+                self.assertIn('<body data-report-sections="8">',page,name)
+                for text in expected_text[name]:
+                    self.assertIn(text,page,name)
+                nav=re.search(r'<nav aria-label="Report sections">(.*?)</nav>',page,re.S)
+                self.assertIsNotNone(nav,name)
+                links=re.findall(r'<a href="([^"]+)"[^>]*>(.*?)</a>',nav.group(1),re.S)
+                if not nav_pages:
+                    nav_pages=[href for href,_ in links]
+                    nav_labels=[text for _,text in links]
+                self.assertIn(f'<small>Sample product / {label}</small>',page,name)
+                markers=re.findall(r'data-report-section="([^"]+)"',page)
+                self.assertEqual(markers,sections,name)
+                all_sections.extend(markers)
+            self.assertEqual(nav_pages,list(expected))
+            self.assertEqual(nav_labels,[label for _,label in expected.values()])
+            self.assertEqual(all_sections,["decision","what-would-change","findings","file-changes","plan","decisions","evidence","limits"])
+            self.assertEqual(len(set(all_sections)),8)
+
     def test_proposal_opens_with_adoption_path_and_current_state(self):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td); d=model()

@@ -122,8 +122,10 @@ guided flow and the skill bundle check. Inspect the final diff; unrelated work s
 Implemented: the four-phase model and schema-2 migration; read-only proposed configuration; one
 `approve --decisions` command; removal of new automated starts; CI planning, decline, digest approval
 and shrink-only baseline; CI-before-remediation; per-round remediation records; CI re-entry refresh;
-and the reader-facing report page names. The skill, references, quickstart, brownfield guide,
-product notes and changelog were updated to the one-flow model.
+and the reader-facing report page names. The six pages now carry eight primary sections marked in
+the generated HTML, with the page labels, section order and plain-language headings locked by the
+HTML report test. The skill, references, quickstart, brownfield guide, product notes and changelog
+were updated to the one-flow model.
 
 Verified: `conformance.test_adoption_ci` (8 tests), `test_consent_workflow` (6 tests), the
 report/guidance suites, and the focused adoption suite (208 tests). The only focused-suite failures

@@ -301,7 +301,8 @@ names remain idiomatic.
 
 ## 18.5 Enforcement
 
-`N001` and `N002` execute in the Python and TypeScript reference enforcers. They inspect type
+`N001` and `N002` execute in the Python, TypeScript and .NET reference enforcers; Go executes
+`N002` over `TypeSpec` declarations and reports `N001` `executed: false`. They inspect type
 declarations in module-owned units:
 
 - **N001** reports a class, interface, type alias or enum that does not follow the language's type
@@ -321,8 +322,10 @@ The rules deliberately do **not** report:
 - a generic role name when the abstraction makes it precise and the decision is recorded;
 - formatting or casing preferences beyond the language-specific type convention.
 
-Go, .NET and Java carry the catalog entries but report `N001`–`N003` `executed: false` in this
-revision. A full claim needs repository-scoped manual evidence, not a clean portable run.
+Go carries the catalog entries and executes `N002` over type declarations; its `N001` and `N003`
+report `executed: false`. Java reports `N001`–`N003` `executed: false` in this revision. The .NET
+enforcer executes `N001` and `N002` over application type declarations; `N003` remains manual. A
+full claim needs repository-scoped manual evidence, not a clean portable run.
 
 A naming finding is not a mandate to rename an entire repository. Rename only when the change
 improves comprehension at a boundary or call site, and treat public API, serialization, generated

@@ -8,6 +8,7 @@ using System.Xml.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Operations;
 
 namespace Acima.ArchTests;
 
@@ -29,6 +30,9 @@ internal sealed class Config
     public List<string> Exclude { get; set; } = new();
     public string? Waivers { get; set; }
     public Profile? Profile { get; set; }
+    public Dictionary<string, ExternalEntry>? Externals { get; set; }
+    public List<string>? Manifests { get; set; }
+    public List<string>? PartialHelpers { get; set; }
 }
 
 internal sealed class Profile
@@ -50,6 +54,19 @@ internal sealed class AdapterEntry
     public string? Reason { get; set; }
 }
 
+internal sealed class ExternalEntry
+{
+    public string? Tier { get; set; }
+    public string? Owner { get; set; }
+    public string? Reason { get; set; }
+    public string? ReviewedOn { get; set; }
+    public string? Expires { get; set; }
+    public string? Adapter { get; set; }
+    public string? Port { get; set; }
+    public List<string>? Specifiers { get; set; }
+    public List<string>? Types { get; set; }
+}
+
 internal sealed class Waiver
 {
     public string? Rule { get; set; }
@@ -66,7 +83,9 @@ internal sealed class WaiverDocument
     public List<Waiver> Waivers { get; set; } = new();
 }
 
-internal sealed record Finding(string Rule, string Severity, string Message, string Path, int Line, string Evidence, string Fingerprint);
+internal sealed record Finding(string Rule, string Severity, string Message, string Path, int Line, string Evidence, string Fingerprint, string? Classification = null);
+
+internal sealed record Registration(string Service, string Implementation, string Lifetime, string Path, int Line, string Evidence);
 
 internal sealed record Edge(string From, string To, string Path, int Line, string Evidence);
 
@@ -175,19 +194,6 @@ internal sealed class Enforcer
         [L006] = "third-party tier rules are implemented by the python and typescript enforcers in this revision",
         [L007] = "third-party tier rules are implemented by the python and typescript enforcers in this revision",
         [G006] = "manifest package governance is implemented by the python and typescript enforcers in this revision",
-        [D011] = "explicit-input rules are implemented by the python and typescript enforcers in this revision",
-        [D012] = "explicit-input rules are implemented by the python and typescript enforcers in this revision",
-        [A005] = "value and configuration rules are implemented by the python and typescript enforcers in this revision",
-        [A006] = "value and configuration rules are implemented by the python and typescript enforcers in this revision",
-        [D013] = "composition rules are implemented by the python and typescript enforcers in this revision",
-        [D014] = "composition rules are implemented by the python and typescript enforcers in this revision",
-        [D015] = "functional capture rules are implemented by the python and typescript enforcers in this revision",
-        [D016] = "functional capture rules are implemented by the python and typescript enforcers in this revision",
-        [A007] = "lifecycle rules are implemented by the python and typescript enforcers in this revision",
-        [A008] = "lifecycle rules are implemented by the python and typescript enforcers in this revision",
-        [A009] = "lifecycle rules are implemented by the python and typescript enforcers in this revision",
-        [N001] = "naming rules are implemented by the python and typescript enforcers in this revision",
-        [N002] = "naming rules are implemented by the python and typescript enforcers in this revision",
         [N003] = "semantic naming quality needs human review",
         [C008] = "business behavior visibility is a semantic contract review",
         [A010] = "effect ownership and commit boundaries require application and operational review",
@@ -224,32 +230,45 @@ internal sealed class Enforcer
     private readonly string _root;
     private readonly Config _cfg;
     private readonly string _level;
+    private readonly string _configName;
     private readonly List<Finding> _findings = new();
     private readonly Dictionary<string, string> _files = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Unit> _fileUnits = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, SyntaxNode> _syntax = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string[]> _sourceLines = new(StringComparer.Ordinal);
     private readonly List<string> _projects = new();
     private readonly List<Edge> _edges = new();
     private readonly Dictionary<string, Unit> _namespaceUnits = new(StringComparer.Ordinal);
     private readonly HashSet<string> _repositoryNamespaces = new(StringComparer.Ordinal);
     private readonly List<Classified> _classified = new();
     private readonly List<PublicApiSurface> _publicApi = new();
+    private readonly List<MetadataReference> _metadataReferences = new();
+    private readonly Dictionary<string, string> _packageByAssembly = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, CSharpCompilation> _compilations = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, SemanticModel> _semanticModels = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, List<BaseTypeDeclarationSyntax>> _types = new(StringComparer.Ordinal);
+    private bool _semanticsBuilt;
+    private bool _compilationsBuilt;
     private string? _packagingError;
 
     public IReadOnlyList<Classified> ClassifiedFindings => _classified;
 
-    public Enforcer(string root, Config config, string level)
+    public Enforcer(string root, Config config, string level, string configName = "acima.config.json")
     {
         _root = Path.GetFullPath(root);
         _cfg = config;
         _level = Rank.ContainsKey(level) ? level : "L1";
+        _configName = configName.Replace('\\', '/');
     }
 
     public IReadOnlyList<Finding> Run()
     {
         Collect();
         Classify();
+        ParseSources();
         ValidateProfile();
         CheckProjects();
+        CheckExternals();
         CheckUsings();
         CheckCycles();
         CheckTransitive();
@@ -258,7 +277,14 @@ internal sealed class Enforcer
         CheckLayering();
         CheckSql();
         CheckStatics();
+        CheckExplicitInputs();
         CheckNamedArguments();
+        CheckComposition();
+        CheckFunctionalCapture();
+        CheckLifecycle();
+        CheckNaming();
+        CheckConfiguration();
+        CheckOperationalValues();
         ApplyWaivers();
         return Dedupe();
     }
@@ -729,22 +755,49 @@ internal sealed class Enforcer
         return null;
     }
 
+    private void ParseSources()
+    {
+        foreach (var (path, text) in _files)
+        {
+            var tree = CSharpSyntaxTree.ParseText(text,
+                new CSharpParseOptions(LanguageVersion.Latest), path);
+            _syntax[path] = tree.GetRoot();
+            _sourceLines[path] = text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+        }
+
+        foreach (var (path, syntax) in _syntax)
+        {
+            foreach (var type in syntax.DescendantNodes().OfType<BaseTypeDeclarationSyntax>())
+            {
+                var name = type.Identifier.ValueText;
+                if (!_types.TryGetValue(name, out var entries))
+                    _types[name] = entries = new List<BaseTypeDeclarationSyntax>();
+                entries.Add(type);
+            }
+        }
+    }
+
     private void CheckUsings()
     {
-        foreach (var (path, text) in _files.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        // Roslyn supplies the directive node, its name and its exact source location. The
+        // previous regex pass could not distinguish a directive from a comment or a string.
+        foreach (var (path, syntax) in _syntax.OrderBy(pair => pair.Key, StringComparer.Ordinal))
         {
             var from = _fileUnits[path];
-            foreach (Match match in UsingDirective.Matches(text))
+            foreach (var directive in syntax.DescendantNodes().OfType<UsingDirectiveSyntax>())
             {
-                var ns = match.Groups[1].Value;
-                var line = LineOf(text, match.Groups[1].Value);
+                if (directive.Alias is not null || directive.Name is null) continue;
+                var ns = directive.Name.ToString();
+                if (string.IsNullOrWhiteSpace(ns) || ns.Contains("::", StringComparison.Ordinal)) continue;
+                var line = directive.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+                var evidence = directive.ToString().Trim();
                 var target = ResolveNamespace(ns);
 
                 if (target is not null)
                 {
                     if (target.Id == from.Id) continue;
-                    _edges.Add(new Edge(from.Id, target.Id, path, line, match.Value.Trim()));
-                    CheckEdge(from, target, path, line, match.Value.Trim());
+                    _edges.Add(new Edge(from.Id, target.Id, path, line, evidence));
+                    CheckEdge(from, target, path, line, evidence);
                     continue;
                 }
 
@@ -754,14 +807,779 @@ internal sealed class Enforcer
 
                 if (from.Role == "contracts")
                 {
-                    Add(D004, $"contracts unit {from.Id} depends on third-party namespace: {ns}", path, line, match.Value.Trim());
+                    Add(D004, $"contracts unit {from.Id} depends on third-party namespace: {ns}", path, line, evidence);
                 }
                 else if (from.Role == "shared-kernel")
                 {
-                    Add(D007, $"shared kernel depends on a third-party namespace: {ns}", path, line, match.Value.Trim());
+                    Add(D007, $"shared kernel depends on a third-party namespace: {ns}", path, line, evidence);
                 }
             }
         }
+    }
+
+    private static readonly HashSet<string> ExplicitInputRoles = new(StringComparer.Ordinal)
+    {
+        "implementation", "host", "adapter", "port",
+    };
+
+    private static readonly HashSet<string> CompositionRoles = new(StringComparer.Ordinal)
+    {
+        "implementation", "host", "adapter",
+    };
+
+    private static readonly HashSet<string> FunctionalRoles = new(StringComparer.Ordinal)
+    {
+        "implementation", "adapter",
+    };
+
+    private static readonly HashSet<string> NamingRoles = new(StringComparer.Ordinal)
+    {
+        "contracts", "implementation", "adapter", "host", "port", "shared-kernel",
+    };
+
+    private static readonly HashSet<string> ConfigReadRoles = new(StringComparer.Ordinal)
+    {
+        "implementation", "adapter",
+    };
+
+    private static readonly HashSet<string> ValueRoles = new(StringComparer.Ordinal)
+    {
+        "implementation", "adapter", "host",
+    };
+
+    private static readonly HashSet<string> DiscoveryMethods = new(StringComparer.Ordinal)
+    {
+        "GetTypes", "GetExportedTypes", "GetAssemblies", "Scan", "FromAssemblyOf",
+        "FromAssemblies", "AddClasses", "RegisterAssemblyTypes",
+    };
+
+    private static readonly HashSet<string> InjectionAttributes = new(StringComparer.Ordinal)
+    {
+        "Inject", "Autowired", "Dependency", "FromServices", "FromKeyedServices",
+    };
+
+    private static readonly HashSet<string> FunctionalTokens = new(StringComparer.Ordinal)
+    {
+        "repository", "repositories", "repo", "service", "services", "client", "clients",
+        "gateway", "gateways", "adapter", "adapters", "logger", "logging", "config",
+        "configuration", "settings", "store", "stores", "database", "db", "connection",
+        "connections", "session", "provider", "providers", "bus", "queue", "publisher",
+        "producer", "consumer", "auth", "authorization", "security", "clock", "cache",
+        "registry", "locator", "container", "resource", "resources",
+    };
+
+    private static readonly HashSet<string> OperationalTokens = new(StringComparer.Ordinal)
+    {
+        "timeout", "timeouts", "retry", "retries", "limit", "limits", "threshold",
+        "thresholds", "ttl", "interval", "intervals", "batch", "rate", "rates",
+        "retention", "capacity", "delay", "quota", "backoff", "concurrency", "attempts",
+        "workers", "pagesize", "endpoint", "endpoints", "url", "urls", "uri", "host",
+        "hostname", "port", "queue", "topic", "bucket", "minimum", "minimums", "maximum",
+        "maximums", "duration", "durations", "expiry", "expiration", "deadline", "window",
+        "windows", "grace", "heartbeat", "poll", "discount", "tax", "fee", "fees",
+        "eligibility", "nonce", "salt", "signature", "secret", "secrets", "password",
+        "passwords", "credential", "credentials",
+    };
+
+    private static readonly HashSet<string> ConfigurationTokens = new(StringComparer.Ordinal)
+    {
+        "endpoint", "endpoints", "url", "urls", "uri", "host", "hostname", "port",
+        "queue", "topic", "bucket", "region", "environment", "deployment",
+    };
+
+    private static readonly HashSet<string> SecretTokens = new(StringComparer.Ordinal)
+    {
+        "nonce", "salt", "signature", "secret", "secrets", "password", "passwords",
+        "credential", "credentials",
+    };
+
+    private static readonly HashSet<string> GenericTypeNames = new(StringComparer.Ordinal)
+    {
+        "Helper", "Manager", "Handler", "Processor", "Utility", "Service", "Provider",
+        "Factory", "Common", "Base", "Default", "Generic",
+    };
+
+    private static readonly string[] GenericTypeSuffixes =
+    {
+        "Helper", "Manager", "Processor", "Utility", "Common", "Default", "Generic",
+    };
+
+    private static readonly HashSet<string> MutableContainerNames = new(StringComparer.Ordinal)
+    {
+        "List", "Dictionary", "HashSet", "SortedSet", "SortedDictionary", "Collection",
+        "ObservableCollection", "ConcurrentDictionary", "ConcurrentBag", "ConcurrentQueue",
+        "ConcurrentStack", "BlockingCollection",
+    };
+
+    private void CheckExplicitInputs()
+    {
+        foreach (var (path, syntax) in _syntax.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        {
+            var unit = _fileUnits[path];
+            if (!ExplicitInputRoles.Contains(unit.Role)) continue;
+            var lines = _files[path].Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+
+            foreach (var constructor in syntax.DescendantNodes().OfType<ConstructorDeclarationSyntax>())
+            {
+                CheckOptionalParameters(D011, unit, path, lines, constructor.ParameterList,
+                    "{0} constructs with the optional input {1}; a dependency the component needs must be required at construction.");
+            }
+
+            foreach (var declaration in syntax.DescendantNodes().OfType<TypeDeclarationSyntax>())
+            {
+                var parameters = declaration switch
+                {
+                    ClassDeclarationSyntax type => type.ParameterList,
+                    RecordDeclarationSyntax record => record.ParameterList,
+                    StructDeclarationSyntax structure => structure.ParameterList,
+                    _ => null,
+                };
+                if (parameters is not null)
+                {
+                    CheckOptionalParameters(D011, unit, path, lines, parameters,
+                        "{0} constructs with the optional input {1}; a dependency the component needs must be required at construction.");
+                }
+            }
+
+            foreach (var method in syntax.DescendantNodes().OfType<MethodDeclarationSyntax>())
+            {
+                if (method.Modifiers.Any(token => token.IsKind(SyntaxKind.OverrideKeyword)
+                        || token.IsKind(SyntaxKind.AbstractKeyword)
+                        || token.IsKind(SyntaxKind.ExternKeyword))) continue;
+                if (method.Body is null && method.ExpressionBody is null) continue;
+                CheckOptionalParameters(D012, unit, path, lines, method.ParameterList,
+                    "{0} lets a caller omit {1} in " + method.Identifier.ValueText +
+                    "(); if that omission changes behaviour, require the decision at the call site.");
+            }
+
+            foreach (var local in syntax.DescendantNodes().OfType<LocalFunctionStatementSyntax>())
+            {
+                if (local.Body is null && local.ExpressionBody is null) continue;
+                CheckOptionalParameters(D012, unit, path, lines, local.ParameterList,
+                    "{0} lets a caller omit {1} in " + local.Identifier.ValueText +
+                    "(); if that omission changes behaviour, require the decision at the call site.");
+            }
+        }
+    }
+
+    private void CheckOptionalParameters(string rule, Unit unit, string path, string[] sourceLines,
+        ParameterListSyntax parameters, string messageFormat)
+    {
+        foreach (var parameter in parameters.Parameters)
+        {
+            if (parameter.Default is null) continue;
+            var name = parameter.Identifier.ValueText;
+            if (string.IsNullOrEmpty(name)) continue;
+            var line = parameter.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+            var evidence = line > 0 && line <= sourceLines.Length
+                ? sourceLines[line - 1].Trim()
+                : parameter.ToString();
+            Add(rule, string.Format(CultureInfo.InvariantCulture, messageFormat, unit.Id, name), path, line, evidence);
+        }
+    }
+
+    private static readonly string[] TierRules =
+    {
+        L005, L006, L007, D010, G006,
+    };
+
+    private static readonly string[] ExternalFields =
+    {
+        "tier", "owner", "reason", "reviewedOn", "expires",
+    };
+
+    private static readonly string[] ExternalTiers =
+    {
+        "platform", "integration", "utility",
+    };
+
+    public static IReadOnlyDictionary<string, string> NotExecutedFor(Config? config)
+    {
+        var result = new Dictionary<string, string>(NotExecuted, StringComparer.Ordinal);
+        if (config?.Externals is not null)
+        {
+            foreach (var rule in TierRules) result.Remove(rule);
+        }
+
+        if (config?.Externals is null)
+        {
+            foreach (var rule in TierRules)
+                result[rule] = "externals map not declared in acima.config.json";
+        }
+
+        if (config?.PartialHelpers is null)
+            result[D016] = "partial helper allowlist not declared in acima.config.json";
+        else
+            result.Remove(D016);
+        return result;
+    }
+
+    private void CheckExternals()
+    {
+        if (_cfg.Externals is null) return;
+        EnsureSemantics();
+
+        var configPath = Path.IsPathRooted(_configName)
+            ? Relative(_configName)
+            : _configName;
+        var configFile = Path.IsPathRooted(_configName) ? _configName : Path.Combine(_root, _configName);
+        var configText = File.Exists(configFile) ? File.ReadAllText(configFile) : string.Empty;
+        int EntryLine(string name) => configText.Length == 0 ? 1 : LineOf(configText, $"\"{name}\"");
+
+        var adapterUnits = _cfg.Units.Where(unit => unit.Role == "adapter")
+            .ToDictionary(unit => unit.Id, StringComparer.Ordinal);
+        var portUnits = _cfg.Units.Where(unit => unit.Role == "port")
+            .ToDictionary(unit => unit.Id, StringComparer.Ordinal);
+        var declaredAdapters = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var (name, raw) in _cfg.Externals)
+        {
+            var entry = raw ?? new ExternalEntry();
+            var missing = ExternalFields
+                .Where(field => string.IsNullOrWhiteSpace(Field(entry, field)))
+                .ToList();
+            if (missing.Count > 0)
+            {
+                Add(G001, $"externals entry {name} is missing: {string.Join(", ", missing)}.",
+                    configPath, EntryLine(name), name);
+                continue;
+            }
+
+            var tier = (entry.Tier ?? string.Empty).Trim();
+            if (!ExternalTiers.Contains(tier, StringComparer.Ordinal))
+            {
+                Add(G001, $"externals entry {name} has unknown tier {tier}; expected " +
+                    $"{string.Join(", ", ExternalTiers)}.", configPath, EntryLine(name), name);
+                continue;
+            }
+
+            if (tier != "integration") continue;
+            var adapter = (entry.Adapter ?? string.Empty).Trim();
+            var port = (entry.Port ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(adapter) || string.IsNullOrWhiteSpace(port))
+            {
+                var gap = string.IsNullOrWhiteSpace(adapter) ? "adapter" : "port";
+                Add(L006, $"integration entry {name} declares no {gap}; an adapter without a port " +
+                    "is an unguarded vendor import.", configPath, EntryLine(name), name);
+                continue;
+            }
+
+            if (!adapterUnits.ContainsKey(adapter))
+            {
+                Add(G001, $"externals entry {name} names adapter {adapter}, which is not a " +
+                    "declared adapter unit.", configPath, EntryLine(name), name);
+                continue;
+            }
+
+            if (!portUnits.ContainsKey(port))
+            {
+                Add(G001, $"externals entry {name} names port {port}, which is not a declared " +
+                    "port unit.", configPath, EntryLine(name), name);
+                continue;
+            }
+
+            declaredAdapters.Add(adapter);
+        }
+
+        foreach (var unitId in adapterUnits.Keys.OrderBy(value => value, StringComparer.Ordinal))
+        {
+            if (declaredAdapters.Contains(unitId)) continue;
+            var first = _fileUnits
+                .Where(pair => pair.Value.Id == unitId)
+                .Select(pair => pair.Key)
+                .OrderBy(value => value, StringComparer.Ordinal)
+                .FirstOrDefault();
+            Add(L006, $"adapter unit {unitId} is declared in no externals entry; it has no port " +
+                "and no reviewed vendor.", first ?? configPath, 1, unitId);
+        }
+
+        var claimed = new HashSet<(string Path, int Line)>();
+        foreach (var (path, syntax) in _syntax.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        {
+            var unit = _fileUnits[path];
+            if (unit.Role is "tooling" or "test") continue;
+            var sourceLines = _files[path].Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+            var model = SemanticModelFor(path);
+
+            foreach (var directive in syntax.DescendantNodes().OfType<UsingDirectiveSyntax>())
+            {
+                if (directive.Name is null) continue;
+                var found = ExternalForUsing(directive, model);
+                if (found is null) continue;
+                var (name, entry) = found.Value;
+                var tier = (entry.Tier ?? string.Empty).Trim();
+                var line = directive.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+                var evidence = directive.ToString().Trim();
+                if (unit.Role == "port")
+                {
+                    Add(D010, $"port unit {unit.Id} imports the third-party package {name}; a " +
+                        "port declares the capability, never the vendor.", path, line, evidence);
+                    continue;
+                }
+
+                if (tier != "integration" || unit.Role == "adapter") continue;
+                claimed.Add((path, line));
+                Add(L005, $"{unit.Id} imports the integration library {name}; only its adapter " +
+                    $"({(entry.Adapter ?? "undeclared")}) may import it, everyone else takes the port.",
+                    path, line, evidence);
+            }
+
+            foreach (var typeSyntax in syntax.DescendantNodes().OfType<TypeSyntax>())
+            {
+                if (typeSyntax is PredefinedTypeSyntax) continue;
+                if (typeSyntax is IdentifierNameSyntax identifier && identifier.Identifier.ValueText == "var") continue;
+                var found = ExternalForType(typeSyntax, model);
+                if (found is null) continue;
+                var (name, entry) = found.Value;
+                var line = typeSyntax.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+                if (!claimed.Add((path, line))) continue;
+                var tier = (entry.Tier ?? string.Empty).Trim();
+                var typeName = TypeLeaf(typeSyntax);
+                if (string.IsNullOrEmpty(typeName)) typeName = typeSyntax.ToString();
+                var evidence = line > 0 && line <= sourceLines.Length
+                    ? sourceLines[line - 1].Trim()
+                    : typeName;
+
+                if (unit.Role == "port")
+                {
+                    Add(D010, $"port unit {unit.Id} names the vendor type {typeName} from {name}.",
+                        path, line, evidence);
+                    continue;
+                }
+
+                if (unit.Role == "adapter") continue;
+                if (tier == "utility" && unit.Role != "contracts") continue;
+                Add(L007, $"{unit.Id} names the vendor type {typeName} from {name} outside its adapter.",
+                    path, line, evidence);
+            }
+        }
+
+        var declaredPackages = new HashSet<string>(
+            _cfg.Externals.Keys.Select(NormalizePackage), StringComparer.Ordinal);
+        foreach (var (path, line, package) in ManifestPackages())
+        {
+            if (declaredPackages.Contains(NormalizePackage(package))) continue;
+            Add(G006, $"manifest dependency {package} has no externals entry: declare its tier, " +
+                "owner and review date.", path, line, package);
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        foreach (var (name, raw) in _cfg.Externals)
+        {
+            var expires = (raw?.Expires ?? string.Empty).Trim();
+            if (expires.Length == 0) continue;
+            if (!DateOnly.TryParseExact(expires, "yyyy-MM-dd", CultureInfo.InvariantCulture,
+                    DateTimeStyles.None, out var expiry))
+            {
+                Add(G001, $"externals entry {name} has a non-ISO expiry: {expires}.",
+                    configPath, EntryLine(name), name);
+            }
+            else if (expiry < today)
+            {
+                Add(G006, $"externals entry {name} passed its review date on {expires}; renew or " +
+                    "remove the dependency.", configPath, EntryLine(name), name);
+            }
+        }
+    }
+
+    private static string Field(ExternalEntry entry, string field) => field switch
+    {
+        "tier" => entry.Tier ?? string.Empty,
+        "owner" => entry.Owner ?? string.Empty,
+        "reason" => entry.Reason ?? string.Empty,
+        "reviewedOn" => entry.ReviewedOn ?? string.Empty,
+        "expires" => entry.Expires ?? string.Empty,
+        _ => string.Empty,
+    };
+
+    private static string NormalizePackage(string value) => value.Replace('-', '_').ToLowerInvariant();
+
+    private (string Name, ExternalEntry Entry)? FindExternalByPackage(string package)
+    {
+        if (_cfg.Externals is null) return null;
+        var normalized = NormalizePackage(package);
+        foreach (var (name, raw) in _cfg.Externals)
+        {
+            if (NormalizePackage(name) == normalized) return (name, raw ?? new ExternalEntry());
+            var entry = raw ?? new ExternalEntry();
+            foreach (var specifier in entry.Specifiers ?? new List<string>())
+            {
+                if (NormalizePackage(specifier) == normalized) return (name, entry);
+            }
+        }
+
+        return null;
+    }
+
+    private (string Name, ExternalEntry Entry)? FindExternalBySpecifier(string specifier)
+    {
+        if (_cfg.Externals is null) return null;
+        var normalized = NormalizePackage(specifier);
+        (string Name, ExternalEntry Entry)? best = null;
+        foreach (var (name, raw) in _cfg.Externals)
+        {
+            var entry = raw ?? new ExternalEntry();
+            var known = new[] { name }.Concat(entry.Specifiers ?? new List<string>());
+            foreach (var candidate in known)
+            {
+                var key = NormalizePackage(candidate);
+                if (key.Length == 0) continue;
+                if (!(normalized == key || normalized.StartsWith(key + ".", StringComparison.Ordinal)))
+                    continue;
+                if (best is null || key.Length > NormalizePackage(best.Value.Name).Length)
+                    best = (name, entry);
+            }
+        }
+
+        return best;
+    }
+
+    private (string Name, ExternalEntry Entry)? ExternalForUsing(UsingDirectiveSyntax directive,
+        SemanticModel model)
+    {
+        var symbol = model.GetSymbolInfo(directive.Name!).Symbol;
+        var assembly = AssemblyOf(symbol);
+        if (assembly is not null)
+        {
+            var package = PackageForAssembly(assembly);
+            if (package is not null)
+            {
+                var found = FindExternalByPackage(package);
+                if (found is not null) return found;
+            }
+        }
+
+        return FindExternalBySpecifier(directive.Name!.ToString());
+    }
+
+    private (string Name, ExternalEntry Entry)? ExternalForType(TypeSyntax syntax, SemanticModel model)
+    {
+        var type = model.GetTypeInfo(syntax).Type;
+        var assembly = AssemblyOf(type);
+        if (assembly is not null)
+        {
+            var package = PackageForAssembly(assembly);
+            if (package is not null)
+            {
+                var found = FindExternalByPackage(package);
+                if (found is not null) return found;
+            }
+        }
+
+        var leaf = TypeLeaf(syntax);
+        if (string.IsNullOrEmpty(leaf) || _cfg.Externals is null) return null;
+        foreach (var (name, raw) in _cfg.Externals)
+        {
+            var entry = raw ?? new ExternalEntry();
+            if ((entry.Types ?? new List<string>()).Contains(leaf, StringComparer.Ordinal))
+                return (name, entry);
+        }
+
+        return null;
+    }
+
+    private static string? AssemblyOf(ISymbol? symbol)
+    {
+        return symbol switch
+        {
+            IAliasSymbol alias => AssemblyOf(alias.Target),
+            INamespaceSymbol ns => ns.ConstituentNamespaces
+                .Select(candidate => candidate.ContainingAssembly?.Name)
+                .FirstOrDefault(value => !string.IsNullOrEmpty(value)) ?? ns.ContainingAssembly?.Name,
+            ITypeSymbol type => type.ContainingAssembly?.Name,
+            _ => symbol?.ContainingAssembly?.Name,
+        };
+    }
+
+    private string? PackageForAssembly(string assembly)
+    {
+        if (_packageByAssembly.TryGetValue(assembly, out var package)) return package;
+        return null;
+    }
+
+    private SemanticModel SemanticModelFor(string path)
+    {
+        EnsureCompilations();
+        if (_semanticModels.TryGetValue(path, out var model)) return model;
+        var tree = _syntax[path].SyntaxTree;
+        var compilation = CSharpCompilation.Create(
+            "AcimaSemantic_" + Guid.NewGuid().ToString("N"),
+            new[] { tree }, _metadataReferences,
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        return compilation.GetSemanticModel(tree);
+    }
+
+    private void EnsureCompilations()
+    {
+        if (_compilationsBuilt) return;
+        _compilationsBuilt = true;
+        EnsureSemantics();
+
+        var trees = _syntax.ToDictionary(pair => pair.Key, pair => pair.Value.SyntaxTree,
+            StringComparer.Ordinal);
+        var assigned = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var project in _projects.OrderBy(path => path, StringComparer.Ordinal))
+        {
+            var closure = new HashSet<string>(StringComparer.Ordinal);
+            AddProjectClosure(project, closure);
+            var projectTrees = closure
+                .Where(path => trees.ContainsKey(path))
+                .OrderBy(path => path, StringComparer.Ordinal)
+                .Select(path => trees[path])
+                .ToList();
+            foreach (var path in closure) assigned.Add(path);
+            if (projectTrees.Count == 0) continue;
+            _compilations[project] = CSharpCompilation.Create(
+                "AcimaProject_" + StableHash(project), projectTrees, _metadataReferences,
+                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        }
+
+        var unassigned = trees.Keys.Where(path => !assigned.Contains(path))
+            .OrderBy(path => path, StringComparer.Ordinal).ToList();
+        if (unassigned.Count > 0)
+        {
+            _compilations[string.Empty] = CSharpCompilation.Create(
+                "AcimaLooseSources",
+                unassigned.Select(path => trees[path]).ToList(), _metadataReferences,
+                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        }
+
+        foreach (var (path, tree) in trees)
+        {
+            var project = ProjectForPath(path);
+            var compilation = project is not null && _compilations.TryGetValue(project, out var projectCompilation)
+                ? projectCompilation
+                : _compilations.TryGetValue(string.Empty, out var looseCompilation)
+                    ? looseCompilation
+                    : null;
+            if (compilation is not null)
+                _semanticModels[path] = compilation.GetSemanticModel(tree);
+        }
+    }
+
+    private string? ProjectForPath(string path)
+    {
+        string? best = null;
+        var bestLength = -1;
+        foreach (var project in _projects)
+        {
+            var directory = Path.GetDirectoryName(project)?.Replace('\\', '/') ?? string.Empty;
+            if (directory == ".") directory = string.Empty;
+            if (directory.Length > 0
+                && !(path.Equals(directory, StringComparison.Ordinal)
+                    || path.StartsWith(directory + "/", StringComparison.Ordinal))) continue;
+            if (directory.Length <= bestLength) continue;
+            best = project;
+            bestLength = directory.Length;
+        }
+
+        return best;
+    }
+
+    private void AddProjectClosure(string project, HashSet<string> paths)
+    {
+        if (!paths.Add(project)) return;
+        var full = Path.Combine(_root, project);
+        var directory = Path.GetDirectoryName(full);
+        if (directory is null) return;
+        foreach (var path in _files.Keys.OrderBy(value => value, StringComparer.Ordinal))
+        {
+            var candidate = Path.Combine(_root, path);
+            if (candidate.StartsWith(directory + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+                || candidate.Equals(directory, StringComparison.OrdinalIgnoreCase))
+                paths.Add(path);
+        }
+
+        if (!File.Exists(full)) return;
+        XDocument document;
+        try
+        {
+            document = XDocument.Parse(File.ReadAllText(full));
+        }
+        catch (Exception error) when (error is IOException or System.Xml.XmlException)
+        {
+            return;
+        }
+
+        foreach (var reference in document.Descendants().Where(item => item.Name.LocalName == "ProjectReference"))
+        {
+            var include = reference.Attribute("Include")?.Value;
+            if (string.IsNullOrWhiteSpace(include)) continue;
+            var output = reference.Attribute("ReferenceOutputAssembly")?.Value;
+            if (string.Equals(output, "false", StringComparison.OrdinalIgnoreCase)) continue;
+            var target = Path.GetFullPath(Path.Combine(directory, include.Replace('\\', Path.DirectorySeparatorChar)));
+            var relative = Relative(target);
+            if (_projects.Contains(relative, StringComparer.Ordinal))
+                AddProjectClosure(relative, paths);
+        }
+    }
+
+    private static string StableHash(string value)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(value));
+        return Convert.ToHexString(bytes)[..12].ToLowerInvariant();
+    }
+
+    private void EnsureSemantics()
+    {
+        if (_semanticsBuilt) return;
+        _semanticsBuilt = true;
+        var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        void AddReference(string path)
+        {
+            if (!File.Exists(path) || !paths.Add(Path.GetFullPath(path))) return;
+            try
+            {
+                _metadataReferences.Add(MetadataReference.CreateFromFile(path));
+            }
+            catch (Exception error) when (error is IOException or BadImageFormatException
+                or UnauthorizedAccessException)
+            {
+                // A native or malformed asset is not a Roslyn reference; skip it.
+            }
+        }
+
+        if (AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") is string trusted)
+        {
+            foreach (var path in trusted.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+                AddReference(path);
+        }
+
+        foreach (var project in _projects)
+        {
+            var projectDirectory = Path.GetDirectoryName(Path.Combine(_root, project))!;
+            var assetsPath = Path.Combine(projectDirectory, "obj", "project.assets.json");
+            if (File.Exists(assetsPath))
+            {
+                try
+                {
+                    using var document = JsonDocument.Parse(File.ReadAllText(assetsPath));
+                    var root = document.RootElement;
+                    var folders = root.TryGetProperty("packageFolders", out var packageFolders)
+                        ? packageFolders.EnumerateObject().Select(item => item.Name).ToList()
+                        : new List<string>();
+                    if (!root.TryGetProperty("targets", out var targets)
+                        || !root.TryGetProperty("libraries", out var libraries))
+                        continue;
+
+                    foreach (var target in targets.EnumerateObject())
+                    {
+                        foreach (var library in target.Value.EnumerateObject())
+                        {
+                            if (!libraries.TryGetProperty(library.Name, out var libraryInfo)
+                                || libraryInfo.GetProperty("type").GetString() != "package")
+                                continue;
+                            var package = library.Name.Split('/')[0];
+                            var relative = libraryInfo.GetProperty("path").GetString();
+                            if (string.IsNullOrWhiteSpace(relative)
+                                || !library.Value.TryGetProperty("compile", out var compile))
+                                continue;
+                            foreach (var asset in compile.EnumerateObject())
+                            {
+                                var assembly = Path.GetFileNameWithoutExtension(asset.Name);
+                                if (!string.IsNullOrEmpty(assembly))
+                                    _packageByAssembly[assembly] = package;
+                                foreach (var folder in folders)
+                                {
+                                    var candidate = Path.Combine(folder,
+                                        relative.Replace('/', Path.DirectorySeparatorChar),
+                                        asset.Name.Replace('/', Path.DirectorySeparatorChar));
+                                    AddReference(candidate);
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (JsonException)
+                {
+                    // A stale or partial assets file must not stop source checks.
+                }
+            }
+            else
+            {
+                AddPackageCacheReferences(projectDirectory, AddReference);
+            }
+        }
+    }
+
+    private static void AddPackageCacheReferences(string projectDirectory, Action<string> addReference)
+    {
+        var project = Directory.EnumerateFiles(projectDirectory, "*.csproj").FirstOrDefault();
+        if (project is null) return;
+        var cache = Environment.GetEnvironmentVariable("NUGET_PACKAGES")
+            ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ".nuget", "packages");
+        if (!Directory.Exists(cache)) return;
+
+        XDocument document;
+        try
+        {
+            document = XDocument.Parse(File.ReadAllText(project));
+        }
+        catch (Exception error) when (error is IOException or System.Xml.XmlException)
+        {
+            return;
+        }
+
+        foreach (var reference in document.Descendants()
+                     .Where(item => item.Name.LocalName == "PackageReference"))
+        {
+            var id = reference.Attribute("Include")?.Value;
+            var version = reference.Attribute("Version")?.Value
+                ?? reference.Elements().FirstOrDefault(item => item.Name.LocalName == "Version")?.Value;
+            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(version)) continue;
+            var package = Path.Combine(cache, id.ToLowerInvariant(), version);
+            if (!Directory.Exists(package)) continue;
+            foreach (var folder in new[] { "ref", "lib" })
+            {
+                var root = Path.Combine(package, folder, "net8.0");
+                if (!Directory.Exists(root)) continue;
+                foreach (var file in Directory.EnumerateFiles(root, "*.dll"))
+                    addReference(file);
+            }
+        }
+    }
+
+    private List<(string Path, int Line, string Package)> ManifestPackages()
+    {
+        var result = new List<(string Path, int Line, string Package)>();
+        var manifests = _cfg.Manifests is { Count: > 0 } ? _cfg.Manifests : _projects;
+        foreach (var relative in manifests)
+        {
+            var full = Path.IsPathRooted(relative) ? relative : Path.Combine(_root, relative);
+            if (!File.Exists(full)) continue;
+            string text;
+            try
+            {
+                text = File.ReadAllText(full);
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+            {
+                continue;
+            }
+
+            XDocument document;
+            try
+            {
+                document = XDocument.Parse(text);
+            }
+            catch (System.Xml.XmlException)
+            {
+                continue;
+            }
+
+            var path = Path.IsPathRooted(relative) ? Relative(full) : relative.Replace('\\', '/');
+            foreach (var reference in document.Descendants()
+                         .Where(item => item.Name.LocalName == "PackageReference"))
+            {
+                var package = reference.Attribute("Include")?.Value;
+                if (string.IsNullOrWhiteSpace(package)) continue;
+                result.Add((path, LineOf(text, package), package));
+            }
+        }
+
+        return result;
     }
 
     private static string NamespaceOf(string text)
@@ -1149,12 +1967,11 @@ internal sealed class Enforcer
                 entries.Add((owner, names, hasParams));
         }
 
-        foreach (var (path, source) in _files.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        foreach (var path in _files.Keys.OrderBy(key => key, StringComparer.Ordinal))
         {
             var unit = _fileUnits[path];
             if (unit.Role is not ("contracts" or "implementation" or "host" or "adapter" or "port")) continue;
-            var tree = CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(LanguageVersion.Latest));
-            var syntax = tree.GetRoot();
+            var syntax = _syntax[path];
             if (IsModuleOwnedRole(unit.Role)) trees[path] = syntax;
             foreach (var declaration in syntax.DescendantNodes().OfType<TypeDeclarationSyntax>())
                 declaredTypes.Add(declaration.Identifier.ValueText);
@@ -1257,6 +2074,796 @@ internal sealed class Enforcer
                 CheckCreation(path, unit, sourceLines, constructors, string.Empty, creation.ArgumentList.Arguments);
         }
     }
+
+    private void CheckComposition()
+    {
+        foreach (var (path, syntax) in _syntax.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        {
+            var unit = _fileUnits[path];
+            if (!CompositionRoles.Contains(unit.Role)) continue;
+            var lines = SourceLines(path);
+            var model = SemanticModelFor(path);
+            var seen = new HashSet<(string Rule, int Line)>();
+
+            if (unit.Role == "host")
+            {
+                foreach (var invocation in syntax.DescendantNodes().OfType<InvocationExpressionSyntax>())
+                {
+                    var name = CallName(invocation.Expression);
+                    if (!DiscoveryMethods.Contains(name)) continue;
+                    var operation = model.GetOperation(invocation) as IInvocationOperation;
+                    var target = operation?.TargetMethod;
+                    var containing = target?.ContainingType?.ToDisplayString() ?? string.Empty;
+                    var receiver = (invocation.Expression as MemberAccessExpressionSyntax)?.Expression;
+                    var recognized = name switch
+                    {
+                        "GetTypes" or "GetExportedTypes" =>
+                            containing.Contains("Assembly", StringComparison.Ordinal)
+                            || IsAssemblyReceiver(receiver, model),
+                        "GetAssemblies" =>
+                            containing.Contains("AppDomain", StringComparison.Ordinal)
+                            || receiver?.ToString().Contains("AppDomain.CurrentDomain", StringComparison.Ordinal) == true,
+                        "RegisterAssemblyTypes" => true,
+                        "Scan" or "FromAssemblyOf" or "FromAssemblies" or "AddClasses" =>
+                            IsServiceCollectionReceiver(receiver, model)
+                            || containing.Contains("Scrutor", StringComparison.Ordinal),
+                        _ => false,
+                    };
+                    if (!recognized) continue;
+                    var line = LineOf(invocation);
+                    if (!seen.Add((D013, line))) continue;
+                    Add(D013, $"composition host {unit.Id} discovers components with {name}; register and construct each module-owned component explicitly.",
+                        path, line, SourceLine(lines, line, invocation.ToString()));
+                }
+
+                foreach (var member in syntax.DescendantNodes().OfType<MemberAccessExpressionSyntax>())
+                {
+                    if (member.Name.Identifier.ValueText != "DefinedTypes") continue;
+                    if (!IsAssemblyReceiver(member.Expression, model)) continue;
+                    var line = LineOf(member);
+                    if (!seen.Add((D013, line))) continue;
+                    Add(D013, $"composition host {unit.Id} discovers components with DefinedTypes; register and construct each module-owned component explicitly.",
+                        path, line, SourceLine(lines, line, member.ToString()));
+                }
+            }
+
+            foreach (var field in syntax.DescendantNodes().OfType<FieldDeclarationSyntax>())
+                CheckInjectionAttributes(field.AttributeLists, field, path, unit, lines, seen);
+            foreach (var property in syntax.DescendantNodes().OfType<PropertyDeclarationSyntax>())
+                CheckInjectionAttributes(property.AttributeLists, property, path, unit, lines, seen);
+        }
+    }
+
+    private void CheckInjectionAttributes(SyntaxList<AttributeListSyntax> attributes,
+        SyntaxNode declaration, string path, Unit unit, string[] lines,
+        HashSet<(string Rule, int Line)> seen)
+    {
+        foreach (var attribute in attributes.SelectMany(list => list.Attributes))
+        {
+            var name = AttributeName(attribute);
+            if (!InjectionAttributes.Contains(name)) continue;
+            var line = LineOf(attribute);
+            if (!seen.Add((D014, line))) continue;
+            Add(D014, $"{unit.Id} receives a dependency through property or field injection; declare it in the constructor and supply it from the composition boundary.",
+                path, line, SourceLine(lines, line, attribute + " " + declaration));
+        }
+    }
+
+    private void CheckNaming()
+    {
+        foreach (var (path, syntax) in _syntax.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        {
+            var unit = _fileUnits[path];
+            if (!NamingRoles.Contains(unit.Role)) continue;
+            var lines = SourceLines(path);
+            foreach (var declaration in syntax.DescendantNodes().OfType<BaseTypeDeclarationSyntax>())
+            {
+                if (IsGenerated(path, declaration)) continue;
+                var name = declaration.Identifier.ValueText.TrimStart('@');
+                if (string.IsNullOrEmpty(name)) continue;
+                var line = LineOf(declaration);
+                var evidence = SourceLine(lines, line, declaration.Identifier.ValueText);
+                if (!IsPascalCase(name))
+                {
+                    Add(N001, $"{unit.Id} declares the type {name} without the .NET PascalCase type-name convention.",
+                        path, line, evidence);
+                }
+                if (GenericTypeNames.Contains(name)
+                    || GenericTypeSuffixes.Any(suffix => name.EndsWith(suffix, StringComparison.Ordinal)))
+                {
+                    Add(N002, $"{unit.Id} names the type {name} after a generic role; name the responsibility or domain concept instead.",
+                        path, line, evidence);
+                }
+            }
+        }
+    }
+
+    private static bool IsAssemblyReceiver(ExpressionSyntax? receiver, SemanticModel model)
+    {
+        if (receiver is null) return false;
+        var text = receiver.ToString();
+        if (text.Contains("Assembly", StringComparison.Ordinal)
+            || text.Contains("GetExecutingAssembly", StringComparison.Ordinal)
+            || text.Contains("GetEntryAssembly", StringComparison.Ordinal)
+            || text.Contains("GetCallingAssembly", StringComparison.Ordinal)) return true;
+        var type = model.GetTypeInfo(receiver).Type?.ToDisplayString() ?? string.Empty;
+        return type.Contains("System.Reflection.Assembly", StringComparison.Ordinal);
+    }
+
+    private static bool IsServiceCollectionReceiver(ExpressionSyntax? receiver, SemanticModel model)
+    {
+        if (receiver is null) return false;
+        var type = model.GetTypeInfo(receiver).Type?.ToDisplayString() ?? string.Empty;
+        return type.Contains("IServiceCollection", StringComparison.Ordinal)
+               || type.Contains("ServiceCollection", StringComparison.Ordinal);
+    }
+
+    private static string AttributeName(AttributeSyntax attribute)
+    {
+        var name = attribute.Name.ToString().Split('.').LastOrDefault() ?? string.Empty;
+        return name.EndsWith("Attribute", StringComparison.Ordinal)
+            ? name[..^"Attribute".Length]
+            : name;
+    }
+
+    private static bool IsGenerated(string path, BaseTypeDeclarationSyntax declaration)
+    {
+        if (path.EndsWith(".g.cs", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith(".generated.cs", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith(".designer.cs", StringComparison.OrdinalIgnoreCase)) return true;
+        return declaration.AttributeLists.SelectMany(list => list.Attributes)
+            .Any(attribute => AttributeName(attribute) == "GeneratedCode");
+    }
+
+    private static bool IsPascalCase(string name) =>
+        name.Length > 0 && char.IsUpper(name[0]) && name.All(char.IsLetterOrDigit);
+
+    private void CheckConfiguration()
+    {
+        foreach (var (path, syntax) in _syntax.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        {
+            var unit = _fileUnits[path];
+            if (!ConfigReadRoles.Contains(unit.Role)) continue;
+            var lines = SourceLines(path);
+            var model = SemanticModelFor(path);
+            var seen = new HashSet<int>();
+
+            foreach (var invocation in syntax.DescendantNodes().OfType<InvocationExpressionSyntax>())
+            {
+                var name = CallName(invocation.Expression);
+                if (name is not ("GetEnvironmentVariable" or "GetEnvironmentVariables")) continue;
+                var operation = model.GetOperation(invocation) as IInvocationOperation;
+                var containing = operation?.TargetMethod?.ContainingType?.ToDisplayString() ?? string.Empty;
+                var receiver = (invocation.Expression as MemberAccessExpressionSyntax)?.Expression;
+                if (!containing.Contains("System.Environment", StringComparison.Ordinal)
+                    && receiver?.ToString() != "Environment") continue;
+                var line = LineOf(invocation);
+                if (!seen.Add(line)) continue;
+                var key = invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression is { } argument
+                    ? LiteralText(argument)
+                    : string.Empty;
+                Add(A005, $"{unit.Id} reads {(key.Length > 0 ? $"the environment key {key}" : "the process environment")} directly; resolve it at the composition root and pass the value into the component.",
+                    path, line, SourceLine(lines, line, invocation.ToString()));
+            }
+
+            foreach (var member in syntax.DescendantNodes().OfType<MemberAccessExpressionSyntax>())
+            {
+                var name = member.Name.Identifier.ValueText;
+                if (name is not ("AppSettings" or "ConnectionStrings")) continue;
+                var receiver = member.Expression.ToString();
+                if (receiver != "ConfigurationManager"
+                    && !receiver.EndsWith(".ConfigurationManager", StringComparison.Ordinal)) continue;
+                var line = LineOf(member);
+                if (!seen.Add(line)) continue;
+                Add(A005, $"{unit.Id} reads {name} through ConfigurationManager directly; resolve it at the composition root and pass the value into the component.",
+                    path, line, SourceLine(lines, line, member.ToString()));
+            }
+        }
+    }
+
+    private void CheckFunctionalCapture()
+    {
+        foreach (var (path, syntax) in _syntax.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        {
+            var unit = _fileUnits[path];
+            if (!FunctionalRoles.Contains(unit.Role)) continue;
+            var lines = SourceLines(path);
+            var model = SemanticModelFor(path);
+            var seen = new HashSet<(string Rule, int Line, string Name)>();
+
+            foreach (var scope in FunctionalScopes(syntax))
+            {
+                var ownParameters = FunctionalParameters(scope);
+                foreach (var identifier in scope.DescendantNodes()
+                             .OfType<IdentifierNameSyntax>()
+                             .Where(node => !InsideNestedFunctionalScope(node, scope)))
+                {
+                    if (identifier.Parent is MemberAccessExpressionSyntax member && member.Name == identifier)
+                        continue;
+                    if (identifier.Parent is MemberBindingExpressionSyntax)
+                        continue;
+                    var name = identifier.Identifier.ValueText;
+                    if (string.IsNullOrEmpty(name) || ownParameters.Contains(name)
+                        || !ContainsToken(name, FunctionalTokens)) continue;
+                    var symbol = model.GetSymbolInfo(identifier).Symbol;
+                    var captured = false;
+                    if (symbol is IFieldSymbol field)
+                    {
+                        captured = field.IsStatic && !field.IsConst;
+                    }
+                    else if (symbol is IPropertySymbol property)
+                    {
+                        captured = property.IsStatic;
+                    }
+                    else if (symbol is ILocalSymbol local)
+                    {
+                        captured = local.DeclaringSyntaxReferences
+                            .Any(reference => !scope.Span.Contains(reference.Span));
+                    }
+
+                    if (!captured) continue;
+                    var line = LineOf(identifier);
+                    if (!seen.Add((D015, line, name))) continue;
+                    Add(D015, $"{unit.Id} captures the module-owned dependency {name} from an enclosing scope; pass it as a parameter or supply it at the composition boundary.",
+                        path, line, SourceLine(lines, line, identifier.ToString()));
+                }
+            }
+
+            if (_cfg.PartialHelpers is null || _cfg.PartialHelpers.Count == 0) continue;
+            var helpers = _cfg.PartialHelpers.ToHashSet(StringComparer.Ordinal);
+            foreach (var invocation in syntax.DescendantNodes().OfType<InvocationExpressionSyntax>())
+            {
+                var name = CallName(invocation.Expression);
+                if (!helpers.Contains(name)) continue;
+                var dependency = invocation.ArgumentList.Arguments
+                    .Select(argument => DependencyName(argument.Expression, model))
+                    .FirstOrDefault(candidate => !string.IsNullOrEmpty(candidate));
+                if (string.IsNullOrEmpty(dependency)) continue;
+                var line = LineOf(invocation);
+                if (!seen.Add((D016, line, dependency))) continue;
+                Add(D016, $"{unit.Id} partially applies the module-owned dependency {dependency} inside a component; bind it at the composition boundary or keep it as a parameter.",
+                    path, line, SourceLine(lines, line, invocation.ToString()));
+            }
+        }
+    }
+
+    private static IEnumerable<SyntaxNode> FunctionalScopes(SyntaxNode syntax) =>
+        syntax.DescendantNodes().Where(node =>
+            node is LambdaExpressionSyntax or AnonymousMethodExpressionSyntax or LocalFunctionStatementSyntax);
+
+    private static HashSet<string> FunctionalParameters(SyntaxNode scope)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        switch (scope)
+        {
+            case SimpleLambdaExpressionSyntax simple:
+                names.Add(simple.Parameter.Identifier.ValueText);
+                break;
+            case ParenthesizedLambdaExpressionSyntax parenthesized:
+                foreach (var parameter in parenthesized.ParameterList.Parameters)
+                    names.Add(parameter.Identifier.ValueText);
+                break;
+            case AnonymousMethodExpressionSyntax anonymous:
+                foreach (var parameter in anonymous.ParameterList?.Parameters ?? default)
+                    names.Add(parameter.Identifier.ValueText);
+                break;
+            case LocalFunctionStatementSyntax local:
+                foreach (var parameter in local.ParameterList.Parameters)
+                    names.Add(parameter.Identifier.ValueText);
+                break;
+        }
+
+        return names;
+    }
+
+    private static bool InsideNestedFunctionalScope(SyntaxNode node, SyntaxNode scope)
+    {
+        var ancestor = node.Ancestors().FirstOrDefault(candidate =>
+            candidate is LambdaExpressionSyntax or AnonymousMethodExpressionSyntax or LocalFunctionStatementSyntax);
+        return ancestor is not null && ancestor != scope;
+    }
+
+    private static bool ContainsToken(string name, HashSet<string> tokens)
+    {
+        var snake = Regex.Replace(name, "(?<=[a-z0-9])(?=[A-Z])", "_").ToLowerInvariant();
+        return Regex.Split(snake, "[^a-z0-9]+").Any(tokens.Contains);
+    }
+
+    private static string? DependencyName(ExpressionSyntax expression, SemanticModel model)
+    {
+        foreach (var identifier in expression.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>())
+        {
+            var symbol = model.GetSymbolInfo(identifier).Symbol;
+            var name = symbol switch
+            {
+                IFieldSymbol field when !field.IsConst => field.Name,
+                IPropertySymbol property => property.Name,
+                ILocalSymbol local => local.Name,
+                IParameterSymbol parameter => parameter.Name,
+                _ => string.Empty,
+            };
+            if (string.IsNullOrEmpty(name) || !ContainsToken(name, FunctionalTokens)) continue;
+            return name;
+        }
+
+        return null;
+    }
+
+    private static string LiteralText(ExpressionSyntax expression) => expression switch
+    {
+        LiteralExpressionSyntax literal when literal.IsKind(SyntaxKind.StringLiteralExpression)
+            => literal.Token.ValueText,
+        LiteralExpressionSyntax literal => literal.Token.Text,
+        InterpolatedStringExpressionSyntax interpolated => interpolated.ToString(),
+        _ => string.Empty,
+    };
+
+    private void CheckLifecycle()
+    {
+        var registrations = new List<Registration>();
+        foreach (var (path, syntax) in _syntax.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        {
+            var unit = _fileUnits[path];
+            if (unit.Role != "host") continue;
+            var lines = SourceLines(path);
+            foreach (var invocation in syntax.DescendantNodes().OfType<InvocationExpressionSyntax>())
+            {
+                var registration = RegistrationFor(invocation, path, lines);
+                if (registration is not null) registrations.Add(registration);
+            }
+        }
+
+        var lifetimes = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var registration in registrations)
+        {
+            lifetimes[registration.Service] = registration.Lifetime;
+            lifetimes[registration.Implementation] = registration.Lifetime;
+        }
+
+        foreach (var registration in registrations)
+        {
+            var type = FindClass(registration.Implementation);
+            if (type is null) continue;
+            if (registration.Lifetime == "transient" && IsStateless(type))
+            {
+                Add(A007, $"the host registers the stateless shared service {registration.Implementation} as transient; share it at the longest appropriate lifetime.",
+                    registration.Path, registration.Line, registration.Evidence);
+            }
+
+            if (registration.Lifetime != "shared") continue;
+            if (OwnsMutableContainer(type))
+            {
+                Add(A009, $"the host shares {registration.Implementation}, which owns mutable state; give that state an explicit owner, isolation boundary and concurrency policy.",
+                    registration.Path, registration.Line, registration.Evidence);
+            }
+
+            foreach (var dependency in ConstructorDependencies(type))
+            {
+                if (!lifetimes.TryGetValue(dependency, out var lifetime) || lifetime != "scoped") continue;
+                Add(A008, $"the host shares {registration.Implementation}, which captures the scoped dependency {dependency}; shorten the lifetime or resolve it at the correct scope boundary.",
+                    registration.Path, registration.Line, registration.Evidence);
+            }
+        }
+    }
+
+    private static Registration? RegistrationFor(InvocationExpressionSyntax invocation,
+        string path, string[] lines)
+    {
+        var name = CallName(invocation.Expression);
+        var lifetime = name switch
+        {
+            "AddSingleton" or "TryAddSingleton" => "shared",
+            "AddScoped" or "TryAddScoped" => "scoped",
+            "AddTransient" or "TryAddTransient" => "transient",
+            _ => string.Empty,
+        };
+        if (lifetime.Length == 0) return null;
+
+        var generic = invocation.Expression switch
+        {
+            GenericNameSyntax direct => direct,
+            MemberAccessExpressionSyntax member => member.Name as GenericNameSyntax,
+            _ => null,
+        };
+        var types = generic?.TypeArgumentList.Arguments.ToList() ?? new List<TypeSyntax>();
+        if (types.Count == 0)
+        {
+            foreach (var argument in invocation.ArgumentList.Arguments)
+            {
+                if (argument.Expression is TypeOfExpressionSyntax typeOf)
+                    types.Add(typeOf.Type);
+            }
+        }
+
+        if (types.Count is not (1 or 2)) return null;
+        var implementation = TypeLeaf(types[^1]);
+        var service = TypeLeaf(types[0]);
+        if (string.IsNullOrWhiteSpace(implementation) || string.IsNullOrWhiteSpace(service)) return null;
+        var line = LineOf(invocation);
+        return new Registration(service, implementation, lifetime, path, line,
+            SourceLine(lines, line, invocation.ToString()));
+    }
+
+    private ClassDeclarationSyntax? FindClass(string name)
+    {
+        if (!_types.TryGetValue(name, out var types)) return null;
+        var classes = types.OfType<ClassDeclarationSyntax>().ToList();
+        return classes.Count == 1 ? classes[0] : null;
+    }
+
+    private static bool IsStateless(ClassDeclarationSyntax type)
+    {
+        // Behaviorally stateless: no mutable instance state, one required construction path,
+        // and readonly constructor-injected collaborators. D011 remains responsible for reporting
+        // optional constructor parameters; A007 only declines to classify such a class as stateless.
+        var constructors = type.Members.OfType<ConstructorDeclarationSyntax>()
+            .Where(constructor => !constructor.Modifiers.Any(token => token.IsKind(SyntaxKind.StaticKeyword)))
+            .ToList();
+        var primary = type.ParameterList;
+        if (primary is not null && constructors.Count > 0) return false;
+        if (primary is null && constructors.Count > 1) return false;
+
+        var parameters = primary?.Parameters
+            ?? constructors.FirstOrDefault()?.ParameterList.Parameters
+            ?? default;
+        if (parameters.Any(parameter => parameter.Default is not null
+                || parameter.Modifiers.Any(token => token.IsKind(SyntaxKind.ParamsKeyword))))
+            return false;
+
+        var fields = type.Members.OfType<FieldDeclarationSyntax>().ToList();
+        var properties = type.Members.OfType<PropertyDeclarationSyntax>().ToList();
+        foreach (var field in fields)
+        {
+            var isStatic = field.Modifiers.Any(token => token.IsKind(SyntaxKind.StaticKeyword)
+                || token.IsKind(SyntaxKind.ConstKeyword));
+            var isReadonly = field.Modifiers.Any(token => token.IsKind(SyntaxKind.ReadOnlyKeyword)
+                || token.IsKind(SyntaxKind.ConstKeyword));
+            if (!isReadonly && !isStatic) return false;
+            if (isStatic && !isReadonly) return false;
+            if (IsMutableContainer(field.Declaration.Type)) return false;
+        }
+
+        foreach (var property in properties)
+        {
+            if (IsMutableContainer(property.Type)) return false;
+            var hasSetter = property.AccessorList?.Accessors.Any(accessor =>
+                accessor.IsKind(SyntaxKind.SetAccessorDeclaration)
+                || accessor.IsKind(SyntaxKind.InitAccessorDeclaration)) == true;
+            if (hasSetter) return false;
+        }
+
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var field in fields)
+            foreach (var variable in field.Declaration.Variables)
+                names.Add(variable.Identifier.ValueText);
+        foreach (var property in properties) names.Add(property.Identifier.ValueText);
+
+        foreach (var assignment in type.DescendantNodes().OfType<AssignmentExpressionSyntax>())
+        {
+            if (!names.Contains(AssignmentTargetName(assignment.Left))) continue;
+            if (!assignment.IsKind(SyntaxKind.SimpleAssignmentExpression)) return false;
+            var constructor = constructors.FirstOrDefault();
+            if (constructor?.Body is null || !constructor.Body.Span.Contains(assignment.Span)) return false;
+        }
+
+        foreach (var increment in type.DescendantNodes().OfType<PrefixUnaryExpressionSyntax>()
+                     .Where(node => node.IsKind(SyntaxKind.PreIncrementExpression)
+                         || node.IsKind(SyntaxKind.PreDecrementExpression)))
+        {
+            if (names.Contains(AssignmentTargetName(increment.Operand))) return false;
+        }
+        foreach (var increment in type.DescendantNodes().OfType<PostfixUnaryExpressionSyntax>()
+                     .Where(node => node.IsKind(SyntaxKind.PostIncrementExpression)
+                         || node.IsKind(SyntaxKind.PostDecrementExpression)))
+        {
+            if (names.Contains(AssignmentTargetName(increment.Operand))) return false;
+        }
+
+        return true;
+    }
+
+    private static string AssignmentTargetName(ExpressionSyntax? expression) => expression switch
+    {
+        IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
+        MemberAccessExpressionSyntax member when member.Expression is ThisExpressionSyntax =>
+            member.Name.Identifier.ValueText,
+        _ => string.Empty,
+    };
+
+    private static IEnumerable<string> ConstructorDependencies(ClassDeclarationSyntax type)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        if (type.ParameterList is not null)
+        {
+            foreach (var parameter in type.ParameterList.Parameters)
+            {
+                var name = TypeLeaf(parameter.Type);
+                if (name.Length > 0) names.Add(name);
+            }
+        }
+
+        foreach (var constructor in type.Members.OfType<ConstructorDeclarationSyntax>())
+        {
+            foreach (var parameter in constructor.ParameterList.Parameters)
+            {
+                var name = TypeLeaf(parameter.Type);
+                if (name.Length > 0) names.Add(name);
+            }
+        }
+
+        return names;
+    }
+
+    private static bool OwnsMutableContainer(ClassDeclarationSyntax type)
+    {
+        foreach (var field in type.Members.OfType<FieldDeclarationSyntax>())
+        {
+            if (field.Modifiers.Any(token => token.IsKind(SyntaxKind.StaticKeyword)
+                    || token.IsKind(SyntaxKind.ConstKeyword))) continue;
+            if (IsMutableContainer(field.Declaration.Type)) return true;
+        }
+        foreach (var property in type.Members.OfType<PropertyDeclarationSyntax>())
+        {
+            if (property.Modifiers.Any(token => token.IsKind(SyntaxKind.StaticKeyword))) continue;
+            if (IsMutableContainer(property.Type)) return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsMutableContainer(TypeSyntax type)
+    {
+        if (type is ArrayTypeSyntax) return true;
+        var name = TypeLeaf(type);
+        return MutableContainerNames.Contains(name);
+    }
+
+    private void CheckOperationalValues()
+    {
+        var declarations = new List<(string Owner, string Name, string Literal, string Path, int Line, Unit Unit)>();
+        var methods = MethodParameters();
+        var constructors = ConstructorParameters();
+
+        foreach (var (path, syntax) in _syntax.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        {
+            var unit = _fileUnits[path];
+            if (!ValueRoles.Contains(unit.Role)) continue;
+            var lines = SourceLines(path);
+
+            foreach (var local in syntax.DescendantNodes().OfType<LocalDeclarationStatementSyntax>())
+            {
+                foreach (var variable in local.Declaration.Variables)
+                {
+                    var name = variable.Identifier.ValueText;
+                    if (variable.Initializer is null || !ContainsOperational(name)
+                        || !IsLiteral(variable.Initializer.Value)) continue;
+                    if (local.Modifiers.Any(token => token.IsKind(SyntaxKind.ConstKeyword)))
+                        CollectValue(unit, path, name, variable.Initializer.Value, LineOf(variable), lines, declarations);
+                    else
+                        AddValueFinding(unit, path, name, LineOf(variable), "mutable",
+                            variable.Initializer.Value, lines);
+                }
+            }
+
+            foreach (var field in syntax.DescendantNodes().OfType<FieldDeclarationSyntax>())
+            {
+                var immutable = field.Modifiers.Any(token => token.IsKind(SyntaxKind.ConstKeyword)
+                    || token.IsKind(SyntaxKind.ReadOnlyKeyword));
+                foreach (var variable in field.Declaration.Variables)
+                {
+                    var name = variable.Identifier.ValueText;
+                    if (variable.Initializer is null || !ContainsOperational(name)
+                        || !IsLiteral(variable.Initializer.Value)) continue;
+                    if (immutable)
+                        CollectValue(unit, path, name, variable.Initializer.Value, LineOf(variable), lines, declarations);
+                    else
+                        AddValueFinding(unit, path, name, LineOf(variable), "mutable",
+                            variable.Initializer.Value, lines);
+                }
+            }
+
+            foreach (var property in syntax.DescendantNodes().OfType<PropertyDeclarationSyntax>())
+            {
+                if (property.Initializer is null || !ContainsOperational(property.Identifier.ValueText)
+                    || !IsLiteral(property.Initializer.Value)) continue;
+                var mutable = property.AccessorList?.Accessors.Any(accessor =>
+                    accessor.IsKind(SyntaxKind.SetAccessorDeclaration)) == true;
+                if (!mutable)
+                    CollectValue(unit, path, property.Identifier.ValueText,
+                        property.Initializer.Value, LineOf(property), lines, declarations);
+                else
+                    AddValueFinding(unit, path, property.Identifier.ValueText, LineOf(property),
+                        "property", property.Initializer.Value, lines);
+            }
+
+            CheckInlineValues(path, unit, syntax, lines, methods, constructors);
+        }
+
+        foreach (var group in declarations.GroupBy(item =>
+                     (Owner: item.Unit.Module ?? item.Path, Name: NormalizeName(item.Name), item.Literal)))
+        {
+            var ordered = group.OrderBy(item => item.Path, StringComparer.Ordinal)
+                .ThenBy(item => item.Line).ToList();
+            if (ordered.Count < 2) continue;
+            var first = ordered[0];
+            foreach (var duplicate in ordered.Skip(1))
+            {
+                var lines = SourceLines(duplicate.Path);
+                AddValueFinding(duplicate.Unit, duplicate.Path, duplicate.Name, duplicate.Line,
+                    "inline", null, lines,
+                    $"{duplicate.Unit.Id} declares {duplicate.Name} with the same apparent meaning and literal value as {first.Path}:{first.Line}; confirm semantic identity and one declaration at the highest common owner before consolidating.");
+            }
+        }
+    }
+
+    private void CollectValue(Unit unit, string path, string name, ExpressionSyntax value,
+        int line, string[] lines,
+        List<(string Owner, string Name, string Literal, string Path, int Line, Unit Unit)> declarations)
+    {
+        if (ValueCategory(name) != "value")
+        {
+            AddValueFinding(unit, path, name, line, "inline", value, lines);
+            return;
+        }
+        declarations.Add((unit.Module ?? path, name, LiteralText(value), path, line, unit));
+    }
+
+    private void AddValueFinding(Unit unit, string path, string name, int line, string kind,
+        ExpressionSyntax? value, string[] lines, string? message = null)
+    {
+        if (message is null)
+        {
+            var category = ValueCategory(name);
+            if (category == "secret")
+                message = $"{unit.Id} declares a secret-looking literal in {name}; resolve it through the secret mechanism and never commit or log the value.";
+            else if (category == "configuration")
+                message = $"{unit.Id} declares {name} as a source literal; classify it as a stable code-owned constant or as deployment/runtime configuration resolved and validated at a composition boundary.";
+            else if (kind == "mutable")
+                message = $"{unit.Id} declares the meaningful value {name} mutably; use an immutable constant, readonly field or immutable value object, or document why mutation is genuinely required.";
+            else if (kind == "property")
+                message = $"{unit.Id} assigns the meaningful value {name} through a mutable property; prefer an immutable declaration or a readonly value object owned by the type.";
+            else
+                message = $"{unit.Id} embeds a meaningful value in {name}; declare it once as an immutable constant in the owning file or type, or supply it explicitly from the appropriate configuration boundary.";
+        }
+
+        var evidence = value is not null ? value.ToString() : SourceLine(lines, line, name);
+        Add(A006, message, path, line, evidence, "candidate");
+    }
+
+    private static string ValueCategory(string name)
+    {
+        if (ContainsToken(name, SecretTokens)) return "secret";
+        if (ContainsToken(name, ConfigurationTokens)) return "configuration";
+        return "value";
+    }
+
+    private static bool ContainsOperational(string name) => ContainsToken(name, OperationalTokens);
+
+    private static string NormalizeName(string name) =>
+        Regex.Replace(name, "(?<=[a-z0-9])(?=[A-Z])", "_").ToLowerInvariant();
+
+    private static bool IsLiteral(ExpressionSyntax expression) => expression switch
+    {
+        LiteralExpressionSyntax literal when !literal.IsKind(SyntaxKind.NullLiteralExpression)
+            && !literal.IsKind(SyntaxKind.DefaultLiteralExpression) => true,
+        InterpolatedStringExpressionSyntax => true,
+        PrefixUnaryExpressionSyntax unary when unary.Operand is LiteralExpressionSyntax => true,
+        _ => false,
+    };
+
+    private Dictionary<string, List<(string Owner, string[] Names)>> MethodParameters()
+    {
+        var result = new Dictionary<string, List<(string Owner, string[] Names)>>(StringComparer.Ordinal);
+        foreach (var (path, syntax) in _syntax.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        {
+            foreach (var method in syntax.DescendantNodes().OfType<MethodDeclarationSyntax>())
+            {
+                var name = method.Identifier.ValueText;
+                var owner = method.Ancestors().OfType<TypeDeclarationSyntax>().FirstOrDefault()?.Identifier.ValueText ?? path;
+                var names = method.ParameterList.Parameters.Select(parameter => parameter.Identifier.ValueText).ToArray();
+                if (!result.TryGetValue(name, out var entries)) result[name] = entries = new();
+                if (!entries.Any(entry => entry.Owner == owner && entry.Names.SequenceEqual(names)))
+                    entries.Add((owner, names));
+            }
+        }
+
+        return result;
+    }
+
+    private Dictionary<string, List<string[]>> ConstructorParameters()
+    {
+        var result = new Dictionary<string, List<string[]>>(StringComparer.Ordinal);
+        foreach (var (_, syntax) in _syntax.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        {
+            foreach (var constructor in syntax.DescendantNodes().OfType<ConstructorDeclarationSyntax>())
+            {
+                if (constructor.Parent is not TypeDeclarationSyntax owner) continue;
+                var names = constructor.ParameterList.Parameters.Select(parameter => parameter.Identifier.ValueText).ToArray();
+                if (!result.TryGetValue(owner.Identifier.ValueText, out var entries))
+                    result[owner.Identifier.ValueText] = entries = new();
+                if (!entries.Any(entry => entry.SequenceEqual(names))) entries.Add(names);
+            }
+            foreach (var declaration in syntax.DescendantNodes().OfType<TypeDeclarationSyntax>())
+            {
+                if (declaration.ParameterList is null) continue;
+                var names = declaration.ParameterList.Parameters.Select(parameter => parameter.Identifier.ValueText).ToArray();
+                if (!result.TryGetValue(declaration.Identifier.ValueText, out var entries))
+                    result[declaration.Identifier.ValueText] = entries = new();
+                if (!entries.Any(entry => entry.SequenceEqual(names))) entries.Add(names);
+            }
+        }
+
+        return result;
+    }
+
+    private void CheckInlineValues(string path, Unit unit, SyntaxNode syntax, string[] lines,
+        Dictionary<string, List<(string Owner, string[] Names)>> methods,
+        Dictionary<string, List<string[]>> constructors)
+    {
+        foreach (var invocation in syntax.DescendantNodes().OfType<InvocationExpressionSyntax>())
+        {
+            var name = CallName(invocation.Expression);
+            if (string.IsNullOrEmpty(name) || !methods.TryGetValue(name, out var candidates)) continue;
+            var currentType = invocation.Ancestors().OfType<TypeDeclarationSyntax>().FirstOrDefault();
+            var receiverType = invocation.Expression switch
+            {
+                IdentifierNameSyntax => currentType?.Identifier.ValueText,
+                MemberAccessExpressionSyntax member => ResolveReceiverType(member.Expression, invocation, currentType,
+                    new HashSet<string>(_types.Keys, StringComparer.Ordinal)),
+                _ => null,
+            };
+            if (string.IsNullOrEmpty(receiverType)) continue;
+            var matching = candidates.Where(candidate => candidate.Owner == receiverType).ToList();
+            if (matching.Count == 0) continue;
+            foreach (var argument in invocation.ArgumentList.Arguments)
+            {
+                var parameter = argument.NameColon?.Name.Identifier.ValueText;
+                if (parameter is null)
+                {
+                    var index = invocation.ArgumentList.Arguments.IndexOf(argument);
+                    var names = matching.Where(candidate => index < candidate.Names.Length)
+                        .Select(candidate => candidate.Names[index]).Distinct(StringComparer.Ordinal).ToList();
+                    if (names.Count != 1) continue;
+                    parameter = names[0];
+                }
+                if (!ContainsOperational(parameter) || !IsLiteral(argument.Expression)) continue;
+                AddValueFinding(unit, path, parameter, LineOf(argument), "inline",
+                    argument.Expression, lines);
+            }
+        }
+
+        foreach (var creation in syntax.DescendantNodes().OfType<ObjectCreationExpressionSyntax>())
+        {
+            var owner = TypeLeaf(creation.Type);
+            if (string.IsNullOrEmpty(owner) || !constructors.TryGetValue(owner, out var candidates)) continue;
+            if (creation.ArgumentList is null) continue;
+            foreach (var argument in creation.ArgumentList.Arguments)
+            {
+                var parameter = argument.NameColon?.Name.Identifier.ValueText;
+                if (parameter is null)
+                {
+                    var index = creation.ArgumentList.Arguments.IndexOf(argument);
+                    var names = candidates.Where(candidate => index >= 0 && index < candidate.Length)
+                        .Select(candidate => candidate[index]).Distinct(StringComparer.Ordinal).ToList();
+                    if (names.Count != 1) continue;
+                    parameter = names[0];
+                }
+                if (!ContainsOperational(parameter) || !IsLiteral(argument.Expression)) continue;
+                AddValueFinding(unit, path, parameter, LineOf(argument), "inline",
+                    argument.Expression, lines);
+            }
+        }
+    }
+
+    private string[] SourceLines(string path) => _sourceLines.TryGetValue(path, out var lines)
+        ? lines
+        : Array.Empty<string>();
+
+    private static int LineOf(SyntaxNode node) =>
+        node.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+
+    private static string SourceLine(string[] lines, int line, string fallback) =>
+        line > 0 && line <= lines.Length ? lines[line - 1].Trim() : fallback;
 
     private static ParameterListSyntax? ParameterListOf(SyntaxNode node) => node switch
     {
@@ -1519,13 +3126,14 @@ internal sealed class Enforcer
         });
     }
 
-    private void Add(string rule, string message, string path, int line, string evidence)
+    private void Add(string rule, string message, string path, int line, string evidence,
+        string? classification = null)
     {
         if (!Catalog.TryGetValue(rule, out var entry)) return;
         if (Rank[entry.Level] > Rank[_level]) return;
         var trimmed = evidence.Length > 200 ? evidence[..200] : evidence;
         _findings.Add(new Finding(rule, entry.Severity, message, path, Math.Max(line, 1), trimmed,
-            FingerprintFor(rule, path, trimmed)));
+            FingerprintFor(rule, path, trimmed), classification));
     }
 
     private static string FingerprintFor(string rule, string path, string evidence)
@@ -1736,7 +3344,7 @@ internal static class Program
                 Console.Error.WriteLine($"acima: unknown level {effective}; expected L1, L2 or L3");
                 return 2;
             }
-            var enforcer = new Enforcer(rootPath, cfg, effective);
+            var enforcer = new Enforcer(rootPath, cfg, effective, config ?? "acima.config.json");
             var findings = enforcer.Run();
             var baseline = baselinePath is null
                 ? null
@@ -1788,7 +3396,7 @@ internal static class Program
     {
         try
         {
-            var good = new Enforcer(root, Load(root, "acima.config.json"), "L3").Run();
+            var good = new Enforcer(root, Load(root, "acima.config.json"), "L3", "acima.config.json").Run();
             if (good.Count > 0)
             {
                 Console.Error.WriteLine("acima: the production tree is not clean");
@@ -1796,7 +3404,7 @@ internal static class Program
                 return 1;
             }
 
-            var gallery = new Enforcer(root, Load(root, "acima.gallery.config.json"), "L3").Run();
+            var gallery = new Enforcer(root, Load(root, "acima.gallery.config.json"), "L3", "acima.gallery.config.json").Run();
             var expectedPath = Path.Combine(root, "violations", "expected.json");
             var expected = JsonSerializer.Deserialize<Dictionary<string, List<string>>>(File.ReadAllText(expectedPath))
                            ?? new Dictionary<string, List<string>>();
@@ -1846,10 +3454,11 @@ internal static class Program
     {
         if (format == "json")
         {
+            var notExecuted = Enforcer.NotExecutedFor(cfg);
             var execution = Enforcer.CatalogRules.OrderBy(pair => pair.Key, StringComparer.Ordinal)
                 .ToDictionary(
                     pair => pair.Key,
-                    pair => (object)(Enforcer.NotExecutedRules.TryGetValue(pair.Key, out var reason)
+                    pair => (object)(notExecuted.TryGetValue(pair.Key, out var reason)
                         ? new { executed = false, reason }
                         : new { executed = true }));
             object? profileSummary = cfg?.Profile is null ? null : new
@@ -1890,6 +3499,7 @@ internal static class Program
                     line = f.Line,
                     evidence = f.Evidence,
                     fingerprint = f.Fingerprint,
+                    classification = f.Classification,
                     status = baseline is null ? "unclassified" : (baseline.Contains(f.Fingerprint) ? "pre-existing" : "new"),
                 }),
             };

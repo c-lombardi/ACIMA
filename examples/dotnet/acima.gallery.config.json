@@ -100,11 +100,114 @@
       "namespaces": [
         "Acima.SharedKernel"
       ]
+    },
+    {
+      "id": "syntax.port",
+      "role": "port",
+      "paths": [
+        "violations/tier_port.cs"
+      ],
+      "namespaces": [
+        "Acima.Syntax"
+      ]
+    },
+    {
+      "id": "syntax.adapter",
+      "module": "syntax",
+      "role": "adapter",
+      "paths": [
+        "violations/tier_adapter.cs"
+      ],
+      "namespaces": [
+        "Acima.Syntax"
+      ]
+    },
+    {
+      "id": "syntax.orphan",
+      "module": "syntax",
+      "role": "adapter",
+      "paths": [
+        "violations/tier_orphan_adapter.cs"
+      ],
+      "namespaces": [
+        "Acima.Syntax"
+      ]
+    },
+    {
+      "id": "composition.host",
+      "role": "host",
+      "paths": [
+        "violations/composition_host.cs"
+      ],
+      "namespaces": [
+        "Acima.Violations"
+      ]
+    },
+    {
+      "id": "composition.impl",
+      "module": "composition",
+      "role": "implementation",
+      "paths": [
+        "violations/composition_impl.cs",
+        "violations/composition_capture_field.cs"
+      ],
+      "namespaces": [
+        "Acima.Violations"
+      ]
+    },
+    {
+      "id": "lifecycle.host",
+      "role": "host",
+      "paths": [
+        "violations/lifecycle_host.cs"
+      ],
+      "namespaces": [
+        "Acima.Violations"
+      ]
+    },
+    {
+      "id": "values.impl",
+      "module": "values",
+      "role": "implementation",
+      "paths": [
+        "violations/values_impl.cs"
+      ],
+      "namespaces": [
+        "Acima.Violations"
+      ]
+    },
+    {
+      "id": "naming.impl",
+      "module": "naming",
+      "role": "implementation",
+      "paths": [
+        "violations/naming_impl.cs"
+      ],
+      "namespaces": [
+        "Acima.Violations"
+      ]
     }
   ],
   "exclude": [
     "bin",
     "obj"
+  ],
+  "externals": {
+    "Microsoft.CodeAnalysis.CSharp": {
+      "tier": "integration",
+      "owner": "team-architecture",
+      "reason": "Roslyn syntax APIs are isolated behind the syntax adapter.",
+      "adapter": "syntax.adapter",
+      "port": "syntax.port",
+      "reviewedOn": "2026-11-13",
+      "expires": "2027-11-13",
+      "types": [
+        "CSharpSyntaxTree"
+      ]
+    }
+  },
+  "partialHelpers": [
+    "Partial"
   ],
   "waivers": "violations/waivers.json"
 }

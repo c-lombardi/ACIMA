@@ -208,13 +208,17 @@ one is `D016`.
 |---|---|---|---|
 | TypeScript/JavaScript | function/arrow parameters; constructor fields; host bind/partial; pure HOFs | module-level collaborator captured by an arrow; `bind`/`partial` of a collaborator inside a component | `D015`, `D016` |
 | Python | function/lambda parameters; constructor fields; host `functools.partial`; pure closures | module-level/global collaborator closed over; `partial` of a collaborator inside a component | `D015`, `D016` |
-| C#/.NET | constructor/base parameters; method parameters; explicit delegates; host composition | lambda/method group capturing `IServiceProvider` or a service; partial-like delegate binding inside a component | manual in this revision |
-| Go | `NewX(dep)` arguments; explicit struct fields set at construction; pure closures | function literal closing over a package/global repository; `init()` wiring | manual in this revision |
+| C#/.NET | constructor/base parameters; method parameters; explicit delegates; host composition | lambda/local function capturing a static field or enclosing local; partial-like helper binding inside a component | `D015`; opt-in `D016` |
+| Go | `NewX(dep)` arguments; explicit struct fields set at construction; pure closures | function literal closing over a package/global repository; `init()` wiring | `D015`; `D016` manual |
 | Java | constructor/method parameters; explicit factories; host composition | lambda/anonymous class capturing a service field or `ApplicationContext`; field injection | manual in this revision |
 
-The portable enforcers implement `D015` and `D016` for Python and TypeScript. Go and .NET carry the
-catalog entries but report both `executed: false`; Java has no reference enforcer. A profile is not
-supported until its fixtures and enforcer pass.
+The portable enforcers implement `D015` for Python, TypeScript, Go and .NET; `D016` is implemented
+for Python and TypeScript. The .NET enforcer
+implements `D015` with Roslyn symbol ownership and makes `D016` opt-in through the configured
+`partialHelpers` allowlist; without the property it reports `D016` `executed: false`, while an
+explicit empty list is a valid declaration and executes the rule. Go reports `D016` `executed: false`;
+Java has no reference enforcer. A profile is not supported until its fixtures and
+enforcer pass.
 
 ### TypeScript specifics
 
@@ -330,7 +334,7 @@ it. “It is just a closure” is not an exception; it is the defect.
 
 ## 16.10 Enforcement and limits
 
-`D015` and `D016` execute in Python and TypeScript:
+`D015` executes in Python, TypeScript, Go and .NET; `D016` executes in Python and TypeScript:
 
 - Python uses the AST to compare direct loads in each function/lambda with its parameters and
   locals, then walks enclosing scopes. Module bindings and enclosing locals are captures; enclosing
@@ -345,8 +349,8 @@ it. “It is just a closure” is not an exception; it is the defect.
   that every callback's binding site is the composition boundary.
 - Pure closures over constants and transformations are intentionally not findings. A dependency
   captured through an unqualified wrapper or a framework-specific mechanism remains manual review.
-- Go, .NET and Java report the rules `executed: false` (or have no enforcer). A clean portable run
-  is not evidence for them.
+- Go and Java report the rules `executed: false` (or have no enforcer); .NET reports `D015` and,
+  when configured, `D016`. A clean portable run is not evidence for an unexecuted rule.
 
 The report MUST distinguish a confirmed syntactic capture, a potential framework capture, a
 reviewed composition-boundary binding, an unsupported profile and a manual-review requirement. It

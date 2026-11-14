@@ -5,6 +5,9 @@
   "ACIMA-A003": [
     "violations/a003_static.go"
   ],
+  "ACIMA-A005": [
+    "violations/a005_ambient_config.go"
+  ],
   "ACIMA-C001": [
     "violations/c001_pointer_field.go",
     "violations/c005_persistence.go",
@@ -58,6 +61,10 @@
     "violations/d005_cycle_a.go",
     "violations/d005_cycle_b.go"
   ],
+  "ACIMA-D015": [
+    "violations/d015_closure_capture.go",
+    "violations/d015_cross_file_capture.go"
+  ],
   "ACIMA-G001": [
     "violations/waivers.json"
   ],
@@ -69,6 +76,12 @@
   ],
   "ACIMA-G005": [
     "violations/g005_orphan.go"
+  ],
+  "ACIMA-G006": [
+    "violations/g006/go.mod"
+  ],
+  "ACIMA-N002": [
+    "violations/naming_conventions.go"
   ],
   "ACIMA-L001": [
     "violations/l001_sql.go"

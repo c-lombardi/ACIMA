@@ -5,6 +5,12 @@
   "level": "L3",
   "root": ".",
   "modulePath": "acima.example",
+  "manifests": [
+    "violations/g006/go.mod"
+  ],
+  "approvedDependencies": [
+    "example.com/approved"
+  ],
   "units": [
     {
       "id": "catalog.contracts",

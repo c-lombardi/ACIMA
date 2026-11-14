@@ -14,7 +14,7 @@ that an adopting application's runtime container graph has been proved.
 |---|---:|---:|---|
 | Python | 34 / 34 | 6 manual | `D013`, `D014` automated; controlled violations and positive fixture |
 | TypeScript | 34 / 34 | 6 manual | `D013`, `D014` automated; controlled violations and positive fixture |
-| Go | 23 / 34 | 11 | catalog entries only; `D013`, `D014` report `executed: false` |
+| Go | 25 / 34 | 9 | `A005` and `D015` already validated elsewhere; `D013`, `D014` report `executed: false` |
 | .NET | 23 / 34 | 11 | catalog entries only; `D013`, `D014` report `executed: false` |
 | Java | — | — | no reference enforcer; manual review only |
 

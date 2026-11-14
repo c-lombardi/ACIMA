@@ -235,9 +235,14 @@ another module, ask for it through that module's port (`A002`).
 ### Detection
 
 Python and TypeScript scan `implementation` and `adapter` units for `os.environ`, `os.getenv`,
-`process.env` and `import.meta.env`. The finding is a confirmed access; whether the component should
-receive the value remains a review decision. Go, .NET and Java report the rule as not executed and
-require manual evidence.
+`process.env` and `import.meta.env`. The .NET enforcer scans the same roles for
+`Environment.GetEnvironmentVariable(s)` and `ConfigurationManager.AppSettings`/`ConnectionStrings`;
+injected `IConfiguration` reads remain review items. The Go enforcer scans implementation and adapter
+units for `os.Getenv`, `os.LookupEnv`, `os.Environ`, `os.ExpandEnv`, `os.Args` and selectors in the
+`flag` package (including aliased imports); local aliases and shadows are resolved through the AST.
+Host and tooling units are excluded because they are composition or operator boundaries. The finding
+is a confirmed access; whether the component should receive the value remains a review decision.
+Java reports the rule as not executed and requires manual evidence.
 
 ---
 
@@ -313,8 +318,11 @@ category. Equal values with different names are not grouped; matching names and 
 review. Duplicate checks never cross module boundaries. The rule does not rewrite source or perform
 automatic refactoring.
 
-Go, .NET and Java report the rule as not executed and require manual or AI-assisted review evidence
-with source citations.
+Go and Java report the rule as not executed and require manual or AI-assisted review evidence with
+source citations. The .NET detector scans `implementation`, `adapter` and `host` units for meaningful
+mutable declarations, inline literals at source-declared calls, duplicate immutable values and
+configuration/secret-looking literals; it does not infer receiving parameters across an unresolved
+overload.
 
 ---
 
@@ -376,10 +384,25 @@ service has mutable state, do not simply promote it to singleton: give the state
 
 Python and TypeScript read explicit host registrations (`register(... lifetime=...)`,
 `add_singleton`/`add_scoped`/`add_transient`, `register(Class, { lifetime })` and
-`addSingleton`/`addScoped`/`addTransient`). A transient registration fires when the class body has
-no `this.`/`self.` field writes and no constructor-assigned state. That is evidence of statelessness,
-not proof of thread safety. Domain objects and unregistered classes are not evaluated. Go, .NET and
-Java report `executed: false`.
+`addSingleton`/`addScoped`/`addTransient`). A transient registration fires when the class is
+**behaviorally stateless**: there is one required construction path, no mutable instance or static
+state, no property setter and no field assignment outside that constructor. A readonly field or
+parameter property populated from a constructor parameter is a dependency, not state, so a service
+that injects a repository, clock or logger can still be reported as stateless.
+
+Python accepts fields assigned directly from an `__init__` parameter; it rejects a second
+`__init__`, defaults, `*args`/`**kwargs`, mutable containers, reassignment, augmented assignment and
+`@setter`. A frozen dataclass with no defaulted fields and no `__post_init__` is accepted. TypeScript
+accepts `readonly` fields and `readonly` constructor parameter properties, and rejects non-readonly
+or mutable-container fields, setters, optional/rest/defaulted parameters, multiple constructors and
+assignments outside the constructor. C# accepts `readonly` fields, get-only properties and primary
+constructor parameters without defaults; it rejects setters/`init`, mutable fields or statics,
+multiple constructors and assignments outside the constructor. D011 independently owns defaulted
+constructor parameters; A007 declines to call such a constructor stateless rather than duplicating
+the finding.
+
+That is evidence of behavioral statelessness, not proof of thread safety. Domain objects and
+unregistered classes are not evaluated. Go and Java report `executed: false`.
 
 ---
 
@@ -448,9 +471,10 @@ and is `L004`.
 Python and TypeScript compare explicit host registrations. A shared/singleton class fires when its
 constructor declares a dependency that is registered scoped in the same host. Only direct
 constructor annotations are resolved. Framework proxies, property injection, factory closures,
-decorator scopes and runtime resolution are manual-review items. Go, .NET and Java report
-`executed: false`; .NET's container can validate some captive dependencies at startup, but that is
-native evidence, not this rule.
+decorator scopes and runtime resolution are manual-review items. Go and Java report `executed: false`.
+The .NET enforcer resolves direct constructor/primary-constructor dependencies through its host
+registration map for `AddSingleton`/`AddScoped`/`TryAdd*`; factories, keyed services and open generics
+remain manual, and native container validation is not this rule.
 
 ---
 
@@ -519,7 +543,9 @@ Python and TypeScript inspect the class body of a shared/singleton registration 
 container initialised as a field: `list`/`dict`/`set`, `Map`/`Set`/array/object literal, or an
 assignment to `this`/`self`. A mutable field is not proof of a race; it is evidence that a policy
 must be stated. Legitimate owned and synchronized state is reviewed rather than automatically
-rejected. Go, .NET and Java report `executed: false`.
+rejected. Go and Java report `executed: false`. The .NET enforcer reports a shared class whose instance
+field or property is a mutable container (`List`, `Dictionary`, `HashSet`, `Collection`, `Concurrent*`,
+an array); static state remains `A003`, and the finding is an ownership question, not proof of a race.
 
 ---
 
@@ -1019,8 +1045,11 @@ being a review.
 ### Detection
 
 Read every manifest named by the config's `manifests` list, or `package.json`, `pyproject.toml` and
-`requirements.txt` when the list is absent. `dependencies` and requirements entries are checked;
-`devDependencies` are not, because they do not ship. An entry with an unknown tier, a missing field
-or a non-ISO date is `G001`. When `externals` is absent the rule reports `executed: false` — package
-governance was not declared, and a silent pass would be a false one. **Implemented for Python and
-TypeScript**; Go and .NET report the rule `executed: false` in this revision.
+`requirements.txt` when the list is absent. For .NET, `.csproj` files are read and their direct
+`PackageReference` entries are checked. For Go, `go.mod` is read and its direct `require` entries are
+checked against `approvedDependencies`; entries marked `// indirect` are ignored. `dependencies` and
+requirements entries are checked; `devDependencies` are not, because they do not ship. An entry with
+an unknown tier, a missing field or a non-ISO date is `G001`. When `externals` is absent the rule
+reports `executed: false` for Python, TypeScript and .NET, and when `approvedDependencies` is absent
+it reports `executed: false` for Go — package governance was not declared, and a silent pass would be
+a false one. **Implemented for Python, TypeScript, .NET and Go.**

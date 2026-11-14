@@ -10,6 +10,11 @@ class LifecycleRequestContext:
     pass
 
 
+class LifecycleInjectedService:
+    def __init__(self, context: LifecycleRequestContext):
+        self._context = context
+
+
 class LifecycleOrdersService:
     def __init__(self, context: LifecycleRequestContext):
         self._context = context
@@ -22,5 +27,6 @@ class LifecyclePriceCache:
 
 register(LifecycleOrderValidator, lifetime="transient")
 register(LifecycleRequestContext, lifetime="scoped")
+register(LifecycleInjectedService, lifetime="transient")
 register(LifecycleOrdersService, lifetime="singleton")
 register(LifecyclePriceCache, lifetime="singleton")
