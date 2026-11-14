@@ -146,6 +146,22 @@ class HtmlReportTests(unittest.TestCase):
             self.assertIn('Current phase',plan)
             self.assertIn('Phase 2 — Review and authorize',plan)
 
+    def test_legacy_full_state_still_renders_the_answer_controls(self):
+        renderer=adoption_reports._load_module(SCRIPT,'acima_adoption_html_renderer_legacy_full')
+        data=model()
+        data['console']={'reportId':'a'*20,'generation':0,'mode':'full',
+            'objectives':[{'id':'local-enforcement','requiredPaths':['acima.config.json']}],
+            'paths':[{'path':'acima.config.json','requiredBy':['local-enforcement']}]}
+        data['adoptionWorkflow']={'mode':'full','stages':[],'next':{},
+            'phase':'review_and_authorize','phaseLabel':'Phase 2 — Review and authorize',
+            'phaseOrder':['assess','review_and_authorize','implement','verify_and_hand_off']}
+        self.assertEqual(renderer.validate_console(data),[])
+        self.assertEqual(renderer.validate_progress(data),[])
+        self.assertIn('Answer this report',renderer.console_strip(data,'plan.html'))
+        self.assertIn('id="owner-answers"',renderer.owner_answers(data))
+        self.assertIn('id="scope-paths"',renderer.scope_paths(data))
+        self.assertNotIn('Automated adoption records answers',renderer.console_strip(data,'plan.html'))
+
     def test_plan_page_does_not_invent_a_missing_phase(self):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td); src=root/'model.json'; out=root/'report'

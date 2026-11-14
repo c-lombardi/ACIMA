@@ -995,24 +995,25 @@ class AdoptionWorkflowTests(unittest.TestCase):
             self.assertEqual(state["stages"]["agent_guidance"]["status"], "complete")
             self.assertTrue((root / "acima/handoff/adoption-handoff.md").is_file())
 
-    def test_preflight_requires_an_explicit_full_authorization(self) -> None:
+    def test_preflight_reports_one_read_only_adoption_flow(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             fixture(root)
             command = [sys.executable, str(ROOT / "skills/acima-adoption/scripts/preflight.py"),
                        "--project", str(root), "--format", "json"]
-            no_choice = subprocess.run(command, capture_output=True, text=True)
-            self.assertEqual(no_choice.returncode, 0, no_choice.stderr)
-            self.assertIsNone(json.loads(no_choice.stdout)["automation"]["mode"])
-            unauthorized = subprocess.run(command + ["--automation-mode", "full"],
-                                          capture_output=True, text=True)
-            self.assertEqual(unauthorized.returncode, 2)
-            self.assertIn("authorize-full-automation", unauthorized.stderr)
-            authorized = subprocess.run(command + ["--automation-mode", "full",
-                                                   "--authorize-full-automation"],
-                                        capture_output=True, text=True)
-            self.assertEqual(authorized.returncode, 0, authorized.stderr)
-            self.assertEqual(json.loads(authorized.stdout)["automation"]["mode"], "full")
+            report = subprocess.run(command, capture_output=True, text=True)
+            self.assertEqual(report.returncode, 0, report.stderr)
+            automation = json.loads(report.stdout)["automation"]
+            self.assertEqual(automation["mode"], "guided")
+            self.assertIn("read-only", automation["meaning"])
+            full = subprocess.run(command + ["--automation-mode", "full"],
+                                  capture_output=True, text=True)
+            self.assertEqual(full.returncode, 2)
+            self.assertIn("unrecognized arguments", full.stderr)
+            authorization = subprocess.run(command + ["--authorize-full-automation"],
+                                           capture_output=True, text=True)
+            self.assertEqual(authorization.returncode, 2)
+            self.assertIn("unrecognized arguments", authorization.stderr)
 
     def test_cli_exposes_the_workflow(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

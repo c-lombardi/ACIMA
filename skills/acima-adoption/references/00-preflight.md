@@ -130,8 +130,8 @@ automation. Start the read-only assessment without a mode and record it with
 the same checkpoints, but a new `--mode full` start is refused. A request to assess or adopt is not
 consent to implementation, CI, a deployment, release, commit or push.
 
-`preflight.py --automation-mode guided|full` remains a read-only compatibility report. It does not
-start adoption and does not authorize any target write.
+Preflight has no automation-mode option. Its JSON reports the one guided flow and states that
+preflight itself authorizes no target write.
 
 ## Reading the report
 

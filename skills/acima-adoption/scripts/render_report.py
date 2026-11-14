@@ -983,14 +983,11 @@ def console_strip(d,file):
     wf=d.get('adoptionWorkflow') or {}
     log=[x for x in arr(wf.get('decisionLog')) if isinstance(x,dict) and x.get('status')=='in force']
     answered=len({(x.get('kind'),x.get('id')) for x in log})
-    mode=console.get('mode') or 'guided'
-    answer_link=('<a href="plan.html#owner-answers">Answer this report</a>' if mode!='full' else
-                 '<span>Automated adoption records answers in one consolidated review, not on this page.</span>')
     return (f'<p class="console-strip"><small>REPORT IDENTITY</small> <code>{e(console.get("reportId"))}</code> '
             f'<span aria-hidden="true">&middot;</span> version {e(int(console.get("generation") or 0) + 1)} '
             f'<span aria-hidden="true">&middot;</span> {(str(answered) + " answers in force") if answered else "No answers in force yet"} '
             f'<span aria-hidden="true">&middot;</span> <a href="plan.html#decision-log">Decision log</a> '
-            f'<span aria-hidden="true">&middot;</span> {answer_link}</p>')
+            f'<span aria-hidden="true">&middot;</span> <a href="plan.html#owner-answers">Answer this report</a></p>')
 
 
 def answer_label(kind, identifier):
@@ -1050,7 +1047,7 @@ def workflow_history(d):
 
 def owner_answers(d):
     console=d.get('console') or {}
-    if (console.get('mode') or 'guided')=='full' or not console.get('reportId'):
+    if not console.get('reportId'):
         return ''
     remediation=(d.get('adoptionWorkflow') or {}).get('consoleState',{}).get('remediation') or {}
     objectives=''
@@ -1093,7 +1090,7 @@ def owner_answers(d):
 
 def scope_paths(d):
     console=d.get('console') or {}
-    if (console.get('mode') or 'guided')=='full' or not console.get('reportId'):
+    if not console.get('reportId'):
         return ''
     paths=arr(console.get('paths'))
     if not paths:
@@ -1139,6 +1136,7 @@ def validate_console(d):
         return p
     if not re.fullmatch(r'[a-f0-9]{20}',str(console.get('reportId') or '')):
         p.append('console.reportId must be a 20-hex report identity.')
+    # Legacy full state remains readable; mode no longer changes the answer controls.
     if console.get('mode') not in ('guided','full'):
         p.append('console.mode must be guided or full.')
     seen=set()
@@ -1250,6 +1248,7 @@ def validate_progress(d):
     workflow=d.get('adoptionWorkflow')
     if workflow is None:
         return p
+    # Legacy full state remains readable; the report renders the same checkpoint controls.
     if not isinstance(workflow,dict) or workflow.get('mode') not in ('guided','full'):
         return ['adoptionWorkflow.mode must be guided or full.']
     if workflow.get('phase') is not None and not isinstance(workflow.get('phase'),str):

@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 import sys
 
@@ -11,7 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "conformance"))
 import adoption_ci as ci  # noqa: E402
 import adoption_workflow as workflow  # noqa: E402
-from test_adoption_workflow import fixture, map_review, scope  # noqa: E402
+from test_adoption_workflow import (fixture, full_start, map_review, remediate, scope,
+                                    write)  # noqa: E402
 
 
 def scope_without_ci(root: Path) -> Path:
@@ -135,6 +137,43 @@ class SocketTests(unittest.TestCase):
                     reviewed_by="Repository owner",
                 )
             self.assertFalse((root / ci.WORKFLOW_FILE).exists())
+
+    def test_ci_approval_repins_revision_before_selected_remediation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            write(root, ".github/workflows/existing.yml",
+                  "name: existing\non: pull_request\njobs:\n  test:\n    runs-on: ubuntu-latest\n")
+            real_revision = workflow._revision
+
+            def git_visible_revision(path: Path) -> dict:
+                # The fixture is not a Git checkout. Simulate the working-tree change that the
+                # CI workflow write creates, so a missing re-pin is a real failure here too.
+                value = real_revision(path)
+                marker = "with-ci" if (Path(path) / ci.WORKFLOW_FILE).is_file() else "before-ci"
+                return {**value, "workingTree": marker + ":" + str(value.get("workingTree"))}
+
+            with mock.patch.object(workflow, "_revision", side_effect=git_visible_revision):
+                state = full_start(root)
+                self.assertEqual(state["stages"]["ci"]["status"], "complete")
+                self.assertTrue((root / ci.WORKFLOW_FILE).is_file())
+                self.assertTrue(state["repository"]["revision"]["workingTree"].startswith("with-ci:"))
+                self.assertEqual(state["repository"]["revision"], workflow._revision(root))
+
+                plan_path = root / workflow.REMEDIATION_PLAN
+                plan = json.loads(plan_path.read_text(encoding="utf-8"))
+                plan["recommendations"] = [{
+                    "id": "orders", "title": "Update orders", "status": "ready",
+                    "affectedFiles": ["src/orders/service.py"],
+                    "changes": [{"action": "replace", "path": "src/orders/service.py",
+                                 "find": "return 1", "replace": "return 2"}],
+                }]
+                plan_path.write_text(json.dumps(plan), encoding="utf-8")
+
+                state = remediate(root, "selected", selected=["orders"],
+                                  approved_by="Repository owner", confirm=True)
+                self.assertEqual(state["remediation"]["outcome"], "complete")
+                self.assertIn("return 2", (root / "src/orders/service.py").read_text(encoding="utf-8"))
 
     def test_reentry_requires_fresh_scope_before_ci_approval(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

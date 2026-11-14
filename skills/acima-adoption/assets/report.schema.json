@@ -518,7 +518,7 @@
     },
     "adoptionWorkflow": {
       "type": "object",
-      "description": "Persisted guided or full-automation workflow state and its stage evidence.",
+      "description": "Persisted workflow state and stage evidence. Legacy full values remain readable; they no longer change how the report renders.",
       "required": ["mode", "stages", "phase", "phaseLabel", "phaseOrder"],
       "properties": {
         "mode": { "enum": ["guided", "full"] },

@@ -960,32 +960,15 @@ def main() -> int:
     parser.add_argument("--write-waivers", dest="write_waivers", default=None,
                         help="write scoped waivers from the measured baseline")
     parser.add_argument("--strict", action="store_true", help="treat warnings as blockers")
-    parser.add_argument("--automation-mode", choices=["guided", "full"], default=None,
-                        help="explicitly choose guided adoption or full automation for this engagement")
-    parser.add_argument("--authorize-full-automation", action="store_true",
-                        dest="authorize_full_automation",
-                        help="required with --automation-mode full; authorizes routine implementation steps")
     args = parser.parse_args()
-    if args.authorize_full_automation and args.automation_mode != "full":
-        print("acima: --authorize-full-automation requires --automation-mode full", file=sys.stderr)
-        return 2
-    if args.automation_mode == "full" and not args.authorize_full_automation:
-        print("acima: full automation requires --authorize-full-automation; no write was made",
-              file=sys.stderr)
-        return 2
 
     manifest_path = Path(args.manifest).resolve()
     project = Path(args.project).resolve()
     report = Report()
     report.automation = {
-        "mode": args.automation_mode,
-        "fullAutomationAuthorized": bool(args.authorize_full_automation),
-        "meaning": ("Explicit authorization to apply routine adoption steps inside the target; "
-                    "deployment, release, commit and push remain separately unauthorized."
-                    if args.automation_mode == "full" else
-                    "Guided adoption: generate artifacts and wait for explicit approval before consequential changes."
-                    if args.automation_mode == "guided" else
-                    "No automation mode selected; assessment remains read-only."),
+        "mode": "guided",
+        "meaning": ("ACIMA has one four-phase adoption flow. Preflight is read-only and does not "
+                    "authorize implementation, CI, deployment, release, commit or push."),
     }
 
     try:
@@ -1096,9 +1079,7 @@ def print_text(report: Report, manifest: dict, project: Path, units: list[dict],
     print(f"  target   {project}")
     print(f"  mode     {report.mode} · architecture {report.architecture_mode} · "
           f"language {report.language}")
-    if report.automation.get("mode"):
-        print(f"  workflow guided={report.automation['mode'] == 'guided'} · "
-              f"full automation authorized={report.automation.get('fullAutomationAuthorized', False)}")
+    print("  workflow one four-phase adoption flow; preflight is read-only")
     print()
     for check in report.checks:
         print(f"  {symbols.get(check.status, '?   ')}{check.id:<8} {check.detail}")
