@@ -144,34 +144,34 @@ def test_proposal_contract_is_reviewable() -> None:
     assert "Merge, publish or release" in skill
 
 
-def test_five_phase_consent_and_optional_artifacts() -> None:
+def test_four_phase_consent_and_optional_artifacts() -> None:
     """The authoritative skill and its reference agree on consent and artifact status."""
     skill = " ".join(SKILL.read_text(encoding="utf-8").split())
     reference = " ".join(CONSENT_REF.read_text(encoding="utf-8").split())
 
     # The canonical phase names come from the product contract (WS-00) and are asserted here so the
     # skill, CLI and report cannot drift apart again.
-    for phase in ("Phase 1 — Assess", "Phase 2 — Explain and propose",
-                  "Phase 3 — Review and authorize",
-                  "Phase 4 — Implement",
-                  "Phase 5 — Verify and hand off"):
+    for phase in ("Phase 1 — Assess", "Phase 2 — Review and authorize",
+                  "Phase 3 — Implement",
+                  "Phase 4 — Verify and hand off"):
         assert phase in skill, phase
     assert "Phase 3 — Approved adoption" not in skill
+    assert "guided or automated adoption" not in skill
     assert "Do not create optional artifacts" in skill
     assert "Every adoption ends with" not in skill, "the summary must not be mandatory"
     assert "Do not create a communication plan by default" in skill
     assert "optional" in skill.lower()
 
-    assert "The five phases" in reference
-    for phase in ("Phase 3 — Review and authorize", "Phase 4 — Implement",
-                  "Phase 5 — Verify and hand off"):
+    assert "The four phases" in reference
+    for phase in ("Phase 2 — Review and authorize", "Phase 3 — Implement",
+                  "Phase 4 — Verify and hand off"):
         assert phase in reference, phase
     assert "optional unless the owner asks" in reference
 
     for path in ("references/10-greenfield.md", "references/20-brownfield.md"):
         text = " ".join((SKILL.parent / path).read_text(encoding="utf-8").split())
+        assert "Phase 2" in text, path
         assert "Phase 3" in text, path
-        assert "Phase 4" in text, path
 
     for name in ("adoption-plan.md", "communication-plan.md"):
         text = " ".join((SKILL.parent / "assets" / name).read_text(encoding="utf-8").split())

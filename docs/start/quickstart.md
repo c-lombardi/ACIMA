@@ -5,19 +5,18 @@ architectural violation. The Python path needs only Python 3.12.
 
 ## What will happen
 
-ACIMA follows five phases. Before Phase 1, **Start** establishes the repository and asks whether you
-prefer guided or automated adoption when no mode is already chosen. You can stop at any phase, and
-nothing is written to your repository until you approve an exact scope.
+ACIMA follows four phases. **Start** establishes the repository; it is an entry point, not a phase.
+There is one adoption flow, and nothing is written to your repository until you approve an exact
+scope.
 
 | Phase | What you get |
 |---|---|
-| **Phase 1 — Assess** | A read-only answer to "is ACIMA a fit here, and what did it find?" |
-| **Phase 2 — Explain and propose** | A recommendation, the exact proposed changes, costs, risks and the six-page report |
-| **Phase 3 — Review and authorize** | You approve, change, defer or decline named paths and stages |
-| **Phase 4 — Implement** | Only the approved work, stage by stage |
-| **Phase 5 — Verify and hand off** | Fresh checks and an honest statement of what is proven and what is not |
+| **Phase 1 — Assess** | A read-only answer to "is ACIMA a fit here, and what did it find?" plus a proposed map |
+| **Phase 2 — Review and authorize** | One decision record covering the recommendation, exact changes, costs, risks, the six-page report and named paths |
+| **Phase 3 — Implement** | Only the approved work: configuration, enforcement, CI and any approved remediation rounds |
+| **Phase 4 — Verify and hand off** | Fresh checks and an honest statement of what is proven and what is not |
 
-The quickstart below exercises phases 1 and 5 on ACIMA's own examples. Nothing here is an adoption
+The quickstart below exercises phases 1 and 4 on ACIMA's own examples. Nothing here is an adoption
 authorization for another repository.
 
 ## 1. Run the reference application

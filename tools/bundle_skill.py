@@ -34,6 +34,7 @@ SOURCES = [
     "conformance/qualitative_review.py",
     "conformance/module_map.py",
     "conformance/adoption_workflow.py",
+    "conformance/adoption_ci.py",
     "conformance/adoption_decisions.py",
     "conformance/adoption_reports.py",
     "conformance/agent_guidance.py",

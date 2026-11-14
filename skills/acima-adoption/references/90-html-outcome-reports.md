@@ -240,14 +240,13 @@ The owner answers pages locally and each answered page writes one decisions file
 `kind`, an `id` and a `decision` of `accept`, `modify`, `defer` or `reject`. A checked box is never
 consent: approving implementation remains a separate command bound to the report digest.
 
-In guided adoption the Plan and Files pages carry the controls: objectives and remediation on Plan,
+The Plan and Files pages carry the controls: objectives and remediation on Plan,
 per-path scope on Files, with visible labels, a *Needed for* note on paths a stage needs, and
 every proposed file selected only by an explicit click. *Save answers file* downloads
 `acima-decisions-<reportId>-<page>.json`; in-place save is offered only where the File System Access
 API exists on a secure context. *Copy answers* supports paste-back in chat, and a no-JavaScript
 template shows the answers current at generation so the report stays answerable without script; the
-Files page prints the same template for its path answers. In automated adoption the pages show
-history but no answer controls.
+Files page prints the same template for its path answers.
 
 A page cannot hash its own bytes, so `reportSha256` and `decisionSha256` are optional: the workflow
 completes them from the report it has verified on disk, after checking `reportId` and the live

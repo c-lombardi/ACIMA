@@ -4508,17 +4508,20 @@ def main() -> int:
 
     adoption = sub.add_parser("adoption", help="end-to-end guided or explicitly authorized adoption")
     adoption.add_argument("action", choices=("start", "status", "approve", "apply", "continue",
-                                            "remediate", "guidance", "decisions", "regenerate"))
+                                            "remediate", "guidance", "decisions", "regenerate",
+                                            "ci"))
     adoption.add_argument("--root", default=".")
     adoption.add_argument("--mode", choices=("guided", "full"), default=None,
-                          help="required for start: guided or automated preparation (full)")
+                          help="legacy compatibility only; new engagements use one flow")
     adoption.add_argument("--authorize-full", action="store_true", dest="authorize_full",
-                          help="required to select automated mode; implementation still needs scope approval")
+                          help=argparse.SUPPRESS)
     adoption.add_argument("--reviewer", default=None)
     adoption.add_argument("--review", default=None,
                           help="validated 56-rule qualitative review JSON required before adoption")
     adoption.add_argument("--map-decisions", default=None)
     adoption.add_argument("--scope", default=None)
+    adoption.add_argument("--decisions", dest="decision_source", default=None,
+                          help="one owner decisions file; records intent and, when complete, the approval receipt")
     adoption.add_argument("--reviewed-report-sha256", default=None,
                           help="exact digest of the HTML proposal the owner reviewed")
     adoption.add_argument("--reviewed-by", default=None,
@@ -4536,10 +4539,18 @@ def main() -> int:
     adoption.add_argument("--confirm-scope", action="store_true", dest="confirm_scope")
     adoption.add_argument("--confirm-implementation", action="store_true",
                           dest="confirm_implementation")
+    adoption.add_argument("--plan", action="store_true", dest="ci_plan",
+                          help="ci: produce a reviewable plan without writing a workflow")
+    adoption.add_argument("--decline", action="store_true",
+                          help="ci: record a declined CI decision")
+    adoption.add_argument("--plan-sha256", default="",
+                          help="ci: exact digest of the reviewed plan")
+    adoption.add_argument("--refresh", action="store_true",
+                          help="ci: revalidate and rebuild the report before planning again")
+    adoption.add_argument("--reason", default=None,
+                          help="regenerate or CI decline: recorded reason")
     adoption.add_argument("--from", dest="source", default=None,
                           help="decisions: owner decisions JSON produced by the report or by conversation")
-    adoption.add_argument("--reason", default=None,
-                          help="regenerate: why the report is being rebuilt; recorded in workflow state")
     adoption.add_argument("--format", choices=("json", "text"), default="json")
 
     args = parser.parse_args()
@@ -4552,12 +4563,12 @@ def main() -> int:
         root = Path(args.root).resolve()
         try:
             if args.action == "start":
-                if not args.mode:
-                    print("acima: adoption start requires --mode guided or --mode full (automated)",
+                if args.mode == "full":
+                    print("acima: automated adoption was removed; start one adoption flow without --mode full",
                           file=sys.stderr)
                     return 2
                 result = adoption_workflow.start(
-                    root, args.mode, authorize_full=args.authorize_full,
+                    root, args.mode or "guided", authorize_full=False,
                     reviewer=args.reviewer,
                     review_path=Path(args.review) if args.review else None)
             elif args.action == "status":
@@ -4569,7 +4580,9 @@ def main() -> int:
                     scope=Path(args.scope) if args.scope else None,
                     reviewer=args.reviewer,
                     reviewed_report_sha256=args.reviewed_report_sha256,
-                    reviewed_by=args.reviewed_by)
+                    reviewed_by=args.reviewed_by,
+                    decision_source=(Path(args.decision_source)
+                                     if getattr(args, "decision_source", None) else None))
             elif args.action == "apply":
                 result = adoption_workflow._apply(root, adoption_workflow._load(root))
             elif args.action == "guidance":
@@ -4584,18 +4597,24 @@ def main() -> int:
                     print("acima: adoption regenerate requires --reason <why>", file=sys.stderr)
                     return 2
                 result = adoption_workflow.regenerate(root, reason=args.reason, reviewer=args.reviewer)
+            elif args.action == "ci":
+                result = adoption_workflow.ci(
+                    root, plan_only=args.ci_plan, approve=args.approve,
+                    decline=args.decline, plan_sha256=args.plan_sha256,
+                    reviewed_by=args.reviewed_by or "", reason=args.reason or "",
+                    refresh=args.refresh)
             elif args.action == "remediate":
-                if not args.choice:
-                    print("acima: adoption remediate requires --choice none, selected, or all",
+                if not args.choice and not args.ci_plan:
+                    print("acima: adoption remediate requires --choice none, selected, or all, or --plan",
                           file=sys.stderr)
                     return 2
                 result = adoption_workflow.remediate(
-                    root, args.choice, selected=args.selected, approved_by=args.approved_by,
+                    root, args.choice or "none", selected=args.selected, approved_by=args.approved_by,
                     confirm=args.confirm, confirm_scope=args.confirm_scope,
                     confirm_implementation=args.confirm_implementation,
                     maturity_choice=args.maturity_choice,
                     approved_plan_sha256=args.approved_plan_sha256,
-                    approved_paths=args.approved_path)
+                    approved_paths=args.approved_path, plan_only=args.ci_plan)
             else:
                 result = adoption_workflow.continue_workflow(root)
         except (adoption_workflow.WorkflowError, adoption_workflow.ModuleMapError,

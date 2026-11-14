@@ -178,7 +178,7 @@ class AgentGuidanceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             fixture(root)
-            workflow.start(root, "full", authorize_full=True)
+            workflow.start(root, "guided")
             state = workflow._load(root)
             state["blockers"] = ["Owner must confirm the inventory ownership."]
             result = guidance.proposal(root, state)

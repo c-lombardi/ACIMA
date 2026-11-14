@@ -4,7 +4,7 @@
 
 **Product framing:** Architecture that enforces itself.
 
-**Status:** orchestration plan and workstream contracts. These documents do not change the normative ACIMA standard or authorize changes to another repository.
+**Status:** historical orchestration plan and workstream contracts. These documents do not change the normative ACIMA standard or authorize changes to another repository. The mode choice and five-phase model recorded here were superseded by the approved [adoption redesign](adoption-redesign-implementation.md): one flow, four phases, read-only preparation, CI before remediation and a repeatable remediation loop.
 
 ## The product in one explanation
 

@@ -25,17 +25,11 @@ When no mode has been selected in the current engagement, ask:
 > at meaningful checkpoints. You decide what happens at each stage.
 >
 > **Automated adoption:** I inspect the application, complete the assessment, prepare the
-> architecture map, recommendations, enforcement tooling, agent guidance, and CI proposal, then
-> present everything together. You choose which changes to authorize, and I implement the selected
-> stages.
->
-> Which workflow would you prefer?
-
-Do not silently choose based on experience, repository maturity, or existing configuration. If a
-mode was explicitly selected in the current engagement, preserve it. Persist the mode in
-acima/state.json. A mode choice authorizes analysis and preparation only; it does not
-authorize target implementation, source remediation, CI changes, commits, pushes, releases or
-deployment.
+There is one adoption flow. Start the read-only assessment without asking the owner to choose a
+mode. Assessment and preparation are read-only; map approval and scope approval are separate
+checkpoints; implementation begins only after one owner decision record and approval receipt bind
+the exact report, objectives and paths. Legacy `full` state can be resumed but cannot be newly
+started, and it grants no implementation privilege.
 
 ## Shared foundation: mandatory assessment and discovery
 
@@ -47,7 +41,7 @@ generated agent guidance; and copied enforcers live under `acima/tooling/`. The 
 `acima/optional/` and are created only when explicitly requested. Existing `.acima/` and
 `docs/acima/` evidence is read for migration but never written.
 
-Both workflows must complete the same foundation.
+The adoption flow must complete the same foundation.
 
 1. Discover the repository, production languages, architecture, existing module declarations,
    contracts, dependencies, composition, data/configuration ownership, entry points, tests,
@@ -73,9 +67,7 @@ Structural validation proves coverage and evidence provenance, not the semantic 
 agent's reasoning; the agent must independently inspect the evidence and author each disposition.
 Start adoption only after validation succeeds:
 
-    python tools/acima.py adoption start --root . --mode guided --review acima/evidence/qualitative-review.json
-
-For automated adoption, use --mode full --authorize-full with the same --review argument.
+    python tools/acima.py adoption start --root . --review acima/evidence/qualitative-review.json
 A decision-ready adoption proposal requires all 56 valid dispositions and a complete, reviewed
 ownership map. Discovery and independent qualitative work may continue while a map is unresolved.
 Never claim an assessment complete merely because the catalog expects 56 records.

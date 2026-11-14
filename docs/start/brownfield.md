@@ -4,20 +4,20 @@ Most adopters already have a running system, years of history, and no appetite f
 rewrite. ACIMA is designed for that starting point: **measure first, gate second, fix one
 boundary at a time**.
 
-**Start** establishes the repository and asks whether the owner prefers guided or automated adoption
-when no mode has already been selected. The goal of the first phase is not a clean architecture. It is
-an honest baseline that the team can keep discussing.
+**Start** establishes the repository; it is an entry point, not a phase. There is one adoption flow.
+The goal of the first phase is not a clean architecture. It is an honest baseline that the team can
+keep discussing.
 
 **Assessment is read-only.** Nothing below that creates a file happens until the owner approves a
 proposal naming the paths and scope. “Adopt ACIMA” starts the assessment and proposal; it does not
 pre-approve unseen configuration, baseline, waivers or CI.
 
-The five phases below are the same consent workflow described in the
-[adoption skill](../../skills/acima-adoption/SKILL.md): **Phase 1 — Assess** is read-only,
-**Phase 2 — Explain and propose** makes the decision concrete, **Phase 3 — Review and authorize**
-records the exact scope, **Phase 4 — Implement** changes only approved paths, and
-**Phase 5 — Verify and hand off** proves what changed. Continuous governance begins only after those
-five phases. Only the approved paths are created; plans and communication documents are optional.
+The four phases below are the same consent workflow described in the
+[adoption skill](../../skills/acima-adoption/SKILL.md): **Phase 1 — Assess** is read-only and records
+a proposed map, **Phase 2 — Review and authorize** records one decision record and the exact scope,
+**Phase 3 — Implement** changes only approved paths and establishes CI before remediation, and
+**Phase 4 — Verify and hand off** proves what changed. Continuous governance begins only after those
+four phases. Only the approved paths are created; plans and communication documents are optional.
 
 Adoption does not replace the architecture the team already chose. Clean Architecture, Hexagonal,
 DDD, a modular monolith and microservices all remain valid shapes, but ACIMA defines its own
@@ -45,15 +45,17 @@ If the target has no `acima.config.json`, do not run `analyze` yet. The enforcer
 claim a pass without declared units; it will return a tool failure, not an architecture
 finding.
 
-## Phase 2 — Explain and propose
+## Phase 2 — Review and authorize
 
-Before creating a unit map, present the proposed modules, exact paths, status of each artifact,
-owners and tradeoffs. The proposal template and approval question are in
+Present the proposed parts of the product, exact paths, status of each artifact, owners and
+tradeoffs in the six-page report. Map approval is separate from scope approval. The owner records one
+decision record, and the approval command binds the exact report, objectives and paths. The proposal
+template and approval command are in
 [the adoption skill](../../skills/acima-adoption/assets/adoption-proposal.md).
 
-## Phase 3 — Review and authorize
+## Phase 3 — Implement
 
-Only after approval for these paths, generate a first draft when the target has no config:
+Only after scope approval, generate the root configuration at stage 0 when the target has no config:
 
 ```bash
 python3 skills/acima-adoption/scripts/preflight.py --project "$TARGET" \
@@ -78,7 +80,7 @@ Do not invent a delivery estimate. Scope is expressed by evidence: modules touch
 involved, finding counts, schema migrations and the number of consumers of a boundary.
 Time estimates remain an engineering judgement made by the team.
 
-## Phase 4 — Implement
+### Implementing the approved slice
 
 Implementation starts by measuring the state the owner approved. Do not measure or gate against an
 unreviewed map.
@@ -111,16 +113,16 @@ the repository still has to review configuration ownership manually.
 | Shared contracts | `ACIMA-D003`; decide which value types are local. |
 | Mutable contracts | `ACIMA-C001`, `C002`. |
 | Shared persistence | `ACIMA-A001`; inspect SQL and schema ownership. |
-| Configuration and values | `ACIMA-A002` is manual; `A005`/`A006` are automated candidates in Python/TypeScript and manual elsewhere. `A006` reviews immutable value ownership, semantic duplicates and constant-versus-configuration classification. |
+| Configuration and values | `ACIMA-A002` is manual; `A005` is automated in Python/TypeScript/.NET/Go and `A006` in Python/TypeScript/.NET; both remain manual elsewhere. `A006` reviews immutable value ownership, semantic duplicates and constant-versus-configuration classification. |
 | Composition and injection | `ACIMA-D013`/`D014` are automated candidates in Python/TypeScript; inspect scans, conventions and property injection manually elsewhere. |
-| Functional capture | `ACIMA-D015`/`D016` are automated candidates in Python/TypeScript; inspect closures, callbacks and `bind`/`partial` manually elsewhere. |
+| Functional capture | `ACIMA-D015` is automated in Python/TypeScript/.NET/Go and `D016` in Python/TypeScript; inspect closures, callbacks and `bind`/`partial` manually elsewhere. |
 | Effects and consistency | `ACIMA-C008` and `A010`–`A013` are manual everywhere: name the effect owners, transactions, retries, duplicate handling, truthful outcomes and recovery evidence where they apply. |
 | Existing architecture tests | `inspect` plus a source review. |
 | Existing exceptions | The waiver file; `G001`, `G002`. |
 
 ### Incremental enforcement
 
-CI and source changes are separate approvals. Start at L1 unless the repository already has a stronger baseline. The order matters:
+CI and source changes are separate approvals. Plan CI before remediation and approve its exact digest; build a shrink-only baseline from current findings. Existing findings warn, new findings fail, and resolved entries leave the baseline. Start at L1 unless the repository already has a stronger baseline. The remediation order matters:
 
 | Order | First slice | Why |
 |---|---|---|
@@ -141,7 +143,7 @@ For the target repository, wire the reference enforcer for its language into the
 CI. Do not use `acima verify` as the target gate: that command verifies this ACIMA
 repository and its examples.
 
-## Phase 5 — Verify and hand off
+## Phase 4 — Verify and hand off
 
 Verify the implemented slice with fresh evidence. Run the target's enforcer, retain the findings and
 report artefacts, and reconcile every claim against them. A clean run is not a conformance claim when

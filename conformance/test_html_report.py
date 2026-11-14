@@ -137,14 +137,14 @@ class HtmlReportTests(unittest.TestCase):
             root=Path(td); src=root/'model.json'; out=root/'report'
             data=model()
             data['adoptionWorkflow']={"mode":"guided","stages":[],"next":{},
-                "phase":"review_and_authorize","phaseLabel":"Phase 3 — Review and authorize",
-                "phaseOrder":["start","assess","explain_and_propose","review_and_authorize","implement","verify_and_hand_off"]}
+                "phase":"review_and_authorize","phaseLabel":"Phase 2 — Review and authorize",
+                "phaseOrder":["assess","review_and_authorize","implement","verify_and_hand_off"]}
             src.write_text(json.dumps(data),encoding='utf-8')
             result=subprocess.run([sys.executable,str(SCRIPT),'--input',str(src),'--out-dir',str(out)],capture_output=True,text=True)
             self.assertEqual(result.returncode,0,result.stderr)
             plan=(out/'plan.html').read_text(encoding='utf-8')
             self.assertIn('Current phase',plan)
-            self.assertIn('Phase 3 — Review and authorize',plan)
+            self.assertIn('Phase 2 — Review and authorize',plan)
 
     def test_plan_page_does_not_invent_a_missing_phase(self):
         with tempfile.TemporaryDirectory() as td:
@@ -157,7 +157,7 @@ class HtmlReportTests(unittest.TestCase):
             plan=(out/'plan.html').read_text(encoding='utf-8')
             self.assertIn('Current phase',plan)
             self.assertIn('not recorded',plan)
-            self.assertNotIn('Phase 5 — Verify and hand off',plan)
+            self.assertNotIn('Phase 4 — Verify and hand off',plan)
 
     def test_report_model_projects_the_engine_phase_without_recalculating_it(self):
         projected=adoption_reports._canonical_phase({
@@ -166,10 +166,9 @@ class HtmlReportTests(unittest.TestCase):
             "stages":{"implementation":{"name":"implementation","status":"in_progress"}},
         })
         self.assertEqual(projected["phase"],"implement")
-        self.assertEqual(projected["phaseLabel"],"Phase 4 — Implement")
+        self.assertEqual(projected["phaseLabel"],"Phase 3 — Implement")
         self.assertEqual(projected["phaseOrder"],[
-            "start","assess","explain_and_propose","review_and_authorize",
-            "implement","verify_and_hand_off"])
+            "assess","review_and_authorize","implement","verify_and_hand_off"])
         self.assertEqual(adoption_reports._canonical_phase({}),{})
 
     def test_large_module_map_renders_an_atlas_and_searchable_directory(self):

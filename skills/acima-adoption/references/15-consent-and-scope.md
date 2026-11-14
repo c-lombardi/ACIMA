@@ -9,16 +9,15 @@ This reference is the long form of the phase gate in `SKILL.md`. It does not rel
 requirement: it decides *whether* and *how much* to implement, never whether the implemented part is
 described accurately.
 
-## The five phases
+## The four phases
 
 | Phase | Purpose | May write to the target? | Ends with |
 |---|---|---|---|
-| Start | establish the repository and select guided or automated adoption | no | the repository and mode are known |
-| Phase 1 — Assess | understand fit, findings and limits | no | a recommendation and named gaps |
-| Phase 2 — Explain and propose | make the adoption decision reviewable | no | exact paths, statuses, decisions and risks |
-| Phase 3 — Review and authorize | the owner accepts a named scope | no | one direct approval answer |
-| Phase 4 — Implement | implement only the approved scope | approved paths only | the approved artifacts and slices |
-| Phase 5 — Verify and hand off | prove what exists and state what does not | no new scope | a handoff with capabilities and limits |
+| Start | establish the repository | no | the repository is known |
+| Phase 1 — Assess | understand fit, findings, limits and proposed ownership | no; the proposed config is evidence | a recommendation, named gaps and a map decision |
+| Phase 2 — Review and authorize | the owner accepts a named scope | no | one decision record and one approval receipt |
+| Phase 3 — Implement | implement the approved scope, CI and authorized remediation rounds | approved paths only | the approved artifacts, CI baseline and verified rounds |
+| Phase 4 — Verify and hand off | prove what exists and state what does not | no new scope | a handoff with capabilities and limits |
 
 Read-only analysis may use operating-system temporary directories outside the target. Delete them
 or leave them outside; never commit them. If an analysis genuinely cannot run without a persistent
@@ -38,7 +37,7 @@ entry points, deployments, tests and documentation. Run only read-only checks. R
 
 `NEEDS_UNIT_MAP` means the architecture was not assessed. It is not a clean result.
 
-### Phase 2 — Explain and propose
+### Phase 2 — Review and authorize
 
 Present the proposal from `assets/adoption-proposal.md` before creating anything. It must name every
 path, what the file contains, why it exists, its status, the dependencies, the maintenance burden,
@@ -48,14 +47,14 @@ Classify each artifact honestly: required, conditional or optional. An adoption 
 plan, a status dashboard and a summary are optional unless the owner asks for them or coordination
 genuinely requires them. Do not mark an artifact required because a template exists for it.
 
-For both guided and automated adoption, render and validate the six-page HTML proposal from the
+Render and validate the six-page HTML proposal from the
 current review, map and proposal. Open it in the user's available browser/viewer and present direct
 links to the index and all six sections. A local path in a status message is not presentation. If
 the agent cannot open or show the report, block at this review checkpoint; do not ask the user to
 approve unseen material. The report must contain the actual assessment, proposed changes, affected
 files, plan, evidence, decisions and limitations.
 
-### Phase 3 — Review and authorize
+### Phase 3 — Implement
 
 The approval question is explicit and must follow presentation of the HTML report:
 
@@ -81,7 +80,7 @@ require a second review and explicit approval of exact paths.
 Approval covers only what was shown. Partial approval is supported and is the normal case: implement
 the approved paths and level, then state the capability and the gap of what was not approved.
 
-### Phase 4 — Implement
+### Phase 3 — Implement details
 
 Implement the approved paths and level. Routine choices inside that scope are allowed. Do not create
 optional artifacts that were not in the approved list. Stop and ask before adding a path, changing
@@ -89,7 +88,7 @@ target source or build configuration, adding CI, raising the level, or introduci
 that was not in the proposal. If implementation reveals that the proposal was wrong, say what
 changed, why the approved scope cannot deliver the stated result, and what new approval is needed.
 
-### Phase 5 — Verify and hand off
+### Phase 4 — Verify and hand off
 
 Verify the generated configuration, run the available enforcement, validate waiver and baseline
 integrity, exercise controlled violations where supported, and inspect CI configuration without
@@ -295,23 +294,22 @@ to commitments do.
 - When done, lead with the outcome and the limits; keep technical evidence available by path.
 - Never claim a CI run, a merge or a conformance level that was not observed.
 
-## Automation modes
+## One flow and repeatable remediation
 
-Guided adoption and automated adoption use the same assessment and artifacts. Guided mode has
-separate review checkpoints for the module map, the presented HTML proposal, CI, optional adoption
-notifications, optional agent guidance and implementation stages. Automated mode prepares the
-complete package and presents one consolidated HTML review, then executes only the stages and paths
-the owner explicitly approves. Selecting either mode authorizes analysis and preparation only; it
-does not authorize enforcement, source, build, CI, notification or instruction changes. Automated
-means automatic execution after approval, not approval without review. It is scoped to the selected
-repository and is not permission to deploy, release, commit, push, expose secrets, destroy data,
-modify another repository or override an owner's architectural decision. Ambiguous ownership pauses
-only that decision; completed analysis remains. The selected mode lives in
-`acima/state.json`. A map approval, HTML-report review or CI choice alone does not
-authorize application changes.
+There is one adoption flow with separate map and scope checkpoints. Assessment and preparation are
+read-only; a map approval records a proposed config as evidence, and the root configuration is
+written only at implementation stage 0. Selecting a workflow or approving a map authorizes analysis
+and preparation only; it does not authorize enforcement, source, build, CI, notification or
+instruction changes. The approval is scoped to the selected repository and is not permission to
+deploy, release, commit, push, expose secrets, destroy data, modify another repository or override
+an owner's architectural decision. Ambiguous ownership pauses only that decision; completed
+analysis remains. A map approval, HTML-report review or CI choice alone does not authorize
+application changes.
 
-Immediate remediation is a separate final decision after CI, not part of initial adoption consent
-or automated-mode selection. The user chooses none, selected, or all applicable recommendations.
+Immediate remediation is a separate, repeatable loop after CI, not part of initial adoption consent.
+The user chooses none, selected, or all applicable recommendations, again and again; each round has
+its own plan digest, named approver, exact source paths and confirmations. Choosing none defers the
+round and does not close remediation.
 Source changes require the reviewed remediation-plan digest, named approver and exact source paths.
 A large or high-risk brownfield scope requires two distinct affirmative confirmations;
 small/moderate brownfield and greenfield work require one. Declining remediation preserves the map,

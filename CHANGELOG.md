@@ -4,6 +4,44 @@ All normative changes to the ACIMA standard. The machine-readable catalog is
 [`tools/acima-spec/rules.json`](tools/acima-spec/rules.json); this file explains *why* it changed and
 what an adopting repository has to do about it.
 
+## Unreleased — one adoption flow, CI ratchet and repeatable remediation
+
+**Skill and workflow change.** The normative catalog, rule ids, levels, severity and claim semantics
+are unchanged. The adoption experience now has one flow and four phases: Assess; Review and
+authorize; Implement; Verify and hand off. `Start` is an entry point, not a phase.
+
+### Why
+
+Guided and automated preparation produced different review timing for the same evidence, and map
+approval wrote the root configuration before implementation was authorized. CI was offered after
+remediation, so new debt could enter before the ratchet existed. Remediation was terminal once a
+choice was recorded.
+
+### What changed
+
+- New automated adoption starts are refused. Legacy `full` state resumes through the same map and
+  scope checkpoints and keeps no implementation privilege.
+- Map approval records `acima/evidence/module-map.config.proposal.json`; the root
+  `acima.config.json` is written only at implementation stage 0, after the exact scope approval.
+- `acima adoption approve --decisions <file>` records the owner's intent and, when the file carries a
+  complete scope for the current report, the approval receipt. Intent-only ingestion remains
+  available through `adoption decisions`.
+- CI is planned before remediation. `acima adoption ci --plan` writes no workflow; approval requires
+  the exact plan digest and preserves existing workflows. Declining CI is recorded and leaves local
+  enforcement in place.
+- CI records a shrink-only baseline (`acima/evidence/ci-baseline.json`). Existing findings warn; new
+  findings fail; resolved entries are pruned; growth requires an explicit reviewed update.
+- Remediation is repeatable. `none`, `selected` and `all` are round decisions, each with its own plan
+  digest, exact paths and confirmations. `none` defers a round rather than closing the loop.
+- The report navigation now names the reader-facing pages: Overview; Architecture and map; Findings;
+  Changes and files; Plan and decisions; Evidence and limits.
+
+### Migration
+
+Existing state is read as schema 2; the phase is derived from recorded stages. Existing
+`acima.config.json` files are preserved. A workflow already at CI or remediation remains resumable.
+No waiver format changed.
+
 ## Unreleased — the guided adoption console: answers, history and events
 
 **Skill and report change only.** The catalog, standard version, rule ids, levels, severity and claim

@@ -15,7 +15,7 @@ CATALOG_PATH=VENDOR/'tools/acima-spec/rules.json'
 CATALOG=json.loads(CATALOG_PATH.read_text(encoding='utf-8'))
 CATALOG_SHA256=hashlib.sha256(CATALOG_PATH.read_bytes()).hexdigest()
 EXPECTED_RULES={rule['id']:rule for rule in CATALOG.get('rules',[])}
-PAGES={'index.html':'Overview','proposal.html':'Proposal','findings.html':'Findings','files.html':'Files','plan.html':'Plan','evidence.html':'Evidence'}
+PAGES={'index.html':'Overview','proposal.html':'Architecture and map','findings.html':'Findings','files.html':'Changes and files','plan.html':'Plan and decisions','evidence.html':'Evidence and limits'}
 NAV=list(PAGES.items())
 class ReportError(Exception): pass
 

@@ -1,8 +1,8 @@
 # Brownfield playbook
 
-> **Consent gate.** **Phase 1 — Assess** measures read-only. **Phase 2 — Explain and propose** presents
-> the exact config, baseline, waiver, gate and CI paths, with their status and dependencies.
-> **Phase 3 — Review and authorize** receives an explicit answer to that list; **Phase 4 — Implement**
+> **Consent gate.** **Phase 1 — Assess** measures read-only and records a proposed config as evidence.
+> **Phase 2 — Review and authorize** presents the exact config, baseline, waiver, gate and CI paths,
+> with their status and dependencies, and receives an explicit answer to that list; **Phase 3 — Implement**
 > creates only what the owner approved. A request to assess is not a request to write
 > `acima.config.json`, and a config is not permission to add a baseline gate or CI. Plans and
 > communication documents are optional.

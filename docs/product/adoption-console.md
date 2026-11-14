@@ -139,7 +139,7 @@ Rules for the file:
 - `acima/evidence/remediation-plan.json` — the reviewed remediation plan; its digest, its exact
   approved paths and the two distinct confirmations required for large brownfield work remain the
   only way to change source;
-- `acima.config.json` — written only through the approved map review.
+- `acima.config.json` — written only at implementation stage 0, after the exact scope approval; map approval stores a proposed config under `acima/evidence/`.
 
 ### Workflow state additions
 

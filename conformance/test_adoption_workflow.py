@@ -177,8 +177,7 @@ def remediate(root: Path, choice: str, *, selected: list[str] | None = None,
 
 
 def full_start(root: Path) -> dict:
-    # Full/automated preparation must be reviewed before application. These tests
-    # explicitly provide a pre-existing authoritative map and a user-approved scope.
+    # Legacy scenario name: the fixture starts one flow with a pre-existing authoritative map.
     catalog = json.loads((ROOT / "tools/acima-spec/rules.json").read_text(encoding="utf-8"))
     write(root, "acima.config.json", json.dumps({
         "standard": catalog["version"], "mode": "base", "language": "python",
@@ -188,8 +187,16 @@ def full_start(root: Path) -> dict:
             {"id": "billing", "module": "Billing", "role": "implementation", "paths": ["src/billing"]},
         ],
     }))
-    workflow.start(root, "full", authorize_full=True, reviewer="test mode selection")
-    return approve_scope(root, scope(root))
+    workflow.start(root, "guided")
+    state = approve_scope(root, scope(root))
+    if state["stages"].get("ci", {}).get("status") == "awaiting_approval":
+        workflow.ci(root, plan_only=True)
+        state = workflow.ci(
+            root, approve=True,
+            plan_sha256=workflow._sha(root / workflow.adoption_ci.PLAN_FILE),
+            reviewed_by="Repository owner",
+        )
+    return state
 
 
 class AdoptionWorkflowTests(unittest.TestCase):
@@ -231,12 +238,12 @@ class AdoptionWorkflowTests(unittest.TestCase):
                 workflow.start(root, "guided")
             self.assertFalse((root / "acima/state.json").exists())
 
-    def test_full_requires_explicit_authorization(self) -> None:
+    def test_automated_adoption_cannot_be_started(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             fixture(root)
-            with self.assertRaises(workflow.WorkflowError):
-                workflow.start(root, "full")
+            with self.assertRaisesRegex(workflow.WorkflowError, "automated adoption was removed"):
+                workflow.start(root, "full", authorize_full=True)
             self.assertFalse((root / "acima/state.json").exists())
 
     def test_full_generates_enforcement_ci_state_and_verification(self) -> None:
@@ -246,7 +253,7 @@ class AdoptionWorkflowTests(unittest.TestCase):
             write(root, ".github/workflows/existing.yml",
                   "name: existing\non: pull_request\njobs:\n  test:\n    runs-on: ubuntu-latest\n")
             state = full_start(root)
-            self.assertEqual(state["mode"], "full")
+            self.assertEqual(state["mode"], "guided")
             self.assertEqual(state["stages"]["module_map"]["status"], "complete")
             self.assertEqual(state["stages"]["adoption_proposal"]["status"], "complete")
             self.assertEqual(state["stages"]["implementation"]["status"], "complete")
@@ -256,12 +263,14 @@ class AdoptionWorkflowTests(unittest.TestCase):
             self.assertTrue((root / "acima.config.json").is_file())
             self.assertTrue((root / "acima/tooling/python/acima_arch.py").is_file())
             self.assertTrue((root / ".github/workflows/acima.yml").is_file())
+            self.assertIn("existing", (root / ".github/workflows/existing.yml").read_text(encoding="utf-8"))
             self.assertTrue((root / "acima/evidence/remediation-plan.json").is_file())
             before = snapshot(root)
             source_before = {path: data for path, data in before.items() if path.startswith("src/")}
             state = remediate(root, "none", approved_by="Repository owner")
-            self.assertEqual(state["stages"]["remediation"]["status"], "complete")
+            self.assertEqual(state["stages"]["remediation"]["status"], "deferred")
             self.assertEqual(state["remediation"]["outcome"], "declined")
+            self.assertEqual(state["remediationRounds"][-1]["choice"], "none")
             after = snapshot(root)
             self.assertTrue(all(after[path] == data for path, data in source_before.items()))
             verification = json.loads((root / "acima/evidence/verification.json").read_text(encoding="utf-8"))
@@ -277,43 +286,22 @@ class AdoptionWorkflowTests(unittest.TestCase):
             self.assertEqual(state["stages"]["handoff"]["status"], "complete")
             self.assertIn("acima/handoff/adoption-handoff.md", state["artifacts"]["handoff"])
 
-    def test_full_defers_manifest_only_candidate_ownership_without_writing_config(self) -> None:
+    def test_one_flow_holds_at_the_map_and_writes_no_preparation_package(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             fixture(root, manifests=True)
-            state = workflow.start(root, "full", authorize_full=True, reviewer="candidate ownership test")
+            state = workflow.start(root, "guided")
             self.assertEqual(state["stages"]["module_map"]["status"], "awaiting_approval")
             self.assertFalse((root / "acima.config.json").exists())
             self.assertFalse((root / "acima/tooling/python/acima_arch.py").exists())
             self.assertTrue((root / "acima/evidence/module-map.proposal.json").is_file())
-            self.assertTrue((root / "acima/report/enforcement-proposal.json").is_file())
-            self.assertTrue((root / "acima/report/ci-proposal.json").is_file())
-            self.assertFalse((root / "acima/report/agent-guidance-proposal.md").exists())
-            self.assertTrue((root / "acima/evidence/remediation-plan.json").is_file())
+            self.assertFalse((root / "acima/report/enforcement-proposal.json").exists())
+            self.assertFalse((root / "acima/report/ci-proposal.json").exists())
+            self.assertFalse((root / "acima/evidence/remediation-plan.json").exists())
             self.assertFalse((root / "AGENTS.md").exists())
-            report = state["artifacts"]["proposalReport"]
-            self.assertEqual(state["stages"]["proposal_report"]["status"], "awaiting_approval")
-            self.assertTrue((Path(report["directory"]) / "index.html").is_file())
-            self.assertTrue((Path(report["directory"]) / "proposal.html").is_file())
-            self.assertTrue((Path(report["directory"]) / "findings.html").is_file())
-            self.assertTrue((Path(report["directory"]) / "files.html").is_file())
-            self.assertTrue((Path(report["directory"]) / "plan.html").is_file())
-            self.assertTrue((Path(report["directory"]) / "evidence.html").is_file())
-            self.assertIn(report["sha256"], state["next"]["command"])
-            report_data = json.loads((Path(report["directory"]) / "report-data.json").read_text(encoding="utf-8"))
-            self.assertEqual(report_data["adoptionWorkflow"]["mode"], "full")
-            self.assertEqual(report_data["moduleMap"]["authoritativeMap"]["unitCount"],
-                             len(report_data["moduleMap"]["authoritativeUnits"]))
-            proposal_page = (Path(report["directory"]) / "proposal.html").read_text(encoding="utf-8")
-            self.assertIn("A proposed map of the product", proposal_page)
-            self.assertIn("The map at a glance", proposal_page)
-            self.assertIn("PARTS OF THE PRODUCT", proposal_page)
-            self.assertNotIn("How the product is divided today", proposal_page)
-            self.assertEqual(state["next"]["approvalRequired"], True)
-            self.assertTrue(all(item.get("decision") != "accept" for item in
-                                    state["artifacts"].get("moduleMap", {}).get("modules", []))
-                            if state["artifacts"].get("moduleMap") else True)
-            self.assertIn("ownership is not approved", state["stages"]["module_map"]["detail"].lower())
+            self.assertNotIn("proposalReport", state["artifacts"])
+            self.assertEqual(state["stages"]["adoption_proposal"]["status"], "in_progress")
+            self.assertIn("map", state["next"]["action"].lower())
 
     def test_guided_approves_individual_map_and_scope_then_implements(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -324,6 +312,10 @@ class AdoptionWorkflowTests(unittest.TestCase):
             self.assertEqual(state["stages"]["module_map"]["status"], "complete")
             self.assertEqual(state["stages"]["adoption_proposal"]["status"], "complete")
             self.assertEqual(state["stages"]["proposal_report"]["status"], "awaiting_approval")
+            # Map approval records a proposed config. Only implementation authorization writes
+            # the root config.
+            self.assertFalse((root / "acima.config.json").exists())
+            self.assertTrue((root / workflow.PROPOSED_CONFIG).is_file())
             report = state["artifacts"]["proposalReport"]
             # Every save refreshes the report's progress sections, so the directory matches the
             # live digest while the reviewed generation digest remains the review identity.
@@ -367,7 +359,7 @@ class AdoptionWorkflowTests(unittest.TestCase):
             stages = {stage["name"]: stage["status"]
                       for stage in after["adoptionWorkflow"]["stages"]}
             self.assertEqual(stages["implementation"], "complete")
-            self.assertEqual(after["adoptionWorkflow"]["currentStage"]["name"], "remediation")
+            self.assertEqual(after["adoptionWorkflow"]["currentStage"]["name"], "ci")
             self.assertTrue(after["milestones"]["implementationComplete"])
             self.assertNotEqual(before["adoptionWorkflow"], after["adoptionWorkflow"])
             # The progress refresh must never touch the reviewed decision content.
@@ -378,7 +370,7 @@ class AdoptionWorkflowTests(unittest.TestCase):
             self.assertEqual(report["progressStatus"], "current")
             plan_page = (Path(report["directory"]) / "plan.html").read_text(encoding="utf-8")
             self.assertIn("Enforcement implementation", plan_page)
-            self.assertIn("Current stage: <b>Immediate remediation", plan_page)
+            self.assertIn("Current stage: <b>CI integration", plan_page)
 
     def test_progress_refresh_tolerates_a_legacy_schema_11_report(self) -> None:
         import adoption_reports
@@ -496,29 +488,16 @@ class AdoptionWorkflowTests(unittest.TestCase):
             self.assertEqual(state["stages"]["implementation"]["status"], "complete")
             self.assertTrue((root / "acima/tooling/python/acima_arch.py").is_file())
 
-    def test_full_decisions_file_approves_the_map_and_derives_a_scope(self) -> None:
+    def test_decisions_file_derives_a_scope_after_map_approval(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             fixture(root, manifests=True)
-            state = workflow.start(root, "full", authorize_full=True,
-                                   reviewer="candidate ownership test")
-            self.assertEqual(state["stages"]["module_map"]["status"], "awaiting_approval")
-            review = json.loads(map_review(root).read_text(encoding="utf-8"))
-            answers = []
-            for kind, key in (("module", "moduleDecisions"),
-                              ("module-path", "pathDecisions"),
-                              ("recommendation", "recommendationDecisions")):
-                answers += [{"kind": kind, "id": item["id"], "decision": item["decision"]}
-                            for item in review.get(key) or []]
-            result = workflow.decisions(root, decisions_file(root, state, answers=answers))
-            self.assertEqual(result["status"], "applied")
-            self.assertEqual(result["stages"]["module_map"]["status"], "complete")
-            self.assertTrue((root / "acima.config.json").is_file())
-            applied = json.loads((root / workflow.OWNER_MAP_REVIEW_FILE).read_text(encoding="utf-8"))
-            self.assertEqual(applied["source"], "decisions.json")
+            workflow.start(root, "guided")
+            workflow.approve(root, map_decisions=map_review(root))
             state = workflow._load(root)
-            self.assertEqual(state["proposalReview"]["status"], "reviewed")
-            self.assertIn("scope", result["next"]["action"].lower())
+            self.assertEqual(state["stages"]["module_map"]["status"], "complete")
+            self.assertFalse((root / "acima.config.json").exists())
+            self.assertTrue((root / workflow.PROPOSED_CONFIG).is_file())
 
             objectives, paths = all_objectives_and_paths(root, state)
             answers = [{"kind": "scope-objective", "id": name, "decision": "accept"}
@@ -529,6 +508,26 @@ class AdoptionWorkflowTests(unittest.TestCase):
             self.assertEqual(result["scopeDraft"], workflow.SCOPE_FILE)
             scope = workflow._read_json(root / workflow.SCOPE_FILE)
             self.assertFalse(scope["authorization"]["explicit"])
+
+    def test_one_approve_decisions_command_records_intent_and_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            workflow.start(root, "guided")
+            state = workflow.approve(root, map_decisions=map_review(root))
+            objectives, paths = all_objectives_and_paths(root, state)
+            answers = [{"kind": "scope-objective", "id": name, "decision": "accept"}
+                       for name in objectives]
+            answers += [{"kind": "scope-path", "id": path, "decision": "accept"} for path in paths]
+            source = decisions_file(root, state, answers=answers)
+            state = workflow.approve(root, decision_source=source)
+            self.assertEqual(state["stages"]["implementation"]["status"], "complete")
+            self.assertEqual(state["implementationApproval"]["status"], "approved")
+            scope = workflow._read_json(root / workflow.SCOPE_FILE)
+            self.assertTrue(scope["authorization"]["explicit"])
+            self.assertEqual(sorted(scope["approvedPaths"]), sorted(paths))
+            self.assertTrue((root / "acima.config.json").is_file())
+            self.assertEqual(len(state["decisionSources"]), 1)
 
     def test_decisions_refuse_a_stale_report_identity(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -699,18 +698,18 @@ class AdoptionWorkflowTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0,
                                  "%s console script does not parse: %s" % (page, result.stderr))
 
-    def test_automated_report_has_no_console_approval_controls(self) -> None:
+    def test_the_one_flow_always_exposes_console_approval_controls(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             fixture(root)
             state = full_start(root)
             report = state["artifacts"]["proposalReport"]
             plan = (Path(report["directory"]) / "plan.html").read_text(encoding="utf-8")
-            self.assertNotIn('id="owner-answers"', plan)
+            self.assertIn('id="owner-answers"', plan)
             self.assertIn('id="decision-log"', plan)
             self.assertLess(plan.find('id="adoption-plan"'), plan.find('id="decision-log"'))
             files = (Path(report["directory"]) / "files.html").read_text(encoding="utf-8")
-            self.assertNotIn('id="scope-paths"', files)
+            self.assertIn('id="scope-paths"', files)
 
     def test_console_answers_without_digests_are_completed_on_ingest(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -864,17 +863,18 @@ class AdoptionWorkflowTests(unittest.TestCase):
                 self.assertIn(relative, readme)
             self.assertFalse((root / "acima/tooling").exists())
 
-    def test_generated_ci_command_runs_the_copied_tooling(self) -> None:
+    def test_existing_ci_workflow_is_not_overwritten_by_adoption(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             fixture(root)
-            write(root, ".github/workflows/existing.yml",
-                  "name: existing\non: pull_request\njobs:\n  test:\n    runs-on: ubuntu-latest\n")
+            existing = "name: existing\non: pull_request\njobs:\n  test:\n    runs-on: ubuntu-latest\n"
+            write(root, ".github/workflows/existing.yml", existing)
             full_start(root)
             ci = json.loads((root / "acima/evidence/ci-integration.json").read_text(encoding="utf-8"))
             self.assertIn("acima/tooling/python/acima_arch.py", ci["command"])
-            workflow_text = (root / ".github/workflows/acima.yml").read_text(encoding="utf-8")
-            self.assertIn(ci["command"], workflow_text)
+            self.assertTrue((root / ".github/workflows/acima.yml").is_file())
+            self.assertEqual((root / ".github/workflows/existing.yml").read_text(encoding="utf-8"),
+                             existing)
             plan = workflow._enforcer(root, "python")
             self.assertIsNotNone(plan)
             code, out, err = workflow._run(plan["argv"], root)
@@ -935,6 +935,7 @@ class AdoptionWorkflowTests(unittest.TestCase):
             state = workflow.approve(root, map_decisions=map_review(root))
             self.assertEqual(state["stages"]["module_map"]["status"], "complete")
             self.assertEqual(state["stages"]["proposal_report"]["status"], "awaiting_approval")
+            self.assertFalse((root / "acima.config.json").exists())
             self.assertFalse((root / "acima/evidence/adoption-scope.json").exists())
             self.assertFalse((root / "acima/tooling/python/acima_arch.py").exists())
             self.assertIn("HTML adoption proposal", state["next"]["action"])
@@ -978,8 +979,15 @@ class AdoptionWorkflowTests(unittest.TestCase):
             self.assertFalse((root / "acima/evidence/adoption-scope.json").exists())
             state = approve_scope(root, scope(root))
             self.assertEqual(state["stages"]["adoption_proposal"]["status"], "complete")
-            self.assertEqual(state["stages"]["remediation"]["status"], "awaiting_approval")
+            self.assertEqual(state["stages"]["ci"]["status"], "awaiting_approval")
             self.assertFalse((root / "acima/handoff/adoption-handoff.md").exists())
+            workflow.ci(root, plan_only=True)
+            state = workflow.ci(
+                root, approve=True,
+                plan_sha256=workflow._sha(root / workflow.adoption_ci.PLAN_FILE),
+                reviewed_by="Repository owner",
+            )
+            self.assertEqual(state["stages"]["remediation"]["status"], "awaiting_approval")
             state = remediate(root, "none", approved_by="Repository owner")
             self.assertEqual(state["stages"]["agent_guidance"]["status"], "awaiting_approval")
             self.assertFalse((root / "acima/handoff/adoption-handoff.md").exists())
@@ -1036,12 +1044,29 @@ class AdoptionWorkflowTests(unittest.TestCase):
                 [sys.executable, str(ROOT / "tools/acima.py"), "adoption", "start",
                  "--root", str(root), "--mode", "full", "--authorize-full", "--format", "json"],
                 capture_output=True, text=True)
-            self.assertEqual(full.returncode, 0, full.stderr)
-            prepared = json.loads(full.stdout)
-            self.assertEqual(prepared["stages"]["adoption_proposal"]["status"], "awaiting_approval")
-            self.assertIn("consolidated", prepared["next"]["action"].lower())
+            self.assertEqual(full.returncode, 2)
+            self.assertIn("automated adoption was removed", full.stderr)
             self.assertFalse((root / "acima.config.json").exists())
             self.assertFalse((root / "acima/tooling/python/acima_arch.py").exists())
+
+    def test_remediation_none_and_selected_rounds_are_repeatable(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture(root)
+            full_start(root)
+            state = workflow.remediate(root, "none", approved_by="Repository owner")
+            self.assertEqual(state["stages"]["remediation"]["status"], "deferred")
+            self.assertEqual(state["remediationRounds"][0]["choice"], "none")
+            state = workflow.remediate(root, "none", approved_by="Repository owner")
+            self.assertEqual(len(state["remediationRounds"]), 2)
+            self.assertEqual(state["remediation"]["loop"], "available")
+            state = workflow.remediate(root, "none", plan_only=True)
+            self.assertEqual(state["remediation"]["planConsumed"], False)
+            state = remediate(root, "all", approved_by="Repository owner", confirm=True)
+            self.assertEqual(len(state["remediationRounds"]), 3)
+            state = workflow.remediate(root, "none", approved_by="Repository owner")
+            self.assertEqual(len(state["remediationRounds"]), 4)
+            self.assertEqual(state["remediationRounds"][-1]["round"], 4)
 
     def test_remediation_selected_all_greenfield_and_stale_behavior(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -1393,8 +1418,7 @@ class CanonicalPhaseTests(unittest.TestCase):
 
     def test_every_stage_belongs_to_one_canonical_phase(self) -> None:
         self.assertEqual(list(workflow.PHASE_ORDER), [
-            "start", "assess", "explain_and_propose", "review_and_authorize",
-            "implement", "verify_and_hand_off"])
+            "assess", "review_and_authorize", "implement", "verify_and_hand_off"])
         self.assertEqual(set(workflow.STAGE_PHASE), set(workflow.STAGE_ORDER))
         for phase in workflow.STAGE_PHASE.values():
             self.assertIn(phase, workflow.PHASE_ORDER)
@@ -1424,7 +1448,7 @@ class CanonicalPhaseTests(unittest.TestCase):
     def test_deferred_stage_does_not_advance_the_journey(self) -> None:
         self.assertEqual(self.phase(
             preflight="complete", discovery="complete", assessment="complete",
-            module_map="complete", adoption_proposal="deferred"), "explain_and_propose")
+            module_map="complete", adoption_proposal="deferred"), "review_and_authorize")
 
     def test_implementation_stage_maps_to_implement(self) -> None:
         self.assertEqual(self.phase(proposal_report="complete", implementation="in_progress"),

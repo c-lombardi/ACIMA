@@ -8,12 +8,11 @@ classifies the target; the assessment establishes fit. Neither writes to the tar
 
 | Phase | Purpose | Command | Ends when |
 |---|---|---|---|
-| Start | establish the repository and select guided or automated adoption | none | the repository and mode are known |
-| Phase 1 — Assess | preflight, all 56 qualitative dispositions, then read-only fit and deterministic checks where possible | `preflight.py --project <target>`, `validate-review`, then `acima.py assess --root <target> --review <review.json>` | 56/56 valid dispositions, unresolved states explicit, and deterministic limits recorded |
-| Phase 2 — Explain and propose | the decision document | fill `../assets/adoption-proposal.md` | a recommendation, exact paths, one question |
-| Phase 3 — Review and authorize | explicit, scope-specific approval | none | an unambiguous yes to that proposal |
-| Phase 4 — Implement | only the approved scope | the approved commands | the named files exist and measure |
-| Phase 5 — Verify and hand off | prove what changed and what did not | the enforcer and `acima.py claim` | artefacts support every claim, limits named |
+| Start | establish the repository | none | the repository is known |
+| Phase 1 — Assess | preflight, every current-catalog disposition, read-only fit, deterministic checks where possible and a proposed map | `preflight.py --project <target>`, `validate-review`, then `acima.py assess --root <target> --review <review.json>` | every disposition is valid or explicitly unresolved, and the map decision is recorded |
+| Phase 2 — Review and authorize | the decision document and one owner decision record | the six-page report and `adoption approve --decisions` | one receipt matches the exact report, objectives and paths |
+| Phase 3 — Implement | only the approved scope, CI and authorized remediation rounds | the approved commands, `adoption ci`, `adoption remediate` | the named files exist and measure; CI has a baseline; each round has its own approval |
+| Phase 4 — Verify and hand off | prove what changed and what did not | the enforcer and `acima.py claim` | artefacts support every claim, limits named |
 
 Do not run the same expensive analysis twice for two phases: reuse the assessment's run for the
 proposal, and the implementation's run for the handoff. `status` reports which phase is evidenced.
@@ -80,23 +79,22 @@ decision-complete coverage, keep genuinely workspace-level evidence at repositor
 as a limitation, and proceed; fix mechanical citations yourself rather than asking the owner to choose
 a unit for each rule.
 
-**Phase 2 — Explain and propose.** Present [the proposal](../assets/adoption-proposal.md) as a decision document:
-recommendation first, then the compatibility outcome and evidence, requirements already satisfied,
-the smallest useful scope, exact paths with required/conditional/optional status, stricter
-constraints and tradeoffs, and the one approval question. Do not write files "so the user can see
-them".
+**Phase 2 — Review and authorize.** Present [the proposal](../assets/adoption-proposal.md), the
+six-page report and the exact paths as one decision document: recommendation first, then the
+compatibility outcome and evidence, requirements already satisfied, the smallest useful scope,
+exact paths with required/conditional/optional status, stricter constraints and tradeoffs, and the
+one approval command. Approval covers the listed scope only — the named paths, level and changes.
+Partial approval is supported: implement exactly what was approved and name the capability that
+stays unavailable. Wait for an unambiguous yes to that proposal before touching a path. Interest,
+silence, "looks good" about the diagnosis, or a request to see files is not approval. Approval to
+change files never authorizes merge, release, publication or external systems.
 
-**Phase 3 — Review and authorize.** Approval covers the listed scope only — the named paths,
-level and changes. Partial approval
-is supported: implement exactly what was approved and name the capability that stays unavailable.
-Wait for an unambiguous yes to that proposal before touching a path. Interest, silence, "looks good"
-about the diagnosis, or a request to see files is not approval.
-Approval to change files never authorizes merge, release, publication or external systems.
+**Phase 3 — Implement.** Only approved changes. Write the root configuration at stage 0, install
+enforcement, plan CI before remediation and record a shrink-only baseline. A new path, level,
+dependency or enforcement mechanism outside the approved list stops work for a new decision.
+Remediation rounds are separate, repeatable and separately approved.
 
-**Phase 4 — Implement.** Only approved changes. A new path, level, dependency or enforcement
-mechanism outside the approved list stops work for a new decision.
-
-**Phase 5 — Verify and hand off.** Verify with a run artefact, not intent, and report what is
+**Phase 4 — Verify and hand off.** Verify with a run artefact, not intent, and report what is
 proven separately from what is not.
 
 | Action | Approval |
@@ -112,7 +110,7 @@ Full boundary and artifact matrix: [15-consent-and-scope](15-consent-and-scope.m
 
 ## Guided and full automation
 
-The two authoritative user workflows are **guided adoption** and **automated adoption**.
+There is one authoritative user workflow. Automated adoption was removed; legacy `full` state resumes through the same checkpoints.
 Guided mode has distinct map, proposal, CI and implementation-stage review checkpoints. Automated
 mode completes the shared assessment and prepares the adoption package before a consolidated review;
 the user then selects one or more implementation stages. Mode selection authorizes analysis and

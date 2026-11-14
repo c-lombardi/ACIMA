@@ -5,18 +5,15 @@ The engine is deliberately separate from the rule enforcers.  It decides which a
 exist, records why each stage is complete or blocked, and never turns a generated proposal
 into ownership or a successful verification claim.
 
-Modes
------
-guided
-    Generate proposals and artifacts, then stop at the explicit map/scope approvals.
-full
-    Requires ``--authorize-full``.  Prepare the complete adoption package, then wait for a
-    consolidated user review and explicit scope approval before applying selected stages.
+One flow
+--------
+Assess read-only, review the proposed ownership map, review the exact report, approve one scoped
+set of objectives and paths, implement, then verify and hand off. Legacy ``full`` state can be
+resumed but no new automated adoption can be started.
 
-    python3 conformance/adoption_workflow.py start --project <repo> --mode guided
-    python3 conformance/adoption_workflow.py start --project <repo> --mode full --authorize-full
+    python3 conformance/adoption_workflow.py start --project <repo>
     python3 conformance/adoption_workflow.py status --project <repo>
-    python3 conformance/adoption_workflow.py approve --project <repo> --map-decisions <json> --scope <json>
+    python3 conformance/adoption_workflow.py approve --project <repo> --decisions <json>
 """
 from __future__ import annotations
 
@@ -43,6 +40,7 @@ from executables import resolve_executable  # noqa: E402
 import agent_guidance  # noqa: E402
 from qualitative_review import ReviewValidationError, load_and_validate_review  # noqa: E402
 import adoption_decisions  # noqa: E402
+import adoption_ci  # noqa: E402
 from adoption_reports import (  # noqa: E402
     DECISIONS_FILE, REPORT_DIRECTORY, AdoptionReportError, refresh_progress_report,
     render_proposal_report, report_digest,
@@ -54,6 +52,7 @@ WORKSPACE_README = "acima/README.md"
 LEGACY_STATE_FILE = ".acima/adoption-workflow.json"
 PREFLIGHT_FILE = "acima/evidence/preflight.json"
 PROPOSAL_JSON = "acima/evidence/module-map.proposal.json"
+PROPOSED_CONFIG = "acima/evidence/module-map.config.proposal.json"
 OWNER_MAP_REVIEW_FILE = "acima/evidence/module-map-decisions.json"
 EVENTS_FILE = "acima/evidence/events.jsonl"
 SCOPE_FILE = "acima/evidence/adoption-scope.json"
@@ -94,24 +93,20 @@ STAGE_LABEL = {
 
 # The canonical product phases. The workflow records fine-grained stages; the product speaks in
 # phases. One vocabulary is shared by the CLI, the skill and the report.
-PHASE_ORDER = (
-    "start", "assess", "explain_and_propose", "review_and_authorize",
-    "implement", "verify_and_hand_off",
-)
+PHASE_ORDER = ("assess", "review_and_authorize", "implement", "verify_and_hand_off")
 PHASE_LABEL = {
     "start": "Start",
     "assess": "Phase 1 — Assess",
-    "explain_and_propose": "Phase 2 — Explain and propose",
-    "review_and_authorize": "Phase 3 — Review and authorize",
-    "implement": "Phase 4 — Implement",
-    "verify_and_hand_off": "Phase 5 — Verify and hand off",
+    "review_and_authorize": "Phase 2 — Review and authorize",
+    "implement": "Phase 3 — Implement",
+    "verify_and_hand_off": "Phase 4 — Verify and hand off",
 }
 STAGE_PHASE = {
     "preflight": "assess",
     "discovery": "assess",
     "assessment": "assess",
     "module_map": "assess",
-    "adoption_proposal": "explain_and_propose",
+    "adoption_proposal": "review_and_authorize",
     "proposal_report": "review_and_authorize",
     "implementation": "implement",
     "architecture_tests": "implement",
@@ -129,6 +124,9 @@ BLOCKED = "blocked"
 DEFERRED = "deferred"
 DECLINED = "declined"
 NOT_APPLICABLE = "not_applicable"
+FAILED = "failed"
+STAGE_STATUSES = frozenset({COMPLETE, IN_PROGRESS, AWAITING, BLOCKED, DEFERRED,
+                            DECLINED, NOT_APPLICABLE, FAILED})
 
 
 class WorkflowError(ValueError):
@@ -444,6 +442,8 @@ def _ci(root: Path) -> dict:
 
 def _stage(state: dict, name: str, status: str, detail: str,
            *, evidence: Any = None, next_action: str = "") -> None:
+    if status not in STAGE_STATUSES:
+        raise WorkflowError("unknown stage status %s for %s" % (status, name))
     previous = (state["stages"].get(name) or {}).get("status")
     if previous != status:
         state.setdefault("progressLog", []).append({
@@ -489,14 +489,13 @@ def _attach_adoption_notifications_review(state: dict) -> None:
 
 def _new_state(root: Path, mode: str, reviewer: str | None) -> dict:
     return {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "mode": mode,
-        "authorized": mode == "full",
-        "authorizedBy": reviewer if mode == "full" else None,
-        "authorizedOn": _today() if mode == "full" else None,
-        "authorization": ("The user selected automated adoption in pre-flight. This authorizes assessment and preparation only; implementation requires a later, explicit scope approval."
-                          if mode == "full" else
-                          "The user selected guided adoption; consequential changes await approval."),
+        "authorized": False,
+        "authorizedBy": None,
+        "authorizedOn": None,
+        "authorization": ("One adoption flow: assessment and preparation are read-only; consequential "
+                          "changes await the explicit map and scope approvals."),
         "repository": {"root": str(root.resolve()), "revision": _revision(root),
                        "applicationRevision": _application_revision(root)},
         "startedAt": _now(),
@@ -607,13 +606,17 @@ def _refresh_progress_report(state: dict) -> None:
 def _load(root: Path) -> dict:
     path = _existing_artifact(root, STATE_FILE, LEGACY_STATE_FILE)
     if path is None:
-        raise WorkflowError("no adoption workflow at %s; run `start --mode guided` or "
-                            "`start --mode full --authorize-full` first" % STATE_FILE)
+        raise WorkflowError("no adoption workflow at %s; run `adoption start` first" % STATE_FILE)
     state = _read_json(path)
     if state.get("mode") not in MODES:
         raise WorkflowError("workflow mode must be guided or full")
     if state["mode"] == "full" and state.get("authorized") is not True:
         raise WorkflowError("full automation was not explicitly authorized")
+    # Schema 2 adds the failed status and the four-phase vocabulary. Earlier files
+    # remain readable; the phase is derived from stages and never stored as a guess.
+    version = state.get("schemaVersion")
+    if not isinstance(version, int) or version < 2:
+        state["schemaVersion"] = 2
     return state
 
 
@@ -635,13 +638,17 @@ def _current_phase(state: dict) -> str:
     stages = state.get("stages") or {}
     if not isinstance(stages, dict) or not stages:
         return "start"
+    # Remediation is a post-adoption loop. Once the handoff is complete, a later deferred or
+    # completed round does not rewind the product phase.
+    if (stages.get("handoff") or {}).get("status") == COMPLETE:
+        return "verify_and_hand_off"
     recorded = [(name, stages[name]) for name in STAGE_ORDER
                 if isinstance(stages.get(name), dict)]
     if not recorded:
         return "start"
 
     # A blocked or failed stage remains the current phase even if later work was recorded.
-    for statuses in ((BLOCKED, "failed"), (IN_PROGRESS, AWAITING)):
+    for statuses in ((BLOCKED, FAILED), (IN_PROGRESS, AWAITING)):
         for name, stage in recorded:
             if stage.get("status") in statuses:
                 return _phase_of_stage(name)
@@ -665,6 +672,8 @@ def _current_phase(state: dict) -> str:
         status = stage.get("status")
         if status == COMPLETE:
             continue
+        if status == FAILED:
+            return _phase_of_stage(name)
         index = STAGE_ORDER.index(name)
         if status in TERMINAL_STATUSES and index < furthest_complete:
             # The owner explicitly excluded this optional stage and later work has completed.
@@ -1043,8 +1052,7 @@ def _proposal_markdown(document: dict, root: Path) -> str:
     else:
         lines.append("- No module-level decision was generated; this is not proof that ownership is settled.")
     lines += ["", "## 10. Approval", "",
-              "Guided adoption: approve the module-map decisions and this scope before implementation.",
-              "Full automation: continue only within the explicit pre-flight authorization and safety boundaries.",
+              "Approve the module-map decisions separately from this scope. Implementation starts only after the exact report, objectives and paths are approved.",
               "No application source is changed by this proposal.", ""]
     return "\n".join(lines)
 
@@ -1264,6 +1272,10 @@ def _write_enforcement(root: Path, state: dict, config: dict) -> dict:
     if result.get("status") == "blocked":
         return result
     _write_waivers(root, config)
+    # The baseline-aware runner is part of the approved local-enforcement package. CI calls it
+    # instead of teaching all four enforcers a second output contract.
+    adoption_ci.write_runner(root)
+    state["artifacts"]["ciBaselineRunner"] = adoption_ci.RUNNER_FILE
     tests = {
         "schemaVersion": 1,
         "language": language,
@@ -1303,21 +1315,6 @@ def _integrate_ci(root: Path, state: dict, command: str | None) -> dict:
     if not command:
         document["status"] = "blocked"
         document["reason"] = "No executable enforcer command is available."
-    elif discovered.get("provider") == "github-actions" and state["mode"] == "full":
-        workflow = root / ".github/workflows/acima.yml"
-        if not workflow.exists():
-            workflow.parent.mkdir(parents=True, exist_ok=True)
-            workflow.write_text(
-                "name: ACIMA architecture\non:\n  pull_request:\n  merge_group:\n"
-                "jobs:\n  architecture:\n    runs-on: ubuntu-latest\n    steps:\n"
-                "      - uses: actions/checkout@v4\n"
-                "      - name: Run ACIMA enforcement\n        run: %s\n" % command,
-                encoding="utf-8")
-            document.update(status="configured", integration="generated-workflow",
-                            workflow=".github/workflows/acima.yml")
-        else:
-            document.update(status="already_present", integration="existing-workflow",
-                            workflow=".github/workflows/acima.yml")
     elif discovered.get("provider"):
         document["status"] = "manual_instructions"
         document["instructions"] = [
@@ -1332,6 +1329,127 @@ def _integrate_ci(root: Path, state: dict, command: str | None) -> dict:
     _write_json(root, CI_FILE, document)
     state["artifacts"]["ci"] = CI_FILE
     return document
+
+
+def _scan_findings(root: Path, config: dict) -> list[dict]:
+    """Run the copied enforcer once and return its findings, failing closed on bad output."""
+    language = config.get("language") or _language(root)
+    plan = _enforcer(root, language)
+    if not plan:
+        raise WorkflowError("no enforcer is available; finish local enforcement before CI")
+    code, out, err = _run(plan["argv"], root, timeout=300)
+    try:
+        payload = json.loads(out)
+    except json.JSONDecodeError as error:
+        raise WorkflowError("the enforcer returned invalid JSON: %s" % (err or out)[:400]) from error
+    findings = payload.get("findings")
+    if (not isinstance(findings, list) or not isinstance(payload.get("sourceFiles"), int)
+            or payload.get("sourceFiles", 0) <= 0):
+        raise WorkflowError("the enforcer output is incomplete or scanned no source; CI cannot be based on it")
+    return findings
+
+
+def ci(root: Path, *, plan_only: bool = False, approve: bool = False, decline: bool = False,
+       plan_sha256: str = "", reviewed_by: str = "", reason: str = "",
+       refresh: bool = False) -> dict:
+    """Plan, approve or decline CI. Planning and declining write no workflow."""
+    root = root.resolve()
+    state = _load(root)
+    if sum(bool(value) for value in (plan_only, approve, decline)) != 1:
+        raise WorkflowError("choose exactly one CI action: --plan, --approve, or --decline")
+    if refresh and not plan_only:
+        raise WorkflowError("--refresh is only valid with --plan")
+    if plan_only:
+        if refresh:
+            # Returning for CI is not a jump straight to CI. Rebuild the reviewed document from
+            # current evidence and invalidate old approvals before offering the plan again.
+            state = regenerate(root, reason=reason or "CI re-entry refresh",
+                               reviewer=reviewed_by or None)
+            source_before = {path.relative_to(root).as_posix(): path.read_bytes()
+                             for path in root.rglob("*")
+                             if path.is_file() and not path.relative_to(root).as_posix().startswith("acima/")}
+            if source_before != {path.relative_to(root).as_posix(): path.read_bytes()
+                                 for path in root.rglob("*")
+                                 if path.is_file() and not path.relative_to(root).as_posix().startswith("acima/")}:
+                raise WorkflowError("CI refresh changed application source; no CI plan is offered")
+        document = adoption_ci.plan(root)
+        state["artifacts"]["ciPlan"] = adoption_ci.PLAN_FILE
+        if document.get("status") == "blocked":
+            _stage(state, "ci", BLOCKED, document.get("reason") or "CI is blocked.",
+                   evidence=adoption_ci.PLAN_FILE)
+        else:
+            _stage(state, "ci", AWAITING,
+                   "CI is planned but not approved. No workflow was written.",
+                   evidence=adoption_ci.PLAN_FILE)
+            _next(state, "Approve the exact CI plan or decline CI",
+                  "python3 tools/acima.py adoption ci --root . --approve --plan-sha256 %s --reviewed-by \"<owner>\""
+                  % _sha(root / adoption_ci.PLAN_FILE),
+                  approval=True, writes=True,
+                  why="The plan names the provider, workflow and exact command before anything is written.",
+                  done="The plan digest is approved or CI is explicitly declined.")
+        state["ci"] = document
+        _save(root, state)
+        return state
+    if decline:
+        result = adoption_ci.decline(root, reviewed_by=reviewed_by, reason=reason)
+        state["artifacts"]["ci"] = adoption_ci.CI_FILE
+        state["ci"] = result
+        _stage(state, "ci", DECLINED,
+               "CI was declined. Local enforcement continues; no remote ratchet is claimed.",
+               evidence=adoption_ci.CI_FILE)
+        state["decisions"].append({"id": "ci", "decision": "declined",
+                                   "by": reviewed_by, "on": _today(), "reason": reason})
+        _next(state, "Continue with local enforcement or choose remediation",
+              "python3 tools/acima.py adoption remediate --root . --choice none|selected|all",
+              approval=True, writes=True,
+              why="CI was declined; the owner still chooses whether to fix findings now.",
+              done="A remediation choice is recorded, or the adoption is handed off without a ratchet claim.")
+        _save(root, state)
+        return state
+    # Approval must be based on a successful scan, not on an assumed clean run.
+    verification = _read_json(root / VERIFICATION_FILE) if (root / VERIFICATION_FILE).is_file() else {}
+    if verification.get("status") != "verified":
+        raise WorkflowError("CI requires a verified local enforcer; finish architectural verification first")
+    config = _read_json(root / CONFIG_NAME) if (root / CONFIG_NAME).is_file() else {}
+    findings = _scan_findings(root, config)
+    result = adoption_ci.approve(root, plan_sha256=plan_sha256 or "", reviewed_by=reviewed_by)
+    baseline_path = root / adoption_ci.BASELINE_FILE
+    if not baseline_path.is_file():
+        baseline = adoption_ci.record_initial(
+            root, findings,
+            revision=str((state.get("repository") or {}).get("head") or ""),
+        )
+        baseline_status = "recorded"
+    else:
+        baseline = adoption_ci.load_baseline(root)
+        evaluated = adoption_ci.evaluate(findings, baseline)
+        adoption_ci.save_baseline(root, evaluated["baseline"])
+        baseline = evaluated["baseline"]
+        baseline_status = evaluated["status"]
+    state["artifacts"]["ci"] = adoption_ci.CI_FILE
+    state["artifacts"]["ciBaseline"] = adoption_ci.BASELINE_FILE
+    state["ci"] = result
+    state["ci"].update({"baseline": adoption_ci.BASELINE_FILE,
+                        "baselineCount": len(baseline.get("entries") or []),
+                        "baselineStatus": baseline_status})
+    good = result.get("status") in ("configured", "already_present",
+                                    "manual_instructions", "no_provider")
+    _stage(state, "ci", COMPLETE if good else BLOCKED,
+           "CI decision: %s; baseline entries: %s (%s). %s" %
+           (result.get("status"), len(baseline.get("entries") or []), baseline_status,
+            result.get("claim") or ""),
+           evidence={adoption_ci.CI_FILE: True, adoption_ci.BASELINE_FILE: True})
+    state["decisions"].append({"id": "ci", "decision": result.get("status"),
+                               "by": reviewed_by, "on": _today(),
+                               "planSha256": result.get("planSha256"),
+                               "baseline": adoption_ci.BASELINE_FILE})
+    _next(state, "Choose immediate remediation: none, selected, or all",
+          "python3 tools/acima.py adoption remediate --root . --choice none|selected|all",
+          approval=True, writes=True,
+          why="CI now protects the baseline; the owner still decides whether to fix existing findings.",
+          done="A remediation choice is recorded and any authorized source changes are verified.")
+    _save(root, state)
+    return state
 
 
 def _positive_fixture(language: str) -> dict:
@@ -1629,19 +1747,43 @@ def remediate(root: Path, choice: str, *, selected: list[str] | None = None,
               confirm_scope: bool = False, confirm_implementation: bool = False,
               maturity_choice: str | None = None,
               approved_plan_sha256: str | None = None,
-              approved_paths: list[str] | None = None) -> dict:
-    """Record and execute the final none/selected/all remediation decision."""
+              approved_paths: list[str] | None = None,
+              plan_only: bool = False) -> dict:
+    """Record and execute one none/selected/all remediation round.
+
+    A round is not the end of remediation. The owner can return with a fresh plan and choose
+    again, including after a completed round or a deferred one.
+    """
     root = root.resolve()
     state = _load(root)
     if choice not in ("none", "selected", "all"):
         raise WorkflowError("remediation choice must be none, selected, or all")
-    if state["stages"].get("ci", {}).get("status") not in (
-            COMPLETE, BLOCKED, NOT_APPLICABLE, DEFERRED, DECLINED):
+    ci_status = state["stages"].get("ci", {}).get("status")
+    if ci_status == AWAITING:
+        raise WorkflowError("decide CI before remediation; approve the CI plan or decline it")
+    if ci_status not in (COMPLETE, BLOCKED, NOT_APPLICABLE, DEFERRED, DECLINED):
         raise WorkflowError("CI integration must be decided before immediate remediation")
+    if ci_status == COMPLETE and not (root / adoption_ci.BASELINE_FILE).is_file():
+        raise WorkflowError("CI has no baseline; record the CI baseline before remediating")
     plan_path = root / REMEDIATION_PLAN
-    plan = _read_json(plan_path) if plan_path.is_file() else write_remediation_plan(root, state)
-    if state["stages"].get("remediation", {}).get("status") == COMPLETE:
-        raise WorkflowError("immediate remediation was already decided")
+    consumed = bool((state.get("remediation") or {}).get("planConsumed"))
+    if plan_only or not plan_path.is_file() or consumed:
+        plan = write_remediation_plan(root, state)
+    else:
+        plan = _read_json(plan_path)
+    state["artifacts"]["remediationPlan"] = REMEDIATION_PLAN
+    state.setdefault("remediation", {})["plan"] = REMEDIATION_PLAN
+    state["remediation"]["planSha256"] = _sha(plan_path)
+    state["remediation"]["planConsumed"] = False
+    if plan_only:
+        state["remediation"]["status"] = "available"
+        _next(state, "Review this remediation round",
+              "Choose --choice none, selected, or all; selected and all require the plan digest and exact paths.",
+              approval=True, writes=False,
+              why="Each round has its own findings and exact file set; an earlier approval does not authorize a later round.",
+              done="The owner chooses none, selected, or all for this round.")
+        _save(root, state)
+        return state
     before = _read_json(root / VERIFICATION_FILE) if (root / VERIFICATION_FILE).is_file() else {}
     items = plan.get("recommendations") or []
     if choice != "none" and plan.get("maturity", {}).get("mode") not in ("greenfield", "brownfield"):
@@ -1826,9 +1968,24 @@ def remediate(root: Path, choice: str, *, selected: list[str] | None = None,
     state["artifacts"]["remediationResult"] = REMEDIATION_RESULT
     state["remediation"].update({"choice": choice, "selected": chosen_ids, "deferred": deferred,
                                  "result": REMEDIATION_RESULT, "outcome": outcome, "risk": risk})
-    _stage(state, "remediation", COMPLETE if outcome in ("declined", "complete") else BLOCKED,
-           "Decision: %s; outcome: %s; changed %s file(s); %s failed/manual item(s)." %
+    # None records a deferred round, not a closed remediation loop.
+    stage_status = (DEFERRED if outcome == "declined" else
+                    COMPLETE if outcome == "complete" else BLOCKED)
+    _stage(state, "remediation", stage_status,
+           "Round decision: %s; outcome: %s; changed %s file(s); %s failed/manual item(s)." %
            (choice, outcome, len(changes), len(failures)), evidence=REMEDIATION_RESULT)
+    rounds = list(state.get("remediationRounds") or [])
+    rounds.append({
+        "round": len(rounds) + 1, "choice": choice, "outcome": outcome,
+        "selected": chosen_ids,
+        "changed": changes, "failures": failures, "deferred": deferred,
+        "planSha256": state["remediation"].get("planSha256"),
+        "at": _now(),
+    })
+    state["remediationRounds"] = rounds
+    # Remediation stays open after every round, including a completed or deferred one.
+    state["remediation"].update({"round": len(rounds), "planConsumed": True,
+                                 "loop": "available"})
     _stage(state, "verification", COMPLETE if verification.get("status") == "verified" else BLOCKED,
            "Fresh post-remediation assessment: %s." % verification.get("status"), evidence=VERIFICATION_FILE)
     active_scope = _read_json(root / SCOPE_FILE) if (root / SCOPE_FILE).is_file() else {}
@@ -1845,14 +2002,16 @@ def remediate(root: Path, choice: str, *, selected: list[str] | None = None,
         _stage(state, "handoff", DEFERRED,
                "A target handoff document was not authorized; the final outcome will be provided in the agent response.")
     # These source edits were separately authorized; measure later edits from the new baseline.
+    state["repository"]["revision"] = _revision(root)
     state["repository"]["applicationRevision"] = _application_revision(root)
     state["decisions"].append({"id": "remediation", "decision": choice, "by": approved_by or "Repository owner",
-                               "on": _today(), "outcome": outcome})
+                               "on": _today(), "outcome": outcome, "round": len(rounds)})
     if outcome == "declined":
-        _next(state, "No immediate fixes were applied",
-              "Review the deferred recommendations and schedule reassessment when ownership changes.",
-              why="The owner preserved the implementation and chose not to remediate now.",
-              done="The owner later selects a remediation scope or changes the architecture.")
+        _next(state, "No fixes were applied in this round",
+              "Run remediate --plan again to review a later round, then choose none, selected, or all.",
+              approval=True, writes=True,
+              why="None defers this round; it does not close remediation forever.",
+              done="The owner chooses to defer again or fix selected recommendations in a later round.")
     elif failures:
         _next(state, "Review the blocked or manual remediation items",
               "Inspect acima/evidence/remediation-result.json; implement or revalidate the remaining items.",
@@ -1860,10 +2019,11 @@ def remediate(root: Path, choice: str, *, selected: list[str] | None = None,
               why="A partial or blocked fix set must not be reported as complete.",
               done="Each selected item has an implemented or explicitly deferred disposition.")
     else:
-        _next(state, "No further action in the authorized scope",
-              "Review the handoff and schedule reassessment when ownership or enforcement changes.",
-              why="Selected fixes were applied and verified against a fresh assessment.",
-              done="Ownership, contracts or enforcement changes; then reassess.")
+        _next(state, "Remediation remains available for another round",
+              "Run remediate --plan again after reviewing the new findings, or finish with the handoff.",
+              approval=True, writes=True,
+              why="A completed round does not prevent a later round; each round has its own plan digest and paths.",
+              done="The owner chooses another round or confirms no further remediation now.")
     _attach_adoption_notifications_review(state)
     _save(root, state)
     return state
@@ -2175,9 +2335,10 @@ _OBJECTIVE_FILES = {
     "local-enforcement": (
         STATE_FILE, SCOPE_FILE, CONFIG_NAME, APPROVAL_FILE, ENFORCEMENT_FILE, ARCH_TESTS_FILE,
         WAIVERS_FILE, REMEDIATION_PLAN, VERIFICATION_FILE, REMEDIATION_RESULT,
+        adoption_ci.RUNNER_FILE,
     ),
     "adoption-notifications": (ADOPTION_NOTIFICATIONS_PROPOSAL,),
-    "ci-enforcement": (CI_FILE,),
+    "ci-enforcement": (adoption_ci.CI_FILE, adoption_ci.PLAN_FILE, adoption_ci.BASELINE_FILE),
     "agent-guidance": (
         agent_guidance.PROPOSAL_FILE, agent_guidance.RESULT_FILE, agent_guidance.ARCH_FILE,
         agent_guidance.ENFORCEMENT_FILE, agent_guidance.JUDGMENT_FILE, agent_guidance.WORKFLOW_FILE,
@@ -2287,13 +2448,20 @@ def _apply(root: Path, state: dict) -> dict:
     # branch name, existing config, or a leftover scope file as approval.
     approved_scope = _require_approved_scope(root, state)
     config_path = root / CONFIG_NAME
+    proposed_path = root / PROPOSED_CONFIG
     if not config_path.is_file():
-        _stage(state, "implementation", BLOCKED, "No authoritative config is present.",
-               next_action="Approve the module-map decisions first.")
-        state["blockers"].append("module map is not approved")
-        _save(root, state)
-        return state
-    config = _read_json(config_path)
+        if not proposed_path.is_file():
+            _stage(state, "implementation", BLOCKED, "No proposed or authoritative config is present.",
+                   next_action="Approve the module-map decisions first.")
+            state["blockers"].append("module map is not approved")
+            _save(root, state)
+            return state
+        # Stage 0: the approved implementation writes the exact config the owner reviewed.
+        config = _read_json(proposed_path)
+        _write_json(root, CONFIG_NAME, config)
+        state["artifacts"]["moduleMap"] = CONFIG_NAME
+    else:
+        config = _read_json(config_path)
     _stage(state, "implementation", IN_PROGRESS, "Writing the executable enforcement artifacts.")
     enforcement = _write_enforcement(root, state, config)
     if enforcement.get("status") == "blocked":
@@ -2325,14 +2493,30 @@ def _apply(root: Path, state: dict) -> dict:
     ci = {"status": "deferred", "provider": _ci(root).get("provider"),
           "claim": "CI integration was not authorized. No CI workflow was changed."}
     if ci_decision in {"approved", "required"}:
-        ci = _integrate_ci(root, state, command)
-        ci_status = (COMPLETE if ci.get("status") in
-                     ("configured", "already_present", "no_provider", "manual_instructions") else BLOCKED)
-        state["artifacts"]["ci"] = CI_FILE
+        if state["stages"].get("ci", {}).get("status") == COMPLETE:
+            ci_status = COMPLETE
+            ci_detail = state["stages"]["ci"].get("detail") or "CI was already decided."
+        else:
+            ci_plan = adoption_ci.plan(root, configured=False)
+            state["artifacts"]["ciPlan"] = adoption_ci.PLAN_FILE
+            ci_status = AWAITING
+            ci_detail = ("CI is proposed before remediation. Review the plan, then approve its exact "
+                         "digest or decline it. No workflow is written by planning.")
+            _next(state, "Review and approve the CI plan",
+                  "python3 tools/acima.py adoption ci --root . --plan",
+                  approval=True, writes=True,
+                  why="CI is the ratchet that keeps new violations from entering the codebase.",
+                  done="The owner approves the exact plan digest or records a declined CI decision.")
+            state["artifacts"]["ci"] = adoption_ci.CI_FILE
+            _stage(state, "ci", ci_status, ci_detail,
+                   evidence=adoption_ci.PLAN_FILE)
+            ci_status = None
     else:
         ci_status = DEFERRED if ci_decision == "deferred" else DECLINED
-    _stage(state, "ci", ci_status, ci.get("claim", "No CI claim recorded."),
-           evidence=CI_FILE if ci_decision in {"approved", "required"} else None)
+    if ci_status is not None:
+        _stage(state, "ci", ci_status,
+               "CI integration was not authorized. No CI workflow was changed.",
+               evidence=None)
     guidance_decision = next((item.get("disposition") for item in scope.get("objectives", [])
                               if isinstance(item, dict) and item.get("id") == "agent-guidance"), "deferred")
     if guidance_decision in {"approved", "required"}:
@@ -2351,13 +2535,20 @@ def _apply(root: Path, state: dict) -> dict:
            "Enforcement and CI are complete. Choose none, selected, or all recommended fixes.",
            evidence=REMEDIATION_PLAN)
     _stage(state, "verification", IN_PROGRESS,
-           "Final verification follows the immediate-remediation decision.",
+           "Final verification follows the CI and immediate-remediation decisions.",
            evidence=VERIFICATION_FILE)
-    _next(state, "Choose immediate remediation: none, selected, or all",
-          "python3 tools/acima.py adoption remediate --root . --choice none|selected|all",
-          approval=True, writes=True,
-          why="The final remediation decision is separate from CI and must be made after seeing its outcome.",
-          done="The owner records none, selected IDs, or all; authorized source changes are implemented and freshly verified.")
+    if state["stages"].get("ci", {}).get("status") == AWAITING:
+        _next(state, "Review and approve the CI plan",
+              "python3 tools/acima.py adoption ci --root . --plan",
+              approval=True, writes=True,
+              why="CI is offered before remediation so new violations fail while existing debt is recorded once.",
+              done="The owner approves the exact CI plan digest or records a declined CI decision.")
+    else:
+        _next(state, "Choose immediate remediation: none, selected, or all",
+              "python3 tools/acima.py adoption remediate --root . --choice none|selected|all",
+              approval=True, writes=True,
+              why="The final remediation decision is separate from CI and must be made after seeing its outcome.",
+              done="The owner records none, selected IDs, or all; authorized source changes are implemented and freshly verified.")
     # The approved enforcement stage just changed repository files. Refresh the
     # baseline so the later, separately approved remediation stage can fail closed
     # against any changes made after this point.
@@ -2421,27 +2612,20 @@ def start(root: Path, mode: str, *, authorize_full: bool = False,
     if not root.is_dir():
         raise WorkflowError("project does not exist: %s" % root)
     if mode not in MODES:
-        raise WorkflowError("mode must be guided or full")
-    if mode == "full" and not authorize_full:
-        raise WorkflowError("full automation requires the explicit --authorize-full flag")
-    if mode == "full" and not (reviewer or "").strip():
-        reviewer = "Automated adoption mode selection"
+        raise WorkflowError("mode must be guided or full for a legacy resume")
+    if mode == "full":
+        raise WorkflowError("automated adoption was removed; start one adoption flow without --mode full")
     state_path = _existing_artifact(root, STATE_FILE, LEGACY_STATE_FILE)
     if state_path is not None:
         existing = _load(root)
-        if existing.get("mode") != mode:
-            raise WorkflowError("the repository already has a %s workflow; resume it or start a new "
-                                "engagement explicitly" % existing.get("mode"))
+        # A legacy full engagement resumes through the same map and scope checkpoints. Its
+        # historical mode is evidence only and grants no implementation privilege.
         return continue_workflow(root)
     assessment_review = _validate_qualitative_review(root, review_path)
     state = _new_state(root, mode, reviewer)
     _write_workspace_readme(root)
     state["artifacts"]["workspaceReadme"] = WORKSPACE_README
     state["assessmentReview"] = assessment_review
-    if mode == "full":
-        state["authorized"] = True
-        state["authorizedBy"] = reviewer or "Full automation consent"
-        state["authorizedOn"] = _today()
     preflight = _run_preflight(root)
     if preflight.get("payload"):
         _write_json(root, PREFLIGHT_FILE, preflight["payload"])
@@ -2450,14 +2634,14 @@ def start(root: Path, mode: str, *, authorize_full: bool = False,
     if preflight.get("exitCode") == 0 and not blockers:
         _stage(state, "preflight", COMPLETE,
                "Preflight passed for %s adoption." % mode,
-               evidence={"mode": mode, "explicitAuthorization": mode == "full",
+               evidence={"mode": mode, "explicitAuthorization": False,
                          "preflight": PREFLIGHT_FILE})
     else:
         detail = ("Preflight blocked adoption: %s." % ", ".join(blockers)
                   if blockers else
                   "Preflight did not complete: %s" % (preflight.get("error") or "no valid result"))
         _stage(state, "preflight", BLOCKED, detail,
-               evidence={"mode": mode, "explicitAuthorization": mode == "full",
+               evidence={"mode": mode, "explicitAuthorization": False,
                          "preflight": PREFLIGHT_FILE})
         state["blockers"].extend(blockers or ["preflight did not complete"])
     _stage(state, "discovery", IN_PROGRESS, "Discovering repository ownership, contracts and enforcement.")
@@ -2484,66 +2668,24 @@ def start(root: Path, mode: str, *, authorize_full: bool = False,
         state["artifacts"]["moduleMapProposal"] = PROPOSAL_JSON
     adopted = False
     reason = ""
-    if mode == "full":
-        # Automated preparation never makes a candidate ownership map authoritative.
-        if module_map.get("authoritativeMap", {}).get("status") == "complete":
-            adopted, reason = True, "An authoritative map already exists; its presence does not authorize implementation."
-        else:
-            reason = "Automated mode prepares the candidate map; explicit owner approval is still required."
-    elif module_map.get("authoritativeMap", {}).get("status") == "complete":
+    if module_map.get("authoritativeMap", {}).get("status") == "complete":
         adopted, reason = True, "An authoritative map already covers all production source."
     if adopted:
         _stage(state, "module_map", COMPLETE, reason,
                evidence={"config": CONFIG_NAME, "approval": APPROVAL_FILE})
-    elif mode == "guided":
+    else:
         _stage(state, "module_map", AWAITING,
                "A proposal is ready; individual module and recommendation decisions are not approved.",
                evidence=PROPOSAL_JSON)
         _next(state, "Review the proposed module map",
-              "python3 conformance/adoption_workflow.py approve --project . --map-decisions <review.json>",
+              "python3 conformance/adoption_workflow.py approve --project . --decisions <review.json>",
               approval=True, writes=True,
               why="Inferred ownership must not become authoritative without explicit review.",
               done="The review approves every boundary and essential recommendation, or the owner defers it.")
-    else:
-        _stage(state, "module_map", BLOCKED,
-               "Full automation paused: %s." % (reason or "ownership is not sufficiently supported"),
-               evidence=PROPOSAL_JSON)
-        state["blockers"].append(reason or "module map could not be approved automatically")
-        _next(state, "Resolve the ownership decision",
-              "Review the module-map proposal; use `approve` with explicit decisions.",
-              approval=True, writes=True,
-              why="The workflow must not invent architectural intent where evidence is inadequate.",
-              done="The map is approved or a supported boundary is supplied.")
     proposal_document = None
-    if mode != "guided" or adopted:
+    if adopted:
         proposal_document = _write_proposal(root, module_map, state)
-    if mode == "full":
-        # Prepare reviewable proposals only. These are not active target enforcement,
-        # CI configuration, or agent-instruction changes.
-        language = _language(root)
-        enforcement_proposal = {
-            "status": "proposed",
-            "language": language,
-            "enforcerAvailable": _enforcer(root, language) is not None,
-            "existingArchitecture": module_map.get("existingArchitecture", {}),
-            "claim": "No enforcement tooling has been installed or activated.",
-        }
-        _write_json(root, "acima/report/enforcement-proposal.json", enforcement_proposal)
-        ci_discovery = _ci(root)
-        ci_proposal = {
-            "status": "proposed",
-            "discovery": ci_discovery,
-            "userDecisionRequired": True,
-            "claim": "No CI workflow has been changed.",
-        }
-        _write_json(root, "acima/report/ci-proposal.json", ci_proposal)
-        # Do not create or replace repository-level agent instructions during preparation.
-        # The agent-guidance proposal is a separately selectable implementation stage.
-        remediation_proposal = write_remediation_plan(root, state)
-        state["artifacts"]["enforcementProposal"] = "acima/report/enforcement-proposal.json"
-        state["artifacts"]["ciProposal"] = "acima/report/ci-proposal.json"
-        state["artifacts"]["remediationPlan"] = REMEDIATION_PLAN
-    if mode == "guided":
+    if True:
         map_pending = state["stages"].get("module_map", {}).get("status") == AWAITING
         if map_pending:
             _stage(state, "adoption_proposal", IN_PROGRESS,
@@ -2569,66 +2711,61 @@ def start(root: Path, mode: str, *, authorize_full: bool = False,
                   done="The owner has inspected all six pages and submits a scope bound to this report digest with explicit objectives and target paths.")
         _save(root, state)
         return state
-    # Automated mode prepares the package and then stops at one consolidated user review.
-    # Selecting automated mode is not consent to apply every proposed change.
-    if not adopted:
-        _stage(state, "module_map", AWAITING,
-               "The complete map proposal is included in the consolidated review; ownership is not approved.",
-               evidence=PROPOSAL_JSON)
-    _stage(state, "adoption_proposal", AWAITING,
-           "The adoption package is prepared and awaits the user's consolidated scope decision.",
-           evidence=ADOPTION_PROPOSAL)
-    for stage_name, detail, evidence in (
-        ("implementation", "Enforcement changes are proposed but await consolidated scope approval.",
-         "acima/report/enforcement-proposal.json"),
-        ("agent_guidance", "Agent guidance is an optional stage and has not been applied.",
-         None),
-        ("ci", "CI integration is proposed and awaits the user's explicit CI decision.",
-         "acima/report/ci-proposal.json"),
-        ("remediation", "Application source remediation is a separate later decision.",
-         REMEDIATION_PLAN),
-    ):
-        _stage(state, stage_name, AWAITING, detail, evidence=evidence)
-    if proposal_document is None:
-        proposal_document = _read_json(root / ADOPTION_PROPOSAL_JSON)
-    _proposal_report(root, state, module_map, proposal_document)
-    report = state["artifacts"]["proposalReport"]
-    _next(state, "Open and review the consolidated HTML adoption proposal",
-          "Open the user-facing report now: %s . Inspect all six pages. Then answer the separate ACIMA adoption-notifications question (prepare a proposal, use only interactive messages, defer, or decline), explicitly approve the exact report digest %s, choose the stages to implement, and list the target paths." % (report["indexUrl"], report["sha256"]),
-          approval=True, writes=False,
-          why="Automated mode automates preparation and approved execution, not consent. Report review, branch selection, or choosing 'recover' never authorizes file changes.",
-          done="The owner has inspected the complete report and explicitly approved the selected stages and exact files. No other files may be changed.")
-    _save(root, state)
-    return state
 
 
 def approve(root: Path, *, map_decisions: Path | None = None,
             scope: Path | None = None, reviewer: str | None = None,
             reviewed_report_sha256: str | None = None,
-            reviewed_by: str | None = None) -> dict:
+            reviewed_by: str | None = None,
+            decision_source: Path | None = None) -> dict:
     root = root.resolve()
+    if decision_source is not None:
+        if map_decisions is not None or scope is not None:
+            raise WorkflowError("approve --decisions cannot be combined with --map-decisions or --scope")
+        ingested = decisions(root, decision_source)
+        state = _load(root)
+        report = (state.get("artifacts") or {}).get("proposalReport") or {}
+        scope_path = root / SCOPE_FILE
+        # One command records intent and then records the approval receipt when the file
+        # contains a complete scope for the exact report still on disk. If map answers
+        # regenerated the report, the owner must review that new report before scope approval;
+        # the command never carries an old digest forward.
+        if (ingested.get("scopeDraft") and scope_path.is_file()
+                and report.get("sha256")
+                and (state.get("proposalReview") or {}).get("reportSha256") == report.get("sha256")):
+            scope_document = _read_json(scope_path)
+            if scope_document.get("authorization", {}).get("explicit") is not True:
+                return approve(
+                    root, scope=scope_path,
+                    reviewed_report_sha256=report["sha256"],
+                    reviewed_by=ingested.get("reviewer") or "Repository owner",
+                )
+        return state
     state = _load(root)
-    if state.get("mode") == "guided" and map_decisions and scope:
-        raise WorkflowError("guided adoption requires a separate adoption-proposal review after module-map approval")
+    if map_decisions and scope:
+        raise WorkflowError("map approval and scope approval are separate checkpoints; use --decisions for one owner file")
     if map_decisions:
         module_map = _read_json(root / PROPOSAL_JSON) if (root / PROPOSAL_JSON).is_file() else None
         if module_map is not None:
             # The saved proposal is the inner proposal; discover wraps it for apply_review.
             wrapper = {"proposal": module_map, "proposalId": module_map.get("proposalId")}
-            decisions = load_review(map_decisions)
-            result = apply_review(wrapper, decisions, root=root)
+            map_review_document = load_review(map_decisions)
+            result = apply_review(wrapper, map_review_document, root=root)
             _write_json(root, APPROVAL_FILE, result)
             if result.get("status") == "approved":
                 existing = _read_json(root / CONFIG_NAME) if (root / CONFIG_NAME).is_file() else None
                 config = build_config(wrapper, result, existing=existing, language=_language(root))
-                _write_json(root, CONFIG_NAME, config)
+                # Preparation is read-only with respect to the target's root configuration. The
+                # proposed config is evidence; stage 0 of implementation writes it after the
+                # scope approval passes every existing guard.
+                _write_json(root, PROPOSED_CONFIG, config)
                 state["artifacts"]["moduleMapApproval"] = APPROVAL_FILE
-                state["artifacts"]["moduleMap"] = CONFIG_NAME
+                state["artifacts"]["moduleMap"] = PROPOSED_CONFIG
                 state["decisions"].append({"id": "module-map", "decision": "accepted",
-                                           "by": reviewer or decisions.get("reviewer"),
+                                           "by": reviewer or map_review_document.get("reviewer"),
                                            "on": _today(), "proposalId": module_map.get("proposalId")})
-                _stage(state, "module_map", COMPLETE, "The owner-approved map is authoritative.",
-                       evidence={"config": CONFIG_NAME, "approval": APPROVAL_FILE})
+                _stage(state, "module_map", COMPLETE, "The owner-approved map is recorded; its config is a proposal until implementation is authorized.",
+                       evidence={"configProposal": PROPOSED_CONFIG, "approval": APPROVAL_FILE})
                 # A map review is its own authorized target change. The proposal and
                 # implementation gates begin from the post-map state, not the pre-map tree.
                 state["repository"]["revision"] = _revision(root)
@@ -2646,8 +2783,10 @@ def approve(root: Path, *, map_decisions: Path | None = None,
         else:
             raise WorkflowError("no module-map proposal is available at %s" % PROPOSAL_JSON)
     if scope:
-        if not (root / CONFIG_NAME).is_file():
-            raise WorkflowError("an adoption scope cannot be approved before an authoritative module map exists")
+        # A map approval produces a proposed config, not a root config. The scope may be
+        # approved against that proposal; only implementation stage 0 writes the root file.
+        if not (root / PROPOSED_CONFIG).is_file() and not (root / CONFIG_NAME).is_file():
+            raise WorkflowError("an adoption scope cannot be approved before a proposed or authoritative module map exists")
         approval = _read_json(root / APPROVAL_FILE) if (root / APPROVAL_FILE).is_file() else {}
         authoritative = discover_module_map(root).get("authoritativeMap", {}).get("status") == "complete"
         if not authoritative and (
@@ -2762,7 +2901,8 @@ def approve(root: Path, *, map_decisions: Path | None = None,
                 "reportSha256": reviewed["reportSha256"],
                 "proposalSha256": reviewed["proposalSha256"],
             }
-    if scope and (root / CONFIG_NAME).is_file() and "local-enforcement" in _approved_objectives(document):
+    if (scope and "local-enforcement" in _approved_objectives(document)
+            and ((root / CONFIG_NAME).is_file() or (root / PROPOSED_CONFIG).is_file())):
         _save(root, state)
         return _apply(root, state)
     if scope and "local-enforcement" not in _approved_objectives(document):
@@ -3309,7 +3449,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="ACIMA end-to-end adoption workflow")
     sub = parser.add_subparsers(dest="command", required=True)
     for name in ("start", "status", "approve", "apply", "continue", "remediate", "guidance",
-                 "decisions", "regenerate"):
+                 "decisions", "regenerate", "ci"):
         command = sub.add_parser(name)
         command.add_argument("--project", default=".")
         command.add_argument("--format", choices=("json", "text"), default="json")
@@ -3322,6 +3462,8 @@ def main(argv: list[str] | None = None) -> int:
         elif name == "approve":
             command.add_argument("--map-decisions", default=None)
             command.add_argument("--scope", default=None)
+            command.add_argument("--decisions", dest="decision_source", default=None,
+                                 help="one owner decisions file; records intent and, when complete, the approval receipt")
             command.add_argument("--reviewer", default=None)
             command.add_argument("--reviewed-report-sha256", default=None,
                                  help="exact digest of the six-page HTML proposal the owner reviewed")
@@ -3336,8 +3478,18 @@ def main(argv: list[str] | None = None) -> int:
             command.add_argument("--reason", required=True,
                                  help="why the report is being rebuilt; recorded in workflow state")
             command.add_argument("--reviewer", default=None)
+        elif name == "ci":
+            command.add_argument("--plan", action="store_true", dest="ci_plan")
+            command.add_argument("--approve", action="store_true")
+            command.add_argument("--decline", action="store_true")
+            command.add_argument("--plan-sha256", default="")
+            command.add_argument("--reviewed-by", default="")
+            command.add_argument("--reason", default="")
+            command.add_argument("--refresh", action="store_true",
+                                 help="revalidate and rebuild the report before planning CI again")
         elif name == "remediate":
-            command.add_argument("--choice", choices=("none", "selected", "all"), required=True)
+            command.add_argument("--choice", choices=("none", "selected", "all"))
+            command.add_argument("--plan", action="store_true", dest="plan_only")
             command.add_argument("--maturity-choice", choices=("greenfield", "brownfield"), default=None)
             command.add_argument("--selected", action="append", default=[])
             command.add_argument("--approved-by", default=None)
@@ -3364,7 +3516,9 @@ def main(argv: list[str] | None = None) -> int:
                              scope=Path(args.scope) if args.scope else None,
                              reviewer=args.reviewer,
                              reviewed_report_sha256=args.reviewed_report_sha256,
-                             reviewed_by=args.reviewed_by)
+                             reviewed_by=args.reviewed_by,
+                             decision_source=(Path(args.decision_source)
+                                              if getattr(args, "decision_source", None) else None))
         elif args.command == "apply":
             result = _apply(root, _load(root))
         elif args.command == "guidance":
@@ -3373,14 +3527,21 @@ def main(argv: list[str] | None = None) -> int:
             result = decisions(root, Path(args.source))
         elif args.command == "regenerate":
             result = regenerate(root, reason=args.reason, reviewer=args.reviewer)
+        elif args.command == "ci":
+            result = ci(root, plan_only=args.ci_plan, approve=args.approve,
+                        decline=args.decline, plan_sha256=args.plan_sha256,
+                        reviewed_by=args.reviewed_by, reason=args.reason,
+                        refresh=args.refresh)
         elif args.command == "remediate":
-            result = remediate(root, args.choice, selected=args.selected,
+            if not args.choice and not args.plan_only:
+                raise WorkflowError("remediation requires --choice none, selected, or all, or --plan")
+            result = remediate(root, args.choice or "none", selected=args.selected,
                                approved_by=args.approved_by, confirm=args.confirm,
                                confirm_scope=args.confirm_scope,
                                confirm_implementation=args.confirm_implementation,
                                maturity_choice=args.maturity_choice,
                                approved_plan_sha256=args.approved_plan_sha256,
-                               approved_paths=args.approved_path)
+                               approved_paths=args.approved_path, plan_only=args.plan_only)
         else:
             result = continue_workflow(root)
         print(json.dumps(result, indent=2, ensure_ascii=False))
